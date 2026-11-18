@@ -2,6 +2,8 @@ using Arch.Core;
 using Arch.System;
 
 using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Runtime.Scenes;
+using FlickerVoid.Engine.Runtime.Serialization;
 
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +21,16 @@ public class GameTests
 
         Assert.Same(game.World, world);
         Assert.Same(game.LoggerFactory, loggerFactory);
+    }
+
+    [Fact]
+    public void RegistersASceneSpawnerThatKnowsTransforms()
+    {
+        using Game game = new();
+        SceneSpawner? spawner = game.Services.GetService<SceneSpawner>();
+
+        Assert.NotNull(spawner);
+        Assert.Throws<ArgumentException>(() => spawner.Register("transform", RuntimeJsonContext.Default.Transform));
     }
 
     [Fact]

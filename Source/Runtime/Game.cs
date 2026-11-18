@@ -1,6 +1,8 @@
 using Arch.Core;
 using Arch.System;
 
+using FlickerVoid.Engine.Runtime.Scenes;
+using FlickerVoid.Engine.Runtime.Serialization;
 using FlickerVoid.Engine.Runtime.Services;
 
 using Microsoft.Extensions.Logging;
@@ -14,7 +16,7 @@ public sealed partial class Game : IDisposable
     private readonly ILogger _logger;
     private bool _initialized;
 
-    /// <summary>Creates the world and registers it and the logger factory as services.</summary>
+    /// <summary>Creates the world and registers it, the logger factory and a scene spawner that knows the runtime's components as services.</summary>
     public Game(ILoggerFactory? loggerFactory = null)
     {
         LoggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
@@ -23,6 +25,10 @@ public sealed partial class Game : IDisposable
 
         Services.AddService(LoggerFactory);
         Services.AddService(World);
+
+        SceneSpawner spawner = new();
+        spawner.Register("transform", RuntimeJsonContext.Default.Transform);
+        Services.AddService(spawner);
 
         Loop.FixedUpdate += HandleFixedUpdate;
         Loop.Update += HandleUpdate;
