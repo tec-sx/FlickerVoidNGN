@@ -1,100 +1,72 @@
 using Arch.Core;
 using Arch.System;
 
-using FlickerVoid.Engine.Runtime;
-
 using Microsoft.Extensions.Logging;
 
 namespace FlickerVoid.Engine.Runtime.Tests;
 
 public class GameTests
 {
+    private readonly ISystem<GameTime> _fixedSystem = Substitute.For<ISystem<GameTime>>();
+    private readonly ISystem<GameTime> _frameSystem = Substitute.For<ISystem<GameTime>>();
+    private readonly GameTestsBuilder _builder = new();
+
     [Fact]
     public void RegistersWorldAndLoggerFactoryAsServices()
     {
-        using Game game = new();
+        ILoggerFactory loggerFactory = Substitute.For<ILoggerFactory>();
+        using Game game = _builder.WithLoggerFactory(loggerFactory).Build();
 
         World? world = game.Services.GetService<World>();
-        ILoggerFactory? loggerFactory = game.Services.GetService<ILoggerFactory>();
+        ILoggerFactory? registered = game.Services.GetService<ILoggerFactory>();
 
-        Assert.Same(game.World, world);
-        Assert.Same(game.LoggerFactory, loggerFactory);
+        world.Should().BeSameAs(game.World);
+        registered.Should().BeSameAs(loggerFactory);
     }
 
     [Fact]
     public void RunsFixedSystemsBeforeFrameSystems()
     {
-        using Game game = new();
-        List<string> calls = [];
-        game.FixedSystems.Add(new RecordingSystem("fixed", calls));
-        game.FrameSystems.Add(new RecordingSystem("frame", calls));
+        using Game game = _builder.WithFixedSystem(_fixedSystem).WithFrameSystem(_frameSystem).Build();
 
         game.Tick(game.Loop.FixedStep * 2);
 
-        Assert.Equal(
-            [
-                "fixed.Initialize", "frame.Initialize",
-                "fixed.Before", "fixed.Update", "fixed.After",
-                "fixed.Before", "fixed.Update", "fixed.After",
-                "frame.Before", "frame.Update", "frame.After",
-            ],
-            calls);
+        Received.InOrder(() =>
+        {
+            _fixedSystem.Initialize();
+            _frameSystem.Initialize();
+            _fixedSystem.BeforeUpdate(Arg.Any<GameTime>());
+            _fixedSystem.Update(Arg.Any<GameTime>());
+            _fixedSystem.AfterUpdate(Arg.Any<GameTime>());
+            _fixedSystem.BeforeUpdate(Arg.Any<GameTime>());
+            _fixedSystem.Update(Arg.Any<GameTime>());
+            _fixedSystem.AfterUpdate(Arg.Any<GameTime>());
+            _frameSystem.BeforeUpdate(Arg.Any<GameTime>());
+            _frameSystem.Update(Arg.Any<GameTime>());
+            _frameSystem.AfterUpdate(Arg.Any<GameTime>());
+        });
     }
 
     [Fact]
     public void InitializesSystemsOnce()
     {
-        using Game game = new();
-        List<string> calls = [];
-        game.FrameSystems.Add(new RecordingSystem("frame", calls));
+        using Game game = _builder.WithFrameSystem(_frameSystem).Build();
 
         game.Tick(TimeSpan.Zero);
         game.Tick(TimeSpan.Zero);
 
-        int initializations = calls.Count(call => call == "frame.Initialize");
-        Assert.Equal(1, initializations);
+        _frameSystem.Received(1).Initialize();
     }
 
     [Fact]
     public void DisposesSystemsAndWorld()
     {
-        List<string> calls = [];
-        Game game = new();
-        game.FrameSystems.Add(new RecordingSystem("frame", calls));
+        Game game = _builder.WithFrameSystem(_frameSystem).Build();
         World world = game.World;
 
         game.Dispose();
 
-        Assert.Contains("frame.Dispose", calls);
-        Assert.DoesNotContain(world, World.Worlds);
-    }
-
-    /// <summary>Records each call as "name.Phase".</summary>
-    private sealed class RecordingSystem(string name, List<string> calls) : ISystem<GameTime>
-    {
-        public void Initialize()
-        {
-            calls.Add($"{name}.Initialize");
-        }
-
-        public void BeforeUpdate(in GameTime t)
-        {
-            calls.Add($"{name}.Before");
-        }
-
-        public void Update(in GameTime t)
-        {
-            calls.Add($"{name}.Update");
-        }
-
-        public void AfterUpdate(in GameTime t)
-        {
-            calls.Add($"{name}.After");
-        }
-
-        public void Dispose()
-        {
-            calls.Add($"{name}.Dispose");
-        }
+        _frameSystem.Received(1).Dispose();
+        World.Worlds.Should().NotContain(world);
     }
 }

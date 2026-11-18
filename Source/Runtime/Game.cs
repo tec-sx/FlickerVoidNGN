@@ -4,7 +4,6 @@ using Arch.System;
 using FlickerVoid.Engine.Runtime.Services;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlickerVoid.Engine.Runtime;
 
@@ -15,9 +14,9 @@ public sealed partial class Game : IDisposable
     private bool _initialized;
 
     /// <summary>Creates the world and registers it and the logger factory as services.</summary>
-    public Game(ILoggerFactory? loggerFactory = null)
+    public Game(ILoggerFactory loggerFactory)
     {
-        LoggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+        LoggerFactory = loggerFactory;
         _logger = LoggerFactory.CreateLogger<Game>();
         World = World.Create();
 
@@ -32,7 +31,7 @@ public sealed partial class Game : IDisposable
 
     public World World { get; }
 
-    public ServiceRegistry Services { get; } = new();
+    public IServiceRegistry Services { get; } = new ServiceRegistry();
 
     public GameLoop Loop { get; } = new();
 
