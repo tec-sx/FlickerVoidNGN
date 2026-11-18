@@ -15,7 +15,7 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 | Shaders | HLSL, compiled by DXC to DXIL and SPIR-V |
 | Entities | Arch (archetype ECS, NativeAOT friendly) |
 | Asset text | JSON through System.Text.Json source generation |
-| Editor | Avalonia on Windows and Linux |
+| Editor | Avalonia on Windows and Linux, rendering on Vulkan on both: Avalonia's GPU interop imports Vulkan images with semaphores, never Direct3D 12 ones, so the viewport shares a Vulkan texture with Avalonia's Vulkan backend (`Samples/EditorViewport`). Games still run Direct3D 12 on Windows |
 | Platforms | One codebase for Windows and Linux; OS-specific work for Windows first, with a TODO on the Linux side |
 | Gameplay | The Unreal project is the reference; NGN ports from it |
 | Projects | `Documents/FlickerVoid/<Project>`; the demo project is FlickerVoid |
