@@ -1,6 +1,6 @@
 # FlickerVoidNGN
 
-FlickerVoid Engine ("NGN" reads "engine"): a C# engine built for easy development, alongside the Unreal project [tec-sx/FlickerVoid](https://github.com/tec-sx/FlickerVoid). The Unreal project stays the reference for gameplay; everything gameplay-related is ported from it.
+A C# engine built for fast prototyping and easy development.
 
 The target game is a third-person narrative RPG/adventure with an orthographic 2.5D look: 3D scenes with hand-drawn textures and a 2D feel. It is neither 2D-first nor photoreal. Lighting is the most important part of the look. The game is player-paced: no decay timers or forced timings.
 
@@ -32,13 +32,11 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 
 - Find the root cause, design and plan before adding code. Adding code is not always the answer; prefer removing and simplifying. No helper for every inconvenience.
 - Reuse .NET, the libraries above and open-source projects before writing our own. Stride (MIT) is the main source: copy and adapt its code where it fits, keep its copyright header in copied files and list it in `THIRD-PARTY-NOTICES.md`.
-- Defold: ideas only, never code (its licence forbids selling derivatives as an engine).
-- Never name or link commercial or closed-source products in repo files, commits or PRs. Open-source projects may be named and used.
 
 ## Conventions
 
 - Idiomatic C#: file-scoped namespaces, one main type per file named after it.
-- Components talk through C# events on components found on the entity. No interfaces for gameplay callbacks, no string-addressed messages except across worlds or for deferred calls.
+- Components talk through C# events on components found on the entity.  no string-addressed messages except across worlds or for deferred calls.
 - Data-driven, composition over inheritance, SOLID/KISS/YAGNI, open/closed.
 - Don't nest calls: store a call's result in a variable before passing it to another call. Only simple getters and properties may be passed inline.
 - Don't chain ternaries; use `if`/`else` or a `switch`.
@@ -47,8 +45,10 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 
 ## Build and test
 
-- `dotnet build FlickerVoidNGN.slnx` and `dotnet test --solution FlickerVoidNGN.slnx` (Microsoft Testing Platform, xUnit v3).
+- `dotnet build FlickerVoidNGN.slnx` and `dotnet test --solution FlickerVoidNGN.slnx`.
 - CI runs both on Windows and Linux for every pull request. Cloud sessions can build and test on Linux; Direct3D 12 work is tested on the owner's Windows PC.
+- Unit tests use xUnit test framework, NSubstitute for mocking, FluentAssertions for assertions. Creation of the classes under test is done through a builder (Builder pattern) which is a separate <system>TestsBuild.cs file in the same folder.
+- Work is done TDD. Tests are written first, and serve as the Design Spec for the code.
 
 ## Git
 
