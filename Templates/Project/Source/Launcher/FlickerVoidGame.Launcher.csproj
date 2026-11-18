@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PublishAot>true</PublishAot>
+    <!-- Third-party libraries' trim and AOT warnings stay warnings when publishing: Collections.Pooled (used by Arch) has a reflection-based
+         JSON converter nothing here uses, and Silk.NET's native library loader probes paths that single-file apps don't have. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);IL2104;IL3053;IL3000;IL3002</WarningsNotAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Platform/FlickerVoid.Engine.Platform.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+  </ItemGroup>
+</Project>

@@ -21,3 +21,15 @@ dotnet build Samples/FlickerVoid.Samples.slnx
 ```
 
 A project outside this repository finds the engine through the `FLICKERVOID_ENGINE` environment variable. On Windows, `setx FLICKERVOID_ENGINE C:\path\to\FlickerVoidNGN` sets it for new terminals and IDEs.
+
+## New projects
+
+Create a project from the template, passing the engine repository's folder (project names are C# identifiers, without spaces):
+
+```
+dotnet new install ./Templates/Project
+dotnet new flickervoid -n MyGame -o ~/Documents/FlickerVoid/MyGame --engine /path/to/FlickerVoidNGN
+dotnet build ~/Documents/FlickerVoid/MyGame/MyGame.slnx
+```
+
+The project opens as its own solution, with the engine's modules in an Engine folder so they can be edited from it. It builds against the folder given to `--engine`, unless `FLICKERVOID_ENGINE` points somewhere else.

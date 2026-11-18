@@ -41,6 +41,16 @@ jobs:
         env:
           # llvmpipe's linear rasterizer reads push constants past the first 16 bytes as zero on full-rectangle draws.
           LP_PERF: no_rast_linear
+      - name: Create a project from the template, build it and run it
+        shell: bash
+        env:
+          SDL_VIDEODRIVER: dummy
+        run: |
+          dotnet new install ./Templates/Project
+          dotnet new flickervoid -n TemplateCheck -o "$RUNNER_TEMP/TemplateCheck" --engine "$GITHUB_WORKSPACE"
+          cd "$RUNNER_TEMP/TemplateCheck"
+          dotnet build TemplateCheck.slnx -c Release
+          dotnet run --project Source/Launcher -c Release --no-build -- --frames 60
       - name: Publish the samples with NativeAOT
         shell: bash
         run: |
