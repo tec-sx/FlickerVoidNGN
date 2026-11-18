@@ -8,7 +8,7 @@ namespace FlickerVoid.Gameplay.Protagonist.Identity.Social.Fame;
 /// Keeps the player's titles: earned ones are never lost, and the hardest one to earn whose conditions hold leads (highest threshold, then furthest past it);
 /// the leader becomes current whenever it changes. A title the story promotes stays current until the leader changes again.
 /// </summary>
-public sealed class Titles : IDisposable
+public sealed class Titles : ITitles, IDisposable
 {
     private const int MaxPasses = 8;
 
