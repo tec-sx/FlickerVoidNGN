@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/Source/">
     <Project Path="Source/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
+    <Project Path="Source/Runtime/FlickerVoid.Engine.Runtime.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/Gameplay/FlickerVoid.Engine.Gameplay.Tests.csproj" />
+    <Project Path="Tests/Runtime/FlickerVoid.Engine.Runtime.Tests.csproj" />
   </Folder>
   <Folder Name="/Projects/FlickerVoid/Source/">
     <Project Path="Projects/FlickerVoid/Source/Gameplay/FlickerVoid.Gameplay.csproj" />
