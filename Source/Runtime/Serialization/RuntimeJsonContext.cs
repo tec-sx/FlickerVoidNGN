@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Scenes;
 
 namespace FlickerVoid.Engine.Runtime.Serialization;

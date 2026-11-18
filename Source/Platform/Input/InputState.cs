@@ -4,9 +4,8 @@ using Silk.NET.Input;
 
 namespace FlickerVoid.Engine.Platform.Input;
 
-/// <summary>Keyboard and mouse state for the current frame; presses, releases, mouse movement and scrolling last until the frame ends.</summary>
-/// <remarks>Read presses in frame systems: a frame can run no fixed step or several, so fixed systems would miss or repeat them.</remarks>
-public sealed class InputState
+/// <summary>Input state the window writes as its events arrive and clears at the end of each frame.</summary>
+public sealed class InputState : IInputState
 {
     private readonly HashSet<Key> _keysDown = [];
     private readonly HashSet<Key> _keysPressed = [];
@@ -19,7 +18,6 @@ public sealed class InputState
 
     public Vector2 MouseDelta { get; private set; }
 
-    /// <summary>Wheel movement this frame; positive scrolls away from the player.</summary>
     public float ScrollDelta { get; private set; }
 
     public bool IsDown(Key key)

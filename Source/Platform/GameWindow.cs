@@ -12,9 +12,10 @@ using Silk.NET.Windowing.Sdl;
 
 namespace FlickerVoid.Engine.Platform;
 
-/// <summary>The game's desktop window on SDL: runs the game loop and feeds keyboard and mouse input to <see cref="Input"/>.</summary>
-public sealed class GameWindow : IDisposable
+/// <summary>The game's desktop window on SDL, feeding keyboard and mouse events to its input state.</summary>
+public sealed class GameWindow : IGameWindow, IDisposable
 {
+    private readonly InputState _input = new();
     private readonly Game _game;
     private readonly IWindow _window;
     private readonly IInputContext _inputContext;
@@ -26,7 +27,7 @@ public sealed class GameWindow : IDisposable
         SdlInput.RegisterPlatform();
     }
 
-    /// <summary>Opens the window and registers it and its <see cref="InputState"/> as the game's services.</summary>
+    /// <summary>Opens the window and registers it and its input as the game's services.</summary>
     public GameWindow(Game game, string title, int width, int height)
     {
         _game = game;
@@ -48,12 +49,12 @@ public sealed class GameWindow : IDisposable
             Attach(mouse);
         }
 
-        Input.EndFrame();
-        game.Services.AddService(this);
+        _input.EndFrame();
+        game.Services.AddService<IGameWindow>(this);
         game.Services.AddService(Input);
     }
 
-    public InputState Input { get; } = new();
+    public IInputState Input => _input;
 
     public string Title
     {
@@ -61,7 +62,6 @@ public sealed class GameWindow : IDisposable
         set => _window.Title = value;
     }
 
-    /// <summary>Runs until the window closes: each frame handles the window's events, ticks the game with the real time since the last frame, then ends the input frame.</summary>
     public void Run()
     {
         Stopwatch clock = Stopwatch.StartNew();
@@ -77,7 +77,7 @@ public sealed class GameWindow : IDisposable
             TimeSpan now = clock.Elapsed;
             _game.Tick(now - last);
             last = now;
-            Input.EndFrame();
+            _input.EndFrame();
 
             // Nothing presents frames with vsync until the renderer arrives, so give the core back between frames.
             Thread.Sleep(1);
@@ -108,7 +108,7 @@ public sealed class GameWindow : IDisposable
         mouse.MouseUp += HandleMouseUp;
         mouse.MouseMove += HandleMouseMove;
         mouse.Scroll += HandleScroll;
-        Input.MoveMouse(mouse.Position);
+        _input.MoveMouse(mouse.Position);
     }
 
     private void HandleConnectionChanged(IInputDevice device, bool connected)
@@ -133,37 +133,37 @@ public sealed class GameWindow : IDisposable
     {
         if (!focused)
         {
-            Input.ReleaseAll();
+            _input.ReleaseAll();
         }
     }
 
     private void HandleKeyDown(IKeyboard keyboard, Key key, int scancode)
     {
-        Input.PressKey(key);
+        _input.PressKey(key);
     }
 
     private void HandleKeyUp(IKeyboard keyboard, Key key, int scancode)
     {
-        Input.ReleaseKey(key);
+        _input.ReleaseKey(key);
     }
 
     private void HandleMouseDown(IMouse mouse, MouseButton button)
     {
-        Input.PressButton(button);
+        _input.PressButton(button);
     }
 
     private void HandleMouseUp(IMouse mouse, MouseButton button)
     {
-        Input.ReleaseButton(button);
+        _input.ReleaseButton(button);
     }
 
     private void HandleMouseMove(IMouse mouse, Vector2 position)
     {
-        Input.MoveMouse(position);
+        _input.MoveMouse(position);
     }
 
     private void HandleScroll(IMouse mouse, ScrollWheel wheel)
     {
-        Input.Scroll(wheel.Y);
+        _input.Scroll(wheel.Y);
     }
 }

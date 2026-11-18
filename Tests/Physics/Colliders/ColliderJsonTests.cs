@@ -14,14 +14,12 @@ public class ColliderJsonTests
         RigidBody sphere = Read("""{ "collider": { "type": "sphere", "radius": 2 } }""");
         RigidBody capsule = Read("""{ "collider": { "type": "capsule", "radius": 0.25, "length": 1.5 } }""");
 
-        BoxCollider boxCollider = Assert.IsType<BoxCollider>(box.Collider);
-        SphereCollider sphereCollider = Assert.IsType<SphereCollider>(sphere.Collider);
-        CapsuleCollider capsuleCollider = Assert.IsType<CapsuleCollider>(capsule.Collider);
         Vector3 boxSize = new(1, 2, 3);
-        Assert.Equal(boxSize, boxCollider.Size);
-        Assert.Equal(2, sphereCollider.Radius);
-        Assert.Equal(0.25f, capsuleCollider.Radius);
-        Assert.Equal(1.5f, capsuleCollider.Length);
+        box.Collider.Should().BeOfType<BoxCollider>().Which.Size.Should().Be(boxSize);
+        sphere.Collider.Should().BeOfType<SphereCollider>().Which.Radius.Should().Be(2);
+        CapsuleCollider capsuleCollider = capsule.Collider.Should().BeOfType<CapsuleCollider>().Subject;
+        capsuleCollider.Radius.Should().Be(0.25f);
+        capsuleCollider.Length.Should().Be(1.5f);
     }
 
     [Fact]
@@ -29,7 +27,7 @@ public class ColliderJsonTests
     {
         RigidBody body = Read("""{ "collider": { "radius": 2, "type": "sphere" } }""");
 
-        Assert.IsType<SphereCollider>(body.Collider);
+        body.Collider.Should().BeOfType<SphereCollider>();
     }
 
     [Fact]
@@ -37,8 +35,8 @@ public class ColliderJsonTests
     {
         RigidBody body = Read("""{ "collider": { "type": "sphere" } }""");
 
-        Assert.Equal(1, body.Mass);
-        Assert.False(body.Kinematic);
+        body.Mass.Should().Be(1);
+        body.Kinematic.Should().BeFalse();
     }
 
     [Theory]
@@ -47,7 +45,9 @@ public class ColliderJsonTests
     [InlineData("""{ "collider": { "type": "sphere", "size": [1, 1, 1] } }""")]
     public void RejectsMissingOrUnknownColliders(string json)
     {
-        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize(json, PhysicsJsonContext.Default.RigidBody));
+        Action read = () => JsonSerializer.Deserialize(json, PhysicsJsonContext.Default.RigidBody);
+
+        read.Should().Throw<JsonException>();
     }
 
     private static RigidBody Read(string json)

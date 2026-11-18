@@ -8,7 +8,7 @@ using Silk.NET.Input;
 namespace FlickerVoid.Samples.Window;
 
 /// <summary>Prints this frame's key presses and mouse clicks, shows the frame rate and mouse position in the window title, and closes the window on Escape or after a frame limit.</summary>
-public sealed class InputEchoSystem(GameWindow window, int frameLimit) : ISystem<GameTime>
+public sealed class InputEchoSystem(IGameWindow window, int frameLimit) : ISystem<GameTime>
 {
     private static readonly TimeSpan TitleInterval = TimeSpan.FromSeconds(0.5);
 

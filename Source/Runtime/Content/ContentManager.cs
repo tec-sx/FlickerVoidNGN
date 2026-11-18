@@ -3,8 +3,8 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace FlickerVoid.Engine.Runtime.Content;
 
-/// <summary>Loads content files by their path under a root folder and keeps each loaded object until it is unloaded.</summary>
-public sealed class ContentManager
+/// <summary>Reads content as JSON files from disk, caching each by its full path.</summary>
+public sealed class ContentManager : IContentManager
 {
     private static readonly string ParentPrefix = ".." + Path.DirectorySeparatorChar;
 
@@ -26,7 +26,6 @@ public sealed class ContentManager
 
     public string RootDirectory { get; }
 
-    /// <summary>Returns the object loaded from the JSON file at <paramref name="path"/>, reading the file only the first time.</summary>
     public T Load<T>(string path, JsonTypeInfo<T> typeInfo)
         where T : class
     {
@@ -46,14 +45,12 @@ public sealed class ContentManager
         return content;
     }
 
-    /// <summary>Forgets the object loaded from <paramref name="path"/>, so the next load reads the file again.</summary>
     public bool Unload(string path)
     {
         string fullPath = GetFullPath(path);
         return _loaded.Remove(fullPath);
     }
 
-    /// <summary>Resolves a content path against the root; paths that lead outside the root throw.</summary>
     public string GetFullPath(string path)
     {
         string combined = Path.Combine(RootDirectory, path);

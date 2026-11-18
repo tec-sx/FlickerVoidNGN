@@ -8,57 +8,65 @@ namespace FlickerVoid.Engine.Platform.Tests.Input;
 
 public class InputStateTests
 {
-    private readonly InputState _input = new();
+    private readonly InputStateTestsBuilder _builder = new();
 
     [Fact]
     public void APressLastsOneFrameWhileTheKeyStaysDown()
     {
-        _input.PressKey(Key.Space);
-        bool pressedFirst = _input.WasPressed(Key.Space);
-        _input.EndFrame();
-        bool pressedSecond = _input.WasPressed(Key.Space);
+        InputState input = _builder.Build();
 
-        Assert.True(pressedFirst);
-        Assert.False(pressedSecond);
-        Assert.True(_input.IsDown(Key.Space));
+        input.PressKey(Key.Space);
+        bool pressedFirst = input.WasPressed(Key.Space);
+        input.EndFrame();
+        bool pressedSecond = input.WasPressed(Key.Space);
+
+        bool down = input.IsDown(Key.Space);
+        pressedFirst.Should().BeTrue();
+        pressedSecond.Should().BeFalse();
+        down.Should().BeTrue();
     }
 
     [Fact]
     public void RepeatsWhileHeldAreNotNewPresses()
     {
-        _input.PressKey(Key.W);
-        _input.EndFrame();
+        InputState input = _builder.WithKeyHeld(Key.W).Build();
 
-        _input.PressKey(Key.W);
+        input.PressKey(Key.W);
 
-        Assert.False(_input.WasPressed(Key.W));
+        bool pressed = input.WasPressed(Key.W);
+        pressed.Should().BeFalse();
     }
 
     [Fact]
     public void AReleaseLastsOneFrame()
     {
-        _input.PressKey(Key.E);
-        _input.EndFrame();
+        InputState input = _builder.WithKeyHeld(Key.E).Build();
 
-        _input.ReleaseKey(Key.E);
-        bool releasedFirst = _input.WasReleased(Key.E);
-        _input.EndFrame();
-        bool releasedSecond = _input.WasReleased(Key.E);
+        input.ReleaseKey(Key.E);
+        bool releasedFirst = input.WasReleased(Key.E);
+        input.EndFrame();
+        bool releasedSecond = input.WasReleased(Key.E);
 
-        Assert.True(releasedFirst);
-        Assert.False(releasedSecond);
-        Assert.False(_input.IsDown(Key.E));
+        bool down = input.IsDown(Key.E);
+        releasedFirst.Should().BeTrue();
+        releasedSecond.Should().BeFalse();
+        down.Should().BeFalse();
     }
 
     [Fact]
     public void ATapWithinOneFrameStillCountsAsAPress()
     {
-        _input.PressButton(MouseButton.Left);
-        _input.ReleaseButton(MouseButton.Left);
+        InputState input = _builder.Build();
 
-        Assert.True(_input.WasPressed(MouseButton.Left));
-        Assert.True(_input.WasReleased(MouseButton.Left));
-        Assert.False(_input.IsDown(MouseButton.Left));
+        input.PressButton(MouseButton.Left);
+        input.ReleaseButton(MouseButton.Left);
+
+        bool pressed = input.WasPressed(MouseButton.Left);
+        bool released = input.WasReleased(MouseButton.Left);
+        bool down = input.IsDown(MouseButton.Left);
+        pressed.Should().BeTrue();
+        released.Should().BeTrue();
+        down.Should().BeFalse();
     }
 
     [Fact]
@@ -67,46 +75,48 @@ public class InputStateTests
         Vector2 start = new(10, 10);
         Vector2 middle = new(15, 12);
         Vector2 end = new(20, 20);
-        _input.MoveMouse(start);
-        _input.EndFrame();
+        InputState input = _builder.WithMouseAt(start).Build();
 
-        _input.MoveMouse(middle);
-        _input.MoveMouse(end);
-        _input.Scroll(1);
-        _input.Scroll(2);
+        input.MoveMouse(middle);
+        input.MoveMouse(end);
+        input.Scroll(1);
+        input.Scroll(2);
 
         Vector2 delta = new(10, 10);
-        Assert.Equal(end, _input.MousePosition);
-        Assert.Equal(delta, _input.MouseDelta);
-        Assert.Equal(3, _input.ScrollDelta);
+        input.MousePosition.Should().Be(end);
+        input.MouseDelta.Should().Be(delta);
+        input.ScrollDelta.Should().Be(3);
     }
 
     [Fact]
     public void EndFrameClearsMovementButKeepsThePosition()
     {
         Vector2 position = new(5, 5);
-        _input.MoveMouse(position);
-        _input.Scroll(1);
+        InputState input = _builder.Build();
+        input.MoveMouse(position);
+        input.Scroll(1);
 
-        _input.EndFrame();
+        input.EndFrame();
 
-        Assert.Equal(position, _input.MousePosition);
-        Assert.Equal(Vector2.Zero, _input.MouseDelta);
-        Assert.Equal(0, _input.ScrollDelta);
+        input.MousePosition.Should().Be(position);
+        input.MouseDelta.Should().Be(Vector2.Zero);
+        input.ScrollDelta.Should().Be(0);
     }
 
     [Fact]
     public void ReleaseAllReleasesEverythingHeld()
     {
-        _input.PressKey(Key.ShiftLeft);
-        _input.PressButton(MouseButton.Right);
-        _input.EndFrame();
+        InputState input = _builder.WithKeyHeld(Key.ShiftLeft).WithButtonHeld(MouseButton.Right).Build();
 
-        _input.ReleaseAll();
+        input.ReleaseAll();
 
-        Assert.False(_input.IsDown(Key.ShiftLeft));
-        Assert.False(_input.IsDown(MouseButton.Right));
-        Assert.True(_input.WasReleased(Key.ShiftLeft));
-        Assert.True(_input.WasReleased(MouseButton.Right));
+        bool keyDown = input.IsDown(Key.ShiftLeft);
+        bool buttonDown = input.IsDown(MouseButton.Right);
+        bool keyReleased = input.WasReleased(Key.ShiftLeft);
+        bool buttonReleased = input.WasReleased(MouseButton.Right);
+        keyDown.Should().BeFalse();
+        buttonDown.Should().BeFalse();
+        keyReleased.Should().BeTrue();
+        buttonReleased.Should().BeTrue();
     }
 }

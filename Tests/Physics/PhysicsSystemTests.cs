@@ -5,6 +5,7 @@ using Arch.Core;
 using BepuPhysics;
 
 using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 
@@ -12,12 +13,14 @@ namespace FlickerVoid.Engine.Physics.Tests;
 
 public sealed class PhysicsSystemTests : IDisposable
 {
-    private readonly Game _game = new();
-    private readonly PhysicsSystem _physics;
+    private readonly Game _game;
+    private readonly IPhysicsSystem _physics;
 
     public PhysicsSystemTests()
     {
-        _physics = _game.AddPhysics();
+        PhysicsSystemTestsBuilder builder = new();
+        _physics = builder.Build();
+        _game = builder.Game;
     }
 
     public void Dispose()
@@ -37,7 +40,7 @@ public sealed class PhysicsSystemTests : IDisposable
         Run(seconds: 1);
 
         Transform transform = _game.World.Get<Transform>(entities[0]);
-        Assert.InRange(transform.Position.Y, 4.5f, 6);
+        transform.Position.Y.Should().BeInRange(4.5f, 6);
     }
 
     [Fact]
@@ -55,7 +58,7 @@ public sealed class PhysicsSystemTests : IDisposable
         Run(seconds: 3);
 
         Transform crate = _game.World.Get<Transform>(entities[0]);
-        Assert.InRange(crate.Position.Y, 0.95f, 1.05f);
+        crate.Position.Y.Should().BeInRange(0.95f, 1.05f);
     }
 
     [Fact]
@@ -70,7 +73,7 @@ public sealed class PhysicsSystemTests : IDisposable
         Run(seconds: 1);
 
         Transform transform = _game.World.Get<Transform>(entities[0]);
-        Assert.Equal(3, transform.Position.Y);
+        transform.Position.Y.Should().Be(3);
     }
 
     [Fact]
@@ -86,8 +89,8 @@ public sealed class PhysicsSystemTests : IDisposable
         BodyHandle ball = _game.World.Get<BodyHandle>(entities[0]);
         bool floorHasStaticHandle = _game.World.Has<StaticHandle>(entities[1]);
         bool ballExists = _physics.Simulation.Bodies.BodyExists(ball);
-        Assert.True(ballExists);
-        Assert.True(floorHasStaticHandle);
+        ballExists.Should().BeTrue();
+        floorHasStaticHandle.Should().BeTrue();
     }
 
     [Fact]
@@ -103,8 +106,8 @@ public sealed class PhysicsSystemTests : IDisposable
         _game.World.Destroy(entities[1]);
         Step();
 
-        Assert.Equal(0, _physics.Simulation.Bodies.ActiveSet.Count);
-        Assert.Equal(0, _physics.Simulation.Statics.Count);
+        _physics.Simulation.Bodies.ActiveSet.Count.Should().Be(0);
+        _physics.Simulation.Statics.Count.Should().Be(0);
     }
 
     [Fact]
@@ -119,34 +122,33 @@ public sealed class PhysicsSystemTests : IDisposable
         Step();
 
         bool hasHandle = _game.World.Has<BodyHandle>(entities[0]);
-        Assert.False(hasHandle);
-        Assert.Equal(0, _physics.Simulation.Bodies.ActiveSet.Count);
+        hasHandle.Should().BeFalse();
+        _physics.Simulation.Bodies.ActiveSet.Count.Should().Be(0);
     }
 
     [Fact]
     public void ColliderWithoutATypeNamesTheEntity()
     {
-        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => Spawn("""
+        Action spawn = () => Spawn("""
             { "name": "Ball", "components": { "transform": {}, "rigidBody": { "collider": { "radius": 1 } } } }
-            """));
+            """);
 
-        Assert.Contains("'Ball'", exception.Message);
-        Assert.Contains("'rigidBody'", exception.Message);
+        spawn.Should().Throw<InvalidDataException>().WithMessage("*'Ball'*'rigidBody'*");
     }
 
     [Fact]
     public void RegistersItselfAsAService()
     {
-        PhysicsSystem? service = _game.Services.GetService<PhysicsSystem>();
+        IPhysicsSystem? service = _game.Services.GetService<IPhysicsSystem>();
 
-        Assert.Same(_physics, service);
+        service.Should().BeSameAs(_physics);
     }
 
     private IReadOnlyList<Entity> Spawn(string entitiesJson)
     {
         string json = $$"""{ "entities": [ {{entitiesJson}} ] }""";
         SceneData? scene = JsonSerializer.Deserialize(json, RuntimeJsonContext.Default.SceneData);
-        Assert.NotNull(scene);
+        scene.Should().NotBeNull();
         return _game.Spawner.Spawn(scene, _game.World);
     }
 

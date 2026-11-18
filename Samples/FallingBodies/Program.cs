@@ -4,9 +4,12 @@ using Arch.Core;
 
 using FlickerVoid.Engine.Physics;
 using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
+
+using Microsoft.Extensions.Logging;
 
 // Spawns the bodies of a scene file, prints how high each one is every half second of game time for three seconds,
 // and fails if a body didn't fall.
@@ -14,8 +17,9 @@ const int StepsPerReport = 30;
 const int Reports = 6;
 
 string contentRoot = Path.Combine(AppContext.BaseDirectory, "Content");
-ContentManager content = new(contentRoot);
-using Game game = new();
+IContentManager content = new ContentManager(contentRoot);
+using ILoggerFactory loggerFactory = LoggerFactory.Create(static logging => logging.AddSimpleConsole());
+using Game game = new(loggerFactory);
 game.Services.AddService(content);
 game.AddPhysics();
 
