@@ -24,12 +24,12 @@ A project outside this repository finds the engine through the `FLICKERVOID_ENGI
 
 ## New projects
 
-Create a project from the template, passing the engine repository's folder (project names are C# identifiers, without spaces):
+Set `FLICKERVOID_ENGINE` to the engine repository's folder, then create a project from the template (project names are C# identifiers, without spaces):
 
 ```
 dotnet new install ./Templates/Project
-dotnet new flickervoid -n MyGame -o ~/Documents/FlickerVoid/MyGame --engine /path/to/FlickerVoidNGN
+dotnet new flickervoid -n MyGame -o ~/Documents/FlickerVoid/MyGame
 dotnet build ~/Documents/FlickerVoid/MyGame/MyGame.slnx
 ```
 
-The project opens as its own solution, with the engine's modules in an Engine folder so they can be edited from it. It builds against the folder given to `--engine`, unless `FLICKERVOID_ENGINE` points somewhere else.
+The project's solution holds only the project's own modules. It builds the engine modules it references from the folder `FLICKERVOID_ENGINE` names.

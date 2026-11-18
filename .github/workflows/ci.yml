@@ -44,10 +44,11 @@ jobs:
       - name: Create a project from the template, build it and run it
         shell: bash
         env:
+          FLICKERVOID_ENGINE: ${{ github.workspace }}
           SDL_VIDEODRIVER: dummy
         run: |
           dotnet new install ./Templates/Project
-          dotnet new flickervoid -n TemplateCheck -o "$RUNNER_TEMP/TemplateCheck" --engine "$GITHUB_WORKSPACE"
+          dotnet new flickervoid -n TemplateCheck -o "$RUNNER_TEMP/TemplateCheck"
           cd "$RUNNER_TEMP/TemplateCheck"
           dotnet build TemplateCheck.slnx -c Release
           dotnet run --project Source/Launcher -c Release --no-build -- --frames 60
