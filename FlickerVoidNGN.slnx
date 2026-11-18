@@ -1,6 +1,9 @@
 <Solution>
   <Folder Name="/Source/">
     <Project Path="Source/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
+    <Project Path="Source/Graphics/FlickerVoid.Engine.Graphics.csproj" />
+    <Project Path="Source/Graphics.Direct3D12/FlickerVoid.Engine.Graphics.Direct3D12.csproj" />
+    <Project Path="Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
     <Project Path="Source/Physics/FlickerVoid.Engine.Physics.csproj" />
     <Project Path="Source/Platform/FlickerVoid.Engine.Platform.csproj" />
     <Project Path="Source/Runtime/FlickerVoid.Engine.Runtime.csproj" />
@@ -8,19 +11,10 @@
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/Gameplay/FlickerVoid.Engine.Gameplay.Tests.csproj" />
+    <Project Path="Tests/Graphics/FlickerVoid.Engine.Graphics.Tests.csproj" />
     <Project Path="Tests/Physics/FlickerVoid.Engine.Physics.Tests.csproj" />
     <Project Path="Tests/Platform/FlickerVoid.Engine.Platform.Tests.csproj" />
     <Project Path="Tests/Runtime/FlickerVoid.Engine.Runtime.Tests.csproj" />
     <Project Path="Tests/Shaders/FlickerVoid.Engine.Shaders.Tests.csproj" />
-  </Folder>
-  <Folder Name="/Samples/">
-    <Project Path="Samples/FallingBodies/FlickerVoid.Samples.FallingBodies.csproj" />
-    <Project Path="Samples/Window/FlickerVoid.Samples.Window.csproj" />
-  </Folder>
-  <Folder Name="/Projects/FlickerVoid/Source/">
-    <Project Path="Projects/FlickerVoid/Source/Gameplay/FlickerVoid.Gameplay.csproj" />
-  </Folder>
-  <Folder Name="/Projects/FlickerVoid/Tests/">
-    <Project Path="Projects/FlickerVoid/Tests/Gameplay/FlickerVoid.Gameplay.Tests.csproj" />
   </Folder>
 </Solution>

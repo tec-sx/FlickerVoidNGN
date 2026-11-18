@@ -1,0 +1,11 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <!-- The engine's version, 0.<roadmap stage>.<patch>. When it changes on main, CI tags the merge v<Version> and packs the modules. -->
+  <PropertyGroup>
+    <Version>0.3.0</Version>
+    <Authors>FlickerVoid</Authors>
+    <RepositoryUrl>https://github.com/tec-sx/FlickerVoidNGN</RepositoryUrl>
+    <!-- Build output stays in the repository's artifacts folder, next to the tests'. -->
+    <ArtifactsPath>$(MSBuildThisFileDirectory)../artifacts</ArtifactsPath>
+  </PropertyGroup>
+</Project>
