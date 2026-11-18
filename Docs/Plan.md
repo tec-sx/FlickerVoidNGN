@@ -14,6 +14,7 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 | Graphics | Direct3D 12 and Vulkan only |
 | Shaders | HLSL, compiled by DXC to DXIL and SPIR-V |
 | Entities | Arch (archetype ECS, NativeAOT friendly) |
+| Asset text | JSON through System.Text.Json source generation |
 | Editor | Avalonia on Windows and Linux |
 | Platforms | One codebase for Windows and Linux; OS-specific work for Windows first, with a TODO on the Linux side |
 | Gameplay | The Unreal project is the reference; NGN ports from it |
