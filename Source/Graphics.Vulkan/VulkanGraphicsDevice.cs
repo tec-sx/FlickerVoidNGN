@@ -13,7 +13,8 @@ namespace FlickerVoid.Engine.Graphics.Vulkan;
 /// <summary>
 /// A Vulkan 1.3 device: one graphics queue, a timeline semaphore counting submissions, bindless tables, and
 /// resources released once the GPU has finished with them. Requires dynamic rendering, synchronization2 and descriptor indexing;
-/// presents to windows when the driver has the surface and swapchain extensions.
+/// presents to windows when the driver has the surface and swapchain extensions, and shares textures with other graphics APIs
+/// when it can export memory and semaphores.
 /// </summary>
 public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
 {
@@ -87,6 +88,9 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
     /// <summary>Whether the instance has the surface extensions and the device the swapchain extension.</summary>
     internal bool CanPresent { get; private set; }
 
+    /// <summary>Whether the device can export memory and semaphores as the OS's handles, which <see cref="CreateSharedTexture"/> needs.</summary>
+    internal bool CanShare { get; private set; }
+
     internal VulkanBindlessTables Bindless { get; }
 
     public IBuffer CreateBuffer(in BufferDescription description, ReadOnlySpan<byte> initialData = default)
@@ -142,6 +146,12 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
     public IPipeline CreateGraphicsPipeline(GraphicsPipelineDescription description) => new VulkanPipeline(this, description);
 
     public ICommandList CreateCommandList() => new VulkanCommandList(this);
+
+    /// <summary>
+    /// Creates a texture another graphics API imports, such as the editor's UI compositor; throws
+    /// <see cref="GraphicsUnavailableException"/> when the driver can't export memory and semaphores.
+    /// </summary>
+    public VulkanSharedTexture CreateSharedTexture(in TextureDescription description) => new(this, description);
 
     public ISwapchain CreateSwapchain(in SwapchainDescription description) => new VulkanSwapchain(this, description);
 
@@ -291,12 +301,14 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         VulkanResult.Check(Vk.WaitSemaphores(Handle, &info, ulong.MaxValue));
     }
 
-    internal DeviceMemory AllocateMemory(in MemoryRequirements requirements, MemoryPropertyFlags properties)
+    /// <summary>Allocates memory with the properties; <paramref name="next"/> chains allocation structures such as export info.</summary>
+    internal DeviceMemory AllocateMemory(in MemoryRequirements requirements, MemoryPropertyFlags properties, void* next = null)
     {
         uint typeIndex = FindMemoryType(requirements.MemoryTypeBits, properties);
         MemoryAllocateInfo info = new()
         {
             SType = StructureType.MemoryAllocateInfo,
+            PNext = next,
             AllocationSize = requirements.Size,
             MemoryTypeIndex = typeIndex,
         };
@@ -456,6 +468,17 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         return KhrXlibSurface.ExtensionName;
     }
 
+    /// <summary>The extensions that export memory and semaphores as the OS's handles: NT handles on Windows, file descriptors elsewhere.</summary>
+    private static string[] GetSharingExtensions()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return [KhrExternalMemoryWin32.ExtensionName, KhrExternalSemaphoreWin32.ExtensionName];
+        }
+
+        return [KhrExternalMemoryFd.ExtensionName, KhrExternalSemaphoreFd.ExtensionName];
+    }
+
     private DebugUtilsMessengerEXT CreateMessenger(ExtDebugUtils debugUtils)
     {
         DebugUtilsMessengerCreateInfoEXT info = new()
@@ -609,6 +632,13 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         if (CanPresent)
         {
             extensions.Add(KhrSwapchain.ExtensionName);
+        }
+
+        string[] sharing = GetSharingExtensions();
+        CanShare = Array.TrueForAll(sharing, extension => Vk.IsDeviceExtensionPresent(PhysicalDevice, extension));
+        if (CanShare)
+        {
+            extensions.AddRange(sharing);
         }
 
         nint extensionNames = SilkMarshal.StringArrayToPtr(extensions);

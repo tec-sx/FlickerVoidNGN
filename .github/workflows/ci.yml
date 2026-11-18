@@ -59,6 +59,7 @@ jobs:
           dotnet publish Samples/FallingBodies -c Release --use-current-runtime -o artifacts/aot/FallingBodies
           dotnet publish Samples/Window -c Release --use-current-runtime -o artifacts/aot/Window
           dotnet publish Samples/TexturedMesh -c Release --use-current-runtime -o artifacts/aot/TexturedMesh
+          dotnet publish Samples/EditorViewport -c Release --use-current-runtime -o artifacts/aot/EditorViewport
       - name: Run the samples
         shell: bash
         env:

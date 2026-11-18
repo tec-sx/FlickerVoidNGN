@@ -2,20 +2,27 @@ using Silk.NET.Vulkan;
 
 namespace FlickerVoid.Engine.Graphics.Vulkan;
 
-/// <summary>A 2D Vulkan image, with its own memory unless something else owns it, and one view of the whole image.</summary>
+/// <summary>
+/// A 2D Vulkan image, with its own memory unless something else owns it, and one view of the whole image. Memory created for export
+/// is a dedicated allocation, which is what importers such as Avalonia allocate on their side.
+/// </summary>
 internal sealed unsafe class VulkanTexture : ITexture
 {
     private readonly VulkanGraphicsDevice _device;
-    private readonly DeviceMemory _memory;
     private readonly bool _ownsImage;
     private bool _disposed;
 
-    public VulkanTexture(VulkanGraphicsDevice device, in TextureDescription description, ImageUsageFlags extraUsage)
+    public VulkanTexture(VulkanGraphicsDevice device, in TextureDescription description, ImageUsageFlags extraUsage, ExternalMemoryHandleTypeFlags exportTypes = 0)
     {
         _device = device;
         Description = description;
         Vk vk = device.Vk;
 
+        ExternalMemoryImageCreateInfo external = new()
+        {
+            SType = StructureType.ExternalMemoryImageCreateInfo,
+            HandleTypes = exportTypes,
+        };
         ImageCreateInfo info = new()
         {
             SType = StructureType.ImageCreateInfo,
@@ -30,13 +37,36 @@ internal sealed unsafe class VulkanTexture : ITexture
             SharingMode = SharingMode.Exclusive,
             InitialLayout = ImageLayout.Undefined,
         };
+        if (exportTypes != 0)
+        {
+            info.PNext = &external;
+        }
+
         VulkanResult.Check(vk.CreateImage(device.Handle, &info, null, out Image image));
         Handle = image;
         _ownsImage = true;
 
         vk.GetImageMemoryRequirements(device.Handle, image, out MemoryRequirements requirements);
-        _memory = device.AllocateMemory(requirements, MemoryPropertyFlags.DeviceLocalBit);
-        VulkanResult.Check(vk.BindImageMemory(device.Handle, image, _memory, 0));
+        MemoryDedicatedAllocateInfo dedicated = new()
+        {
+            SType = StructureType.MemoryDedicatedAllocateInfo,
+            Image = image,
+        };
+        ExportMemoryAllocateInfo export = new()
+        {
+            SType = StructureType.ExportMemoryAllocateInfo,
+            PNext = &dedicated,
+            HandleTypes = exportTypes,
+        };
+        void* next = null;
+        if (exportTypes != 0)
+        {
+            next = &export;
+        }
+
+        Memory = device.AllocateMemory(requirements, MemoryPropertyFlags.DeviceLocalBit, next);
+        MemorySize = (long)requirements.Size;
+        VulkanResult.Check(vk.BindImageMemory(device.Handle, image, Memory, 0));
 
         Aspect = description.Format.GetAspect();
         View = CreateView();
@@ -62,6 +92,11 @@ internal sealed unsafe class VulkanTexture : ITexture
 
     public Image Handle { get; }
 
+    /// <summary>The memory the image is bound to, when it owns its image.</summary>
+    public DeviceMemory Memory { get; }
+
+    public long MemorySize { get; }
+
     public ImageView View { get; }
 
     public ImageAspectFlags Aspect { get; }
@@ -83,7 +118,7 @@ internal sealed unsafe class VulkanTexture : ITexture
         _disposed = true;
         Image image = Handle;
         ImageView view = View;
-        DeviceMemory memory = _memory;
+        DeviceMemory memory = Memory;
         bool ownsImage = _ownsImage;
         uint index = BindlessIndex;
         VulkanGraphicsDevice device = _device;
