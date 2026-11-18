@@ -10,9 +10,15 @@ public sealed class SceneSpawner
 {
     private readonly Dictionary<string, ComponentReader> _readers = [];
 
+    public SceneSpawner()
+    {
+        ArrayRegistry.Add<EntityName>();
+    }
+
     private delegate void ComponentReader(World world, Entity entity, JsonElement data);
 
-    /// <summary>Lets scene files add components of type <typeparamref name="T"/> under <paramref name="name"/>.</summary>
+    /// <summary>Lets scene files add components of type <typeparamref name="T"/> under <paramref name="name"/>, and registers the type with Arch.</summary>
+    /// <remarks>NativeAOT can't create Arch's component arrays through reflection, so every component type is registered with <see cref="ArrayRegistry"/> up front.</remarks>
     public void Register<T>(string name, JsonTypeInfo<T> typeInfo)
         where T : struct
     {
@@ -26,6 +32,8 @@ public sealed class SceneSpawner
         {
             throw new ArgumentException($"A component named '{name}' is already registered.", nameof(name));
         }
+
+        ArrayRegistry.Add<T>();
     }
 
     /// <summary>Creates the scene's entities in order; if one fails, destroys those already created and throws.</summary>
@@ -73,7 +81,7 @@ public sealed class SceneSpawner
             {
                 read(world, entity, value);
             }
-            catch (JsonException exception)
+            catch (Exception exception) when (exception is JsonException or NotSupportedException)
             {
                 throw new InvalidDataException($"Entity '{data.Name}' has an invalid '{key}' component: {exception.Message}", exception);
             }

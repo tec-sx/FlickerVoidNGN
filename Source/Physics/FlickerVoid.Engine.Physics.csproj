@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="BepuPhysics" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Runtime/FlickerVoid.Engine.Runtime.csproj" />
+  </ItemGroup>
+</Project>
