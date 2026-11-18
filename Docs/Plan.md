@@ -45,7 +45,7 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 
 0. **Skeleton.** Solution, build settings, CI on Windows and Linux, CLAUDE.md, this plan. Gate: green CI on both.
 1. **Gameplay core, pure C#.** Definitions and fragments, tags, facts, conditions and effects with compare, scales with bands and links, ranking, ported with their Unreal tests. Gate: the social rules (standing, fame, titles) pass in tests on Linux CI.
-2. **Runtime foundation.** Silk.NET window and input, main loop with fixed and variable update, Arch entities, resource loading by path, logging and a console, BepuPhysics. Gate: a sample spawns entities from a scene file and physics bodies fall.
+2. **Runtime foundation.** Silk.NET window and input, main loop with fixed and variable update, Arch entities, resource loading by path, logging and a console, BepuPhysics. The rules that read entities or world services port with it: attitude, disguises and recognized fame, and the conditions and effects that use the context's instigator, target or services. Gate: a sample spawns entities from a scene file and physics bodies fall.
 3. **Graphics layer.** A thin layer over Direct3D 12 and Vulkan adapted from Stride, HLSL through DXC. Ends with a spike: the renderer inside an Avalonia window on Windows and Linux. Gate: the same textured mesh renders on both APIs, and Vulkan runs on Linux.
 4. **Lighting renderer.** Everything in Look and lighting, plus basic glTF import. Gate: a painted test room with a character and dozens of lights at 60 fps.
 5. **Asset pipeline.** Text assets with schemas, the builder with a content-hash cache, texture compression, glTF import, hot reload. Gate: edit a texture or a light in a file and the running game shows it within a second.

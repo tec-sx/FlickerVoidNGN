@@ -5,4 +5,10 @@
   <Folder Name="/Tests/">
     <Project Path="Tests/Gameplay/FlickerVoid.Engine.Gameplay.Tests.csproj" />
   </Folder>
+  <Folder Name="/Projects/FlickerVoid/Source/">
+    <Project Path="Projects/FlickerVoid/Source/Gameplay/FlickerVoid.Gameplay.csproj" />
+  </Folder>
+  <Folder Name="/Projects/FlickerVoid/Tests/">
+    <Project Path="Projects/FlickerVoid/Tests/Gameplay/FlickerVoid.Gameplay.Tests.csproj" />
+  </Folder>
 </Solution>

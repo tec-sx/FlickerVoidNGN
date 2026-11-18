@@ -20,7 +20,7 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 - `Source/<Module>/FlickerVoid.Engine.<Module>.csproj`, tests in `Tests/<Module>/FlickerVoid.Engine.<Module>.Tests.csproj`. Namespaces follow folders.
 - Modules arrive with their roadmap stage (`Docs/Plan.md`). Don't create empty projects, folders or classes ahead of their stage.
 - Dependencies only point down: Editor -> Rendering -> Graphics -> Runtime. `Gameplay` holds the engine-neutral rules (definitions, fragments, tags, facts, conditions, effects, scales) and depends on no other engine module. Game builds never contain editor code.
-- Users' projects live in `Documents/FlickerVoid/<Project>`. The demo project is FlickerVoid.
+- Users' projects live in `Documents/FlickerVoid/<Project>`. The demo project is FlickerVoid, in this repo at `Projects/FlickerVoid`: `Source/<Module>/FlickerVoid.<Module>.csproj`, tests in `Tests/<Module>/FlickerVoid.<Module>.Tests.csproj`, folders following the ontology tree (`Gameplay/Protagonist/Identity/Social`). Game-specific rules (social, quests) live there, not in the engine.
 
 ## Porting from Unreal
 
