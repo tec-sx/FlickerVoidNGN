@@ -38,6 +38,7 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 - Idiomatic C#: file-scoped namespaces, one main type per file named after it.
 - Components talk through C# events on components found on the entity.  no string-addressed messages except across worlds or for deferred calls.
 - Data-driven, composition over inheritance, SOLID/KISS/YAGNI, open/closed.
+- Interface what is worth interfacing: services and the dependencies tests substitute (`IFactDatabase`).
 - Don't nest calls: store a call's result in a variable before passing it to another call. Only simple getters and properties may be passed inline.
 - Don't chain ternaries; use `if`/`else` or a `switch`.
 - Minimal comments: a one-sentence `<summary>` on a type; on a member only when its name or logic is unclear.
@@ -47,7 +48,7 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 
 - `dotnet build FlickerVoidNGN.slnx` and `dotnet test --solution FlickerVoidNGN.slnx`.
 - CI runs both on Windows and Linux for every pull request. Cloud sessions can build and test on Linux; Direct3D 12 work is tested on the owner's Windows PC.
-- Unit tests use xUnit test framework, NSubstitute for mocking, FluentAssertions for assertions. Creation of the classes under test is done through a builder (Builder pattern) which is a separate <system>TestsBuild.cs file in the same folder.
+- Unit tests use xUnit v3, NSubstitute for mocking and AwesomeAssertions (the Apache-2.0 fork of FluentAssertions) for assertions; test projects named `*.Tests` get all three from `Directory.Build.props`. The class under test is created by a builder in a separate `<Class>TestsBuilder.cs` file in the same folder (`GameTestsBuilder.cs` for `GameTests.cs`).
 - Work is done TDD. Tests are written first, and serve as the Design Spec for the code.
 
 ## Git
