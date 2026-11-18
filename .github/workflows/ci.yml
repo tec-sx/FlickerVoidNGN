@@ -23,6 +23,13 @@ jobs:
       - name: Install lavapipe (software Vulkan), the validation layer and a virtual X server
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers xvfb
+      - name: Install the Vulkan runtime, the validation layer and lavapipe (software Vulkan)
+        if: runner.os == 'Windows'
+        uses: jakoch/install-vulkan-sdk-action@v1
+        with:
+          install_runtime: true
+          install_lavapipe: true
+          cache: true
       - name: Build the engine, the FlickerVoid project and the samples, and pack the engine
         shell: bash
         run: |
@@ -75,6 +82,7 @@ jobs:
           display=""
           if [ "$RUNNER_OS" = "Linux" ]; then display="xvfb-run -a"; fi
           $display ./artifacts/aot/TexturedMesh/FlickerVoid.Samples.TexturedMesh --validation --frames 120
+          $display ./artifacts/aot/TexturedMesh/FlickerVoid.Samples.TexturedMesh --api vulkan --validation --frames 120
 
   # When main's engine version (Source/Directory.Build.props) has no tag yet, tag the commit v<Version> and pack the engine modules.
   release:
