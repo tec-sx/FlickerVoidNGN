@@ -48,7 +48,7 @@ jobs:
           SDL_VIDEODRIVER: dummy
         run: |
           dotnet new install ./Templates/Project
-          dotnet new flickervoid -n TemplateCheck -o "$RUNNER_TEMP/TemplateCheck"
+          dotnet new flickervoid -n TemplateCheck -o "$RUNNER_TEMP/TemplateCheck" --engine "$FLICKERVOID_ENGINE"
           cd "$RUNNER_TEMP/TemplateCheck"
           dotnet build TemplateCheck.slnx -c Release
           dotnet run --project Source/Launcher -c Release --no-build -- --frames 60

@@ -11,5 +11,26 @@
   "tags": {
     "language": "C#",
     "type": "solution"
+  },
+  "symbols": {
+    "engine": {
+      "type": "parameter",
+      "datatype": "text",
+      "isRequired": true,
+      "description": "The engine repository's folder (usually the value of FLICKERVOID_ENGINE), listed in the solution's Engine folder so engine classes can be edited from the project. Builds use FLICKERVOID_ENGINE."
+    },
+    "engineFolder": {
+      "type": "generated",
+      "generator": "regex",
+      "datatype": "text",
+      "replaces": "ENGINE_FOLDER_PATH",
+      "parameters": {
+        "source": "engine",
+        "steps": [
+          { "regex": "\\\\", "replacement": "/" },
+          { "regex": "/+$", "replacement": "" }
+        ]
+      }
+    }
   }
 }

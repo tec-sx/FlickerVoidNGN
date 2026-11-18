@@ -28,8 +28,8 @@ Set `FLICKERVOID_ENGINE` to the engine repository's folder, then create a projec
 
 ```
 dotnet new install ./Templates/Project
-dotnet new flickervoid -n MyGame -o ~/Documents/FlickerVoid/MyGame
+dotnet new flickervoid -n MyGame -o ~/Documents/FlickerVoid/MyGame --engine "$FLICKERVOID_ENGINE"
 dotnet build ~/Documents/FlickerVoid/MyGame/MyGame.slnx
 ```
 
-The project's solution holds only the project's own modules. It builds the engine modules it references from the folder `FLICKERVOID_ENGINE` names.
+On Windows, pass `--engine %FLICKERVOID_ENGINE%`. The project's solution has an Engine folder listing the engine's modules from that folder, so engine classes can be edited from the project and the changes land in the engine repository. Builds always use the engine `FLICKERVOID_ENGINE` names.
