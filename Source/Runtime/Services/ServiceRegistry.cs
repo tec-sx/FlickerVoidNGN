@@ -23,8 +23,8 @@
 
 namespace FlickerVoid.Engine.Runtime.Services;
 
-/// <summary>The game's services by type, such as the logger factory and the physics simulation; adapted from Stride's ServiceRegistry and thread-safe.</summary>
-public sealed class ServiceRegistry : IServiceProvider
+/// <summary>Services kept in a locked dictionary, so systems on any thread can use them; adapted from Stride's ServiceRegistry.</summary>
+public sealed class ServiceRegistry : IServiceRegistry
 {
     private readonly Dictionary<Type, object> _services = [];
 
@@ -43,7 +43,6 @@ public sealed class ServiceRegistry : IServiceProvider
         }
     }
 
-    /// <exception cref="ArgumentException">A service is already registered under <typeparamref name="T"/>.</exception>
     public void AddService<T>(T service)
         where T : class
     {
@@ -56,7 +55,6 @@ public sealed class ServiceRegistry : IServiceProvider
         }
     }
 
-    /// <summary>Removes the service registered under <typeparamref name="T"/>; false when there is none.</summary>
     public bool RemoveService<T>()
         where T : class
     {

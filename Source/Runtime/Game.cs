@@ -6,7 +6,6 @@ using FlickerVoid.Engine.Runtime.Serialization;
 using FlickerVoid.Engine.Runtime.Services;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlickerVoid.Engine.Runtime;
 
@@ -17,9 +16,9 @@ public sealed partial class Game : IDisposable
     private bool _initialized;
 
     /// <summary>Creates the world and registers it, the logger factory and the scene spawner as services.</summary>
-    public Game(ILoggerFactory? loggerFactory = null)
+    public Game(ILoggerFactory loggerFactory)
     {
-        LoggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+        LoggerFactory = loggerFactory;
         _logger = LoggerFactory.CreateLogger<Game>();
         World = World.Create();
 
@@ -37,10 +36,10 @@ public sealed partial class Game : IDisposable
 
     public World World { get; }
 
-    public ServiceRegistry Services { get; } = new();
+    public IServiceRegistry Services { get; } = new ServiceRegistry();
 
     /// <summary>Spawns scene files into the world; modules register their components on it.</summary>
-    public SceneSpawner Spawner { get; } = new();
+    public ISceneSpawner Spawner { get; } = new SceneSpawner();
 
     public GameLoop Loop { get; } = new();
 

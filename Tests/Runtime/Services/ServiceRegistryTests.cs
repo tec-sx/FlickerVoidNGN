@@ -4,50 +4,55 @@ namespace FlickerVoid.Engine.Runtime.Tests.Services;
 
 public class ServiceRegistryTests
 {
-    private readonly ServiceRegistry _services = new();
+    private readonly ServiceRegistryTestsBuilder _builder = new();
 
     [Fact]
     public void FindsServicesByType()
     {
         Clock clock = new();
-        _services.AddService(clock);
+        ServiceRegistry services = _builder.WithService(clock).Build();
 
-        Clock? byGeneric = _services.GetService<Clock>();
-        IServiceProvider provider = _services;
+        Clock? byGeneric = services.GetService<Clock>();
+        IServiceProvider provider = services;
         object? byType = provider.GetService(typeof(Clock));
 
-        Assert.Same(clock, byGeneric);
-        Assert.Same(clock, byType);
+        byGeneric.Should().BeSameAs(clock);
+        byType.Should().BeSameAs(clock);
     }
 
     [Fact]
     public void ReturnsNullForMissingServices()
     {
-        Clock? missing = _services.GetService<Clock>();
+        ServiceRegistry services = _builder.Build();
 
-        Assert.Null(missing);
+        Clock? missing = services.GetService<Clock>();
+
+        missing.Should().BeNull();
     }
 
     [Fact]
     public void RefusesASecondServiceOfTheSameType()
     {
-        _services.AddService(new Clock());
+        Clock second = new();
+        ServiceRegistry services = _builder.WithService(new Clock()).Build();
 
-        Assert.Throws<ArgumentException>(() => _services.AddService(new Clock()));
+        Action add = () => services.AddService(second);
+
+        add.Should().Throw<ArgumentException>();
     }
 
     [Fact]
     public void RemovesServices()
     {
-        _services.AddService(new Clock());
+        ServiceRegistry services = _builder.WithService(new Clock()).Build();
 
-        bool removed = _services.RemoveService<Clock>();
-        bool removedAgain = _services.RemoveService<Clock>();
-        Clock? afterRemove = _services.GetService<Clock>();
+        bool removed = services.RemoveService<Clock>();
+        bool removedAgain = services.RemoveService<Clock>();
 
-        Assert.True(removed);
-        Assert.False(removedAgain);
-        Assert.Null(afterRemove);
+        Clock? afterRemove = services.GetService<Clock>();
+        removed.Should().BeTrue();
+        removedAgain.Should().BeFalse();
+        afterRemove.Should().BeNull();
     }
 
     private sealed class Clock;

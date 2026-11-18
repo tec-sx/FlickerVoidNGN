@@ -5,16 +5,12 @@ namespace FlickerVoid.Gameplay.Tests.Protagonist.Identity.Social.Relationships;
 
 public class GiftsFragmentTests
 {
-    private readonly GiftsFragment _gifts = new()
-    {
-        Preferences =
-        [
-            new GiftPreference { Tag = new Tag("Item.Food"), RelationshipChange = 2 },
-            new GiftPreference { Tag = new Tag("Item.Food.Sweet"), RelationshipChange = 3 },
-            new GiftPreference { Tag = new Tag("Item.Weapon"), RelationshipChange = -5 },
-        ],
-        DefaultRelationshipChange = 1,
-    };
+    private readonly GiftsFragment _gifts = new GiftsFragmentTestsBuilder()
+        .WithPreference("Item.Food", 2)
+        .WithPreference("Item.Food.Sweet", 3)
+        .WithPreference("Item.Weapon", -5)
+        .WithDefaultChange(1)
+        .Build();
 
     [Fact]
     public void AddsUpMatchingPreferencesIncludingParents()
@@ -23,7 +19,7 @@ public class GiftsFragmentTests
 
         int change = _gifts.GetRelationshipChange(cake);
 
-        Assert.Equal(5, change);
+        change.Should().Be(5);
     }
 
     [Fact]
@@ -33,7 +29,7 @@ public class GiftsFragmentTests
 
         int change = _gifts.GetRelationshipChange(flower);
 
-        Assert.Equal(1, change);
+        change.Should().Be(1);
     }
 
     [Fact]
@@ -43,6 +39,6 @@ public class GiftsFragmentTests
 
         int change = _gifts.GetRelationshipChange(knife);
 
-        Assert.Equal(-5, change);
+        change.Should().Be(-5);
     }
 }

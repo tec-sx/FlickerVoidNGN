@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace FlickerVoid.Engine.Runtime;
+namespace FlickerVoid.Engine.Runtime.Components;
 
 /// <summary>Where an entity is in its world: position, rotation and scale; a new transform has no rotation and a scale of one.</summary>
 public struct Transform

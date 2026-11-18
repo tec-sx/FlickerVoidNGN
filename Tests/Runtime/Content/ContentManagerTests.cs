@@ -6,94 +6,89 @@ namespace FlickerVoid.Engine.Runtime.Tests.Content;
 
 public sealed class ContentManagerTests : IDisposable
 {
-    private readonly string _root;
-    private readonly ContentManager _content;
-
-    public ContentManagerTests()
-    {
-        string folderName = Guid.NewGuid().ToString("N");
-        string tempPath = Path.GetTempPath();
-        _root = Path.Combine(tempPath, folderName);
-        Directory.CreateDirectory(_root);
-        _content = new ContentManager(_root);
-    }
+    private readonly ContentManagerTestsBuilder _builder = new();
 
     public void Dispose()
     {
-        Directory.Delete(_root, recursive: true);
+        _builder.Dispose();
     }
 
     [Fact]
     public void LoadsJsonByPathUnderTheRoot()
     {
-        Write("Scenes/Room.scene.json", """{ "entities": [ { "name": "Crate" } ] }""");
+        ContentManager content = _builder.WithFile("Scenes/Room.scene.json", """{ "entities": [ { "name": "Crate" } ] }""").Build();
 
-        SceneData scene = _content.Load("Scenes/Room.scene.json", RuntimeJsonContext.Default.SceneData);
+        SceneData scene = content.Load("Scenes/Room.scene.json", RuntimeJsonContext.Default.SceneData);
 
-        Assert.Equal("Crate", scene.Entities[0].Name);
+        scene.Entities.Should().ContainSingle().Which.Name.Should().Be("Crate");
     }
 
     [Fact]
     public void ReturnsTheSameObjectUntilUnloaded()
     {
-        Write("Room.scene.json", """{ "entities": [] }""");
+        ContentManager content = _builder.WithFile("Room.scene.json", """{ "entities": [] }""").Build();
 
-        SceneData first = _content.Load("Room.scene.json", RuntimeJsonContext.Default.SceneData);
-        SceneData again = _content.Load("./Room.scene.json", RuntimeJsonContext.Default.SceneData);
-        bool unloaded = _content.Unload("Room.scene.json");
-        SceneData reloaded = _content.Load("Room.scene.json", RuntimeJsonContext.Default.SceneData);
+        SceneData first = content.Load("Room.scene.json", RuntimeJsonContext.Default.SceneData);
+        SceneData again = content.Load("./Room.scene.json", RuntimeJsonContext.Default.SceneData);
+        bool unloaded = content.Unload("Room.scene.json");
+        SceneData reloaded = content.Load("Room.scene.json", RuntimeJsonContext.Default.SceneData);
 
-        Assert.Same(first, again);
-        Assert.True(unloaded);
-        Assert.NotSame(first, reloaded);
+        again.Should().BeSameAs(first);
+        unloaded.Should().BeTrue();
+        reloaded.Should().NotBeSameAs(first);
+    }
+
+    [Theory]
+    [InlineData("../Room.scene.json")]
+    [InlineData("Scenes/../../Room.scene.json")]
+    public void RejectsPathsOutsideTheRoot(string path)
+    {
+        ContentManager content = _builder.Build();
+
+        Action resolve = () => content.GetFullPath(path);
+
+        resolve.Should().Throw<ArgumentException>();
     }
 
     [Fact]
-    public void RejectsPathsOutsideTheRoot()
+    public void RejectsRootedPathsOutsideTheRoot()
     {
+        ContentManager content = _builder.Build();
         string outside = Path.GetTempPath();
 
-        Assert.Throws<ArgumentException>(() => _content.GetFullPath("../Room.scene.json"));
-        Assert.Throws<ArgumentException>(() => _content.GetFullPath("Scenes/../../Room.scene.json"));
-        Assert.Throws<ArgumentException>(() => _content.GetFullPath(outside));
+        Action resolve = () => content.GetFullPath(outside);
+
+        resolve.Should().Throw<ArgumentException>();
     }
 
     [Fact]
     public void AcceptsNamesThatOnlyStartWithDots()
     {
-        string fullPath = _content.GetFullPath("..Room.scene.json");
+        ContentManager content = _builder.Build();
 
-        string expected = Path.Combine(_root, "..Room.scene.json");
-        Assert.Equal(expected, fullPath);
+        string fullPath = content.GetFullPath("..Room.scene.json");
+
+        string expected = Path.Combine(_builder.RootDirectory, "..Room.scene.json");
+        fullPath.Should().Be(expected);
     }
 
     [Fact]
     public void JsonErrorsNameTheFile()
     {
-        Write("Broken.scene.json", """{ "entities": [ { "nam": "Crate" } ] }""");
+        ContentManager content = _builder.WithFile("Broken.scene.json", """{ "entities": [ { "nam": "Crate" } ] }""").Build();
 
-        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => _content.Load("Broken.scene.json", RuntimeJsonContext.Default.SceneData));
+        Action load = () => content.Load("Broken.scene.json", RuntimeJsonContext.Default.SceneData);
 
-        Assert.StartsWith("Broken.scene.json: ", exception.Message);
+        load.Should().Throw<InvalidDataException>().WithMessage("Broken.scene.json: *");
     }
 
     [Fact]
     public void NullContentThrows()
     {
-        Write("Empty.scene.json", "null");
+        ContentManager content = _builder.WithFile("Empty.scene.json", "null").Build();
 
-        Assert.Throws<InvalidDataException>(() => _content.Load("Empty.scene.json", RuntimeJsonContext.Default.SceneData));
-    }
+        Action load = () => content.Load("Empty.scene.json", RuntimeJsonContext.Default.SceneData);
 
-    private void Write(string path, string json)
-    {
-        string fullPath = Path.Combine(_root, path);
-        string? folder = Path.GetDirectoryName(fullPath);
-        if (folder is not null)
-        {
-            Directory.CreateDirectory(folder);
-        }
-
-        File.WriteAllText(fullPath, json);
+        load.Should().Throw<InvalidDataException>();
     }
 }

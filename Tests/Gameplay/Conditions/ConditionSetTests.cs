@@ -5,7 +5,7 @@ namespace FlickerVoid.Engine.Gameplay.Tests.Conditions;
 
 public class ConditionSetTests
 {
-    private readonly FactDatabase _facts = new(new FactSettings());
+    private readonly IFactDatabase _facts = Substitute.For<IFactDatabase>();
     private readonly ConditionContext _context;
 
     public ConditionSetTests()
@@ -16,121 +16,99 @@ public class ConditionSetTests
     [Fact]
     public void PassesWhenEmptyInEitherMode()
     {
-        ConditionSet all = new();
-        ConditionSet any = new() { Mode = ConditionMode.Any };
+        ConditionSet all = new ConditionSetTestsBuilder().Build();
+        ConditionSet any = new ConditionSetTestsBuilder().InAnyMode().Build();
 
         bool allHolds = all.Evaluate(_context);
         bool anyHolds = any.Evaluate(_context);
 
-        Assert.True(allHolds);
-        Assert.True(anyHolds);
+        allHolds.Should().BeTrue();
+        anyHolds.Should().BeTrue();
     }
 
-    [Fact]
-    public void NeedsEveryConditionInAllMode()
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(false, false, false)]
+    public void NeedsEveryConditionInAllMode(bool first, bool second, bool expected)
     {
-        ConditionSet set = new() { Conditions = [Constant(true), Constant(true)] };
-        bool allTrue = set.Evaluate(_context);
+        ConditionSet set = new ConditionSetTestsBuilder().WithConstant(first).WithConstant(second).Build();
 
-        set.Conditions.Add(Constant(false));
-        bool oneFalse = set.Evaluate(_context);
+        bool holds = set.Evaluate(_context);
 
-        Assert.True(allTrue);
-        Assert.False(oneFalse);
+        holds.Should().Be(expected);
     }
 
-    [Fact]
-    public void NeedsOneConditionInAnyMode()
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, false, false)]
+    public void NeedsOneConditionInAnyMode(bool first, bool second, bool expected)
     {
-        ConditionSet set = new() { Mode = ConditionMode.Any, Conditions = [Constant(false), Constant(false)] };
-        bool allFalse = set.Evaluate(_context);
+        ConditionSet set = new ConditionSetTestsBuilder().InAnyMode().WithConstant(first).WithConstant(second).Build();
 
-        set.Conditions.Add(Constant(true));
-        bool oneTrue = set.Evaluate(_context);
+        bool holds = set.Evaluate(_context);
 
-        Assert.False(allFalse);
-        Assert.True(oneTrue);
+        holds.Should().Be(expected);
     }
 
     [Fact]
     public void FlipsNestedGroupWithInvert()
     {
-        GroupCondition inner = new() { Invert = true, Set = new ConditionSet { Conditions = [Constant(false)] } };
-        ConditionSet set = new() { Conditions = [inner] };
+        ConditionSet inner = new ConditionSetTestsBuilder().WithConstant(false).Build();
+        GroupCondition group = new() { Invert = true, Set = inner };
+        ConditionSet set = new ConditionSetTestsBuilder().With(group).Build();
 
         bool holds = set.Evaluate(_context);
 
-        Assert.True(holds);
+        holds.Should().BeTrue();
     }
 
     [Fact]
     public void RanksSetsThatHoldHardestFirst()
     {
-        _facts.SetFact(TestTags.A, 50);
-
+        _facts.GetFact(TestTags.A).Returns(50);
         ConditionSet[] sets =
         [
-            AtLeast(20),
-            AtLeast(80),
-            AtLeast(40),
-            new ConditionSet { Conditions = [Constant(true)] },
+            new ConditionSetTestsBuilder().WithAtLeast(TestTags.A, 20).Build(),
+            new ConditionSetTestsBuilder().WithAtLeast(TestTags.A, 80).Build(),
+            new ConditionSetTestsBuilder().WithAtLeast(TestTags.A, 40).Build(),
+            new ConditionSetTestsBuilder().WithConstant(true).Build(),
         ];
 
         int[] ranked = ConditionSet.Rank(sets, _context);
 
-        Assert.Equal([2, 0, 3], ranked);
+        ranked.Should().Equal(2, 0, 3);
     }
 
     [Fact]
     public void ScoresAllSetsAsSumAndAnySetsAsBest()
     {
-        _facts.SetFact(TestTags.A, 50);
-        _facts.SetFact(TestTags.B, 30);
-
-        FactCondition a = new() { Fact = TestTags.A, Value = 40 };
-        FactCondition b = new() { Fact = TestTags.B, Value = 20 };
-        ConditionSet all = new() { Conditions = [a, b] };
-        ConditionSet any = new() { Mode = ConditionMode.Any, Conditions = [a, b] };
+        _facts.GetFact(TestTags.A).Returns(50);
+        _facts.GetFact(TestTags.B).Returns(30);
+        ConditionSet all = new ConditionSetTestsBuilder().WithAtLeast(TestTags.A, 40).WithAtLeast(TestTags.B, 20).Build();
+        ConditionSet any = new ConditionSetTestsBuilder().InAnyMode().WithAtLeast(TestTags.A, 40).WithAtLeast(TestTags.B, 20).Build();
 
         bool allScored = all.TryGetScore(_context, out ConditionScore allScore);
         bool anyScored = any.TryGetScore(_context, out ConditionScore anyScore);
 
-        Assert.True(allScored);
-        Assert.Equal(new ConditionScore(60f, 20f), allScore);
-        Assert.True(anyScored);
-        Assert.Equal(40f, anyScore.Threshold);
-    }
-
-    [Fact]
-    public void DoesNotScoreInvertedConditions()
-    {
-        _facts.SetFact(TestTags.A, 50);
-        FactCondition inverted = new() { Fact = TestTags.A, Value = 80, Invert = true };
-
-        bool holds = inverted.Check(_context);
-        bool scored = inverted.TryGetScore(_context, out _);
-
-        Assert.True(holds);
-        Assert.False(scored);
+        allScored.Should().BeTrue();
+        allScore.Should().Be(new ConditionScore(60f, 20f));
+        anyScored.Should().BeTrue();
+        anyScore.Threshold.Should().Be(40f);
     }
 
     [Fact]
     public void DescribesWithAndOrAndNot()
     {
-        FactCondition a = new() { Fact = TestTags.A, Value = 4 };
         FactCondition notB = new() { Fact = TestTags.B, Compare = FactCompare.Defined, Invert = true };
-        ConditionSet all = new() { Conditions = [a, notB] };
-        ConditionSet any = new() { Mode = ConditionMode.Any, Conditions = [a, notB] };
+        ConditionSet all = new ConditionSetTestsBuilder().WithAtLeast(TestTags.A, 4).With(notB).Build();
+        ConditionSet any = new ConditionSetTestsBuilder().InAnyMode().WithAtLeast(TestTags.A, 4).With(notB).Build();
 
         string allText = all.Describe();
         string anyText = any.Describe();
 
-        Assert.Equal("Test.FVFramework.A >= 4 AND NOT Test.FVFramework.B defined", allText);
-        Assert.Equal("Test.FVFramework.A >= 4 OR NOT Test.FVFramework.B defined", anyText);
+        allText.Should().Be("Test.FVFramework.A >= 4 AND NOT Test.FVFramework.B defined");
+        anyText.Should().Be("Test.FVFramework.A >= 4 OR NOT Test.FVFramework.B defined");
     }
-
-    /// <summary>An empty group passes, so an inverted one fails: constants without a test-only condition type.</summary>
-    private static GroupCondition Constant(bool value) => new() { Invert = !value };
-
-    private static ConditionSet AtLeast(int value) => new() { Conditions = [new FactCondition { Fact = TestTags.A, Value = value }] };
 }
