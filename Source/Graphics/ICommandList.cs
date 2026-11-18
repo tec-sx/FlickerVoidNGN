@@ -20,8 +20,8 @@ public interface ICommandList : IDisposable
     /// <summary>Copies the whole texture from rows padded to <see cref="PixelFormatExtensions.GetCopyRowPitch"/>.</summary>
     void CopyBufferToTexture(IBuffer source, long sourceOffset, ITexture destination);
 
-    /// <summary>Copies the whole texture into rows padded to <see cref="PixelFormatExtensions.GetCopyRowPitch"/>.</summary>
-    void CopyTextureToBuffer(ITexture source, IBuffer destination, long destinationOffset);
+    /// <summary>Copies a whole mip level of the texture into rows padded to <see cref="PixelFormatExtensions.GetCopyRowPitch"/>.</summary>
+    void CopyTextureToBuffer(ITexture source, IBuffer destination, long destinationOffset, int mipLevel = 0);
 
     void BeginRendering(ReadOnlySpan<ColorTarget> colorTargets, DepthTarget? depthTarget = null);
 
@@ -40,6 +40,9 @@ public interface ICommandList : IDisposable
         where T : unmanaged;
 
     void Draw(int vertexCount, int instanceCount = 1, int firstVertex = 0, int firstInstance = 0);
+
+    /// <summary>Runs the compute pipeline set last on the given number of thread groups.</summary>
+    void Dispatch(int groupsX, int groupsY = 1, int groupsZ = 1);
 
     void DrawIndexed(int indexCount, int instanceCount = 1, int firstIndex = 0, int vertexOffset = 0, int firstInstance = 0);
 }

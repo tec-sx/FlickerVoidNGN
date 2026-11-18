@@ -130,6 +130,12 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             extraUsage = ImageUsageFlags.TransferDstBit;
         }
 
+        // Lower mip levels are blitted from the level above.
+        if (!initialData.IsEmpty && description.MipLevels > 1)
+        {
+            extraUsage |= ImageUsageFlags.TransferSrcBit;
+        }
+
         VulkanTexture texture = new(this, description, extraUsage);
         if (!initialData.IsEmpty)
         {
@@ -142,6 +148,8 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
     public ISampler CreateSampler(in SamplerDescription description) => new VulkanSampler(this, description);
 
     public IPipeline CreateGraphicsPipeline(GraphicsPipelineDescription description) => new VulkanPipeline(this, description);
+
+    public IPipeline CreateComputePipeline(ComputePipelineDescription description) => new VulkanPipeline(this, description);
 
     public ICommandList CreateCommandList() => new VulkanCommandList(this);
 
@@ -562,7 +570,9 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             && features12.TimelineSemaphore && features12.DescriptorIndexing && features12.RuntimeDescriptorArray
             && features12.DescriptorBindingPartiallyBound && features12.DescriptorBindingUpdateUnusedWhilePending
             && features12.DescriptorBindingSampledImageUpdateAfterBind && features12.DescriptorBindingStorageBufferUpdateAfterBind
-            && features12.ShaderSampledImageArrayNonUniformIndexing && features12.ShaderStorageBufferArrayNonUniformIndexing;
+            && features12.DescriptorBindingStorageImageUpdateAfterBind
+            && features12.ShaderSampledImageArrayNonUniformIndexing && features12.ShaderStorageBufferArrayNonUniformIndexing
+            && features12.ShaderStorageImageArrayNonUniformIndexing && features.Features.ShaderStorageImageWriteWithoutFormat;
         if (!supported)
         {
             return false;
@@ -621,10 +631,17 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             DescriptorBindingUpdateUnusedWhilePending = true,
             DescriptorBindingSampledImageUpdateAfterBind = true,
             DescriptorBindingStorageBufferUpdateAfterBind = true,
+            DescriptorBindingStorageImageUpdateAfterBind = true,
             ShaderSampledImageArrayNonUniformIndexing = true,
             ShaderStorageBufferArrayNonUniformIndexing = true,
+            ShaderStorageImageArrayNonUniformIndexing = true,
         };
-        PhysicalDeviceFeatures2 features = new() { SType = StructureType.PhysicalDeviceFeatures2, PNext = &features12 };
+        PhysicalDeviceFeatures2 features = new()
+        {
+            SType = StructureType.PhysicalDeviceFeatures2,
+            PNext = &features12,
+            Features = new PhysicalDeviceFeatures { ShaderStorageImageWriteWithoutFormat = true },
+        };
         List<string> extensions = [];
         CanPresent = CanPresent && Vk.IsDeviceExtensionPresent(PhysicalDevice, KhrSwapchain.ExtensionName);
         if (CanPresent)
@@ -735,7 +752,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         WaitIdle();
     }
 
-    /// <summary>Copies tightly packed rows through a staging buffer with padded rows and waits, leaving shader-readable textures in ShaderRead.</summary>
+    /// <summary>Copies tightly packed rows of the top level through a staging buffer with padded rows, filters the other levels from it and waits, leaving shader-readable textures in ShaderRead.</summary>
     private void UploadTexture(VulkanTexture texture, ReadOnlySpan<byte> data)
     {
         TextureDescription description = texture.Description;
@@ -757,6 +774,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _uploadCommands.Begin();
         _uploadCommands.Barrier(texture, ResourceState.CopyDestination);
         _uploadCommands.CopyBufferToTexture(staging, 0, texture);
+        _uploadCommands.FillMipLevels(texture);
         if (description.Usage.HasFlag(TextureUsage.ShaderRead))
         {
             _uploadCommands.Barrier(texture, ResourceState.ShaderRead);

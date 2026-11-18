@@ -224,6 +224,92 @@ public sealed class GraphicsDeviceTests : IDisposable
         commands.End();
     }
 
+    [Fact]
+    public void DispatchesAComputeShaderThatWritesABuffer()
+    {
+        using IGraphicsDevice device = CreateDevice();
+        const int Words = 128;
+        BufferDescription description = new(Words * 4, BufferUsage.ShaderWrite | BufferUsage.CopySource);
+        BufferDescription readbackDescription = new(Words * 4, BufferUsage.CopyDestination, MemoryLocation.Readback);
+        using IBuffer buffer = device.CreateBuffer(description);
+        using IBuffer readback = device.CreateBuffer(readbackDescription);
+        using IPipeline pipeline = _builder!.CreateComputePipeline(device, TestShaders.WriteBufferCompute);
+        using ICommandList commands = device.CreateCommandList();
+
+        commands.Begin();
+        commands.Barrier(buffer, ResourceState.ShaderWrite);
+        commands.SetPipeline(pipeline);
+        DrawConstants constants = new(buffer.BindlessIndex, 0, 0, 0, Vector4.Zero);
+        commands.PushConstants(constants);
+        commands.Dispatch(Words / 64);
+        commands.Barrier(buffer, ResourceState.CopySource);
+        commands.CopyBuffer(buffer, 0, readback, 0, Words * 4);
+        commands.End();
+        device.Submit(commands);
+        device.WaitIdle();
+
+        uint[] words = new uint[Words];
+        readback.Read(MemoryMarshal.AsBytes(words.AsSpan()));
+        uint[] expected = [.. Enumerable.Range(0, Words).Select(static index => (uint)index * 3)];
+        words.Should().Equal(expected);
+        buffer.BindlessIndex.Should().NotBe(BindlessIndex.None);
+    }
+
+    [Fact]
+    public void WritesATextureFromAComputeShader()
+    {
+        using IGraphicsDevice device = CreateDevice();
+        int size = GraphicsDeviceTestsBuilder.TargetSize;
+        TextureDescription description = new(size, size, PixelFormat.Rgba8UNorm, TextureUsage.ShaderWrite | TextureUsage.CopySource);
+        using ITexture texture = device.CreateTexture(description);
+        using IPipeline pipeline = _builder!.CreateComputePipeline(device, TestShaders.FillTextureCompute);
+        using ICommandList commands = device.CreateCommandList();
+
+        commands.Begin();
+        commands.Barrier(texture, ResourceState.ShaderWrite);
+        commands.SetPipeline(pipeline);
+        DrawConstants constants = new(0, texture.BindlessIndex, 0, 0, new Vector4(1, 0, 0, 1));
+        commands.PushConstants(constants);
+        commands.Dispatch(1, 1);
+        commands.End();
+        device.Submit(commands);
+
+        uint[] pixels = GraphicsDeviceTestsBuilder.ReadPixels(device, texture);
+        pixels.Should().AllBeEquivalentTo(RedPixel);
+    }
+
+    [Fact]
+    public void GeneratesTheMipChainOfInitialData()
+    {
+        using IGraphicsDevice device = CreateDevice();
+
+        // 2x2 texels of black and white average to mid grey in the 1x1 level.
+        uint black = GraphicsDeviceTestsBuilder.Rgba(0, 0, 0, 255);
+        uint white = GraphicsDeviceTestsBuilder.Rgba(255, 255, 255, 255);
+        uint[] texels = [black, white, white, black];
+        byte[] data = MemoryMarshal.AsBytes(texels.AsSpan()).ToArray();
+        TextureDescription description = new(2, 2, PixelFormat.Rgba8UNorm, TextureUsage.ShaderRead | TextureUsage.CopySource) { MipLevels = 2 };
+        using ITexture texture = device.CreateTexture(description, data);
+
+        uint[] top = GraphicsDeviceTestsBuilder.ReadPixels(device, texture);
+        uint[] last = GraphicsDeviceTestsBuilder.ReadPixels(device, texture, mipLevel: 1);
+
+        top.Should().Equal(texels);
+        last.Should().ContainSingle();
+        byte[] grey = BitConverter.GetBytes(last[0]);
+        grey[0].Should().BeInRange(126, 129);
+        grey[3].Should().Be(255);
+    }
+
+    [Theory]
+    [InlineData(1, 1, 1)]
+    [InlineData(256, 64, 9)]
+    [InlineData(5, 3, 3)]
+    public void CountsTheLevelsOfAFullMipChain(int width, int height, int levels)
+    {
+        TextureDescription.CountMipLevels(width, height).Should().Be(levels);
+    }
+
     private IGraphicsDevice CreateDevice()
     {
         _builder = new GraphicsDeviceTestsBuilder();

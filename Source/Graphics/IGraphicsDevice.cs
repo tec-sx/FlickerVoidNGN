@@ -8,12 +8,14 @@ public interface IGraphicsDevice : IDisposable
     /// <summary>Creates a buffer; initial data is copied in before the call returns, leaving a GPU buffer in its shader-read or index state.</summary>
     IBuffer CreateBuffer(in BufferDescription description, ReadOnlySpan<byte> initialData = default);
 
-    /// <summary>Creates a texture; initial data (tightly packed rows) is copied in before the call returns, leaving it in its shader-read state.</summary>
+    /// <summary>Creates a texture; initial data (tightly packed rows of the full-size level) is copied in before the call returns and the other mip levels are filtered from it, leaving it in its shader-read state.</summary>
     ITexture CreateTexture(in TextureDescription description, ReadOnlySpan<byte> initialData = default);
 
     ISampler CreateSampler(in SamplerDescription description);
 
     IPipeline CreateGraphicsPipeline(GraphicsPipelineDescription description);
+
+    IPipeline CreateComputePipeline(ComputePipelineDescription description);
 
     ICommandList CreateCommandList();
 
