@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Silk.NET.Direct3D.Compilers" />
+    <!-- Native dxcompiler and dxil (the DXIL signer) for Windows and Linux; Silk.NET ships the bindings only. -->
+    <PackageReference Include="Vortice.Dxc.Native" />
+  </ItemGroup>
+</Project>

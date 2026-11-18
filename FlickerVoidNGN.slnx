@@ -4,12 +4,14 @@
     <Project Path="Source/Physics/FlickerVoid.Engine.Physics.csproj" />
     <Project Path="Source/Platform/FlickerVoid.Engine.Platform.csproj" />
     <Project Path="Source/Runtime/FlickerVoid.Engine.Runtime.csproj" />
+    <Project Path="Source/Shaders/FlickerVoid.Engine.Shaders.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/Gameplay/FlickerVoid.Engine.Gameplay.Tests.csproj" />
     <Project Path="Tests/Physics/FlickerVoid.Engine.Physics.Tests.csproj" />
     <Project Path="Tests/Platform/FlickerVoid.Engine.Platform.Tests.csproj" />
     <Project Path="Tests/Runtime/FlickerVoid.Engine.Runtime.Tests.csproj" />
+    <Project Path="Tests/Shaders/FlickerVoid.Engine.Shaders.Tests.csproj" />
   </Folder>
   <Folder Name="/Samples/">
     <Project Path="Samples/FallingBodies/FlickerVoid.Samples.FallingBodies.csproj" />
