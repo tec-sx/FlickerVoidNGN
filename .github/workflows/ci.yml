@@ -20,11 +20,17 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
-      - name: Install lavapipe (software Vulkan) and the validation layer
+      - name: Install lavapipe (software Vulkan), the validation layer and a virtual X server
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers xvfb
       - run: dotnet build FlickerVoidNGN.slnx -c Release
-      - run: dotnet test --solution FlickerVoidNGN.slnx -c Release --no-build
+      - name: Test
+        shell: bash
+        # Linux opens the swapchain tests' windows on a virtual X server.
+        run: |
+          display=""
+          if [ "$RUNNER_OS" = "Linux" ]; then display="xvfb-run -a"; fi
+          $display dotnet test --solution FlickerVoidNGN.slnx -c Release --no-build
         env:
           # llvmpipe's linear rasterizer reads push constants past the first 16 bytes as zero on full-rectangle draws.
           LP_PERF: no_rast_linear

@@ -74,6 +74,10 @@ public sealed unsafe class D3D12GraphicsDevice : IGraphicsDevice
 
     internal ID3D12Device4* Handle { get; }
 
+    internal IDXGIFactory6* Factory => _factory;
+
+    internal ID3D12CommandQueue* Queue => _queue;
+
     internal D3D12BindlessTables Bindless { get; }
 
     internal D3D12DescriptorHeap RenderTargetViews { get; }
@@ -120,6 +124,8 @@ public sealed unsafe class D3D12GraphicsDevice : IGraphicsDevice
     public IPipeline CreateGraphicsPipeline(GraphicsPipelineDescription description) => new D3D12Pipeline(this, description);
 
     public ICommandList CreateCommandList() => new D3D12CommandList(this);
+
+    public ISwapchain CreateSwapchain(in SwapchainDescription description) => new D3D12Swapchain(this, description);
 
     public void Submit(ICommandList commandList)
     {
