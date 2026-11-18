@@ -1,13 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <PublishAot>true</PublishAot>
-    <!-- Collections.Pooled, which Arch uses, ships a reflection-based JSON converter for its own collections; nothing here serializes them. -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);IL2104;IL3053</WarningsNotAsErrors>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
-  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../Source/Physics/FlickerVoid.Engine.Physics.csproj" />
   </ItemGroup>

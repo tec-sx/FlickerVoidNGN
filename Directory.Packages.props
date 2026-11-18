@@ -10,6 +10,10 @@
   <ItemGroup Label="Physics">
     <PackageVersion Include="BepuPhysics" Version="2.5.0-beta.33" />
   </ItemGroup>
+  <ItemGroup Label="Platform">
+    <PackageVersion Include="Silk.NET.Input.Sdl" Version="2.23.0" />
+    <PackageVersion Include="Silk.NET.Windowing.Sdl" Version="2.23.0" />
+  </ItemGroup>
   <ItemGroup Label="Samples">
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.15" />
   </ItemGroup>

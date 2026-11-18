@@ -22,8 +22,15 @@ jobs:
           global-json-file: global.json
       - run: dotnet build FlickerVoidNGN.slnx -c Release
       - run: dotnet test --solution FlickerVoidNGN.slnx -c Release --no-build
-      - name: Publish the FallingBodies sample with NativeAOT
-        run: dotnet publish Samples/FallingBodies -c Release --use-current-runtime -o artifacts/aot/FallingBodies
-      - name: Run the FallingBodies sample
+      - name: Publish the samples with NativeAOT
         shell: bash
-        run: ./artifacts/aot/FallingBodies/FlickerVoid.Samples.FallingBodies
+        run: |
+          dotnet publish Samples/FallingBodies -c Release --use-current-runtime -o artifacts/aot/FallingBodies
+          dotnet publish Samples/Window -c Release --use-current-runtime -o artifacts/aot/Window
+      - name: Run the samples
+        shell: bash
+        env:
+          SDL_VIDEODRIVER: dummy
+        run: |
+          ./artifacts/aot/FallingBodies/FlickerVoid.Samples.FallingBodies
+          ./artifacts/aot/Window/FlickerVoid.Samples.Window --frames 120
