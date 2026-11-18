@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../Source/Platform/FlickerVoid.Engine.Platform.csproj" />
+  </ItemGroup>
+</Project>
