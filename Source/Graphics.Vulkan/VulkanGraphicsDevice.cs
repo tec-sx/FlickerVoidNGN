@@ -6,30 +6,30 @@ using Silk.NET.Core;
 using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.EXT;
+using Silk.NET.Vulkan.Extensions.KHR;
 
 namespace FlickerVoid.Engine.Graphics.Vulkan;
 
 /// <summary>
 /// A Vulkan 1.3 device: one graphics queue, a timeline semaphore counting submissions, bindless tables, and
-/// resources released once the GPU has finished with them. Requires dynamic rendering, synchronization2 and descriptor indexing.
+/// resources released once the GPU has finished with them. Requires dynamic rendering, synchronization2 and descriptor indexing;
+/// presents to windows when the driver has the surface and swapchain extensions.
 /// </summary>
 public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
 {
     private const string ValidationLayer = "VK_LAYER_KHRONOS_validation";
 
     private readonly ILogger _logger;
-    private readonly Instance _instance;
-    private readonly PhysicalDevice _physicalDevice;
     private readonly ExtDebugUtils? _debugUtils;
     private readonly DebugUtilsMessengerEXT _messenger;
     private readonly GCHandle _self;
-    private readonly Queue _queue;
     private readonly Silk.NET.Vulkan.Semaphore _timeline;
     private readonly PhysicalDeviceMemoryProperties _memoryProperties;
     private readonly Queue<(ulong Value, Action Release)> _releases = new();
     private readonly VulkanCommandList _uploadCommands;
     private readonly List<IDisposable> _placeholders = [];
     private ulong _submitted;
+    private ulong _acquireValue;
     private bool _disposed;
 
     public VulkanGraphicsDevice(GraphicsDeviceOptions options, ILoggerFactory loggerFactory)
@@ -44,20 +44,21 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             _logger.LogWarning("The Vulkan validation layer ({Layer}) is not installed; running without validation.", ValidationLayer);
         }
 
-        _instance = CreateInstance(validation);
-        if (validation && Vk.TryGetInstanceExtension(_instance, out ExtDebugUtils debugUtils))
+        Instance = CreateInstance(validation);
+        if (validation && Vk.TryGetInstanceExtension(Instance, out ExtDebugUtils debugUtils))
         {
             _debugUtils = debugUtils;
             _messenger = CreateMessenger(debugUtils);
         }
 
-        (_physicalDevice, QueueFamily) = SelectPhysicalDevice();
-        Vk.GetPhysicalDeviceProperties(_physicalDevice, out PhysicalDeviceProperties properties);
+        (PhysicalDevice, QueueFamily) = SelectPhysicalDevice();
+        Vk.GetPhysicalDeviceProperties(PhysicalDevice, out PhysicalDeviceProperties properties);
         AdapterName = SilkMarshal.PtrToString((nint)properties.DeviceName) ?? "Vulkan device";
-        Vk.GetPhysicalDeviceMemoryProperties(_physicalDevice, out _memoryProperties);
+        Vk.GetPhysicalDeviceMemoryProperties(PhysicalDevice, out _memoryProperties);
 
         Handle = CreateDevice();
-        Vk.GetDeviceQueue(Handle, QueueFamily, 0, out _queue);
+        Vk.GetDeviceQueue(Handle, QueueFamily, 0, out Queue queue);
+        Queue = queue;
         _timeline = CreateTimeline();
 
         PhysicalDeviceVulkan12Properties limits = GetVulkan12Properties();
@@ -73,9 +74,18 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
     internal Vk Vk { get; }
 
+    internal Instance Instance { get; }
+
+    internal PhysicalDevice PhysicalDevice { get; }
+
     internal Device Handle { get; }
 
     internal uint QueueFamily { get; }
+
+    internal Queue Queue { get; }
+
+    /// <summary>Whether the instance has the surface extensions and the device the swapchain extension.</summary>
+    internal bool CanPresent { get; private set; }
 
     internal VulkanBindlessTables Bindless { get; }
 
@@ -133,6 +143,9 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
     public ICommandList CreateCommandList() => new VulkanCommandList(this);
 
+    public ISwapchain CreateSwapchain(in SwapchainDescription description) => new VulkanSwapchain(this, description);
+
+    /// <summary>Submits the command list after the last acquired swapchain image is free, so it may render to it.</summary>
     public void Submit(ICommandList commandList)
     {
         VulkanCommandList vulkanCommands = (VulkanCommandList)commandList;
@@ -142,22 +155,19 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             SType = StructureType.CommandBufferSubmitInfo,
             CommandBuffer = vulkanCommands.Handle,
         };
-        SemaphoreSubmitInfo signal = new()
-        {
-            SType = StructureType.SemaphoreSubmitInfo,
-            Semaphore = _timeline,
-            Value = _submitted,
-            StageMask = PipelineStageFlags2.AllCommandsBit,
-        };
+        SemaphoreSubmitInfo wait = TimelineInfo(_acquireValue);
+        SemaphoreSubmitInfo signal = TimelineInfo(_submitted);
         SubmitInfo2 submit = new()
         {
             SType = StructureType.SubmitInfo2,
+            WaitSemaphoreInfoCount = 1,
+            PWaitSemaphoreInfos = &wait,
             CommandBufferInfoCount = 1,
             PCommandBufferInfos = &commandInfo,
             SignalSemaphoreInfoCount = 1,
             PSignalSemaphoreInfos = &signal,
         };
-        VulkanResult.Check(Vk.QueueSubmit2(_queue, 1, &submit, default));
+        VulkanResult.Check(Vk.QueueSubmit2(Queue, 1, &submit, default));
         vulkanCommands.SubmissionValue = _submitted;
         RunCompletedReleases();
     }
@@ -193,11 +203,11 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         Vk.DestroyDevice(Handle, null);
         if (_debugUtils is not null)
         {
-            _debugUtils.DestroyDebugUtilsMessenger(_instance, _messenger, null);
+            _debugUtils.DestroyDebugUtilsMessenger(Instance, _messenger, null);
             _debugUtils.Dispose();
         }
 
-        Vk.DestroyInstance(_instance, null);
+        Vk.DestroyInstance(Instance, null);
         Vk.Dispose();
         _self.Free();
     }
@@ -206,6 +216,61 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
     internal void ReleaseLater(Action release)
     {
         _releases.Enqueue((_submitted, release));
+    }
+
+    /// <summary>
+    /// Makes later submissions wait for the binary semaphore, such as a swapchain's image-acquired semaphore, and returns the
+    /// timeline value after which the semaphore can be reused.
+    /// </summary>
+    internal ulong WaitOnGpu(Silk.NET.Vulkan.Semaphore semaphore)
+    {
+        _submitted++;
+        SemaphoreSubmitInfo wait = new()
+        {
+            SType = StructureType.SemaphoreSubmitInfo,
+            Semaphore = semaphore,
+            StageMask = PipelineStageFlags2.AllCommandsBit,
+        };
+        SemaphoreSubmitInfo signal = TimelineInfo(_submitted);
+        SubmitInfo2 submit = new()
+        {
+            SType = StructureType.SubmitInfo2,
+            WaitSemaphoreInfoCount = 1,
+            PWaitSemaphoreInfos = &wait,
+            SignalSemaphoreInfoCount = 1,
+            PSignalSemaphoreInfos = &signal,
+        };
+        VulkanResult.Check(Vk.QueueSubmit2(Queue, 1, &submit, default));
+        _acquireValue = _submitted;
+        return _submitted;
+    }
+
+    /// <summary>Signals the binary semaphore, such as a swapchain's ready-to-present semaphore, once the GPU has finished everything submitted so far.</summary>
+    internal void SignalOnGpu(Silk.NET.Vulkan.Semaphore semaphore)
+    {
+        SemaphoreSubmitInfo wait = TimelineInfo(_submitted);
+        SemaphoreSubmitInfo signal = new()
+        {
+            SType = StructureType.SemaphoreSubmitInfo,
+            Semaphore = semaphore,
+            StageMask = PipelineStageFlags2.AllCommandsBit,
+        };
+        SubmitInfo2 submit = new()
+        {
+            SType = StructureType.SubmitInfo2,
+            WaitSemaphoreInfoCount = 1,
+            PWaitSemaphoreInfos = &wait,
+            SignalSemaphoreInfoCount = 1,
+            PSignalSemaphoreInfos = &signal,
+        };
+        VulkanResult.Check(Vk.QueueSubmit2(Queue, 1, &submit, default));
+    }
+
+    /// <summary>Blocks until the queue has finished everything, presentation included, then releases what was waiting for it.</summary>
+    internal void WaitQueueIdle()
+    {
+        VulkanResult.Check(Vk.QueueWaitIdle(Queue));
+        RunCompletedReleases();
     }
 
     internal void WaitFor(ulong value)
@@ -332,6 +397,16 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             extensions.Add(ExtDebugUtils.ExtensionName);
         }
 
+        string windowSurface = GetWindowSurfaceExtension();
+        bool surfaces = Vk.IsInstanceExtensionPresent(KhrSurface.ExtensionName) && Vk.IsInstanceExtensionPresent(windowSurface);
+        if (surfaces)
+        {
+            extensions.Add(KhrSurface.ExtensionName);
+            extensions.Add(windowSurface);
+        }
+
+        CanPresent = surfaces;
+
         nint layerNames = SilkMarshal.StringArrayToPtr(layers);
         nint extensionNames = SilkMarshal.StringArrayToPtr(extensions);
         try
@@ -369,6 +444,18 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         }
     }
 
+    /// <summary>The extension that creates surfaces for the OS's windows.</summary>
+    private static string GetWindowSurfaceExtension()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return KhrWin32Surface.ExtensionName;
+        }
+
+        // TODO(Linux): Wayland surfaces; SDL opens X11 windows unless told otherwise.
+        return KhrXlibSurface.ExtensionName;
+    }
+
     private DebugUtilsMessengerEXT CreateMessenger(ExtDebugUtils debugUtils)
     {
         DebugUtilsMessengerCreateInfoEXT info = new()
@@ -379,7 +466,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             PfnUserCallback = new PfnDebugUtilsMessengerCallbackEXT(&OnDebugMessage),
             PUserData = (void*)GCHandle.ToIntPtr(_self),
         };
-        VulkanResult.Check(debugUtils.CreateDebugUtilsMessenger(_instance, &info, null, out DebugUtilsMessengerEXT messenger));
+        VulkanResult.Check(debugUtils.CreateDebugUtilsMessenger(Instance, &info, null, out DebugUtilsMessengerEXT messenger));
         return messenger;
     }
 
@@ -387,11 +474,11 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
     private (PhysicalDevice Device, uint QueueFamily) SelectPhysicalDevice()
     {
         uint count = 0;
-        VulkanResult.Check(Vk.EnumeratePhysicalDevices(_instance, &count, null));
+        VulkanResult.Check(Vk.EnumeratePhysicalDevices(Instance, &count, null));
         PhysicalDevice[] devices = new PhysicalDevice[count];
         fixed (PhysicalDevice* pointer = devices)
         {
-            VulkanResult.Check(Vk.EnumeratePhysicalDevices(_instance, &count, pointer));
+            VulkanResult.Check(Vk.EnumeratePhysicalDevices(Instance, &count, pointer));
         }
 
         PhysicalDevice best = default;
@@ -517,15 +604,32 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             ShaderStorageBufferArrayNonUniformIndexing = true,
         };
         PhysicalDeviceFeatures2 features = new() { SType = StructureType.PhysicalDeviceFeatures2, PNext = &features12 };
-        DeviceCreateInfo info = new()
+        List<string> extensions = [];
+        CanPresent = CanPresent && Vk.IsDeviceExtensionPresent(PhysicalDevice, KhrSwapchain.ExtensionName);
+        if (CanPresent)
         {
-            SType = StructureType.DeviceCreateInfo,
-            PNext = &features,
-            QueueCreateInfoCount = 1,
-            PQueueCreateInfos = &queue,
-        };
-        VulkanResult.Check(Vk.CreateDevice(_physicalDevice, &info, null, out Device device));
-        return device;
+            extensions.Add(KhrSwapchain.ExtensionName);
+        }
+
+        nint extensionNames = SilkMarshal.StringArrayToPtr(extensions);
+        try
+        {
+            DeviceCreateInfo info = new()
+            {
+                SType = StructureType.DeviceCreateInfo,
+                PNext = &features,
+                QueueCreateInfoCount = 1,
+                PQueueCreateInfos = &queue,
+                EnabledExtensionCount = (uint)extensions.Count,
+                PpEnabledExtensionNames = (byte**)extensionNames,
+            };
+            VulkanResult.Check(Vk.CreateDevice(PhysicalDevice, &info, null, out Device device));
+            return device;
+        }
+        finally
+        {
+            SilkMarshal.Free(extensionNames);
+        }
     }
 
     private Silk.NET.Vulkan.Semaphore CreateTimeline()
@@ -545,7 +649,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
     {
         PhysicalDeviceVulkan12Properties properties12 = new() { SType = StructureType.PhysicalDeviceVulkan12Properties };
         PhysicalDeviceProperties2 properties = new() { SType = StructureType.PhysicalDeviceProperties2, PNext = &properties12 };
-        Vk.GetPhysicalDeviceProperties2(_physicalDevice, &properties);
+        Vk.GetPhysicalDeviceProperties2(PhysicalDevice, &properties);
         return properties12;
     }
 
@@ -563,6 +667,14 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
         throw new InvalidOperationException($"No Vulkan memory type has {properties}.");
     }
+
+    private SemaphoreSubmitInfo TimelineInfo(ulong value) => new()
+    {
+        SType = StructureType.SemaphoreSubmitInfo,
+        Semaphore = _timeline,
+        Value = value,
+        StageMask = PipelineStageFlags2.AllCommandsBit,
+    };
 
     private void RunCompletedReleases()
     {

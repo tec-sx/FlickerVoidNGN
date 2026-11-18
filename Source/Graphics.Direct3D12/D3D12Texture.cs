@@ -12,33 +12,18 @@ internal sealed unsafe class D3D12Texture : ITexture
     private bool _disposed;
 
     public D3D12Texture(D3D12GraphicsDevice device, in TextureDescription description)
+        : this(device, description, CreateResource(device, description))
+    {
+    }
+
+    /// <summary>Wraps a resource something else created, such as a swapchain back buffer, taking over one reference to it.</summary>
+    public D3D12Texture(D3D12GraphicsDevice device, in TextureDescription description, ID3D12Resource* resource)
     {
         _device = device;
         Description = description;
         bool shaderRead = description.Usage.HasFlag(TextureUsage.ShaderRead);
         ResourceFormat = description.Format.ToResourceFormat(shaderRead);
-        ResourceDesc resource = new()
-        {
-            Dimension = ResourceDimension.Texture2D,
-            Width = (ulong)description.Width,
-            Height = (uint)description.Height,
-            DepthOrArraySize = 1,
-            MipLevels = 1,
-            Format = ResourceFormat,
-            SampleDesc = new SampleDesc(1, 0),
-            Layout = TextureLayout.LayoutUnknown,
-            Flags = GetFlags(description.Usage),
-        };
-        if (description.Usage.HasFlag(TextureUsage.DepthStencil))
-        {
-            // Depth clears to 1, the far plane, so that is the value the hardware can clear fastest.
-            ClearValue clear = new(description.Format.ToDxgi(), depthStencil: new DepthStencilValue(1, 0));
-            Handle = device.CreateCommittedResource(HeapType.Default, resource, ResourceStates.Common, &clear);
-        }
-        else
-        {
-            Handle = device.CreateCommittedResource(HeapType.Default, resource, ResourceStates.Common);
-        }
+        Handle = resource;
 
         if (shaderRead)
         {
@@ -108,6 +93,31 @@ internal sealed unsafe class D3D12Texture : ITexture
             device.RenderTargetViews.Slots.Free(renderTargetSlot);
             device.DepthStencilViews.Slots.Free(depthStencilSlot);
         });
+    }
+
+    private static ID3D12Resource* CreateResource(D3D12GraphicsDevice device, in TextureDescription description)
+    {
+        bool shaderRead = description.Usage.HasFlag(TextureUsage.ShaderRead);
+        ResourceDesc resource = new()
+        {
+            Dimension = ResourceDimension.Texture2D,
+            Width = (ulong)description.Width,
+            Height = (uint)description.Height,
+            DepthOrArraySize = 1,
+            MipLevels = 1,
+            Format = description.Format.ToResourceFormat(shaderRead),
+            SampleDesc = new SampleDesc(1, 0),
+            Layout = TextureLayout.LayoutUnknown,
+            Flags = GetFlags(description.Usage),
+        };
+        if (!description.Usage.HasFlag(TextureUsage.DepthStencil))
+        {
+            return device.CreateCommittedResource(HeapType.Default, resource, ResourceStates.Common);
+        }
+
+        // Depth clears to 1, the far plane, so that is the value the hardware can clear fastest.
+        ClearValue clear = new(description.Format.ToDxgi(), depthStencil: new DepthStencilValue(1, 0));
+        return device.CreateCommittedResource(HeapType.Default, resource, ResourceStates.Common, &clear);
     }
 
     private static ResourceFlags GetFlags(TextureUsage usage)

@@ -19,6 +19,9 @@ public interface IGraphicsDevice : IDisposable
 
     ICommandList CreateCommandList();
 
+    /// <summary>Creates a swapchain for the window; throws <see cref="GraphicsUnavailableException"/> when the device can't present to it.</summary>
+    ISwapchain CreateSwapchain(in SwapchainDescription description);
+
     void Submit(ICommandList commandList);
 
     /// <summary>Blocks until the GPU has finished every submitted command list.</summary>

@@ -25,6 +25,8 @@ internal readonly record struct D3D12ResourceStates(BarrierLayout Layout, Barrie
                 return new(BarrierLayout.DepthStencilRead, BarrierSync.DepthStencil | BarrierSync.AllShading, BarrierAccess.DepthStencilRead | BarrierAccess.ShaderResource);
             case ResourceState.IndexBuffer:
                 return new(BarrierLayout.Undefined, BarrierSync.IndexInput, BarrierAccess.IndexBuffer);
+            case ResourceState.Present:
+                return new(BarrierLayout.Present, BarrierSync.None, BarrierAccess.NoAccess);
             default:
                 throw new ArgumentOutOfRangeException(nameof(state), state, null);
         }
