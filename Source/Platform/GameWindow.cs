@@ -5,6 +5,7 @@ using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Runtime;
 using FlickerVoid.Engine.Runtime.Debugging;
 
+using Silk.NET.Core.Contexts;
 using Silk.NET.Input;
 using Silk.NET.Input.Sdl;
 using Silk.NET.Maths;
@@ -65,6 +66,10 @@ public sealed class GameWindow : IGameWindow, IDisposable
         get => _window.Title;
         set => _window.Title = value;
     }
+
+    public Vector2D<int> Size => _window.FramebufferSize;
+
+    public INativeWindow Native => _window.Native!;
 
     public void Run()
     {

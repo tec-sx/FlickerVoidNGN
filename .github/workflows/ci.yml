@@ -23,7 +23,13 @@ jobs:
       - name: Install lavapipe (software Vulkan), the validation layer and a virtual X server
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers xvfb
-      - run: dotnet build FlickerVoidNGN.slnx -c Release
+      - name: Build the engine, the FlickerVoid project and the samples, and pack the engine
+        shell: bash
+        run: |
+          dotnet build FlickerVoidNGN.slnx -c Release
+          dotnet build Projects/FlickerVoid/FlickerVoid.slnx -c Release
+          dotnet build Samples/FlickerVoid.Samples.slnx -c Release
+          dotnet pack FlickerVoidNGN.slnx -c Release --no-build
       - name: Test
         shell: bash
         # Linux opens the swapchain tests' windows on a virtual X server.
@@ -31,14 +37,28 @@ jobs:
           display=""
           if [ "$RUNNER_OS" = "Linux" ]; then display="xvfb-run -a"; fi
           $display dotnet test --solution FlickerVoidNGN.slnx -c Release --no-build
+          cd Projects/FlickerVoid
+          dotnet test --solution FlickerVoid.slnx -c Release --no-build
         env:
           # llvmpipe's linear rasterizer reads push constants past the first 16 bytes as zero on full-rectangle draws.
           LP_PERF: no_rast_linear
+      - name: Create a project from the template, build it and run it
+        shell: bash
+        env:
+          FLICKERVOID_ENGINE: ${{ github.workspace }}
+          SDL_VIDEODRIVER: dummy
+        run: |
+          dotnet new install ./Templates/Project
+          dotnet new flickervoid -n TemplateCheck -o "$RUNNER_TEMP/TemplateCheck" --engine "$FLICKERVOID_ENGINE"
+          cd "$RUNNER_TEMP/TemplateCheck"
+          dotnet build TemplateCheck.slnx -c Release
+          dotnet run --project Source/Launcher -c Release --no-build -- --frames 60
       - name: Publish the samples with NativeAOT
         shell: bash
         run: |
           dotnet publish Samples/FallingBodies -c Release --use-current-runtime -o artifacts/aot/FallingBodies
           dotnet publish Samples/Window -c Release --use-current-runtime -o artifacts/aot/Window
+          dotnet publish Samples/TexturedMesh -c Release --use-current-runtime -o artifacts/aot/TexturedMesh
       - name: Run the samples
         shell: bash
         env:
@@ -46,3 +66,51 @@ jobs:
         run: |
           ./artifacts/aot/FallingBodies/FlickerVoid.Samples.FallingBodies
           ./artifacts/aot/Window/FlickerVoid.Samples.Window --frames 120
+      - name: Run the textured mesh sample (Direct3D 12 on WARP, Vulkan on lavapipe under Xvfb)
+        shell: bash
+        env:
+          LP_PERF: no_rast_linear
+        run: |
+          display=""
+          if [ "$RUNNER_OS" = "Linux" ]; then display="xvfb-run -a"; fi
+          $display ./artifacts/aot/TexturedMesh/FlickerVoid.Samples.TexturedMesh --validation --frames 120
+
+  # When main's engine version (Source/Directory.Build.props) has no tag yet, tag the commit v<Version> and pack the engine modules.
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Find the engine version
+        id: version
+        shell: bash
+        run: |
+          version=$(dotnet msbuild Source/Runtime/FlickerVoid.Engine.Runtime.csproj -getProperty:Version)
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Tag the version
+        if: steps.version.outputs.new == 'true'
+        run: |
+          git tag ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }}
+      - name: Pack the engine modules
+        if: steps.version.outputs.new == 'true'
+        run: dotnet pack FlickerVoidNGN.slnx -c Release -o artifacts/packages
+      - uses: actions/upload-artifact@v7
+        if: steps.version.outputs.new == 'true'
+        with:
+          name: FlickerVoid.Engine-${{ steps.version.outputs.tag }}
+          path: artifacts/packages/*.nupkg
