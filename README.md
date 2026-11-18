@@ -12,3 +12,12 @@ Requires the .NET 10 SDK.
 dotnet build FlickerVoidNGN.slnx
 dotnet test --solution FlickerVoidNGN.slnx
 ```
+
+Projects and samples are solutions of their own that reference the engine:
+
+```
+dotnet build Projects/FlickerVoid/FlickerVoid.slnx
+dotnet build Samples/FlickerVoid.Samples.slnx
+```
+
+A project outside this repository finds the engine through the `FLICKERVOID_ENGINE` environment variable. On Windows, `setx FLICKERVOID_ENGINE C:\path\to\FlickerVoidNGN` sets it for new terminals and IDEs.
