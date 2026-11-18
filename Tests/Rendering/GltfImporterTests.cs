@@ -1,0 +1,77 @@
+using System.Numerics;
+
+namespace FlickerVoid.Engine.Rendering.Tests;
+
+public sealed class GltfImporterTests
+{
+    private readonly GltfImporterTestsBuilder _builder = new();
+
+    [Fact]
+    public void ImportsEachVertexWithItsNormalAndUv()
+    {
+        IReadOnlyList<MeshPart> parts = _builder.WithTriangle().Build();
+
+        MeshVertex[] corners = GltfImporterTestsBuilder.Corners(parts[0]);
+        corners.Select(static vertex => vertex.Normal).Should().AllBeEquivalentTo(Vector3.UnitZ);
+        corners.Select(static vertex => vertex.Uv).Should().Contain([Vector2.Zero, Vector2.UnitX, Vector2.UnitY]);
+    }
+
+    [Fact]
+    public void WindsTrianglesClockwise()
+    {
+        IReadOnlyList<MeshPart> parts = _builder.WithTriangle().Build();
+
+        MeshVertex[] corners = GltfImporterTestsBuilder.Corners(parts[0]);
+        Vector3 edge1 = corners[1].Position - corners[0].Position;
+        Vector3 edge2 = corners[2].Position - corners[0].Position;
+        Vector3 facing = Vector3.Cross(edge1, edge2);
+        facing.Z.Should().BeNegative("the counter-clockwise glTF triangle faces +Z, so clockwise order turns its cross product to -Z");
+    }
+
+    [Fact]
+    public void BakesTheNodeTransformIntoTheVertices()
+    {
+        Matrix4x4 turnAndMove = Matrix4x4.CreateRotationY(MathF.PI / 2) * Matrix4x4.CreateTranslation(1, 2, 3);
+        IReadOnlyList<MeshPart> parts = _builder.WithTriangle().WithNodeTransform(turnAndMove).Build();
+
+        MeshVertex[] corners = GltfImporterTestsBuilder.Corners(parts[0]);
+        corners.Select(static vertex => vertex.Position).Should().Contain(new Vector3(1, 2, 3));
+        corners[0].Normal.X.Should().BeApproximately(1, 1e-5f);
+    }
+
+    [Fact]
+    public void KeepsWindingClockwiseUnderAMirroringTransform()
+    {
+        Matrix4x4 mirror = Matrix4x4.CreateScale(1, 1, -1);
+        IReadOnlyList<MeshPart> parts = _builder.WithTriangle().WithNodeTransform(mirror).Build();
+
+        MeshVertex[] corners = GltfImporterTestsBuilder.Corners(parts[0]);
+        Vector3 edge1 = corners[1].Position - corners[0].Position;
+        Vector3 edge2 = corners[2].Position - corners[0].Position;
+        Vector3 facing = Vector3.Cross(edge1, edge2);
+        Vector3 normal = corners[0].Normal;
+        Vector3.Dot(facing, normal).Should().BeNegative("clockwise triangles face away from their cross product");
+    }
+
+    [Fact]
+    public void ImportsTheBaseColorFactor()
+    {
+        Vector4 orange = new(1, 0.5f, 0, 1);
+        IReadOnlyList<MeshPart> parts = _builder.WithTriangle().WithBaseColor(orange).Build();
+
+        parts[0].Material.BaseColor.Should().Be(orange);
+        parts[0].Material.BaseColorTexture.Should().BeNull();
+    }
+
+    [Fact]
+    public void DecodesTheBaseColorTextureToRgbaPixels()
+    {
+        IReadOnlyList<MeshPart> parts = _builder.WithTriangle().WithRedBlueTexture().Build();
+
+        TextureData? texture = parts[0].Material.BaseColorTexture;
+        texture.Should().NotBeNull();
+        texture.Width.Should().Be(2);
+        texture.Height.Should().Be(1);
+        texture.Rgba.Should().Equal(255, 0, 0, 255, 0, 0, 255, 255);
+    }
+}

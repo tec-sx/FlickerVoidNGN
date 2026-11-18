@@ -31,7 +31,8 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 
 ## Look and lighting
 
-- Orthographic camera at a set pitch per scene, snapped to texels so painted textures don't shimmer. Perspective stays possible for cutscenes.
+- Orthographic and perspective cameras (owner, 2026-11-18). The orthographic one snaps to whole pixels so painted textures don't shimmer.
+- Simple first (owner, 2026-11-18): a sun and ambient light and a viewer for a painted test room come before the styled shading, so the look can be judged early.
 - Scenes are real 3D geometry with painted textures; characters are skinned meshes with painted textures. Painted cards and decals add 2D detail.
 - One shading model with artist controls per material (ramp softness, wrap, rim, specular, emissive, shadow tint) on physically based light maths.
 - Clustered forward lighting for many point, spot and directional lights.
@@ -50,7 +51,7 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 3. **Graphics layer.** A thin layer over Vulkan adapted from Stride, HLSL through DXC. Ends with a spike: the renderer inside an Avalonia window on Windows and Linux. Gate: a textured mesh renders on Vulkan on Windows and Linux. (Direct3D 12 was built for this stage and dropped after it.)
 4. **Lighting renderer.** Everything in Look and lighting, plus basic glTF import. Gate: a painted test room with a character and dozens of lights at 60 fps.
 5. **Asset pipeline.** Text assets with schemas, the builder with a content-hash cache, texture compression, glTF import, hot reload. Gate: edit a texture or a light in a file and the running game shows it within a second.
-6. **Editor.** Avalonia: project browser for `Documents/FlickerVoid`, scene view, inspector generated from schemas, light editing and probe baking, Play in a separate process. Gate: build and light a room without touching a text file.
+6. **Editor.** Avalonia: project browser for `Documents/FlickerVoid`, scene view, inspector generated from schemas, light editing and probe baking, layered painted textures (an idea to explore), Play in a separate process. Gate: build and light a room without touching a text file.
 7. **FlickerVoid systems and the demo project.** Interaction, inventory and outfits, dialogue and story graphs, navigation and map, UI, saves. Gate: the basic story loop from the Unreal milestone (inventory, dialogue, a quest, map, interaction) plays in NGN.
 
 Stage 1 runs in parallel with stages 2 and 3.

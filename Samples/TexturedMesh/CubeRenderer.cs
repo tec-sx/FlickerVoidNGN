@@ -13,7 +13,7 @@ public sealed class CubeRenderer : IDisposable
 
     private const float ViewHeight = 2.6f;
 
-    private static readonly Vector4 Background = new(0.11f, 0.10f, 0.13f, 1);
+    private static readonly Vector4 Background = new(0.012f, 0.010f, 0.016f, 1);
     private static readonly Vector3 Light = Vector3.Normalize(new Vector3(-0.4f, -0.8f, -0.45f));
     private static readonly Vector3 Eye = new(3, 2.4f, 3);
 
@@ -40,7 +40,7 @@ public sealed class CubeRenderer : IDisposable
         _indexCount = indices.Length;
 
         byte[] texels = PaintedTexture.Create();
-        TextureDescription textureDescription = new(PaintedTexture.Size, PaintedTexture.Size, PixelFormat.Rgba8UNorm, TextureUsage.ShaderRead) { Name = "Painted" };
+        TextureDescription textureDescription = new(PaintedTexture.Size, PaintedTexture.Size, PixelFormat.Rgba8UNormSrgb, TextureUsage.ShaderRead) { Name = "Painted" };
         _texture = device.CreateTexture(textureDescription, texels);
         SamplerDescription samplerDescription = new(SamplerFilter.Point, SamplerAddressMode.Clamp);
         _sampler = device.CreateSampler(samplerDescription);
