@@ -1,6 +1,7 @@
 using Arch.Core;
 using Arch.System;
 
+using FlickerVoid.Engine.Runtime.Debugging;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 
@@ -37,6 +38,16 @@ public class GameTests
 
         spawner.Should().BeSameAs(game.Spawner);
         registerAgain.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void RegistersTheDebugConsole()
+    {
+        using Game game = _builder.Build();
+
+        IDebugConsole? console = game.Services.GetService<IDebugConsole>();
+
+        console.Should().BeSameAs(game.DebugConsole);
     }
 
     [Fact]

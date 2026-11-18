@@ -3,6 +3,7 @@ using System.Numerics;
 
 using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Runtime.Debugging;
 
 using Silk.NET.Input;
 using Silk.NET.Input.Sdl;
@@ -27,7 +28,7 @@ public sealed class GameWindow : IGameWindow, IDisposable
         SdlInput.RegisterPlatform();
     }
 
-    /// <summary>Opens the window and registers it and its input as the game's services.</summary>
+    /// <summary>Opens the window, registers it and its input as the game's services, and adds the "quit" console command.</summary>
     public GameWindow(Game game, string title, int width, int height)
     {
         _game = game;
@@ -52,6 +53,8 @@ public sealed class GameWindow : IGameWindow, IDisposable
         _input.EndFrame();
         game.Services.AddService<IGameWindow>(this);
         game.Services.AddService(Input);
+        ConsoleCommand quit = new("quit", "Closes the window and ends the game.", Quit);
+        game.DebugConsole.Add(quit);
     }
 
     public IInputState Input => _input;
@@ -94,6 +97,12 @@ public sealed class GameWindow : IGameWindow, IDisposable
         _inputContext.Dispose();
         _window.Reset();
         _window.Dispose();
+    }
+
+    private string Quit(string[] words)
+    {
+        Close();
+        return "";
     }
 
     private void Attach(IKeyboard keyboard)
