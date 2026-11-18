@@ -7,15 +7,15 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 | Topic | Decision |
 | --- | --- |
 | Foundation | Own engine on open-source libraries: Silk.NET, BepuPhysics, Arch, SharpGLTF. Stride and MonoGame are references. |
-| Stride code | Copy and adapt its MIT Direct3D 12 and Vulkan backends and light shaders, keeping the licence notice |
+| Stride code | Copy and adapt its MIT Vulkan backend and light shaders, keeping the licence notice |
 | Look | Orthographic 2.5D: 3D scenes, hand-drawn textures, a 2D feel. Not 2D-first, not photoreal. Lighting first. |
 | Indirect light | Baked probes first, real-time later |
 | .NET | .NET 10 LTS, NativeAOT for release builds |
-| Graphics | Direct3D 12 and Vulkan only |
-| Shaders | HLSL, compiled by DXC to DXIL and SPIR-V |
+| Graphics | Vulkan 1.3 only, on Windows and Linux. Direct3D 12 was dropped after stage 3: every RTX feature (DLSS frame generation and ray reconstruction, Mega Geometry, shader execution reordering, cooperative vectors, RTX IO) is on Vulkan, and what D3D12 adds (work graphs, sampler feedback, Xbox) isn't in the plan |
+| Shaders | HLSL, compiled by DXC to SPIR-V |
 | Entities | Arch (archetype ECS, NativeAOT friendly) |
 | Asset text | JSON through System.Text.Json source generation |
-| Editor | Avalonia on Windows and Linux, rendering on Vulkan on both: Avalonia's GPU interop imports Vulkan images with semaphores, never Direct3D 12 ones, so the viewport shares a Vulkan texture with Avalonia's Vulkan backend (`Samples/EditorViewport`). Games still run Direct3D 12 on Windows |
+| Editor | Avalonia on Windows and Linux, on Avalonia's Vulkan backend: the viewport shares a Vulkan texture and semaphores with it through Avalonia's GPU interop (`Samples/EditorViewport`) |
 | Platforms | One codebase for Windows and Linux; OS-specific work for Windows first, with a TODO on the Linux side |
 | Gameplay | The Unreal project is the reference; NGN ports from it |
 | Projects | `Documents/FlickerVoid/<Project>`; the demo project is FlickerVoid |
@@ -47,7 +47,7 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 0. **Skeleton.** Solution, build settings, CI on Windows and Linux, CLAUDE.md, this plan. Gate: green CI on both.
 1. **Gameplay core, pure C#.** Definitions and fragments, tags, facts, conditions and effects with compare, scales with bands and links, ranking, ported with their Unreal tests. Gate: the social rules (standing, fame, titles) pass in tests on Linux CI.
 2. **Runtime foundation.** Silk.NET window and input, main loop with fixed and variable update, Arch entities, resource loading by path, logging and a console, BepuPhysics. The rules that read entities or world services port with it: attitude, disguises and recognized fame, and the conditions and effects that use the context's instigator, target or services. Gate: a sample spawns entities from a scene file and physics bodies fall.
-3. **Graphics layer.** A thin layer over Direct3D 12 and Vulkan adapted from Stride, HLSL through DXC. Ends with a spike: the renderer inside an Avalonia window on Windows and Linux. Gate: the same textured mesh renders on both APIs, and Vulkan runs on Linux.
+3. **Graphics layer.** A thin layer over Vulkan adapted from Stride, HLSL through DXC. Ends with a spike: the renderer inside an Avalonia window on Windows and Linux. Gate: a textured mesh renders on Vulkan on Windows and Linux. (Direct3D 12 was built for this stage and dropped after it.)
 4. **Lighting renderer.** Everything in Look and lighting, plus basic glTF import. Gate: a painted test room with a character and dozens of lights at 60 fps.
 5. **Asset pipeline.** Text assets with schemas, the builder with a content-hash cache, texture compression, glTF import, hot reload. Gate: edit a texture or a light in a file and the running game shows it within a second.
 6. **Editor.** Avalonia: project browser for `Documents/FlickerVoid`, scene view, inspector generated from schemas, light editing and probe baking, Play in a separate process. Gate: build and light a room without touching a text file.

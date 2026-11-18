@@ -1,7 +1,7 @@
 namespace FlickerVoid.Engine.Shaders;
 
-/// <summary>Compiles HLSL to the bytecode a graphics API loads.</summary>
+/// <summary>Compiles HLSL to SPIR-V, the bytecode Vulkan loads.</summary>
 public interface IShaderCompiler
 {
-    ShaderCompileResult Compile(ShaderSource source, ShaderTarget target);
+    ShaderCompileResult Compile(ShaderSource source);
 }

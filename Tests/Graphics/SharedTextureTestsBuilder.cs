@@ -11,7 +11,7 @@ internal sealed class SharedTextureTestsBuilder : IDisposable
     public const int Width = 8;
     public const int Height = 4;
 
-    private readonly GraphicsDeviceTestsBuilder _deviceBuilder = new(GraphicsApi.Vulkan);
+    private readonly GraphicsDeviceTestsBuilder _deviceBuilder = new();
 
     public VulkanGraphicsDevice BuildDevice() => (VulkanGraphicsDevice)_deviceBuilder.Build();
 

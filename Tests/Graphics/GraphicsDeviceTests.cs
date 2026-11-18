@@ -13,25 +13,20 @@ public sealed class GraphicsDeviceTests : IDisposable
 
     private GraphicsDeviceTestsBuilder? _builder;
 
-    public static TheoryData<GraphicsApi> Apis => GraphicsDeviceTestsBuilder.Apis;
-
     public void Dispose() => _builder?.Dispose();
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void ReportsItsApiAndAdapter(GraphicsApi api)
+    [Fact]
+    public void ReportsItsAdapter()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
 
-        device.Api.Should().Be(api);
         device.AdapterName.Should().NotBeNullOrWhiteSpace();
     }
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void CopiesInitialBufferDataToTheGpu(GraphicsApi api)
+    [Fact]
+    public void CopiesInitialBufferDataToTheGpu()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         byte[] data = [.. Enumerable.Range(0, 256).Select(static value => (byte)value)];
         BufferDescription gpuDescription = new(data.Length, BufferUsage.CopySource);
         BufferDescription readbackDescription = new(data.Length, BufferUsage.CopyDestination, MemoryLocation.Readback);
@@ -51,11 +46,10 @@ public sealed class GraphicsDeviceTests : IDisposable
         read.Should().Equal(data);
     }
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void UploadBuffersTakeCpuWrites(GraphicsApi api)
+    [Fact]
+    public void UploadBuffersTakeCpuWrites()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         byte[] data = [1, 2, 3, 4, 5, 6, 7, 8];
         BufferDescription uploadDescription = new(16, BufferUsage.CopySource, MemoryLocation.Upload);
         BufferDescription readbackDescription = new(8, BufferUsage.CopyDestination, MemoryLocation.Readback);
@@ -75,11 +69,10 @@ public sealed class GraphicsDeviceTests : IDisposable
         read.Should().Equal(data);
     }
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void ClearsARenderTarget(GraphicsApi api)
+    [Fact]
+    public void ClearsARenderTarget()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         using ITexture target = GraphicsDeviceTestsBuilder.CreateTarget(device);
         using ICommandList commands = device.CreateCommandList();
 
@@ -93,11 +86,10 @@ public sealed class GraphicsDeviceTests : IDisposable
         pixels.Should().AllBeEquivalentTo(RedPixel);
     }
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void DrawsVerticesPulledFromABindlessBuffer(GraphicsApi api)
+    [Fact]
+    public void DrawsVerticesPulledFromABindlessBuffer()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         GraphicsDeviceTestsBuilder builder = _builder!;
 
         // Two triangles covering the top half of the target: y is up in clip space, so the top rows are drawn.
@@ -125,11 +117,10 @@ public sealed class GraphicsDeviceTests : IDisposable
         pixels.Should().Equal(expected);
     }
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void DrawsIndexedVertices(GraphicsApi api)
+    [Fact]
+    public void DrawsIndexedVertices()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         GraphicsDeviceTestsBuilder builder = _builder!;
 
         // Two triangles covering the whole target, drawn through an index buffer.
@@ -160,11 +151,10 @@ public sealed class GraphicsDeviceTests : IDisposable
         pixels.Should().AllBeEquivalentTo(RedPixel);
     }
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void SamplesABindlessTexture(GraphicsApi api)
+    [Fact]
+    public void SamplesABindlessTexture()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         GraphicsDeviceTestsBuilder builder = _builder!;
 
         // 2x2 texels: red, green on top; blue, white below. Point sampling maps each to a 2x2 quarter of the target.
@@ -201,11 +191,10 @@ public sealed class GraphicsDeviceTests : IDisposable
         pixels.Should().Equal(expected);
     }
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void GivesEachReadableResourceItsOwnBindlessSlot(GraphicsApi api)
+    [Fact]
+    public void GivesEachReadableResourceItsOwnBindlessSlot()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         BufferDescription readable = new(16, BufferUsage.ShaderRead);
         BufferDescription copyOnly = new(16, BufferUsage.CopySource);
         TextureDescription texture = new(1, 1, PixelFormat.Rgba8UNorm, TextureUsage.ShaderRead);
@@ -220,11 +209,10 @@ public sealed class GraphicsDeviceTests : IDisposable
         hidden.BindlessIndex.Should().Be(BindlessIndex.None);
     }
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void RejectsPushConstantsThatAreTooLargeOrNotWholeWords(GraphicsApi api)
+    [Fact]
+    public void RejectsPushConstantsThatAreTooLargeOrNotWholeWords()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         using ICommandList commands = device.CreateCommandList();
         commands.Begin();
 
@@ -236,9 +224,9 @@ public sealed class GraphicsDeviceTests : IDisposable
         commands.End();
     }
 
-    private IGraphicsDevice CreateDevice(GraphicsApi api)
+    private IGraphicsDevice CreateDevice()
     {
-        _builder = new GraphicsDeviceTestsBuilder(api);
+        _builder = new GraphicsDeviceTestsBuilder();
         return _builder.Build();
     }
 }

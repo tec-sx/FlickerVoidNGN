@@ -2,7 +2,6 @@
   <Folder Name="/Engine/">
     <Project Path="ENGINE_FOLDER_PATH/Source/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Graphics/FlickerVoid.Engine.Graphics.csproj" />
-    <Project Path="ENGINE_FOLDER_PATH/Source/Graphics.Direct3D12/FlickerVoid.Engine.Graphics.Direct3D12.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Physics/FlickerVoid.Engine.Physics.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Platform/FlickerVoid.Engine.Platform.csproj" />

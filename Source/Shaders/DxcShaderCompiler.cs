@@ -7,7 +7,7 @@ using DxcBuffer = Silk.NET.Direct3D.Compilers.Buffer;
 
 namespace FlickerVoid.Engine.Shaders;
 
-/// <summary>Compiles HLSL with DXC to DXIL (signed, so Direct3D 12 loads it) or SPIR-V. Not thread-safe; use one per thread.</summary>
+/// <summary>Compiles HLSL with DXC to SPIR-V for Vulkan 1.3. Not thread-safe; use one per thread.</summary>
 public sealed unsafe class DxcShaderCompiler : IShaderCompiler, IDisposable
 {
     private const string ShaderModel = "6_0";
@@ -30,9 +30,9 @@ public sealed unsafe class DxcShaderCompiler : IShaderCompiler, IDisposable
         _compiler = _dxc.CreateInstance<IDxcCompiler3>(ref classId);
     }
 
-    public ShaderCompileResult Compile(ShaderSource source, ShaderTarget target)
+    public ShaderCompileResult Compile(ShaderSource source)
     {
-        List<string> arguments = BuildArguments(source, target);
+        List<string> arguments = BuildArguments(source);
         using NativeWideStrings wideArguments = new(arguments);
         byte[] code = Encoding.UTF8.GetBytes(source.Code);
 
@@ -62,20 +62,14 @@ public sealed unsafe class DxcShaderCompiler : IShaderCompiler, IDisposable
         NativeLibrary.Free(_library);
     }
 
-    private static List<string> BuildArguments(ShaderSource source, ShaderTarget target)
+    private static List<string> BuildArguments(ShaderSource source)
     {
         string profile = GetProfile(source.Stage);
-        List<string> arguments = [source.Name, "-E", source.EntryPoint, "-T", profile];
+        List<string> arguments = [source.Name, "-E", source.EntryPoint, "-T", profile, "-spirv", $"-fspv-target-env={VulkanVersion}"];
         foreach (string define in source.Defines)
         {
             arguments.Add("-D");
             arguments.Add(define);
-        }
-
-        if (target == ShaderTarget.Spirv)
-        {
-            arguments.Add("-spirv");
-            arguments.Add($"-fspv-target-env={VulkanVersion}");
         }
 
         return arguments;

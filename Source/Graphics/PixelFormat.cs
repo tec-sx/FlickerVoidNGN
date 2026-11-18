@@ -1,6 +1,6 @@
 namespace FlickerVoid.Engine.Graphics;
 
-/// <summary>Texture and render target formats; the values are DXGI's, so Direct3D 12 casts them.</summary>
+/// <summary>Texture and render target formats; the values are DXGI's.</summary>
 public enum PixelFormat
 {
     None = 0,

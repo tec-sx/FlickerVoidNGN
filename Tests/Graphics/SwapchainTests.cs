@@ -6,15 +6,12 @@ public sealed class SwapchainTests : IDisposable
 {
     private SwapchainTestsBuilder? _builder;
 
-    public static TheoryData<GraphicsApi> Apis => GraphicsDeviceTestsBuilder.Apis;
-
     public void Dispose() => _builder?.Dispose();
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void RendersAndPresentsMoreFramesThanItHasBackBuffers(GraphicsApi api)
+    [Fact]
+    public void RendersAndPresentsMoreFramesThanItHasBackBuffers()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         using ISwapchain swapchain = _builder!.CreateSwapchain(device);
         Vector4[] colors = [new(1, 0, 0, 1), new(0, 1, 0, 1), new(0, 0, 1, 1), new(1, 1, 1, 1), new(0, 0, 0, 1)];
 
@@ -27,11 +24,10 @@ public sealed class SwapchainTests : IDisposable
         }
     }
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void DescribesItsBackBuffers(GraphicsApi api)
+    [Fact]
+    public void DescribesItsBackBuffers()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         using ISwapchain swapchain = _builder!.CreateSwapchain(device);
 
         ITexture backBuffer = swapchain.AcquireNextTexture();
@@ -43,11 +39,10 @@ public sealed class SwapchainTests : IDisposable
         backBuffer.Description.Should().BeEquivalentTo(expected, static options => options.Excluding(static description => description.Name));
     }
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void ResizesItsBackBuffersWithTheWindow(GraphicsApi api)
+    [Fact]
+    public void ResizesItsBackBuffersWithTheWindow()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         using ISwapchain swapchain = _builder!.CreateSwapchain(device);
         _builder.RenderFrame(device, swapchain, Vector4.One);
 
@@ -60,11 +55,10 @@ public sealed class SwapchainTests : IDisposable
         pixels.Should().HaveCount(48 * 16);
     }
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void RefusesToPresentABackBufferThatIsNotInThePresentState(GraphicsApi api)
+    [Fact]
+    public void RefusesToPresentABackBufferThatIsNotInThePresentState()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         using ISwapchain swapchain = _builder!.CreateSwapchain(device);
         using ICommandList commands = device.CreateCommandList();
         ITexture backBuffer = swapchain.AcquireNextTexture();
@@ -79,11 +73,10 @@ public sealed class SwapchainTests : IDisposable
         device.WaitIdle();
     }
 
-    [Theory]
-    [MemberData(nameof(Apis))]
-    public void RefusesToPresentBeforeABackBufferIsAcquired(GraphicsApi api)
+    [Fact]
+    public void RefusesToPresentBeforeABackBufferIsAcquired()
     {
-        using IGraphicsDevice device = CreateDevice(api);
+        using IGraphicsDevice device = CreateDevice();
         using ISwapchain swapchain = _builder!.CreateSwapchain(device);
 
         Action present = swapchain.Present;
@@ -91,9 +84,9 @@ public sealed class SwapchainTests : IDisposable
         present.Should().Throw<InvalidOperationException>();
     }
 
-    private IGraphicsDevice CreateDevice(GraphicsApi api)
+    private IGraphicsDevice CreateDevice()
     {
-        _builder = new SwapchainTestsBuilder(api);
+        _builder = new SwapchainTestsBuilder();
         return _builder.Build();
     }
 }

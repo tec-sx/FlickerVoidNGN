@@ -34,43 +34,25 @@ public sealed class DxcShaderCompilerTests : IDisposable
     public void Dispose() => _compiler.Dispose();
 
     [Fact]
-    public void CompilesToSignedDxil()
-    {
-        ShaderSource source = new(VertexSource, "main", ShaderStage.Vertex);
-
-        ShaderCompileResult result = _compiler.Compile(source, ShaderTarget.Dxil);
-
-        result.Succeeded.Should().BeTrue(result.Messages);
-        byte[] magic = result.Bytecode[..4];
-        magic.Should().Equal("DXBC"u8.ToArray());
-
-        // The container hash is all zero when DXC couldn't load dxil to sign it, and Direct3D 12 rejects unsigned shaders.
-        byte[] hash = result.Bytecode[4..20];
-        hash.Should().Contain(static b => b != 0);
-    }
-
-    [Fact]
     public void CompilesToSpirv()
     {
         ShaderSource source = new(VertexSource, "main", ShaderStage.Vertex);
 
-        ShaderCompileResult result = _compiler.Compile(source, ShaderTarget.Spirv);
+        ShaderCompileResult result = _compiler.Compile(source);
 
         result.Succeeded.Should().BeTrue(result.Messages);
         uint magic = BitConverter.ToUInt32(result.Bytecode, 0);
         magic.Should().Be(0x07230203u);
     }
 
-    [Theory]
-    [InlineData(ShaderTarget.Dxil)]
-    [InlineData(ShaderTarget.Spirv)]
-    public void CompilesEveryStage(ShaderTarget target)
+    [Fact]
+    public void CompilesEveryStage()
     {
         ShaderSource pixel = new(PixelSource, "main", ShaderStage.Pixel);
         ShaderSource compute = new(ComputeSource, "main", ShaderStage.Compute);
 
-        ShaderCompileResult pixelResult = _compiler.Compile(pixel, target);
-        ShaderCompileResult computeResult = _compiler.Compile(compute, target);
+        ShaderCompileResult pixelResult = _compiler.Compile(pixel);
+        ShaderCompileResult computeResult = _compiler.Compile(compute);
 
         pixelResult.Succeeded.Should().BeTrue(pixelResult.Messages);
         computeResult.Succeeded.Should().BeTrue(computeResult.Messages);
@@ -81,7 +63,7 @@ public sealed class DxcShaderCompilerTests : IDisposable
     {
         ShaderSource source = new("float4 main() : SV_Position { return missing; }", "main", ShaderStage.Vertex) { Name = "Broken.hlsl" };
 
-        ShaderCompileResult result = _compiler.Compile(source, ShaderTarget.Spirv);
+        ShaderCompileResult result = _compiler.Compile(source);
 
         result.Succeeded.Should().BeFalse();
         result.Bytecode.Should().BeEmpty();
@@ -93,7 +75,7 @@ public sealed class DxcShaderCompilerTests : IDisposable
     {
         ShaderSource source = new(VertexSource, "VSMain", ShaderStage.Vertex);
 
-        ShaderCompileResult result = _compiler.Compile(source, ShaderTarget.Dxil);
+        ShaderCompileResult result = _compiler.Compile(source);
 
         result.Succeeded.Should().BeFalse();
         result.Messages.Should().Contain("missing entry point");
@@ -114,7 +96,7 @@ public sealed class DxcShaderCompilerTests : IDisposable
             """;
         ShaderSource defined = new(source, "main", ShaderStage.Vertex) { Defines = ["OFFSET=float4(1, 0, 0, 1)"] };
 
-        ShaderCompileResult result = _compiler.Compile(defined, ShaderTarget.Spirv);
+        ShaderCompileResult result = _compiler.Compile(defined);
 
         result.Succeeded.Should().BeTrue(result.Messages);
     }
