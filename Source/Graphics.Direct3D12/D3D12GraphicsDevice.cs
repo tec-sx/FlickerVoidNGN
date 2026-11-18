@@ -186,14 +186,15 @@ public sealed unsafe class D3D12GraphicsDevice : IGraphicsDevice
         D3D12Com.Check(_fence->SetEventOnCompletion(value, null));
     }
 
-    internal ID3D12Resource* CreateCommittedResource(HeapType heapType, in ResourceDesc description, ResourceStates initialState)
+    /// <summary>Creates a resource with its own heap; the optimized clear value makes clears to it fast, and only render targets and depth textures take one.</summary>
+    internal ID3D12Resource* CreateCommittedResource(HeapType heapType, in ResourceDesc description, ResourceStates initialState, ClearValue* optimizedClear = null)
     {
         HeapProperties heap = new() { Type = heapType };
         Guid resourceId = ID3D12Resource.Guid;
         ID3D12Resource* resource = null;
         fixed (ResourceDesc* resourceDescription = &description)
         {
-            int result = Handle->CreateCommittedResource(&heap, HeapFlags.None, resourceDescription, initialState, null, &resourceId, (void**)&resource);
+            int result = Handle->CreateCommittedResource(&heap, HeapFlags.None, resourceDescription, initialState, optimizedClear, &resourceId, (void**)&resource);
             ReportMessages();
             D3D12Com.Check(result);
         }
