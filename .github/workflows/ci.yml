@@ -39,6 +39,7 @@ jobs:
         run: |
           dotnet publish Samples/FallingBodies -c Release --use-current-runtime -o artifacts/aot/FallingBodies
           dotnet publish Samples/Window -c Release --use-current-runtime -o artifacts/aot/Window
+          dotnet publish Samples/TexturedMesh -c Release --use-current-runtime -o artifacts/aot/TexturedMesh
       - name: Run the samples
         shell: bash
         env:
@@ -46,3 +47,11 @@ jobs:
         run: |
           ./artifacts/aot/FallingBodies/FlickerVoid.Samples.FallingBodies
           ./artifacts/aot/Window/FlickerVoid.Samples.Window --frames 120
+      - name: Run the textured mesh sample (Direct3D 12 on WARP, Vulkan on lavapipe under Xvfb)
+        shell: bash
+        env:
+          LP_PERF: no_rast_linear
+        run: |
+          display=""
+          if [ "$RUNNER_OS" = "Linux" ]; then display="xvfb-run -a"; fi
+          $display ./artifacts/aot/TexturedMesh/FlickerVoid.Samples.TexturedMesh --validation --frames 120
