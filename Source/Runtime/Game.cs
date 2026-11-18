@@ -16,7 +16,7 @@ public sealed partial class Game : IDisposable
     private readonly ILogger _logger;
     private bool _initialized;
 
-    /// <summary>Creates the world and registers it, the logger factory and a scene spawner that knows the runtime's components as services.</summary>
+    /// <summary>Creates the world and registers it, the logger factory and the scene spawner as services.</summary>
     public Game(ILoggerFactory? loggerFactory = null)
     {
         LoggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
@@ -26,9 +26,8 @@ public sealed partial class Game : IDisposable
         Services.AddService(LoggerFactory);
         Services.AddService(World);
 
-        SceneSpawner spawner = new();
-        spawner.Register("transform", RuntimeJsonContext.Default.Transform);
-        Services.AddService(spawner);
+        Spawner.Register("transform", RuntimeJsonContext.Default.Transform);
+        Services.AddService(Spawner);
 
         Loop.FixedUpdate += HandleFixedUpdate;
         Loop.Update += HandleUpdate;
@@ -39,6 +38,9 @@ public sealed partial class Game : IDisposable
     public World World { get; }
 
     public ServiceRegistry Services { get; } = new();
+
+    /// <summary>Spawns scene files into the world; modules register their components on it.</summary>
+    public SceneSpawner Spawner { get; } = new();
 
     public GameLoop Loop { get; } = new();
 

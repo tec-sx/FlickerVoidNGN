@@ -29,8 +29,8 @@ public class GameTests
         using Game game = new();
         SceneSpawner? spawner = game.Services.GetService<SceneSpawner>();
 
-        Assert.NotNull(spawner);
-        Assert.Throws<ArgumentException>(() => spawner.Register("transform", RuntimeJsonContext.Default.Transform));
+        Assert.Same(game.Spawner, spawner);
+        Assert.Throws<ArgumentException>(() => game.Spawner.Register("transform", RuntimeJsonContext.Default.Transform));
     }
 
     [Fact]
