@@ -221,9 +221,9 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         where T : unmanaged
     {
         int size = Unsafe.SizeOf<T>();
-        if (size > GraphicsLimits.PushConstantSize)
+        if (size > GraphicsLimits.PushConstantSize || size % sizeof(uint) != 0)
         {
-            throw new ArgumentException($"Push constants are at most {GraphicsLimits.PushConstantSize} bytes; {typeof(T).Name} has {size}.", nameof(data));
+            throw new ArgumentException($"Push constants are a multiple of 4 bytes, at most {GraphicsLimits.PushConstantSize}; {typeof(T).Name} has {size}.", nameof(data));
         }
 
         fixed (T* pointer = &data)

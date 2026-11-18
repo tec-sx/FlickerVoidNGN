@@ -12,4 +12,7 @@ public enum ResourceState : byte
     DepthWrite,
     DepthRead,
     IndexBuffer,
+
+    /// <summary>A swapchain back buffer ready to be shown.</summary>
+    Present,
 }

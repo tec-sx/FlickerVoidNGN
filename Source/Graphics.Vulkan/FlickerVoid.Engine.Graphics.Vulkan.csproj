@@ -7,6 +7,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Silk.NET.Vulkan" />
     <PackageReference Include="Silk.NET.Vulkan.Extensions.EXT" />
+    <PackageReference Include="Silk.NET.Vulkan.Extensions.KHR" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Graphics/FlickerVoid.Engine.Graphics.csproj" />

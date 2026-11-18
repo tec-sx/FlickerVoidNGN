@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
+using FlickerVoid.Engine.Graphics.Direct3D12;
 using FlickerVoid.Engine.Graphics.Vulkan;
 using FlickerVoid.Engine.Shaders;
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,7 @@ internal sealed class GraphicsDeviceTestsBuilder : IDisposable
         _loggerFactory = LoggerFactory.Create(logging => logging.AddProvider(_logs));
     }
 
-    public static TheoryData<GraphicsApi> Apis => [GraphicsApi.Vulkan];
+    public static TheoryData<GraphicsApi> Apis => [GraphicsApi.Direct3D12, GraphicsApi.Vulkan];
 
     public IGraphicsDevice Build()
     {
@@ -34,10 +35,12 @@ internal sealed class GraphicsDeviceTestsBuilder : IDisposable
         {
             switch (_api)
             {
+                case GraphicsApi.Direct3D12:
+                    return new D3D12GraphicsDevice(options, _loggerFactory);
                 case GraphicsApi.Vulkan:
                     return new VulkanGraphicsDevice(options, _loggerFactory);
                 default:
-                    throw new GraphicsUnavailableException($"{_api} is not implemented yet.");
+                    throw new ArgumentOutOfRangeException(nameof(_api), _api, null);
             }
         }
         catch (GraphicsUnavailableException exception)
@@ -107,6 +110,13 @@ internal sealed class GraphicsDeviceTestsBuilder : IDisposable
         device.Submit(commands);
         device.WaitIdle();
 
+        return ReadRows(readback, description);
+    }
+
+    /// <summary>Reads a texture copied into the buffer, with rows at the copy row pitch, as tightly packed rows of 4-byte pixels.</summary>
+    public static uint[] ReadRows(IBuffer readback, TextureDescription description)
+    {
+        int pitch = description.Format.GetCopyRowPitch(description.Width);
         uint[] pixels = new uint[description.Width * description.Height];
         byte[] row = new byte[description.Width * 4];
         for (int y = 0; y < description.Height; y++)

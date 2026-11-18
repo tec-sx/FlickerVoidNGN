@@ -28,6 +28,8 @@ internal readonly record struct VulkanResourceStates(ImageLayout Layout, Pipelin
                 return new(ImageLayout.DepthStencilReadOnlyOptimal, DepthStages | ShaderStages, AccessFlags2.DepthStencilAttachmentReadBit | AccessFlags2.ShaderReadBit);
             case ResourceState.IndexBuffer:
                 return new(ImageLayout.Undefined, PipelineStageFlags2.IndexInputBit, AccessFlags2.IndexReadBit);
+            case ResourceState.Present:
+                return new(ImageLayout.PresentSrcKhr, PipelineStageFlags2.None, AccessFlags2.None);
             default:
                 throw new ArgumentOutOfRangeException(nameof(state), state, null);
         }
