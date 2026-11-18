@@ -132,8 +132,7 @@ public sealed unsafe class D3D12GraphicsDevice : IGraphicsDevice
         D3D12CommandList d3d12Commands = (D3D12CommandList)commandList;
         ID3D12CommandList* list = (ID3D12CommandList*)d3d12Commands.Handle;
         _queue->ExecuteCommandLists(1, &list);
-        _submitted++;
-        D3D12Com.Check(_queue->Signal(_fence, _submitted));
+        SignalQueue();
         d3d12Commands.SubmissionValue = _submitted;
         ReportMessages();
         RunCompletedReleases();
@@ -179,6 +178,13 @@ public sealed unsafe class D3D12GraphicsDevice : IGraphicsDevice
     internal void ReleaseLater(Action release)
     {
         _releases.Enqueue((_submitted, release));
+    }
+
+    /// <summary>Signals the next fence value once the queue has finished everything so far, presentation included.</summary>
+    internal void SignalQueue()
+    {
+        _submitted++;
+        D3D12Com.Check(_queue->Signal(_fence, _submitted));
     }
 
     internal void WaitFor(ulong value)

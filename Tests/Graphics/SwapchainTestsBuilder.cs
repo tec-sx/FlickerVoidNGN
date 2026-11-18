@@ -1,4 +1,5 @@
 using System.Numerics;
+using FlickerVoid.Engine.Platform;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using Silk.NET.Windowing.Sdl;
@@ -19,6 +20,7 @@ internal sealed class SwapchainTestsBuilder : IDisposable
 
     static SwapchainTestsBuilder()
     {
+        NativeLibraryPaths.AddRuntimesFolder();
         SdlWindowing.RegisterPlatform();
     }
 

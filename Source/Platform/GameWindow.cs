@@ -21,9 +21,10 @@ public sealed class GameWindow : IGameWindow, IDisposable
     private readonly IWindow _window;
     private readonly IInputContext _inputContext;
 
-    /// <summary>Registers the SDL backends directly, so NativeAOT builds don't look for them by reflection.</summary>
+    /// <summary>Registers the SDL backends directly, so NativeAOT builds don't look for them by reflection, and lets Silk.NET find SDL on any Linux distribution.</summary>
     static GameWindow()
     {
+        NativeLibraryPaths.AddRuntimesFolder();
         SdlWindowing.RegisterPlatform();
         SdlInput.RegisterPlatform();
     }

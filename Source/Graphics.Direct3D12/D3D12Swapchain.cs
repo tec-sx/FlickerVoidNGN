@@ -80,6 +80,9 @@ internal sealed unsafe class D3D12Swapchain : ISwapchain
         int result = _handle->Present(1, 0);
         _device.ReportMessages();
         D3D12Com.Check(result);
+
+        // Presenting reads the back buffer on the queue, so later waits must cover it before the buffer is released.
+        _device.SignalQueue();
     }
 
     public void Resize(int width, int height)
