@@ -1,4 +1,6 @@
+using System.Runtime.InteropServices;
 using System.Text;
+using Silk.NET.Core.Contexts;
 using Silk.NET.Core.Native;
 using Silk.NET.Direct3D.Compilers;
 using DxcBuffer = Silk.NET.Direct3D.Compilers.Buffer;
@@ -14,12 +16,16 @@ public sealed unsafe class DxcShaderCompiler : IShaderCompiler, IDisposable
     /// <summary>CLSID_DxcCompiler from dxcapi.h; Silk.NET doesn't define the class ids.</summary>
     private static readonly Guid CompilerClassId = new("73e22d93-e6ce-47f3-b5bf-f0664f39c1b0");
 
+    private readonly nint _library;
     private readonly DXC _dxc;
     private ComPtr<IDxcCompiler3> _compiler;
 
     public DxcShaderCompiler()
     {
-        _dxc = DXC.GetApi();
+        // The runtime finds the package's native library; Silk's own resolver misses it on Linux distributions it doesn't know.
+        _library = NativeLibrary.Load("dxcompiler", typeof(DxcShaderCompiler).Assembly, null);
+        LamdaNativeContext context = new((string name, out nint address) => NativeLibrary.TryGetExport(_library, name, out address));
+        _dxc = new DXC(context);
         Guid classId = CompilerClassId;
         _compiler = _dxc.CreateInstance<IDxcCompiler3>(ref classId);
     }
@@ -53,6 +59,7 @@ public sealed unsafe class DxcShaderCompiler : IShaderCompiler, IDisposable
     {
         _compiler.Dispose();
         _dxc.Dispose();
+        NativeLibrary.Free(_library);
     }
 
     private static List<string> BuildArguments(ShaderSource source, ShaderTarget target)
