@@ -12,6 +12,11 @@ public sealed class SceneSpawner : ISceneSpawner
 {
     private readonly Dictionary<string, ComponentReader> _readers = [];
 
+    public SceneSpawner()
+    {
+        ArrayRegistry.Add<EntityName>();
+    }
+
     private delegate void ComponentReader(World world, Entity entity, JsonElement data);
 
     public void Register<T>(string name, JsonTypeInfo<T> typeInfo)
@@ -27,6 +32,9 @@ public sealed class SceneSpawner : ISceneSpawner
         {
             throw new ArgumentException($"A component named '{name}' is already registered.", nameof(name));
         }
+
+        // NativeAOT can't create Arch's component arrays through reflection, so every component type is registered up front.
+        ArrayRegistry.Add<T>();
     }
 
     public IReadOnlyList<Entity> Spawn(SceneData scene, World world)
@@ -73,7 +81,7 @@ public sealed class SceneSpawner : ISceneSpawner
             {
                 read(world, entity, value);
             }
-            catch (JsonException exception)
+            catch (Exception exception) when (exception is JsonException or NotSupportedException)
             {
                 throw new InvalidDataException($"Entity '{data.Name}' has an invalid '{key}' component: {exception.Message}", exception);
             }

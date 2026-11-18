@@ -22,3 +22,8 @@ jobs:
           global-json-file: global.json
       - run: dotnet build FlickerVoidNGN.slnx -c Release
       - run: dotnet test --solution FlickerVoidNGN.slnx -c Release --no-build
+      - name: Publish the FallingBodies sample with NativeAOT
+        run: dotnet publish Samples/FallingBodies -c Release --use-current-runtime -o artifacts/aot/FallingBodies
+      - name: Run the FallingBodies sample
+        shell: bash
+        run: ./artifacts/aot/FallingBodies/FlickerVoid.Samples.FallingBodies

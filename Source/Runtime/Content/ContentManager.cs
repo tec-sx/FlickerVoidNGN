@@ -74,7 +74,7 @@ public sealed class ContentManager : IContentManager
         {
             content = JsonSerializer.Deserialize(stream, typeInfo);
         }
-        catch (JsonException exception)
+        catch (Exception exception) when (exception is JsonException or NotSupportedException)
         {
             throw new InvalidDataException($"{path}: {exception.Message}", exception);
         }
