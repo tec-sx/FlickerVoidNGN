@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Source/">
+    <Project Path="Source/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/Gameplay/FlickerVoid.Engine.Gameplay.Tests.csproj" />
+  </Folder>
+</Solution>
