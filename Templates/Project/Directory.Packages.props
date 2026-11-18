@@ -1,0 +1,4 @@
+<Project>
+  <!-- The project uses the engine's package versions; packages only the game needs get their versions below. -->
+  <Import Project="$(FlickerVoidEngine)Directory.Packages.props" Condition="'$(FlickerVoidEngine)' != '' and Exists('$(FlickerVoidEngine)Directory.Packages.props')" />
+</Project>
