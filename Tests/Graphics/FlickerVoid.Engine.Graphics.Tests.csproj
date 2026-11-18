@@ -7,6 +7,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../Source/Graphics/FlickerVoid.Engine.Graphics.csproj" />
+    <ProjectReference Include="../../Source/Graphics.Direct3D12/FlickerVoid.Engine.Graphics.Direct3D12.csproj" />
     <ProjectReference Include="../../Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
     <ProjectReference Include="../../Source/Shaders/FlickerVoid.Engine.Shaders.csproj" />
   </ItemGroup>

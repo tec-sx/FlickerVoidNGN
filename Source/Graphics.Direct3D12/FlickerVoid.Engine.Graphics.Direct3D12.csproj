@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Silk.NET.Direct3D12" />
+    <PackageReference Include="Silk.NET.DXGI" />
+    <!-- The Agility SDK: only its DLLs are used, so its native build targets stay out. -->
+    <PackageReference Include="Microsoft.Direct3D.D3D12" GeneratePathProperty="true" ExcludeAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Graphics/FlickerVoid.Engine.Graphics.csproj" />
+  </ItemGroup>
+  <!-- D3D12Runtime loads the Agility SDK from D3D12\ next to the app. TODO: arm64 when the engine builds for it. -->
+  <ItemGroup>
+    <None Include="$(PkgMicrosoft_Direct3D_D3D12)/build/native/bin/x64/D3D12Core.dll" Link="D3D12/D3D12Core.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+    <None Include="$(PkgMicrosoft_Direct3D_D3D12)/build/native/bin/x64/d3d12SDKLayers.dll" Link="D3D12/d3d12SDKLayers.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+</Project>

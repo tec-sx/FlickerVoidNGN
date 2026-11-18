@@ -35,7 +35,7 @@ public interface ICommandList : IDisposable
 
     void SetIndexBuffer(IBuffer buffer, IndexFormat format, long offset = 0);
 
-    /// <summary>Sets the push constants the next draws read, at most <see cref="GraphicsLimits.PushConstantSize"/> bytes.</summary>
+    /// <summary>Sets the push constants the next draws read: a multiple of 4 bytes, at most <see cref="GraphicsLimits.PushConstantSize"/>.</summary>
     void PushConstants<T>(in T data)
         where T : unmanaged;
 

@@ -220,6 +220,22 @@ public sealed class GraphicsDeviceTests : IDisposable
         hidden.BindlessIndex.Should().Be(BindlessIndex.None);
     }
 
+    [Theory]
+    [MemberData(nameof(Apis))]
+    public void RejectsPushConstantsThatAreTooLargeOrNotWholeWords(GraphicsApi api)
+    {
+        using IGraphicsDevice device = CreateDevice(api);
+        using ICommandList commands = device.CreateCommandList();
+        commands.Begin();
+
+        Action tooLarge = () => commands.PushConstants(new TooLargeConstants());
+        Action partialWord = () => commands.PushConstants((ushort)1);
+
+        tooLarge.Should().Throw<ArgumentException>();
+        partialWord.Should().Throw<ArgumentException>();
+        commands.End();
+    }
+
     private IGraphicsDevice CreateDevice(GraphicsApi api)
     {
         _builder = new GraphicsDeviceTestsBuilder(api);
