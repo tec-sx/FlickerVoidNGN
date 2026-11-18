@@ -12,7 +12,7 @@ public sealed class Titles : IDisposable
 {
     private const int MaxPasses = 8;
 
-    private readonly FactDatabase _facts;
+    private readonly IFactDatabase _facts;
     private readonly List<TitleDefinition> _titles;
     private TitleDefinition? _leadingTitle;
     private bool _evaluating;
@@ -20,7 +20,7 @@ public sealed class Titles : IDisposable
     private bool _tracked;
 
     /// <summary>Tracks the settings' titles, re-checking them whenever a fact changes; the first check only records the leader, so a promoted title stays current after a load.</summary>
-    public Titles(FactDatabase facts, SocialSettings settings)
+    public Titles(IFactDatabase facts, SocialSettings settings)
     {
         _facts = facts;
         _titles = settings.Titles;

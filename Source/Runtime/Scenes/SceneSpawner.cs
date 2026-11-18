@@ -3,10 +3,12 @@ using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Runtime.Components;
+
 namespace FlickerVoid.Engine.Runtime.Scenes;
 
-/// <summary>Spawns a scene's entities into a world, reading each component from JSON by the name its type is registered under.</summary>
-public sealed class SceneSpawner
+/// <summary>Spawns scenes with a JSON reader per registered component name.</summary>
+public sealed class SceneSpawner : ISceneSpawner
 {
     private readonly Dictionary<string, ComponentReader> _readers = [];
 
@@ -17,8 +19,6 @@ public sealed class SceneSpawner
 
     private delegate void ComponentReader(World world, Entity entity, JsonElement data);
 
-    /// <summary>Lets scene files add components of type <typeparamref name="T"/> under <paramref name="name"/>, and registers the type with Arch.</summary>
-    /// <remarks>NativeAOT can't create Arch's component arrays through reflection, so every component type is registered with <see cref="ArrayRegistry"/> up front.</remarks>
     public void Register<T>(string name, JsonTypeInfo<T> typeInfo)
         where T : struct
     {
@@ -33,10 +33,10 @@ public sealed class SceneSpawner
             throw new ArgumentException($"A component named '{name}' is already registered.", nameof(name));
         }
 
+        // NativeAOT can't create Arch's component arrays through reflection, so every component type is registered up front.
         ArrayRegistry.Add<T>();
     }
 
-    /// <summary>Creates the scene's entities in order; if one fails, destroys those already created and throws.</summary>
     public IReadOnlyList<Entity> Spawn(SceneData scene, World world)
     {
         List<Entity> spawned = new(scene.Entities.Count);

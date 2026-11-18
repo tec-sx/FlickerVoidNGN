@@ -6,9 +6,9 @@ namespace FlickerVoid.Engine.Physics;
 public static class PhysicsGameExtensions
 {
     /// <summary>Runs a <see cref="PhysicsSystem"/> in the game's fixed steps, registers it as a service, and lets scene files add "rigidBody" and "staticBody" components.</summary>
-    public static PhysicsSystem AddPhysics(this Game game)
+    public static IPhysicsSystem AddPhysics(this Game game)
     {
-        PhysicsSystem physics = new(game.World);
+        IPhysicsSystem physics = new PhysicsSystem(game.World);
         game.FixedSystems.Add(physics);
         game.Services.AddService(physics);
         game.Spawner.Register("rigidBody", PhysicsJsonContext.Default.RigidBody);

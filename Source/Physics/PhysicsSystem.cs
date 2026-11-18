@@ -8,11 +8,12 @@ using BepuUtilities;
 using BepuUtilities.Memory;
 
 using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Physics;
 
 /// <summary>Runs the physics simulation each fixed step: creates bodies for new rigid and static bodies, removes those whose entity or component is gone, steps, and copies body poses to transforms.</summary>
-public sealed class PhysicsSystem : BaseSystem<World, GameTime>
+public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
 {
     private const float SleepThreshold = 0.01f;
 
@@ -38,7 +39,6 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>
         Simulation = Simulation.Create(_pool, narrowPhase, poseIntegrator, solve);
     }
 
-    /// <summary>The Bepu simulation; an entity's <see cref="BodyHandle"/> or <see cref="StaticHandle"/> component finds its body in it.</summary>
     public Simulation Simulation { get; }
 
     public override void Update(in GameTime t)

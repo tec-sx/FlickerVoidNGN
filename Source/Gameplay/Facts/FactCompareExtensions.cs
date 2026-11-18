@@ -7,7 +7,7 @@ namespace FlickerVoid.Engine.Gameplay.Facts;
 public static class FactCompareExtensions
 {
     /// <summary>Compares a fact, including the existence checks.</summary>
-    public static bool Test(this FactCompare compare, FactDatabase facts, Tag fact, int value)
+    public static bool Test(this FactCompare compare, IFactDatabase facts, Tag fact, int value)
     {
         switch (compare)
         {

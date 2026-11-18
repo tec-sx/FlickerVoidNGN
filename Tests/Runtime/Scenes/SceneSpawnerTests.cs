@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 
@@ -11,12 +12,9 @@ namespace FlickerVoid.Engine.Runtime.Tests.Scenes;
 public sealed class SceneSpawnerTests : IDisposable
 {
     private readonly World _world = World.Create();
-    private readonly SceneSpawner _spawner = new();
-
-    public SceneSpawnerTests()
-    {
-        _spawner.Register("transform", RuntimeJsonContext.Default.Transform);
-    }
+    private readonly SceneSpawner _spawner = new SceneSpawnerTestsBuilder()
+        .WithComponent("transform", RuntimeJsonContext.Default.Transform)
+        .Build();
 
     public void Dispose()
     {
@@ -37,17 +35,17 @@ public sealed class SceneSpawnerTests : IDisposable
 
         IReadOnlyList<Entity> entities = _spawner.Spawn(scene, _world);
 
-        Assert.Equal(2, entities.Count);
+        entities.Should().HaveCount(2);
         EntityName crateName = _world.Get<EntityName>(entities[0]);
         Transform crateTransform = _world.Get<Transform>(entities[0]);
         EntityName floorName = _world.Get<EntityName>(entities[1]);
         bool floorHasTransform = _world.Has<Transform>(entities[1]);
         Vector3 cratePosition = new(1, 5, 0);
-        Assert.Equal("Crate", crateName.Value);
-        Assert.Equal(cratePosition, crateTransform.Position);
-        Assert.Equal(Vector3.One, crateTransform.Scale);
-        Assert.Equal("Floor", floorName.Value);
-        Assert.False(floorHasTransform);
+        crateName.Value.Should().Be("Crate");
+        crateTransform.Position.Should().Be(cratePosition);
+        crateTransform.Scale.Should().Be(Vector3.One);
+        floorName.Value.Should().Be("Floor");
+        floorHasTransform.Should().BeFalse();
     }
 
     [Fact]
@@ -58,7 +56,7 @@ public sealed class SceneSpawnerTests : IDisposable
         IReadOnlyList<Entity> entities = _spawner.Spawn(scene, _world);
 
         bool hasName = _world.Has<EntityName>(entities[0]);
-        Assert.False(hasName);
+        hasName.Should().BeFalse();
     }
 
     [Fact]
@@ -73,11 +71,10 @@ public sealed class SceneSpawnerTests : IDisposable
             }
             """);
 
-        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => _spawner.Spawn(scene, _world));
+        Action spawn = () => _spawner.Spawn(scene, _world);
 
-        Assert.Contains("'Lamp'", exception.Message);
-        Assert.Contains("'trasform'", exception.Message);
-        Assert.Equal(0, _world.Size);
+        spawn.Should().Throw<InvalidDataException>().WithMessage("*'Lamp'*'trasform'*");
+        _world.Size.Should().Be(0);
     }
 
     [Fact]
@@ -85,23 +82,24 @@ public sealed class SceneSpawnerTests : IDisposable
     {
         SceneData scene = Parse("""{ "entities": [ { "name": "Crate", "components": { "transform": { "position": [1, 2] } } } ] }""");
 
-        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => _spawner.Spawn(scene, _world));
+        Action spawn = () => _spawner.Spawn(scene, _world);
 
-        Assert.Contains("'Crate'", exception.Message);
-        Assert.Contains("'transform'", exception.Message);
-        Assert.Equal(0, _world.Size);
+        spawn.Should().Throw<InvalidDataException>().WithMessage("*'Crate'*'transform'*");
+        _world.Size.Should().Be(0);
     }
 
     [Fact]
     public void RegisteringANameTwiceThrows()
     {
-        Assert.Throws<ArgumentException>(() => _spawner.Register("transform", RuntimeJsonContext.Default.Transform));
+        Action registerAgain = () => _spawner.Register("transform", RuntimeJsonContext.Default.Transform);
+
+        registerAgain.Should().Throw<ArgumentException>();
     }
 
     private static SceneData Parse(string json)
     {
         SceneData? scene = JsonSerializer.Deserialize(json, RuntimeJsonContext.Default.SceneData);
-        Assert.NotNull(scene);
+        scene.Should().NotBeNull();
         return scene;
     }
 }
