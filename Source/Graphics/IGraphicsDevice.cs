@@ -3,8 +3,6 @@ namespace FlickerVoid.Engine.Graphics;
 /// <summary>A GPU and the queue work is submitted to. Create resources and command lists from it, and dispose them before it.</summary>
 public interface IGraphicsDevice : IDisposable
 {
-    GraphicsApi Api { get; }
-
     string AdapterName { get; }
 
     /// <summary>Creates a buffer; initial data is copied in before the call returns, leaving a GPU buffer in its shader-read or index state.</summary>

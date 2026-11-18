@@ -1,6 +1,5 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
-using FlickerVoid.Engine.Graphics.Direct3D12;
 using FlickerVoid.Engine.Graphics.Vulkan;
 using FlickerVoid.Engine.Shaders;
 using Microsoft.Extensions.Logging;
@@ -8,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace FlickerVoid.Engine.Graphics.Tests;
 
 /// <summary>
-/// Creates the device under test with validation on, skipping the test when the machine can't run the API, and
+/// Creates the Vulkan device under test with validation on, skipping the test when the machine can't run Vulkan 1.3, and
 /// compiles shaders and reads textures back for it. Disposing it fails the test on any error the device logged.
 /// </summary>
 internal sealed class GraphicsDeviceTestsBuilder : IDisposable
@@ -18,30 +17,18 @@ internal sealed class GraphicsDeviceTestsBuilder : IDisposable
     private readonly RecordingLoggerProvider _logs = new();
     private readonly ILoggerFactory _loggerFactory;
     private readonly DxcShaderCompiler _compiler = new();
-    private readonly GraphicsApi _api;
 
-    public GraphicsDeviceTestsBuilder(GraphicsApi api)
+    public GraphicsDeviceTestsBuilder()
     {
-        _api = api;
         _loggerFactory = LoggerFactory.Create(logging => logging.AddProvider(_logs));
     }
-
-    public static TheoryData<GraphicsApi> Apis => [GraphicsApi.Direct3D12, GraphicsApi.Vulkan];
 
     public IGraphicsDevice Build()
     {
         GraphicsDeviceOptions options = new() { Validation = true };
         try
         {
-            switch (_api)
-            {
-                case GraphicsApi.Direct3D12:
-                    return new D3D12GraphicsDevice(options, _loggerFactory);
-                case GraphicsApi.Vulkan:
-                    return new VulkanGraphicsDevice(options, _loggerFactory);
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(_api), _api, null);
-            }
+            return new VulkanGraphicsDevice(options, _loggerFactory);
         }
         catch (GraphicsUnavailableException exception)
         {
@@ -52,14 +39,8 @@ internal sealed class GraphicsDeviceTestsBuilder : IDisposable
 
     public ShaderBytecode Compile(string source, ShaderStage stage)
     {
-        ShaderTarget target = ShaderTarget.Spirv;
-        if (_api == GraphicsApi.Direct3D12)
-        {
-            target = ShaderTarget.Dxil;
-        }
-
         ShaderSource shader = new(source, "main", stage);
-        ShaderCompileResult result = _compiler.Compile(shader, target);
+        ShaderCompileResult result = _compiler.Compile(shader);
         result.Succeeded.Should().BeTrue(result.Messages);
         return new ShaderBytecode(result.Bytecode);
     }

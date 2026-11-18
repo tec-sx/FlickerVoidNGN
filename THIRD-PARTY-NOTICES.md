@@ -6,7 +6,7 @@ FlickerVoid Engine includes code adapted from the open-source projects below. Ea
 
 https://github.com/stride3d/stride
 
-Used in: `Source/Runtime/GameLoop.cs` (stepping rules), `Source/Runtime/Services/ServiceRegistry.cs`, `Source/Physics/PoseIntegratorCallbacks.cs` and `Source/Physics/NarrowPhaseCallbacks.cs` (from Stride.BepuPhysics), `Source/Graphics.Direct3D12/D3D12Runtime.cs` (Agility SDK loading).
+Used in: `Source/Runtime/GameLoop.cs` (stepping rules), `Source/Runtime/Services/ServiceRegistry.cs`, `Source/Physics/PoseIntegratorCallbacks.cs` and `Source/Physics/NarrowPhaseCallbacks.cs` (from Stride.BepuPhysics)
 
 ```
 The MIT License (MIT)
@@ -35,9 +35,3 @@ SOFTWARE.
 ```
 
 Stride's `ServiceRegistry` carries a further notice from SharpDX (Copyright (c) 2010-2013 SharpDX - Alexandre Mutel, MIT), kept in the adapted file.
-
-## DirectX Agility SDK
-
-https://www.nuget.org/packages/Microsoft.Direct3D.D3D12
-
-`D3D12Core.dll` and `d3d12SDKLayers.dll` are copied from the package to `D3D12\` next to apps that use the Direct3D 12 backend. Both are listed as distributable in the package's Microsoft Software License Terms (`LICENSE.txt` in the package).

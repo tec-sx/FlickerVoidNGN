@@ -23,6 +23,13 @@ jobs:
       - name: Install lavapipe (software Vulkan), the validation layer and a virtual X server
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers xvfb
+      - name: Install the Vulkan runtime, the validation layer and lavapipe (software Vulkan)
+        if: runner.os == 'Windows'
+        uses: jakoch/install-vulkan-sdk-action@v1
+        with:
+          install_runtime: true
+          install_lavapipe: true
+          cache: true
       - name: Build the engine, the FlickerVoid project and the samples, and pack the engine
         shell: bash
         run: |
@@ -67,7 +74,7 @@ jobs:
         run: |
           ./artifacts/aot/FallingBodies/FlickerVoid.Samples.FallingBodies
           ./artifacts/aot/Window/FlickerVoid.Samples.Window --frames 120
-      - name: Run the textured mesh sample (Direct3D 12 on WARP, Vulkan on lavapipe under Xvfb)
+      - name: Run the textured mesh sample on lavapipe (under Xvfb on Linux)
         shell: bash
         env:
           LP_PERF: no_rast_linear

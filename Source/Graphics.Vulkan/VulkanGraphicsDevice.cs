@@ -69,8 +69,6 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _logger.LogInformation("Vulkan device on {Adapter}.", AdapterName);
     }
 
-    public GraphicsApi Api => GraphicsApi.Vulkan;
-
     public string AdapterName { get; }
 
     internal Vk Vk { get; }

@@ -9,8 +9,8 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 ## Stack
 
 - .NET 10 LTS; NativeAOT for release builds, so runtime libraries set `IsAotCompatible` and avoid reflection (use source generators, such as System.Text.Json source generation).
-- Silk.NET for windowing, input and graphics bindings. Direct3D 12 and Vulkan only. Direct3D 12 runs on the Agility SDK (copied to `D3D12\` next to the app) with enhanced barriers.
-- HLSL shaders, compiled by DXC to DXIL and SPIR-V. The `Shaders` module compiles them for tools, tests and samples and depends on nothing; games load compiled bytecode.
+- Silk.NET for windowing, input and graphics bindings. Vulkan 1.3 only, on Windows and Linux (Direct3D 12 was dropped: Vulkan has the RTX features, and one API halves the graphics code and its tests).
+- HLSL shaders, compiled by DXC to SPIR-V. The `Shaders` module compiles them for tools, tests and samples and depends on nothing; games load compiled bytecode.
 - Arch for entities and components, BepuPhysics for physics, SharpGLTF for glTF.
 - Avalonia for the editor, with its GPU interop for the viewport.
 - One codebase for Windows and Linux. When something is OS-specific, build it for Windows first and leave a `// TODO(Linux): ...` note on the Linux side.
@@ -50,8 +50,8 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 ## Build and test
 
 - `dotnet build FlickerVoidNGN.slnx` and `dotnet test --solution FlickerVoidNGN.slnx` (Microsoft Testing Platform, xUnit v3); the same for `Projects/FlickerVoid/FlickerVoid.slnx` (run from its folder, which has its own `global.json`) and `Samples/FlickerVoid.Samples.slnx`.
-- CI runs both on Windows and Linux for every pull request, creates and runs a project from the template, then publishes the samples with NativeAOT and runs them (the window sample on SDL's dummy video driver, the textured mesh sample on WARP and on lavapipe under Xvfb). Arch components must be registered with `ArrayRegistry.Add<T>()` (scene components are, through `SceneSpawner.Register`), or NativeAOT builds fail when the first entity gets them. Cloud sessions can build and test on Linux; Direct3D 12 work is tested on the owner's Windows PC.
-- Graphics tests render on whatever GPU is present and skip when none is. On Windows CI the Direct3D 12 tests run on WARP, the software rasterizer. On Linux they run on lavapipe (`mesa-vulkan-drivers`, plus `vulkan-validationlayers`) with `LP_PERF=no_rast_linear`, because llvmpipe's linear rasterizer reads push constants past 16 bytes as zero, and under `xvfb-run` so the swapchain tests get a window.
+- CI runs both on Windows and Linux for every pull request, creates and runs a project from the template, then publishes the samples with NativeAOT and runs them (the window sample on SDL's dummy video driver, the textured mesh sample on lavapipe, under Xvfb on Linux). Arch components must be registered with `ArrayRegistry.Add<T>()` (scene components are, through `SceneSpawner.Register`), or NativeAOT builds fail when the first entity gets them. Cloud sessions can build and test on Linux. The editor viewport (Avalonia GPU interop) needs a real GPU: lavapipe exports no semaphores, so it is tested on the owner's PC.
+- Graphics tests render on whatever GPU is present and skip when none is. In CI they run on lavapipe, the software Vulkan driver: on Linux from `mesa-vulkan-drivers` plus `vulkan-validationlayers`, on Windows through `jakoch/install-vulkan-sdk-action`, with `LP_PERF=no_rast_linear`, because llvmpipe's linear rasterizer reads push constants past 16 bytes as zero, and on Linux under `xvfb-run` so the swapchain tests get a window.
 - Unit tests use xUnit v3, NSubstitute for mocking and AwesomeAssertions (the Apache-2.0 fork of FluentAssertions) for assertions; test projects named `*.Tests` get all three from `Directory.Build.props`. The class under test is created by a builder in a separate `<Class>TestsBuilder.cs` file in the same folder (`GameTestsBuilder.cs` for `GameTests.cs`).
 - Work is done TDD. Tests are written first, and serve as the Design Spec for the code.
 

@@ -15,10 +15,7 @@
     <PackageVersion Include="Silk.NET.Windowing.Sdl" Version="2.23.0" />
   </ItemGroup>
   <ItemGroup Label="Graphics">
-    <PackageVersion Include="Microsoft.Direct3D.D3D12" Version="1.620.2" />
     <PackageVersion Include="Silk.NET.Core" Version="2.23.0" />
-    <PackageVersion Include="Silk.NET.Direct3D12" Version="2.23.0" />
-    <PackageVersion Include="Silk.NET.DXGI" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Vulkan" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Vulkan.Extensions.EXT" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Vulkan.Extensions.KHR" Version="2.23.0" />

@@ -24,9 +24,9 @@ internal sealed class SwapchainTestsBuilder : IDisposable
         SdlWindowing.RegisterPlatform();
     }
 
-    public SwapchainTestsBuilder(GraphicsApi api)
+    public SwapchainTestsBuilder()
     {
-        _deviceBuilder = new GraphicsDeviceTestsBuilder(api);
+        _deviceBuilder = new GraphicsDeviceTestsBuilder();
     }
 
     public IGraphicsDevice Build() => _deviceBuilder.Build();

@@ -99,16 +99,10 @@ public sealed class CubeRenderer : IDisposable
     {
         string path = Path.Combine(AppContext.BaseDirectory, "Content", "Mesh.hlsl");
         string source = File.ReadAllText(path);
-        ShaderTarget target = ShaderTarget.Spirv;
-        if (_device.Api == GraphicsApi.Direct3D12)
-        {
-            target = ShaderTarget.Dxil;
-        }
-
         GraphicsPipelineDescription description = new()
         {
-            VertexShader = Compile(compiler, source, "VertexMain", ShaderStage.Vertex, target),
-            PixelShader = Compile(compiler, source, "PixelMain", ShaderStage.Pixel, target),
+            VertexShader = Compile(compiler, source, "VertexMain", ShaderStage.Vertex),
+            PixelShader = Compile(compiler, source, "PixelMain", ShaderStage.Pixel),
             ColorFormats = [colorFormat],
             DepthFormat = DepthFormat,
             Depth = new DepthState(Test: true, Write: true),
@@ -117,10 +111,10 @@ public sealed class CubeRenderer : IDisposable
         return _device.CreateGraphicsPipeline(description);
     }
 
-    private static ShaderBytecode Compile(IShaderCompiler compiler, string source, string entryPoint, ShaderStage stage, ShaderTarget target)
+    private static ShaderBytecode Compile(IShaderCompiler compiler, string source, string entryPoint, ShaderStage stage)
     {
         ShaderSource shader = new(source, entryPoint, stage) { Name = "Mesh.hlsl" };
-        ShaderCompileResult result = compiler.Compile(shader, target);
+        ShaderCompileResult result = compiler.Compile(shader);
         if (!result.Succeeded)
         {
             throw new InvalidOperationException($"Mesh.hlsl {entryPoint} failed to compile:\n{result.Messages}");
