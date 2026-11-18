@@ -10,7 +10,7 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 
 - .NET 10 LTS; NativeAOT for release builds, so runtime libraries set `IsAotCompatible` and avoid reflection (use source generators, such as System.Text.Json source generation).
 - Silk.NET for windowing, input and graphics bindings. Direct3D 12 and Vulkan only.
-- HLSL shaders, compiled by DXC to DXIL and SPIR-V.
+- HLSL shaders, compiled by DXC to DXIL and SPIR-V. The `Shaders` module compiles them for tools, tests and samples and depends on nothing; games load compiled bytecode.
 - Arch for entities and components, BepuPhysics for physics, SharpGLTF for glTF.
 - Avalonia for the editor, with its GPU interop for the viewport.
 - One codebase for Windows and Linux. When something is OS-specific, build it for Windows first and leave a `// TODO(Linux): ...` note on the Linux side.
