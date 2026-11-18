@@ -20,8 +20,14 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
+      - name: Install lavapipe (software Vulkan) and the validation layer
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers vulkan-validationlayers
       - run: dotnet build FlickerVoidNGN.slnx -c Release
       - run: dotnet test --solution FlickerVoidNGN.slnx -c Release --no-build
+        env:
+          # llvmpipe's linear rasterizer reads push constants past the first 16 bytes as zero on full-rectangle draws.
+          LP_PERF: no_rast_linear
       - name: Publish the samples with NativeAOT
         shell: bash
         run: |
