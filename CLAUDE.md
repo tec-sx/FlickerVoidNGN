@@ -55,6 +55,11 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 - Unit tests use xUnit v3, NSubstitute for mocking and AwesomeAssertions (the Apache-2.0 fork of FluentAssertions) for assertions; test projects named `*.Tests` get all three from `Directory.Build.props`. The class under test is created by a builder in a separate `<Class>TestsBuilder.cs` file in the same folder (`GameTestsBuilder.cs` for `GameTests.cs`).
 - Work is done TDD. Tests are written first, and serve as the Design Spec for the code.
 
+## Versions
+
+- The engine's version is `Version` in `Source/Directory.Build.props`: `0.<roadmap stage>.<patch>`. Bump it in the pull request that completes a stage (minor) or fixes a released one (patch). When main gets a version without a tag, CI tags the commit `v<Version>` and packs the engine modules as NuGet packages (a workflow artifact).
+- Projects reference the engine's projects, not its packages, so every project build compiles the current engine. Packages are for an installed engine without source.
+
 ## Git
 
 - Branches: `feature/<title>`, `improvement/<title>` or `fix/<title>`.
