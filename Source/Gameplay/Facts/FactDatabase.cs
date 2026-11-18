@@ -2,8 +2,8 @@ using FlickerVoid.Engine.Gameplay.Tags;
 
 namespace FlickerVoid.Engine.Gameplay.Facts;
 
-/// <summary>The saved state of the world as integers named by tags: standing, fame, quest state, knowledge.</summary>
-public sealed class FactDatabase
+/// <summary>Facts kept in memory, defaulted and clamped by their definitions in the settings.</summary>
+public sealed class FactDatabase : IFactDatabase
 {
     private readonly Dictionary<Tag, int> _facts = [];
 
@@ -13,10 +13,8 @@ public sealed class FactDatabase
         ResetToDefaults();
     }
 
-    /// <summary>Raised for each change of one fact.</summary>
     public event FactChangedHandler? FactChanged;
 
-    /// <summary>Raised after any change, including a reset or a restore.</summary>
     public event Action? FactsChanged;
 
     public FactSettings Settings { get; }
@@ -25,7 +23,6 @@ public sealed class FactDatabase
 
     public IReadOnlyDictionary<Tag, int> AllFacts => _facts;
 
-    /// <summary>Replaces all facts with the defaults declared in the settings.</summary>
     public void ResetToDefaults()
     {
         _facts.Clear();
@@ -49,12 +46,10 @@ public sealed class FactDatabase
         FactsChanged?.Invoke();
     }
 
-    /// <summary>The value, or 0 when the fact is undefined.</summary>
     public int GetFact(Tag tag) => _facts.GetValueOrDefault(tag);
 
     public bool IsFactDefined(Tag tag) => _facts.ContainsKey(tag);
 
-    /// <summary>Label of the current value for enum-like facts, or null.</summary>
     public string? GetFactValueName(Tag tag)
     {
         int value = GetFact(tag);
@@ -83,7 +78,6 @@ public sealed class FactDatabase
         return true;
     }
 
-    /// <summary>Removes the facts at or below the parent tag and returns how many were removed.</summary>
     public int RemoveFactsUnder(Tag parent)
     {
         List<Tag> toRemove = [];
@@ -112,7 +106,6 @@ public sealed class FactDatabase
         }
     }
 
-    /// <summary>Replaces all facts with saved ones, without per-fact notifications.</summary>
     public void RestoreFacts(IReadOnlyDictionary<Tag, int> facts)
     {
         _facts.Clear();

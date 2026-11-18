@@ -18,24 +18,17 @@ public class FactionDefinitionTests
     [InlineData(80, Attitude.Neutral)]
     public void TakesAttitudeFromStandingBand(int standing, Attitude expected)
     {
-        ScaleDefinition scale = new()
-        {
-            Bands =
-            [
-                new ScaleBand { Threshold = -100, Tag = Hated },
-                new ScaleBand { Threshold = 25, Tag = Liked },
-                new ScaleBand { Threshold = 75, Tag = Revered },
-            ],
-        };
-        FactionDefinition faction = new()
-        {
-            Standing = scale,
-            BandAttitudes = new() { [Hated] = Attitude.Hostile, [Liked] = Attitude.Friendly },
-        };
+        FactionDefinition faction = new FactionDefinitionTestsBuilder()
+            .WithBand(-100, Hated)
+            .WithBand(25, Liked)
+            .WithBand(75, Revered)
+            .WithAttitude(Hated, Attitude.Hostile)
+            .WithAttitude(Liked, Attitude.Friendly)
+            .Build();
 
         Attitude attitude = faction.GetStandingAttitude(standing);
 
-        Assert.Equal(expected, attitude);
+        attitude.Should().Be(expected);
     }
 
     [Fact]
@@ -56,17 +49,16 @@ public class FactionDefinitionTests
         FactDatabase facts = new(settings);
         ScaleDefinition fame = new() { Id = fameFact };
         ScaleDefinition gang = new() { Id = gangFact };
-        ScaleDefinition police = new()
-        {
-            Id = policeFact,
-            Links = [new ScaleLink { Scale = fame, Factor = 0.5f, Magnitude = true }, new ScaleLink { Scale = gang, Factor = -1f }],
-        };
+        FactionDefinition police = new FactionDefinitionTestsBuilder()
+            .WithStandingFact(policeFact)
+            .WithLink(fame, 0.5f, magnitude: true)
+            .WithLink(gang, -1f)
+            .Build();
 
-        police.Modify(facts, 20);
-        police.Modify(facts, -10);
+        police.Standing.Modify(facts, 20);
+        police.Standing.Modify(facts, -10);
 
-        Assert.Equal(10, facts.GetFact(policeFact));
-        Assert.Equal(15, facts.GetFact(fameFact));
-        Assert.Equal(-10, facts.GetFact(gangFact));
+        IReadOnlyDictionary<Tag, int> values = facts.AllFacts;
+        values.Should().Equal(new Dictionary<Tag, int> { [policeFact] = 10, [fameFact] = 15, [gangFact] = -10 });
     }
 }

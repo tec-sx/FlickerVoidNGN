@@ -16,12 +16,16 @@ public class SocialSettingsTests
         CharacterDefinition met = new() { Fragments = [new SocialFragment { Relationship = metRelationship }] };
         CharacterDefinition stranger = new() { Fragments = [new SocialFragment { Relationship = strangerRelationship }] };
         CharacterDefinition unsocial = new();
-        SocialSettings settings = new() { Relationships = [met, stranger, unsocial] };
-        FactDatabase facts = new(new FactSettings());
+        SocialSettings settings = new SocialSettingsTestsBuilder()
+            .WithRelationship(met)
+            .WithRelationship(stranger)
+            .WithRelationship(unsocial)
+            .Build();
+        IFactDatabase facts = Substitute.For<IFactDatabase>();
+        facts.IsFactDefined(metRelationship.Id).Returns(true);
 
-        facts.SetFact(metRelationship.Id, 0);
         List<CharacterDefinition> known = settings.GetKnownCharacters(facts);
 
-        Assert.Equal([met], known);
+        known.Should().Equal(met);
     }
 }

@@ -32,7 +32,7 @@ public sealed class SocialSettings
     public float DisguiseRecognition { get; init; } = 0.25f;
 
     /// <summary>Characters from Relationships whose relationship has been set.</summary>
-    public List<CharacterDefinition> GetKnownCharacters(FactDatabase facts)
+    public List<CharacterDefinition> GetKnownCharacters(IFactDatabase facts)
     {
         List<CharacterDefinition> known = [];
         foreach (CharacterDefinition character in Relationships)
