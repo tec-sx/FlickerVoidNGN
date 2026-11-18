@@ -110,7 +110,14 @@ internal sealed unsafe class D3D12Texture : ITexture
             Layout = TextureLayout.LayoutUnknown,
             Flags = GetFlags(description.Usage),
         };
-        return device.CreateCommittedResource(HeapType.Default, resource, ResourceStates.Common);
+        if (!description.Usage.HasFlag(TextureUsage.DepthStencil))
+        {
+            return device.CreateCommittedResource(HeapType.Default, resource, ResourceStates.Common);
+        }
+
+        // Depth clears to 1, the far plane, so that is the value the hardware can clear fastest.
+        ClearValue clear = new(description.Format.ToDxgi(), depthStencil: new DepthStencilValue(1, 0));
+        return device.CreateCommittedResource(HeapType.Default, resource, ResourceStates.Common, &clear);
     }
 
     private static ResourceFlags GetFlags(TextureUsage usage)
