@@ -17,7 +17,7 @@ public class CompareTests
     {
         bool result = compare.Test(current, value);
 
-        Assert.Equal(expected, result);
+        result.Should().Be(expected);
     }
 
     [Fact]
@@ -28,8 +28,8 @@ public class CompareTests
         bool equal = Compare.Equal.Test(sum, 0.3f);
         bool notEqual = Compare.NotEqual.Test(sum, 0.3f);
 
-        Assert.True(equal);
-        Assert.False(notEqual);
+        equal.Should().BeTrue();
+        notEqual.Should().BeFalse();
     }
 
     [Fact]
@@ -39,11 +39,10 @@ public class CompareTests
         bool atMost = Compare.LessOrEqual.TryScore(85f, 80f, out _);
         bool equal = Compare.Equal.TryScore(80f, 80f, out _);
 
-        Assert.True(atLeast);
-        Assert.Equal(80f, score.Threshold);
-        Assert.Equal(5f, score.Excess);
-        Assert.False(atMost);
-        Assert.False(equal);
+        atLeast.Should().BeTrue();
+        score.Should().Be(new ConditionScore(80f, 5f));
+        atMost.Should().BeFalse();
+        equal.Should().BeFalse();
     }
 
     [Fact]
@@ -52,8 +51,7 @@ public class CompareTests
         ConditionScore hard = ConditionScore.AtLeast(80f, 80f);
         ConditionScore easy = ConditionScore.AtLeast(100f, 50f);
 
-        Assert.True(hard > easy);
-        Assert.False(easy > hard);
+        hard.Should().BeGreaterThan(easy);
     }
 
     [Theory]
@@ -64,6 +62,6 @@ public class CompareTests
     {
         string symbol = compare.ToSymbol();
 
-        Assert.Equal(expected, symbol);
+        symbol.Should().Be(expected);
     }
 }

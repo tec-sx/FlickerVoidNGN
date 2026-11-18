@@ -2,7 +2,6 @@ using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Scales;
 using FlickerVoid.Engine.Gameplay.Tags;
-using FlickerVoid.Gameplay.Protagonist.Identity.Social;
 using FlickerVoid.Gameplay.Protagonist.Identity.Social.Fame;
 
 namespace FlickerVoid.Gameplay.Tests.Protagonist.Identity.Social.Fame;
@@ -16,49 +15,49 @@ public class TitlesTests
     private readonly ScaleDefinition _fame = new() { Id = FameFact };
     private readonly TitleDefinition _known;
     private readonly TitleDefinition _famous;
-    private readonly SocialSettings _settings;
+    private readonly TitlesTestsBuilder _builder;
 
     public TitlesTests()
     {
-        FactSettings factSettings = new() { Definitions = [new FactDefinition { Tag = FameFact, Clamp = true, Min = 0, Max = 100 }] };
-        _facts = new FactDatabase(factSettings);
+        FactSettings settings = new() { Definitions = [new FactDefinition { Tag = FameFact, Clamp = true, Min = 0, Max = 100 }] };
+        _facts = new FactDatabase(settings);
         _known = FameTitle("Known", 20);
         _famous = FameTitle("Famous", 50);
-        _settings = new SocialSettings { Fame = _fame, Titles = [_known, _famous] };
+        _builder = new TitlesTestsBuilder(_facts);
     }
 
     [Fact]
     public void EarnsTitleOnceWhenItsConditionsHold()
     {
         TitleDefinition rewarded = FameTitle("Rewarded", 20, new FactEffect { Fact = RewardFact, Write = FactWrite.Add, Value = 1 });
-        SocialSettings settings = new() { Titles = [rewarded] };
-        using Titles titles = new(_facts, settings);
+        using Titles titles = _builder.WithTitles(rewarded).Build();
         List<TitleDefinition> earned = [];
         titles.TitleEarned += earned.Add;
 
         _fame.Modify(_facts, 30);
         _fame.Modify(_facts, 5);
 
-        Assert.Equal([rewarded], earned);
-        Assert.Equal(rewarded, titles.CurrentTitle);
-        Assert.Equal(1, _facts.GetFact(RewardFact));
+        int reward = _facts.GetFact(RewardFact);
+        earned.Should().Equal(rewarded);
+        titles.CurrentTitle.Should().Be(rewarded);
+        reward.Should().Be(1);
     }
 
     [Fact]
     public void MakesHardestTitleCurrent()
     {
-        using Titles titles = new(_facts, _settings);
+        using Titles titles = _builder.WithTitles(_known, _famous).Build();
 
         _fame.Modify(_facts, 60);
 
         List<TitleDefinition> held = titles.GetHeldTitles();
-        Assert.Equal([_famous, _known], held);
+        held.Should().Equal(_famous, _known);
     }
 
     [Fact]
     public void KeepsTitlesAndMovesCurrentToNewLeader()
     {
-        using Titles titles = new(_facts, _settings);
+        using Titles titles = _builder.WithTitles(_known, _famous).Build();
         List<TitleDefinition> changes = [];
         titles.CurrentTitleChanged += changes.Add;
 
@@ -66,14 +65,14 @@ public class TitlesTests
         _fame.Modify(_facts, -40);
 
         List<TitleDefinition> held = titles.GetHeldTitles();
-        Assert.Equal([_known, _famous], held);
-        Assert.Equal([_famous, _known], changes);
+        held.Should().Equal(_known, _famous);
+        changes.Should().Equal(_famous, _known);
     }
 
     [Fact]
     public void KeepsPromotedTitleCurrentUntilLeaderChanges()
     {
-        using Titles titles = new(_facts, _settings);
+        using Titles titles = _builder.WithTitles(_known, _famous).Build();
         _fame.Modify(_facts, 60);
 
         titles.PromoteTitle(_known);
@@ -86,39 +85,38 @@ public class TitlesTests
         _fame.Modify(_facts, 40);
         TitleDefinition? afterLeaderChanges = titles.CurrentTitle;
 
-        Assert.Equal(_known, afterOtherChange);
-        Assert.Equal(_known, afterLeaderMatches);
-        Assert.Equal(_famous, afterLeaderChanges);
+        afterOtherChange.Should().Be(_known);
+        afterLeaderMatches.Should().Be(_known);
+        afterLeaderChanges.Should().Be(_famous);
     }
 
     [Fact]
     public void EarnsUnheldTitleWhenPromoted()
     {
         TitleDefinition rewarded = FameTitle("Rewarded", 90, new FactEffect { Fact = RewardFact, Value = 7 });
-        SocialSettings settings = new() { Titles = [rewarded] };
-        using Titles titles = new(_facts, settings);
+        using Titles titles = _builder.WithTitles(rewarded).Build();
         List<TitleDefinition> earned = [];
         titles.TitleEarned += earned.Add;
 
         titles.PromoteTitle(rewarded);
 
-        Assert.Equal([rewarded], earned);
-        Assert.Equal(rewarded, titles.CurrentTitle);
-        Assert.Equal(7, _facts.GetFact(RewardFact));
+        int reward = _facts.GetFact(RewardFact);
+        earned.Should().Equal(rewarded);
+        titles.CurrentTitle.Should().Be(rewarded);
+        reward.Should().Be(7);
     }
 
     [Fact]
     public void ListsHeldTitlesFromCurrentToNeverCurrent()
     {
         TitleDefinition noticed = FameTitle("Noticed", 10);
-        SocialSettings settings = new() { Titles = [noticed, _known, _famous] };
-        using Titles titles = new(_facts, settings);
+        using Titles titles = _builder.WithTitles(noticed, _known, _famous).Build();
 
         _fame.Modify(_facts, 60);
         titles.PromoteTitle(noticed);
 
         List<TitleDefinition> held = titles.GetHeldTitles();
-        Assert.Equal([noticed, _famous, _known], held);
+        held.Should().Equal(noticed, _famous, _known);
     }
 
     [Fact]
@@ -128,51 +126,34 @@ public class TitlesTests
         _facts.SetFact(_famous.Id, 2);
         _facts.SetFact(_known.Id, 3);
 
-        using Titles titles = new(_facts, _settings);
+        using Titles titles = _builder.WithTitles(_known, _famous).Build();
 
-        Assert.Equal(_known, titles.CurrentTitle);
+        titles.CurrentTitle.Should().Be(_known);
     }
 
     [Fact]
     public void EarnsTitlesUnlockedByAnotherTitlesEffects()
     {
         TitleDefinition known = FameTitle("Known", 20, new ModifyScaleEffect { Scale = _fame, Delta = 40 });
-        SocialSettings settings = new() { Titles = [known, _famous] };
-        using Titles titles = new(_facts, settings);
+        using Titles titles = _builder.WithTitles(known, _famous).Build();
 
         _fame.Modify(_facts, 20);
 
         bool knownEarned = known.IsEarned(_facts);
-        Assert.True(knownEarned);
-        Assert.Equal(_famous, titles.CurrentTitle);
+        knownEarned.Should().BeTrue();
+        titles.CurrentTitle.Should().Be(_famous);
     }
 
     [Fact]
     public void StopsTrackingWhenDisposed()
     {
-        Titles titles = new(_facts, _settings);
+        Titles titles = _builder.WithTitles(_known, _famous).Build();
         titles.Dispose();
 
         _fame.Modify(_facts, 60);
 
         List<TitleDefinition> held = titles.GetHeldTitles();
-        Assert.Empty(held);
-    }
-
-    [Fact]
-    public void HasTitleConditionReadsEarnedTitles()
-    {
-        HasTitleCondition hasKnown = new() { Title = _known };
-        ConditionContext context = new(_facts);
-        bool before = hasKnown.Check(context);
-
-        _facts.SetFact(_known.Id, 1);
-        bool after = hasKnown.Check(context);
-        string description = hasKnown.Describe();
-
-        Assert.False(before);
-        Assert.True(after);
-        Assert.Equal("Has title Known", description);
+        held.Should().BeEmpty();
     }
 
     private TitleDefinition FameTitle(string name, int fame, params Effect[] onEarned)

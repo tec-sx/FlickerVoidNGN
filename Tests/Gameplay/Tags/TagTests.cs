@@ -13,8 +13,8 @@ public class TagTests
         int lowerHash = lower.GetHashCode();
         int mixedHash = mixed.GetHashCode();
 
-        Assert.Equal(mixed, lower);
-        Assert.Equal(mixedHash, lowerHash);
+        lower.Should().Be(mixed);
+        lowerHash.Should().Be(mixedHash);
     }
 
     [Fact]
@@ -24,9 +24,9 @@ public class TagTests
         bool parent = TestTags.GroupOne.MatchesTag(TestTags.Group);
         bool child = TestTags.Group.MatchesTag(TestTags.GroupOne);
 
-        Assert.True(itself);
-        Assert.True(parent);
-        Assert.False(child);
+        itself.Should().BeTrue();
+        parent.Should().BeTrue();
+        child.Should().BeFalse();
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public class TagTests
 
         bool matches = TestTags.GroupOne.MatchesTag(partial);
 
-        Assert.False(matches);
+        matches.Should().BeFalse();
     }
 
     [Fact]
@@ -45,8 +45,8 @@ public class TagTests
         bool noneMatchesNone = Tag.None.MatchesTag(Tag.None);
         bool tagMatchesNone = TestTags.A.MatchesTag(Tag.None);
 
-        Assert.False(Tag.None.IsValid);
-        Assert.False(noneMatchesNone);
-        Assert.False(tagMatchesNone);
+        Tag.None.IsValid.Should().BeFalse();
+        noneMatchesNone.Should().BeFalse();
+        tagMatchesNone.Should().BeFalse();
     }
 }

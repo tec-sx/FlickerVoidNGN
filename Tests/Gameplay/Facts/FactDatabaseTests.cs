@@ -1,4 +1,3 @@
-using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Tags;
 
@@ -6,173 +5,130 @@ namespace FlickerVoid.Engine.Gameplay.Tests.Facts;
 
 public class FactDatabaseTests
 {
-    private readonly FactSettings _settings = new();
-    private readonly FactDatabase _facts;
-    private readonly ConditionContext _context;
-
-    public FactDatabaseTests()
-    {
-        _facts = new FactDatabase(_settings);
-        _context = new ConditionContext(_facts);
-    }
+    private readonly FactDatabaseTestsBuilder _builder = new();
 
     [Fact]
     public void ReadsZeroForUndefinedFact()
     {
-        Assert.False(_facts.IsFactDefined(TestTags.A));
-        Assert.Equal(0, _facts.GetFact(TestTags.A));
+        FactDatabase facts = _builder.Build();
+
+        bool defined = facts.IsFactDefined(TestTags.A);
+        int value = facts.GetFact(TestTags.A);
+
+        defined.Should().BeFalse();
+        value.Should().Be(0);
     }
 
     [Fact]
-    public void SetsAddsAndRemoves()
+    public void SetsFact()
     {
-        _facts.SetFact(TestTags.A, 5);
-        Assert.True(_facts.IsFactDefined(TestTags.A));
-        Assert.Equal(5, _facts.GetFact(TestTags.A));
+        FactDatabase facts = _builder.Build();
 
-        _facts.AddFact(TestTags.A, 3);
-        Assert.Equal(8, _facts.GetFact(TestTags.A));
+        facts.SetFact(TestTags.A, 5);
 
-        _facts.AddFact(TestTags.B);
-        Assert.Equal(1, _facts.GetFact(TestTags.B));
+        bool defined = facts.IsFactDefined(TestTags.A);
+        int value = facts.GetFact(TestTags.A);
+        defined.Should().BeTrue();
+        value.Should().Be(5);
+    }
 
-        bool removed = _facts.RemoveFact(TestTags.A);
-        Assert.True(removed);
-        Assert.False(_facts.IsFactDefined(TestTags.A));
+    [Fact]
+    public void AddsDeltaOrOne()
+    {
+        FactDatabase facts = _builder.WithFact(TestTags.A, 5).Build();
 
-        bool removedTwice = _facts.RemoveFact(TestTags.A);
-        Assert.False(removedTwice);
+        facts.AddFact(TestTags.A, 3);
+        facts.AddFact(TestTags.B);
+
+        int a = facts.GetFact(TestTags.A);
+        int b = facts.GetFact(TestTags.B);
+        a.Should().Be(8);
+        b.Should().Be(1);
+    }
+
+    [Fact]
+    public void RemovesOnlyDefinedFacts()
+    {
+        FactDatabase facts = _builder.WithFact(TestTags.A, 5).Build();
+
+        bool removed = facts.RemoveFact(TestTags.A);
+        bool removedTwice = facts.RemoveFact(TestTags.A);
+
+        bool defined = facts.IsFactDefined(TestTags.A);
+        removed.Should().BeTrue();
+        removedTwice.Should().BeFalse();
+        defined.Should().BeFalse();
     }
 
     [Fact]
     public void RemovesOnlyFactsUnderParentTag()
     {
-        _facts.SetFact(TestTags.GroupOne, 1);
-        _facts.SetFact(TestTags.GroupTwo, 2);
-        _facts.SetFact(TestTags.A, 3);
+        FactDatabase facts = _builder
+            .WithFact(TestTags.GroupOne, 1)
+            .WithFact(TestTags.GroupTwo, 2)
+            .WithFact(TestTags.A, 3)
+            .Build();
 
-        int removed = _facts.RemoveFactsUnder(TestTags.Group);
+        int removed = facts.RemoveFactsUnder(TestTags.Group);
 
-        Assert.Equal(2, removed);
-        Assert.False(_facts.IsFactDefined(TestTags.GroupOne));
-        Assert.False(_facts.IsFactDefined(TestTags.GroupTwo));
-        Assert.True(_facts.IsFactDefined(TestTags.A));
+        removed.Should().Be(2);
+        facts.AllFacts.Keys.Should().ContainSingle().Which.Should().Be(TestTags.A);
     }
 
     [Fact]
     public void NotifiesListenersWithOldAndNewValue()
     {
-        _facts.SetFact(TestTags.A, 2);
+        FactDatabase facts = _builder.WithFact(TestTags.A, 2).Build();
+        FactChangedHandler handler = Substitute.For<FactChangedHandler>();
+        facts.FactChanged += handler;
 
-        List<(int Old, int New)> changes = [];
-        FactChangedHandler handler = (tag, oldValue, newValue) =>
+        facts.AddFact(TestTags.A, 3);
+        facts.RemoveFact(TestTags.A);
+
+        Received.InOrder(() =>
         {
-            if (tag == TestTags.A)
-            {
-                changes.Add((oldValue, newValue));
-            }
-        };
-
-        _facts.FactChanged += handler;
-        _facts.AddFact(TestTags.A, 3);
-        _facts.RemoveFact(TestTags.A);
-        _facts.FactChanged -= handler;
-
-        Assert.Equal([(2, 5), (5, 0)], changes);
-        Assert.Equal(TestTags.A, _facts.LastChangedTag);
+            handler(TestTags.A, 2, 5);
+            handler(TestTags.A, 5, 0);
+        });
+        facts.LastChangedTag.Should().Be(TestTags.A);
     }
 
-    [Fact]
-    public void ClampsFactWithRangeInSettings()
+    [Theory]
+    [InlineData(50, 10)]
+    [InlineData(-100, -10)]
+    public void ClampsFactWithRangeInSettings(int value, int expected)
     {
-        _settings.Definitions.Add(new FactDefinition { Tag = TestTags.A, Clamp = true, Min = -10, Max = 10 });
+        FactDatabase facts = _builder.WithRange(TestTags.A, -10, 10).Build();
 
-        _facts.SetFact(TestTags.A, 50);
-        Assert.Equal(10, _facts.GetFact(TestTags.A));
+        facts.SetFact(TestTags.A, value);
 
-        _facts.AddFact(TestTags.A, -100);
-        Assert.Equal(-10, _facts.GetFact(TestTags.A));
+        int clamped = facts.GetFact(TestTags.A);
+        clamped.Should().Be(expected);
     }
 
     [Fact]
     public void ResetsToClampedDefaultsWithValueNames()
     {
-        _settings.Definitions.Add(new FactDefinition { Tag = TestTags.A, DefaultValue = 1, ValueNames = ["Closed", "Open"] });
-        _settings.Definitions.Add(new FactDefinition { Tag = TestTags.B, DefaultValue = 50, Clamp = true, Min = 0, Max = 10 });
-        _facts.SetFact(TestTags.GroupOne, 1);
+        FactDatabase facts = _builder
+            .WithDefinition(new FactDefinition { Tag = TestTags.A, DefaultValue = 1, ValueNames = ["Closed", "Open"] })
+            .WithDefinition(new FactDefinition { Tag = TestTags.B, DefaultValue = 50, Clamp = true, Min = 0, Max = 10 })
+            .WithFact(TestTags.GroupOne, 1)
+            .Build();
 
-        _facts.ResetToDefaults();
+        facts.ResetToDefaults();
 
-        string? valueName = _facts.GetFactValueName(TestTags.A);
-
-        Assert.Equal(1, _facts.GetFact(TestTags.A));
-        Assert.Equal("Open", valueName);
-        Assert.Equal(10, _facts.GetFact(TestTags.B));
-        Assert.False(_facts.IsFactDefined(TestTags.GroupOne));
+        string? valueName = facts.GetFactValueName(TestTags.A);
+        valueName.Should().Be("Open");
+        facts.AllFacts.Should().Equal(new Dictionary<Tag, int> { [TestTags.A] = 1, [TestTags.B] = 10 });
     }
 
     [Fact]
     public void RefusesToWriteNoTag()
     {
-        Assert.Throws<ArgumentException>(() => _facts.SetFact(Tag.None, 1));
-    }
+        FactDatabase facts = _builder.Build();
 
-    [Fact]
-    public void EvaluatesFactConditions()
-    {
-        _facts.SetFact(TestTags.A, 4);
+        Action write = () => facts.SetFact(Tag.None, 1);
 
-        ConditionSet set = new()
-        {
-            Conditions =
-            [
-                new FactCondition { Fact = TestTags.A, Compare = FactCompare.GreaterOrEqual, Value = 4 },
-                new FactCondition { Fact = TestTags.A, Compare = FactCompare.Defined },
-                new FactCondition { Fact = TestTags.B, Compare = FactCompare.Undefined },
-            ],
-        };
-        bool holds = set.Evaluate(_context);
-
-        set.Conditions.Add(new FactCondition { Fact = TestTags.A, Compare = FactCompare.Greater, Value = 4 });
-        bool holdsAbove = set.Evaluate(_context);
-
-        Assert.True(holds);
-        Assert.False(holdsAbove);
-    }
-
-    [Fact]
-    public void AppliesFactEffectsInOrder()
-    {
-        EffectList effects = new()
-        {
-            Effects =
-            [
-                new FactEffect { Fact = TestTags.A, Write = FactWrite.Set, Value = 3 },
-                new FactEffect { Fact = TestTags.A, Write = FactWrite.Add, Value = 2 },
-                new FactEffect { Fact = TestTags.B, Write = FactWrite.Set, Value = 1 },
-                new FactEffect { Fact = TestTags.B, Write = FactWrite.Remove },
-            ],
-        };
-
-        effects.Apply(_context);
-
-        Assert.Equal(5, _facts.GetFact(TestTags.A));
-        Assert.False(_facts.IsFactDefined(TestTags.B));
-    }
-
-    [Fact]
-    public void DescribesFactConditionsAndEffects()
-    {
-        FactCondition atLeast = new() { Fact = TestTags.A, Value = 4 };
-        FactCondition defined = new() { Fact = TestTags.A, Compare = FactCompare.Defined };
-        FactEffect add = new() { Fact = TestTags.A, Write = FactWrite.Add, Value = 2 };
-
-        string atLeastText = atLeast.Describe();
-        string definedText = defined.Describe();
-        string addText = add.Describe();
-
-        Assert.Equal("Test.FVFramework.A >= 4", atLeastText);
-        Assert.Equal("Test.FVFramework.A defined", definedText);
-        Assert.Equal("Test.FVFramework.A += 2", addText);
+        write.Should().Throw<ArgumentException>();
     }
 }

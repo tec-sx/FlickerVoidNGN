@@ -13,10 +13,10 @@ public sealed class TitleDefinition : Definition
     /// <summary>Applied once, the first time the title is earned.</summary>
     public EffectList OnEarned { get; init; } = new();
 
-    public bool IsEarned(FactDatabase facts) => GetRank(facts) > 0;
+    public bool IsEarned(IFactDatabase facts) => GetRank(facts) > 0;
 
     /// <summary>The title's place in the player's history: the highest rank is the current title, 0 means not earned.</summary>
-    public int GetRank(FactDatabase facts)
+    public int GetRank(IFactDatabase facts)
     {
         if (!Id.IsValid)
         {

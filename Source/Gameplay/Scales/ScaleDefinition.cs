@@ -12,10 +12,10 @@ public sealed class ScaleDefinition : Definition
     /// <summary>Scales this one's applied changes feed, once each: a change passed on doesn't travel further. At most three.</summary>
     public List<ScaleLink> Links { get; init; } = [];
 
-    public int GetValue(FactDatabase facts) => facts.GetFact(Id);
+    public int GetValue(IFactDatabase facts) => facts.GetFact(Id);
 
     /// <summary>The band the current value falls in; null below every band.</summary>
-    public ScaleBand? GetBand(FactDatabase facts)
+    public ScaleBand? GetBand(IFactDatabase facts)
     {
         int value = GetValue(facts);
         return FindBand(value);
@@ -53,7 +53,7 @@ public sealed class ScaleDefinition : Definition
     }
 
     /// <summary>Adds delta within the scale's range and passes the change that applied on through the links, once. Returns the change that applied.</summary>
-    public int Modify(FactDatabase facts, int delta)
+    public int Modify(IFactDatabase facts, int delta)
     {
         if (delta == 0)
         {
@@ -86,7 +86,7 @@ public sealed class ScaleDefinition : Definition
     private static int RoundToInt(float value) => (int)MathF.Floor(value + 0.5f);
 
     /// <summary>Returns the change that applied after the fact's range clamped it.</summary>
-    private int AddClamped(FactDatabase facts, int delta)
+    private int AddClamped(IFactDatabase facts, int delta)
     {
         if (!Id.IsValid || delta == 0)
         {
