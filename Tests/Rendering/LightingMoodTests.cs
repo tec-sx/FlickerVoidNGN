@@ -22,6 +22,16 @@ public sealed class LightingMoodTests : IDisposable
     }
 
     [Fact]
+    public void LoadsAFileThatNamesItsSchema()
+    {
+        LightingMood mood = _builder
+            .WithFile("Dusk.json", """{ "$schema": "../.schemas/mood.schema.json", "exposure": 1.4 }""")
+            .Load("Dusk.json");
+
+        mood.Exposure.Should().Be(1.4f);
+    }
+
+    [Fact]
     public void BlendsEverySettingBetweenTwoMoods()
     {
         LightingMood day = new() { Exposure = 1, Tint = Vector3.One, FogDensity = 0 };

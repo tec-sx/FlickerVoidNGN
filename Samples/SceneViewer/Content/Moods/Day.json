@@ -1,5 +1,6 @@
 // Clear afternoon: a warm high sun, soft shade and a gentle grade on paper.
 {
+  "$schema": "../.schemas/mood.schema.json",
   "sunDirection": [-0.4, -0.8, -0.45],
   "ambient": 0.35,
   "bloom": 0.05,

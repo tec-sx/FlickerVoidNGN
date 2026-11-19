@@ -1,6 +1,7 @@
 using Arch.Core;
 using Arch.System;
 
+using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Debugging;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
@@ -28,6 +29,7 @@ public sealed partial class Game : IDisposable
 
         Spawner.Register("transform", RuntimeJsonContext.Default.Transform);
         Services.AddService(Spawner);
+        Schemas.Add("scene", Spawner.GetSchema);
         Services.AddService(DebugConsole);
 
         Loop.FixedUpdate += HandleFixedUpdate;
@@ -39,6 +41,9 @@ public sealed partial class Game : IDisposable
     public World World { get; }
 
     public IServiceRegistry Services { get; } = new ServiceRegistry();
+
+    /// <summary>The schemas of the game's text content; modules add the file kinds they read.</summary>
+    public ContentSchemas Schemas { get; } = new();
 
     /// <summary>Spawns scene files into the world; modules register their components on it.</summary>
     public ISceneSpawner Spawner { get; } = new SceneSpawner();
