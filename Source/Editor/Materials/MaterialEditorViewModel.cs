@@ -32,7 +32,7 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
     {
         _scene = scene;
         _preview = preview;
-        _browser = new MaterialBrowser(scene.Content.RootDirectory);
+        _browser = new MaterialBrowser(scene.Content);
         ShaderLibrary shaders = ShaderLibrary.ForEngine("Rendering");
         _declared = ShaderParameters.Load(shaders, "Scene").Parameters;
         FindMaterials();

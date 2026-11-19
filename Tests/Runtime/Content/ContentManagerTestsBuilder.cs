@@ -28,6 +28,16 @@ internal sealed class ContentManagerTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>A source folder built into the output folder under the root, named in the root's build manifest; returns its full path.</summary>
+    public string WithSourceFolder(string outputFolder)
+    {
+        string source = Path.Combine(RootDirectory, "_Source" + outputFolder);
+        Directory.CreateDirectory(source);
+        string manifest = Path.Combine(RootDirectory, ContentBuildManifest.FileName);
+        File.AppendAllLines(manifest, [$"folder={source}|{outputFolder}"]);
+        return source;
+    }
+
     public ContentManager Build() => new(RootDirectory);
 
     public void Dispose()

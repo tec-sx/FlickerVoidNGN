@@ -9,6 +9,7 @@ public sealed class ContentManager : IContentManager
     private static readonly string ParentPrefix = ".." + Path.DirectorySeparatorChar;
 
     private readonly Dictionary<string, object> _loaded;
+    private readonly ContentBuildManifest? _manifest;
 
     public ContentManager(string rootDirectory)
     {
@@ -16,6 +17,7 @@ public sealed class ContentManager : IContentManager
         RootDirectory = Path.TrimEndingDirectorySeparator(fullRoot);
 
         _loaded = new Dictionary<string, object>(PathComparer);
+        _manifest = ContentBuildManifest.Find(RootDirectory);
     }
 
     /// <summary>Compares full paths as the file system does: ignoring case on Windows.</summary>
@@ -57,6 +59,19 @@ public sealed class ContentManager : IContentManager
         Changed?.Invoke(fullPath);
     }
 
+    public void Write(string path, byte[] contents)
+    {
+        string fullPath = GetFullPath(path);
+        string? sourcePath = FindSourcePath(fullPath);
+        if (sourcePath is not null)
+        {
+            WriteFile(sourcePath, contents);
+        }
+
+        WriteFile(fullPath, contents);
+        NotifyChanged(path);
+    }
+
     public string GetFullPath(string path)
     {
         string combined = Path.Combine(RootDirectory, path);
@@ -69,6 +84,43 @@ public sealed class ContentManager : IContentManager
         }
 
         return fullPath;
+    }
+
+    private static void WriteFile(string fullPath, byte[] contents)
+    {
+        string? folder = Path.GetDirectoryName(fullPath);
+        if (folder is not null)
+        {
+            Directory.CreateDirectory(folder);
+        }
+
+        File.WriteAllBytes(fullPath, contents);
+    }
+
+    /// <summary>The source file a built file comes from, when the build manifest names a game source folder that holds it.</summary>
+    private string? FindSourcePath(string fullPath)
+    {
+        if (_manifest is null)
+        {
+            return null;
+        }
+
+        foreach (ContentBuildFolder folder in _manifest.Folders)
+        {
+            if (folder.Engine)
+            {
+                continue;
+            }
+
+            string relative = Path.GetRelativePath(folder.Output, fullPath);
+            bool outside = Path.IsPathRooted(relative) || relative == ".." || relative.StartsWith(ParentPrefix, StringComparison.Ordinal);
+            if (!outside)
+            {
+                return Path.Combine(folder.Source, relative);
+            }
+        }
+
+        return null;
     }
 
     private static StringComparer CreatePathComparer()

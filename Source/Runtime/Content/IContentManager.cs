@@ -20,6 +20,12 @@ public interface IContentManager
     /// <summary>Forgets the object loaded from the file at <paramref name="path"/>, which changed on disk, and raises <see cref="Changed"/>.</summary>
     void NotifyChanged(string path);
 
+    /// <summary>
+    /// Saves a file at <paramref name="path"/> and reports it changed. In a development build (one with a
+    /// <see cref="ContentBuildManifest"/>) its source file gets the same bytes, so the change outlives the next build.
+    /// </summary>
+    void Write(string path, byte[] contents);
+
     /// <summary>Resolves a content path against the root; paths that lead outside the root throw.</summary>
     string GetFullPath(string path);
 }

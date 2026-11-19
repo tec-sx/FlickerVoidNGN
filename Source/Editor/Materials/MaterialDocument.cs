@@ -41,13 +41,13 @@ public sealed class MaterialDocument
 
     private void Save()
     {
-        string fullPath = _content.GetFullPath(Path);
-        using (FileStream stream = File.Create(fullPath))
+        using MemoryStream stream = new();
         using (Utf8JsonWriter writer = new(stream, WriterOptions))
         {
             JsonSerializer.Serialize(writer, Material, RenderingJsonContext.Default.MaterialFile);
         }
 
-        _content.NotifyChanged(Path);
+        byte[] contents = stream.ToArray();
+        _content.Write(Path, contents);
     }
 }

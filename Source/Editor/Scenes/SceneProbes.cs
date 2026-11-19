@@ -49,19 +49,10 @@ public static class SceneProbes
 
     private static void Save(EditorScene scene, string path, IrradianceProbes probes)
     {
-        string fullPath = scene.Content.GetFullPath(path);
-        string? folder = Path.GetDirectoryName(fullPath);
-        if (folder is not null)
-        {
-            Directory.CreateDirectory(folder);
-        }
-
-        using (FileStream stream = File.Create(fullPath))
-        {
-            probes.Save(stream);
-        }
-
-        scene.Content.NotifyChanged(path);
+        using MemoryStream stream = new();
+        probes.Save(stream);
+        byte[] contents = stream.ToArray();
+        scene.Content.Write(path, contents);
     }
 
     private static string NameProbes(EditorScene scene, Entity entity)
