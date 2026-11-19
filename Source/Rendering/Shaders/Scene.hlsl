@@ -1,6 +1,7 @@
 // Draws a mesh part whose vertices (float3 position, float3 normal, float2 uv) are pulled from a bindless buffer: its base
 // color times its texture, lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster,
-// shadowed through the shadow atlas and tinted by spot light cookies, plus bounced light from irradiance probes.
+// shadowed through the shadow atlas and tinted by spot light cookies, plus bounced light from irradiance probes, seen
+// through fog lit by the same lights.
 // The frame buffer holds FrameData, then the lights, the shadows, each cluster's range of light indices, and the indices.
 
 Texture2D Textures[] : register(t0, space1);
@@ -38,6 +39,13 @@ struct FrameData
     uint Probes;
     float3 ProbeSize;
     uint3 ProbeCounts;
+    float3 CameraPosition;
+    float NearPlane;
+    float3 FogColor;
+    float FogDensity;
+    float FogAnisotropy;
+    float FogHeight;
+    float FogHeightFalloff;
 };
 
 struct Light
@@ -64,7 +72,9 @@ struct Shadow
 [[vk::push_constant]] ConstantBuffer<SceneConstants> Scene : register(b0, space0);
 
 static const uint VertexStride = 32;
-static const uint FrameDataSize = 192;
+static const uint FrameDataSize = 240;
+static const uint FogSteps = 16;
+static const float Pi = 3.14159265;
 static const uint ProbeSize = 48;
 static const uint LightSize = 80;
 static const uint ShadowSize = 96;
@@ -111,6 +121,13 @@ FrameData LoadFrame()
     frame.Probes = buffer.Load<uint>(156);
     frame.ProbeSize = buffer.Load<float3>(160);
     frame.ProbeCounts = buffer.Load<uint3>(172);
+    frame.CameraPosition = buffer.Load<float3>(192);
+    frame.NearPlane = buffer.Load<float>(204);
+    frame.FogColor = buffer.Load<float3>(208);
+    frame.FogDensity = buffer.Load<float>(220);
+    frame.FogAnisotropy = buffer.Load<float>(224);
+    frame.FogHeight = buffer.Load<float>(228);
+    frame.FogHeightFalloff = buffer.Load<float>(232);
     return frame;
 }
 
@@ -192,8 +209,9 @@ float ShadowTap(FrameData frame, float2 uv, float depth)
     return lerp(top, bottom, blend.y);
 }
 
-// 1 where the shadow's view sees the point, 0 where something hides it, softened over a 3x3 texel filter.
-float SampleShadow(FrameData frame, uint index, float3 worldPosition, float3 normal, float distance)
+// 1 where the shadow's view sees the point, 0 where something hides it, softened over a 3x3 texel filter, or over the
+// four texels round it when not soft (fog takes many samples, each blurred by the march anyway).
+float SampleShadow(FrameData frame, uint index, float3 worldPosition, float3 normal, float distance, bool soft)
 {
     Shadow shadow = LoadShadow(frame, index);
     float texelSize = shadow.TexelPerDistance * distance + shadow.TexelConstant;
@@ -207,6 +225,11 @@ float SampleShadow(FrameData frame, uint index, float3 worldPosition, float3 nor
     }
 
     float depth = atlas.z - DepthBias;
+    if (!soft)
+    {
+        return ShadowTap(frame, atlas.xy, depth);
+    }
+
     float lit = 0;
     for (int y = -1; y <= 1; y++)
     {
@@ -232,19 +255,20 @@ float3 SampleCookie(FrameData frame, Light light, float3 fromLight)
     return Textures[light.Cookie].SampleLevel(Samplers[frame.ClampSampler], uv, 0).rgb;
 }
 
-// Inverse-square falloff, softened near the light and windowed to reach zero at its range.
-float3 ShadeLight(FrameData frame, Light light, float3 worldPosition, float3 normal)
+// The light arriving at a point from the light, with inverse-square falloff softened near the light and windowed to reach
+// zero at its range, the spot cone, the cookie and the shadow; direction points toward the light. A surface's normal
+// offsets the shadow lookup, and a point in fog has none.
+float3 IncomingLight(FrameData frame, Light light, float3 worldPosition, float3 normal, bool soft, out float3 direction)
 {
     float3 toLight = light.Position - worldPosition;
     float distanceSquared = dot(toLight, toLight);
     float distance = sqrt(distanceSquared);
-    float3 direction = toLight / max(distance, 1e-4);
+    direction = toLight / max(distance, 1e-4);
     float ratio = distanceSquared / (light.Range * light.Range);
     float window = saturate(1 - ratio * ratio);
     float falloff = window * window / (distanceSquared + 1);
     float cone = smoothstep(light.CosOuter, light.CosInner, dot(-direction, light.Direction));
-    float facing = saturate(dot(normal, direction));
-    float3 color = light.Color * (facing * falloff * cone);
+    float3 color = light.Color * (falloff * cone);
     if (all(color <= 0))
     {
         return 0;
@@ -263,10 +287,17 @@ float3 ShadeLight(FrameData frame, Light light, float3 worldPosition, float3 nor
             shadow += PointFace(-toLight);
         }
 
-        color *= SampleShadow(frame, shadow, worldPosition, normal, distance);
+        color *= SampleShadow(frame, shadow, worldPosition, normal, distance, soft);
     }
 
     return color;
+}
+
+float3 ShadeLight(FrameData frame, Light light, float3 worldPosition, float3 normal)
+{
+    float3 direction;
+    float3 incoming = IncomingLight(frame, light, worldPosition, normal, true, direction);
+    return incoming * saturate(dot(normal, direction));
 }
 
 float3 ShadeClusterLights(FrameData frame, float2 pixel, float3 worldPosition, float3 normal)
@@ -329,6 +360,89 @@ float3 SampleProbes(FrameData frame, float3 worldPosition, float3 normal)
     return irradiance;
 }
 
+// Henyey-Greenstein phase, scaled so even scattering is 1, for light turning by the angle whose cosine is given.
+float Phase(float cosAngle, float anisotropy)
+{
+    float g = anisotropy;
+    float denominator = 1 + g * g - 2 * g * cosAngle;
+    return (1 - g * g) / (denominator * sqrt(denominator));
+}
+
+// The light a point in fog scatters toward the camera, from every light that reaches it, before the fog's color.
+float3 FogLight(FrameData frame, float2 pixel, float3 position, float3 towardCamera)
+{
+    float3 light = frame.Ambient + SampleProbes(frame, position, 0);
+    float3 sunDirection = normalize(frame.SunDirection);
+    float sun = (1 - frame.Ambient) * Phase(dot(sunDirection, towardCamera), frame.FogAnisotropy);
+    if (frame.SunShadow != None)
+    {
+        sun *= SampleShadow(frame, frame.SunShadow, position, 0, 0, false);
+    }
+
+    light += sun;
+    ByteAddressBuffer buffer = Buffers[Scene.Frame];
+    uint cluster = FindCluster(frame, pixel, position);
+    uint2 range = buffer.Load<uint2>(frame.ClustersOffset + cluster * 8);
+    for (uint index = 0; index < range.y; index++)
+    {
+        uint lightIndex = buffer.Load<uint>(frame.IndicesOffset + (range.x + index) * 4);
+        Light clusterLight = buffer.Load<Light>(FrameDataSize + lightIndex * LightSize);
+        float3 direction;
+        float3 incoming = IncomingLight(frame, clusterLight, position, 0, false, direction);
+        light += incoming * Phase(dot(-direction, towardCamera), frame.FogAnisotropy);
+    }
+
+    return light;
+}
+
+// A small per-pixel offset that spreads the march's banding into fine noise (interleaved gradient noise).
+float PixelNoise(float2 pixel)
+{
+    return frac(52.9829189 * frac(dot(pixel, float2(0.06711056, 0.00583715))));
+}
+
+// Fog density at a point: full at and below the fog height, thinning exponentially above it.
+float FogDensityAt(FrameData frame, float3 position)
+{
+    float above = max(position.y - frame.FogHeight, 0);
+    return frame.FogDensity * exp(-above * frame.FogHeightFalloff);
+}
+
+// Marches from the near plane to the surface in even steps, integrating each step exactly for light and density that hold
+// still across it. Returns the light the fog scatters toward the camera and the share of the surface's light it lets through.
+float4 MarchFog(FrameData frame, float2 pixel, float3 surface)
+{
+    float3 forward = frame.DepthAxis.xyz;
+    float3 direction = forward;
+    if (frame.LogarithmicSlices != 0)
+    {
+        direction = normalize(surface - frame.CameraPosition);
+    }
+
+    float depth = dot(float4(surface, 1), frame.DepthAxis);
+    float rayLength = max(depth - frame.NearPlane, 0) / dot(direction, forward);
+    float stepLength = rayLength / FogSteps;
+    float jitter = PixelNoise(pixel);
+    float3 scattered = 0;
+    float transmittance = 1;
+    for (uint index = 0; index < FogSteps; index++)
+    {
+        float travelled = (index + jitter) * stepLength;
+        float3 position = surface - direction * (rayLength - travelled);
+        float stepTransmittance = exp(-FogDensityAt(frame, position) * stepLength);
+        if (stepTransmittance >= 1)
+        {
+            continue;
+        }
+
+        float3 light = FogLight(frame, pixel, position, -direction);
+        scattered += transmittance * light * (1 - stepTransmittance);
+        transmittance *= stepTransmittance;
+    }
+
+    return float4(scattered * frame.FogColor, transmittance);
+}
+
 float4 PixelMain(VertexOutput input) : SV_Target
 {
     FrameData frame = LoadFrame();
@@ -337,11 +451,18 @@ float4 PixelMain(VertexOutput input) : SV_Target
     float sun = saturate(dot(normal, -normalize(frame.SunDirection)));
     if (sun > 0 && frame.SunShadow != None)
     {
-        sun *= SampleShadow(frame, frame.SunShadow, input.WorldPosition, normal, 0);
+        sun *= SampleShadow(frame, frame.SunShadow, input.WorldPosition, normal, 0, true);
     }
 
     float3 light = frame.Ambient + (1 - frame.Ambient) * sun;
     light += SampleProbes(frame, input.WorldPosition, normal);
     light += ShadeClusterLights(frame, input.Position.xy, input.WorldPosition, normal);
-    return float4(albedo.rgb * light, albedo.a);
+    float3 color = albedo.rgb * light;
+    if (frame.FogDensity > 0)
+    {
+        float4 fog = MarchFog(frame, input.Position.xy, input.WorldPosition);
+        color = color * fog.a + fog.rgb;
+    }
+
+    return float4(color, albedo.a);
 }

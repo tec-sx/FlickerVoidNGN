@@ -17,7 +17,7 @@ using Microsoft.Extensions.Logging;
 
 // Shows a glTF model (.glb, or .gltf with its files) through a camera that orbits it, lit by a sun, ambient light and
 // optionally a ring of coloured point lights that cast shadows while the shadow atlas has room (eight of them).
-// Usage: SceneViewer [model] [--validation] [--frames <count>] [--lights <count>] [--sun <x,y,z>] [--ambient <0..1>] [--probes].
+// Usage: SceneViewer [model] [--validation] [--frames <count>] [--lights <count>] [--sun <x,y,z>] [--ambient <0..1>] [--fog <density>] [--probes].
 // --probes bakes an irradiance volume fitted to the model at startup and saves it beside the model as <model>.probes. Without a model it shows Content/Room.glb.
 string model = Path.Combine(AppContext.BaseDirectory, "Content", "Room.glb");
 bool validation = false;
@@ -26,6 +26,7 @@ int lightCount = 0;
 Vector3? sunDirection = null;
 bool bakeProbes = false;
 float? ambient = null;
+float fogDensity = 0;
 for (int index = 0; index < args.Length; index++)
 {
     switch (args[index])
@@ -44,6 +45,10 @@ for (int index = 0; index < args.Length; index++)
         case "--ambient":
             index++;
             ambient = float.Parse(args[index], CultureInfo.InvariantCulture);
+            break;
+        case "--fog":
+            index++;
+            fogDensity = float.Parse(args[index], CultureInfo.InvariantCulture);
             break;
         case "--probes":
             bakeProbes = true;
@@ -120,6 +125,10 @@ void Configure(SceneRenderer sceneRenderer)
     {
         sceneRenderer.Ambient = share;
     }
+
+    // Ground fog: full density up to the floor, thinning by e every 2/3 of a unit above it.
+    sceneRenderer.FogDensity = fogDensity;
+    sceneRenderer.FogHeightFalloff = 1.5f;
 }
 
 using SceneRenderSystem renderer = new(window, device, game.World, CreateRenderer, frameLimit);

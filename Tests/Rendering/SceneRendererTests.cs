@@ -231,6 +231,78 @@ public sealed class SceneRendererTests : IDisposable
         pixels.Should().AllBeEquivalentTo(BlackPixel);
     }
 
+    [Theory]
+    [InlineData("Orthographic")]
+    [InlineData("Perspective")]
+    public void DimsSurfacesBehindFog(string projection)
+    {
+        string camera = $$"""{ "name": "Camera", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "projection": "{{projection}}", "orthographicHeight": 2, "fieldOfView": 30 } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(3).WithBaseColor(Red));
+        _builder.WithScene(camera, Quad);
+        _builder.WithFog(density: 0.1f, color: Vector3.Zero);
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(153, 159, "black fog lets exp(-0.1 * 4.9) of the light through over the 4.9 units from the near plane");
+    }
+
+    [Fact]
+    public void LightsFogByTheAmbientLight()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0, 0, 0, 1)));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithFog(density: 0.1f, color: Vector3.One);
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(97, 103, "white fog scatters 1 - exp(-0.49) of the ambient light toward the camera");
+        green.Should().Be(red);
+        blue.Should().Be(red);
+    }
+
+    [Fact]
+    public void LightsFogByPointLights()
+    {
+        const string light = """{ "name": "Light", "components": { "transform": { "position": [0, 0, 2] }, "pointLight": { "intensity": 4, "range": 3 } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0, 0, 0, 1)));
+        _builder.WithScene(Camera, Quad, light);
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 1);
+        _builder.WithFog(density: 0.1f, color: Vector3.One);
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeGreaterThan(103, "the light adds to the ambient light the fog scatters");
+    }
+
+    [Fact]
+    public void ThinsFogAboveItsHeight()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithFog(density: 0.1f, color: Vector3.Zero, height: 0, heightFalloff: 100);
+
+        uint[] pixels = _builder.Render();
+
+        pixels[1].Should().Be(RedPixel, "the fog has all but gone a quarter unit above its height");
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[13]);
+        red.Should().BeInRange(153, 159, "below its height the fog keeps its full density");
+    }
+
+    [Fact]
+    public void LeavesSurfacesClearWithoutFog()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithFog(density: 0, color: Vector3.One);
+
+        uint[] pixels = _builder.Render();
+
+        pixels.Should().AllBeEquivalentTo(RedPixel);
+    }
+
     [Fact]
     public void OnlyClearsWithoutACamera()
     {

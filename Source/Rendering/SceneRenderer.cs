@@ -89,6 +89,24 @@ public sealed class SceneRenderer : IDisposable
     /// <summary>How far from the camera the sun casts shadows, in world units; 0 turns them off.</summary>
     public float SunShadowDistance { get; set; } = 30;
 
+    /// <summary>How much of the light crossing a world unit of fog it absorbs or scatters, at and below <see cref="FogHeight"/>; 0 clears the air.</summary>
+    public float FogDensity { get; set; }
+
+    /// <summary>The height below which fog keeps its full density.</summary>
+    public float FogHeight { get; set; }
+
+    /// <summary>How fast fog thins above <see cref="FogHeight"/>: its density falls by e every 1 / falloff units; 0 keeps it even.</summary>
+    public float FogHeightFalloff { get; set; }
+
+    /// <summary>The share of the light fog scatters rather than absorbs, per color channel: white fog glows, black fog only dims.</summary>
+    public Vector3 FogColor { get; set; } = Vector3.One;
+
+    /// <summary>
+    /// How much fog scatters light onward rather than back, from -1 to 1: above 0 it glows toward the camera when the
+    /// light shines from behind what it sees, as in god rays; 0 scatters evenly.
+    /// </summary>
+    public float FogAnisotropy { get; set; } = 0.3f;
+
     /// <summary>Probes that replace the world's irradiance volume while a bake renders, or null.</summary>
     internal ProbeSource? BakeProbes { get; set; }
 
@@ -382,6 +400,7 @@ public sealed class SceneRenderer : IDisposable
             probeMin = probes.Center - (volume.Size / 2);
         }
 
+        Matrix4x4.Invert(viewMatrix, out Matrix4x4 cameraWorld);
         FrameData data = new(
             view.ViewProjection,
             depthAxis,
@@ -405,6 +424,14 @@ public sealed class SceneRenderer : IDisposable
             (uint)volume.ProbesY,
             (uint)volume.ProbesZ,
             0,
+            0,
+            cameraWorld.Translation,
+            camera.NearPlane,
+            FogColor,
+            FogDensity,
+            FogAnisotropy,
+            FogHeight,
+            FogHeightFalloff,
             0);
 
         _frameSlot = (_frameSlot + 1) % MaxFramesInFlight;

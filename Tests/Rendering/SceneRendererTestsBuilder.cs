@@ -35,6 +35,10 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     private SceneRenderer? _renderer;
     private Vector3 _sunDirection = -Vector3.UnitZ;
     private float _ambient = 1;
+    private float _fogDensity;
+    private Vector3 _fogColor = Vector3.One;
+    private float _fogHeight;
+    private float _fogHeightFalloff;
 
     public SceneRendererTestsBuilder()
     {
@@ -108,6 +112,16 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Without a height falloff, the fog is even everywhere.</summary>
+    public SceneRendererTestsBuilder WithFog(float density, Vector3 color, float height = 0, float heightFalloff = 0)
+    {
+        _fogDensity = density;
+        _fogColor = color;
+        _fogHeight = height;
+        _fogHeightFalloff = heightFalloff;
+        return this;
+    }
+
     /// <summary>Renders the world into a new 4x4 target and reads it back as Rgba8 pixels, top row first.</summary>
     public uint[] Render()
     {
@@ -115,6 +129,10 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         _renderer ??= new SceneRenderer(device, _compiler, new ContentManager(_contentFolder), PixelFormat.Rgba8UNorm);
         _renderer.SunDirection = _sunDirection;
         _renderer.Ambient = _ambient;
+        _renderer.FogDensity = _fogDensity;
+        _renderer.FogColor = _fogColor;
+        _renderer.FogHeight = _fogHeight;
+        _renderer.FogHeightFalloff = _fogHeightFalloff;
 
         TextureDescription colorDescription = new(TargetSize, TargetSize, PixelFormat.Rgba8UNorm, TextureUsage.RenderTarget | TextureUsage.CopySource);
         TextureDescription depthDescription = new(TargetSize, TargetSize, SceneRenderer.DepthFormat, TextureUsage.DepthStencil);
