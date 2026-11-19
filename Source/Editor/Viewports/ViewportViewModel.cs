@@ -61,7 +61,15 @@ public sealed partial class ViewportViewModel : ObservableObject
     public partial string Status { get; set; } = "Starting the viewport.";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGridVisible))]
     public partial bool ShowGrid { get; set; } = true;
+
+    /// <summary>Shows the world as the game will, without the grid, icons, selection and gizmo.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGridVisible))]
+    public partial bool IsGameView { get; set; }
+
+    public bool IsGridVisible => ShowGrid && !IsGameView;
 
     /// <summary>The selected entity's name, or what to do to select one.</summary>
     public string SelectionText
@@ -153,7 +161,7 @@ public sealed partial class ViewportViewModel : ObservableObject
         _controller.Apply(input, seconds, viewportHeight);
     }
 
-    /// <summary>Q, W, E and R switch the gizmo, unless the right button is held, when they fly the camera.</summary>
+    /// <summary>Q, W, E and R switch the gizmo, unless the right button is held, when they fly the camera; G toggles the game view.</summary>
     public void KeyPressed(Key key, ViewportButtons held)
     {
         if ((held & ViewportButtons.Right) != 0)
@@ -175,13 +183,27 @@ public sealed partial class ViewportViewModel : ObservableObject
             case Key.R:
                 GizmoMode = GizmoMode.Scale;
                 break;
+            case Key.G:
+                IsGameView = !IsGameView;
+                break;
         }
     }
 
-    /// <summary>A left click without Alt: starts dragging the gizmo handle under the mouse, or selects what is there.</summary>
+    /// <summary>
+    /// A left click without Alt: starts dragging the gizmo handle under the mouse, or selects what is there; the game view hides
+    /// gizmos and icons, so it selects meshes only.
+    /// </summary>
     public void PointerPressed(Vector2 pixel, int width, int height)
     {
         World world = Scene.Game.World;
+        if (IsGameView)
+        {
+            Ray gameRay = Camera.GetRay(pixel, width, height);
+            Entity? mesh = Scene.Picker.Pick(world, gameRay);
+            Selection.Select(mesh);
+            return;
+        }
+
         if (Selection.Selected is { } selected && world.IsAlive(selected))
         {
             Transform transform = world.Get<Transform>(selected);
@@ -218,6 +240,11 @@ public sealed partial class ViewportViewModel : ObservableObject
             return;
         }
 
+        if (IsGameView)
+        {
+            return;
+        }
+
         Gizmo.Hover(Camera, transform, pixel, width, height);
     }
 
@@ -230,6 +257,11 @@ public sealed partial class ViewportViewModel : ObservableObject
     public void BuildOverlay(OverlayBuilder overlay, int viewportHeight)
     {
         overlay.Begin(Camera, viewportHeight);
+        if (IsGameView)
+        {
+            return;
+        }
+
         World world = Scene.Game.World;
         Icons.Collect(world, Selection.Selected);
         foreach (IconInstance icon in Icons.Icons)
