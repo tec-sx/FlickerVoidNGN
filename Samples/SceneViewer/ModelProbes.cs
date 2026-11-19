@@ -21,7 +21,14 @@ public static class ModelProbes
 
     public static void Bake(IGraphicsDevice device, IContentManager content, World world, string modelPath, LightingMood mood)
     {
-        ModelData model = GltfImporter.Load(modelPath);
+        // The content build baked the model next to its source name.
+        string bakedPath = Path.ChangeExtension(modelPath, ".model");
+        ModelData model;
+        using (FileStream stream = File.OpenRead(bakedPath))
+        {
+            model = ModelFile.Read(stream);
+        }
+
         IReadOnlyList<MeshPart> parts = model.Parts;
         Vector3 min = new(float.MaxValue);
         Vector3 max = new(float.MinValue);

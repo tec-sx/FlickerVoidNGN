@@ -1,5 +1,6 @@
 using FlickerVoid.Engine.Builder;
 using FlickerVoid.Engine.Builder.Importing;
+using FlickerVoid.Engine.Builder.Models;
 using FlickerVoid.Engine.Builder.Shaders;
 using FlickerVoid.Engine.Builder.Textures;
 using FlickerVoid.Engine.Shaders;
@@ -15,7 +16,8 @@ using DxcShaderCompiler compiler = new();
 ShaderImporter shaders = new(compiler);
 SkipImporter shaderSources = new(".hlsl", ".hlsli");
 TextureImporter textures = new();
-IAssetImporter[] importers = [shaders, shaderSources, textures];
+ModelImporter models = new();
+IAssetImporter[] importers = [shaders, shaderSources, textures, models];
 AssetBuilder builder = new(importers);
 BuildReport report = builder.Build(args[0], args[1]);
 foreach (BuildFailure failure in report.Failed)

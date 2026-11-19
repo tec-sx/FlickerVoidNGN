@@ -4,10 +4,9 @@
     <OutputType>Exe</OutputType>
     <PublishAot>true</PublishAot>
     <!-- Third-party libraries' trim and AOT warnings stay warnings when publishing: Collections.Pooled (used by Arch) has a reflection-based
-         JSON converter nothing here uses, Silk.NET's native library loader probes paths that single-file apps don't have, and SharpGLTF
-         keeps unknown glTF extensions as JSON nodes through reflection.
+         JSON converter nothing here uses, and Silk.NET's native library loader probes paths that single-file apps don't have.
          Our own assemblies are checked when they build, and CI runs the published samples. -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);IL2104;IL3053;IL3000;IL3002;IL2026</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);IL2104;IL3053;IL3000;IL3002</WarningsNotAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />

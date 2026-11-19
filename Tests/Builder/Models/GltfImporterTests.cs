@@ -1,9 +1,13 @@
 using System.Numerics;
 
-using FlickerVoid.Engine.Rendering.Materials;
+using BCnEncoder.Decoder;
+using BCnEncoder.Shared;
+
+using FlickerVoid.Engine.Builder.Models;
+using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Meshes;
 
-namespace FlickerVoid.Engine.Rendering.Tests;
+namespace FlickerVoid.Engine.Builder.Tests.Models;
 
 public sealed class GltfImporterTests
 {
@@ -67,15 +71,23 @@ public sealed class GltfImporterTests
     }
 
     [Fact]
-    public void DecodesTheBaseColorTextureToRgbaPixels()
+    public void CompressesTheBaseColorTextureToSrgbBc7()
     {
         IReadOnlyList<MeshPart> parts = _builder.WithTriangle().WithRedBlueTexture().Build();
 
-        TextureData? texture = parts[0].Material.BaseColorTexture;
+        DdsImage? texture = parts[0].Material.BaseColorTexture;
         texture.Should().NotBeNull();
         texture.Width.Should().Be(2);
         texture.Height.Should().Be(1);
-        texture.Rgba.Should().Equal(255, 0, 0, 255, 0, 0, 255, 255);
+        texture.Format.Should().Be(PixelFormat.Bc7UNormSrgb);
+        texture.MipLevels.Should().Be(2);
+        byte[] topLevel = texture.Data[..16];
+        BcDecoder decoder = new();
+        ColorRgba32[] texels = decoder.DecodeRaw(topLevel, 2, 1, CompressionFormat.Bc7);
+        texels[0].r.Should().BeInRange(250, 255);
+        texels[0].b.Should().BeInRange(0, 5);
+        texels[1].r.Should().BeInRange(0, 5);
+        texels[1].b.Should().BeInRange(250, 255);
     }
 
     [Fact]

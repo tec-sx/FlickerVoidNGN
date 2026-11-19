@@ -109,7 +109,9 @@ for (int index = 0; index < args.Length; index++)
     }
 }
 
-if (!File.Exists(model))
+// The build bakes Room.glb into Room.model; content still names the model by its source.
+string bakedModel = Path.ChangeExtension(model, ".model");
+if (!File.Exists(model) && !File.Exists(bakedModel))
 {
     Console.Error.WriteLine($"{model} doesn't exist.");
     return 1;
