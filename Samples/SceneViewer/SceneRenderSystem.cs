@@ -14,7 +14,7 @@ namespace FlickerVoid.Samples.SceneViewer;
 /// <summary>Draws the world to the window each frame with a scene renderer, following the window's size; Escape or the frame limit closes the window.</summary>
 public sealed class SceneRenderSystem : ISystem<GameTime>
 {
-    private const int FramesInFlight = 3;
+    private const int FramesInFlight = SceneRenderer.MaxFramesInFlight;
 
     private readonly IGameWindow _window;
     private readonly IGraphicsDevice _device;

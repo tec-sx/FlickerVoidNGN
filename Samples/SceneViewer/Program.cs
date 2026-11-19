@@ -14,11 +14,13 @@ using FlickerVoid.Samples.SceneViewer;
 
 using Microsoft.Extensions.Logging;
 
-// Shows a glTF model (.glb, or .gltf with its files) through a camera that orbits it, lit by a sun and ambient light.
-// Usage: SceneViewer [model] [--validation] [--frames <count>]. Without a model it shows Content/Room.glb.
+// Shows a glTF model (.glb, or .gltf with its files) through a camera that orbits it, lit by a sun, ambient light and
+// optionally a ring of coloured point lights.
+// Usage: SceneViewer [model] [--validation] [--frames <count>] [--lights <count>]. Without a model it shows Content/Room.glb.
 string model = Path.Combine(AppContext.BaseDirectory, "Content", "Room.glb");
 bool validation = false;
 int frameLimit = 0;
+int lightCount = 0;
 for (int index = 0; index < args.Length; index++)
 {
     switch (args[index])
@@ -29,6 +31,10 @@ for (int index = 0; index < args.Length; index++)
         case "--frames":
             index++;
             frameLimit = int.Parse(args[index]);
+            break;
+        case "--lights":
+            index++;
+            lightCount = int.Parse(args[index]);
             break;
         default:
             if (args[index].StartsWith("--", StringComparison.Ordinal))
@@ -62,6 +68,16 @@ using GameWindow window = new(game, $"FlickerVoid  {fileName}  (drag to turn, wh
 
 Entity camera = game.World.Create(new Transform(), new Camera());
 game.World.Create(new Transform(), new MeshRenderer { Mesh = fileName });
+Vector3[] palette = [new(1, 0.3f, 0.2f), new(1, 0.8f, 0.3f), new(0.3f, 1, 0.4f), new(0.3f, 0.8f, 1), new(0.4f, 0.4f, 1), new(1, 0.4f, 0.9f)];
+for (int index = 0; index < lightCount; index++)
+{
+    float angle = MathF.Tau * index / lightCount;
+    Vector3 position = new(MathF.Cos(angle) * 3, 1, MathF.Sin(angle) * 3);
+    Transform transform = new() { Position = position };
+    PointLight light = new() { Color = palette[index % palette.Length], Intensity = 3, Range = 3 };
+    game.World.Create(transform, light);
+}
+
 OrbitCameraSystem orbit = new(window, game.World, camera, new Vector3(0, 0.5f, 0), distance: 10);
 using SceneRenderSystem renderer = new(window, device, game.World, format => new SceneRenderer(device, compiler, content, format), frameLimit);
 game.FrameSystems.Add(orbit);

@@ -8,6 +8,8 @@ public sealed class SceneRendererTests : IDisposable
         { "name": "Camera", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2 } } }
         """;
 
+    private const string Quad = """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb" } } }""";
+
     private static readonly Vector4 Red = new(1, 0, 0, 1);
     private static readonly uint RedPixel = SceneRendererTestsBuilder.Rgba(255, 0, 0, 255);
     private static readonly uint BlackPixel = SceneRendererTestsBuilder.Rgba(0, 0, 0, 255);
@@ -91,6 +93,62 @@ public sealed class SceneRendererTests : IDisposable
         lit.Should().AllBeEquivalentTo(RedPixel);
         (byte red, _, _) = SceneRendererTestsBuilder.Channels(unlit[0]);
         red.Should().BeInRange(62, 66, "a face turned from the sun gets only the ambient light");
+    }
+
+    [Fact]
+    public void LightsMeshesByThePointLightsInRange()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Light", "components": { "transform": { "position": [0, 0, 1] }, "pointLight": { "intensity": 2, "range": 4 } } }""");
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        (byte corner, _, _) = SceneRendererTestsBuilder.Channels(pixels[0]);
+        (byte centre, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        corner.Should().BeGreaterThan(0);
+        centre.Should().BeGreaterThan(corner, "the light is closest to the centre of the quad");
+    }
+
+    [Fact]
+    public void IgnoresPointLightsOutOfRange()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Light", "components": { "transform": { "position": [0, 0, 1] }, "pointLight": { "intensity": 2, "range": 0.9 } } }""");
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        pixels.Should().AllBeEquivalentTo(BlackPixel);
+    }
+
+    [Fact]
+    public void LightsOnlyInsideASpotLightsCone()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Light", "components": { "transform": { "position": [0, 0, 1] }, "spotLight": { "intensity": 2, "range": 4, "innerConeAngle": 25, "outerConeAngle": 30 } } }""");
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        (byte centre, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        centre.Should().BeGreaterThan(0, "the centre of the quad is inside the cone");
+        pixels[0].Should().Be(BlackPixel, "the corner of the quad is outside the cone");
+    }
+
+    [Fact]
+    public void LightsMeshesThroughAPerspectiveCamera()
+    {
+        const string perspective = """
+            { "name": "Camera", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "projection": "Perspective", "fieldOfView": 30 } } }
+            """;
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(2).WithBaseColor(Red));
+        _builder.WithScene(perspective, Quad, """{ "name": "Light", "components": { "transform": { "position": [0, 0, 1] }, "pointLight": { "intensity": 2, "range": 4 } } }""");
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        pixels.Should().NotContain(BlackPixel, "the light reaches the whole quad, which fills the view");
     }
 
     [Fact]
