@@ -1,5 +1,6 @@
 // The stage 4 gate: the painted room, a fox walking round it and 36 coloured lamps, 8 of them casting shadows.
 {
+  "$schema": "../.schemas/scene.schema.json",
   "entities": [
     {"name": "Room", "components": {"transform": {}, "meshRenderer": {"mesh": "Room.glb"}}},
     {"name": "Fox", "components": {"transform": {"position": [3, 0, 0], "scale": [0.012, 0.012, 0.012]}, "meshRenderer": {"mesh": "Fox.glb"}, "meshAnimator": {"animation": "Walk"}}},

@@ -11,6 +11,7 @@ using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
@@ -18,7 +19,6 @@ using FlickerVoid.Engine.Runtime.Serialization;
 
 using Microsoft.Extensions.Logging;
 
-using SharpGLTF.Schema2;
 
 namespace FlickerVoid.Engine.Rendering.Tests;
 
@@ -57,39 +57,17 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         _content = new ContentManager(_contentFolder);
     }
 
-    /// <summary>Writes a .glb built by the importer tests' builder into the content folder.</summary>
-    public SceneRendererTestsBuilder WithModel(string path, Action<GltfImporterTestsBuilder> build)
+    /// <summary>Writes a model as the content build leaves one named <paramref name="path"/>: baked, with the .model extension.</summary>
+    public SceneRendererTestsBuilder WithModel(string path, Action<TestModelBuilder> build)
     {
-        GltfImporterTestsBuilder model = new();
+        TestModelBuilder model = new();
         build(model);
-        ModelRoot root = model.BuildModel();
-        string fullPath = Path.Combine(_contentFolder, path);
-        root.SaveGLB(fullPath);
+        ModelData data = model.Build();
+        string builtPath = Path.ChangeExtension(path, ".model");
+        string fullPath = Path.Combine(_contentFolder, builtPath);
+        using FileStream stream = File.Create(fullPath);
+        ModelFile.Write(data, stream);
         return this;
-    }
-
-    /// <summary>Writes a .gltf with its buffers and images as files beside it into the content folder.</summary>
-    public SceneRendererTestsBuilder WithGltfModel(string path, Action<GltfImporterTestsBuilder> build)
-    {
-        GltfImporterTestsBuilder model = new();
-        build(model);
-        ModelRoot root = model.BuildModel();
-        string fullPath = Path.Combine(_contentFolder, path);
-        root.SaveGLTF(fullPath);
-        return this;
-    }
-
-    /// <summary>Replaces every PNG in the content folder with the given one and returns their content paths.</summary>
-    public IReadOnlyList<string> OverwriteImages(string base64Png)
-    {
-        byte[] png = Convert.FromBase64String(base64Png);
-        string[] images = Directory.GetFiles(_contentFolder, "*.png");
-        foreach (string image in images)
-        {
-            File.WriteAllBytes(image, png);
-        }
-
-        return [.. images.Select(Path.GetFileName).OfType<string>()];
     }
 
     /// <summary>Reports a content file changed, as the content watcher would.</summary>

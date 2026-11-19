@@ -23,6 +23,17 @@ public sealed class AssetBuilderTests : IDisposable
     }
 
     [Fact]
+    public void LeavesTheSchemaFolderOut()
+    {
+        _files.WithSource(".schemas/scene.schema.json", "{}").WithSource("A.txt", "a");
+        AssetBuilder builder = _files.Build();
+
+        BuildReport report = _files.BuildAll(builder);
+
+        report.Built.Should().Equal("A.txt");
+    }
+
+    [Fact]
     public void CopiesFilesNoImporterTakes()
     {
         _files.WithSource("Scenes/Room.scene.json", """{ "entities": [] }""");

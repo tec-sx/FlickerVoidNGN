@@ -35,6 +35,9 @@ public sealed class AnimationClip
 
     public int FrameCount => _frames.Length / JointCount;
 
+    /// <summary>Every frame's joint matrices, one frame after another.</summary>
+    public ReadOnlySpan<Matrix4x4> Frames => _frames;
+
     /// <summary>Writes the joints' matrices at <paramref name="time"/> seconds, looping, into <paramref name="skin"/>.</summary>
     public void Sample(float time, Span<Matrix4x4> skin)
     {

@@ -1,0 +1,198 @@
+{
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "components": {
+            "type": "object",
+            "properties": {
+              "transform": {
+                "type": "object",
+                "properties": {
+                  "position": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "rotation": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 4,
+                    "maxItems": 4
+                  },
+                  "scale": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  }
+                },
+                "additionalProperties": false
+              },
+              "camera": {
+                "type": "object",
+                "properties": {
+                  "projection": {
+                    "enum": [
+                      "Orthographic",
+                      "Perspective"
+                    ]
+                  },
+                  "orthographicHeight": {
+                    "type": "number"
+                  },
+                  "fieldOfView": {
+                    "type": "number"
+                  },
+                  "nearPlane": {
+                    "type": "number"
+                  },
+                  "farPlane": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "meshRenderer": {
+                "type": "object",
+                "properties": {
+                  "mesh": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "mesh"
+                ],
+                "additionalProperties": false
+              },
+              "meshAnimator": {
+                "type": "object",
+                "properties": {
+                  "animation": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "time": {
+                    "type": "number"
+                  },
+                  "speed": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "pointLight": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "intensity": {
+                    "type": "number"
+                  },
+                  "range": {
+                    "type": "number"
+                  },
+                  "castsShadows": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "spotLight": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "intensity": {
+                    "type": "number"
+                  },
+                  "range": {
+                    "type": "number"
+                  },
+                  "innerConeAngle": {
+                    "type": "number"
+                  },
+                  "outerConeAngle": {
+                    "type": "number"
+                  },
+                  "castsShadows": {
+                    "type": "boolean"
+                  },
+                  "cookie": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "irradianceVolume": {
+                "type": "object",
+                "properties": {
+                  "size": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "probesX": {
+                    "type": "integer"
+                  },
+                  "probesY": {
+                    "type": "integer"
+                  },
+                  "probesZ": {
+                    "type": "integer"
+                  },
+                  "probes": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

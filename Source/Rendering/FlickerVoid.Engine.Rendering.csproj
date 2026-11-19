@@ -3,10 +3,6 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="SharpGLTF.Core" />
-    <PackageReference Include="StbImageSharp" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="../Graphics/FlickerVoid.Engine.Graphics.csproj" />
     <ProjectReference Include="../Runtime/FlickerVoid.Engine.Runtime.csproj" />
   </ItemGroup>
