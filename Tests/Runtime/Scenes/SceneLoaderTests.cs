@@ -64,4 +64,55 @@ public sealed class SceneLoaderTests : IDisposable
         _builder.World.IsAlive(entities[0]).Should().BeTrue();
         _builder.Warnings.Should().BeEmpty();
     }
+
+    [Fact]
+    public void SavesTheWorldIntoTheSceneFile()
+    {
+        SceneLoader loader = _builder.WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.scene.json");
+        Vector3 raised = new(0, 3, 0);
+        _builder.World.Get<Transform>(entities[0]).Position = raised;
+
+        loader.Save("Room.scene.json");
+
+        Transform saved = _builder.LoadInNewWorld("Room.scene.json");
+        saved.Position.Should().Be(raised);
+    }
+
+    [Fact]
+    public void SavesComponentsTheWorldDidNotChangeAsTheFileWroteThem()
+    {
+        SceneLoader loader = _builder.WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } }, { "name": "Box", "components": { "transform": { "position": [1, 0, 0] } } } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.scene.json");
+        _builder.World.Get<Transform>(entities[0]).Position = Vector3.UnitY;
+
+        loader.Save("Room.scene.json");
+
+        string box = _builder.ReadComponent("Room.scene.json", entity: 1, "transform");
+        box.Should().Be("""{"position":[1,0,0]}""");
+    }
+
+    [Fact]
+    public void KeepsTheEntitiesWhenItSaves()
+    {
+        SceneLoader loader = _builder.WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.scene.json");
+        _builder.World.Get<Transform>(entities[0]).Position = Vector3.UnitY;
+
+        loader.Save("Room.scene.json");
+
+        _builder.World.IsAlive(entities[0]).Should().BeTrue();
+        _builder.World.Get<Transform>(entities[0]).Position.Should().Be(Vector3.UnitY);
+        _builder.Warnings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SavingASceneThatIsNotLoadedThrows()
+    {
+        SceneLoader loader = _builder.Build();
+
+        Action save = () => loader.Save("Room.scene.json");
+
+        save.Should().Throw<InvalidOperationException>();
+    }
 }

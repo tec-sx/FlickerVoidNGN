@@ -34,4 +34,10 @@ public abstract class SceneComponent
     public abstract void Read(World world, Entity entity, JsonElement data);
 
     public abstract void Remove(World world, Entity entity);
+
+    /// <summary>The entity's component as JSON, every property written.</summary>
+    public abstract JsonElement Write(World world, Entity entity);
+
+    /// <summary>Reads the component from JSON and writes it back, every property written, to compare it with <see cref="Write"/>.</summary>
+    public abstract JsonElement Rewrite(JsonElement data);
 }

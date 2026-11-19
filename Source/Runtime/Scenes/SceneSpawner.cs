@@ -111,6 +111,64 @@ public sealed class SceneSpawner : ISceneSpawner
         return patched;
     }
 
+    public SceneData Capture(SceneData previous, IReadOnlyList<Entity> entities, World world)
+    {
+        SceneData captured = new() { Schema = previous.Schema };
+        for (int index = 0; index < entities.Count; index++)
+        {
+            Entity entity = entities[index];
+            if (!world.IsAlive(entity))
+            {
+                continue;
+            }
+
+            EntityData data = CaptureEntity(world, entity, previous.Entities[index]);
+            captured.Entities.Add(data);
+        }
+
+        return captured;
+    }
+
+    private EntityData CaptureEntity(World world, Entity entity, EntityData previous)
+    {
+        EntityData data = new();
+        if (world.TryGet(entity, out EntityName name))
+        {
+            data.Name = name.Value;
+        }
+
+        foreach ((string key, JsonElement old) in previous.Components)
+        {
+            SceneComponent component = _components[key];
+            if (!component.Has(world, entity))
+            {
+                continue;
+            }
+
+            JsonElement current = component.Write(world, entity);
+            JsonElement rewritten = component.Rewrite(old);
+            if (JsonElement.DeepEquals(current, rewritten))
+            {
+                data.Components.Add(key, old);
+            }
+            else
+            {
+                data.Components.Add(key, current);
+            }
+        }
+
+        foreach (SceneComponent component in _componentList)
+        {
+            if (!data.Components.ContainsKey(component.Name) && component.Has(world, entity))
+            {
+                JsonElement current = component.Write(world, entity);
+                data.Components.Add(component.Name, current);
+            }
+        }
+
+        return data;
+    }
+
     private static int FindMatch(SceneData previous, bool[] kept, EntityData data)
     {
         for (int index = 0; index < kept.Length; index++)

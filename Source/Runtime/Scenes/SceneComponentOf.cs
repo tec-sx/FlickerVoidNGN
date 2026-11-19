@@ -46,6 +46,18 @@ internal sealed class SceneComponentOf<T> : SceneComponent
         }
     }
 
+    public override JsonElement Write(World world, Entity entity)
+    {
+        T component = world.Get<T>(entity);
+        return JsonSerializer.SerializeToElement(component, _typeInfo);
+    }
+
+    public override JsonElement Rewrite(JsonElement data)
+    {
+        T component = data.Deserialize(_typeInfo);
+        return JsonSerializer.SerializeToElement(component, _typeInfo);
+    }
+
     private static void Set(World world, Entity entity, T component)
     {
         if (world.Has<T>(entity))
