@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 using Arch.Core;
 using Arch.System;
 
@@ -11,7 +13,10 @@ using Silk.NET.Maths;
 
 namespace FlickerVoid.Samples.SceneViewer;
 
-/// <summary>Draws the world to the window each frame with a scene renderer, following the window's size; Escape or the frame limit closes the window.</summary>
+/// <summary>
+/// Draws the world to the window each frame with a scene renderer, following the window's size, and times the frames;
+/// Escape or the frame limit closes the window.
+/// </summary>
 public sealed class SceneRenderSystem : ISystem<GameTime>
 {
     private const int FramesInFlight = SceneRenderer.MaxFramesInFlight;
@@ -23,6 +28,7 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
     private readonly int _frameLimit;
     private readonly ISwapchain _swapchain;
     private readonly ICommandList[] _commandLists = new ICommandList[FramesInFlight];
+    private readonly Stopwatch _clock = new();
     private bool _disposed;
 
     public SceneRenderSystem(IGameWindow window, IGraphicsDevice device, World world, Func<PixelFormat, SceneRenderer> createRenderer, int frameLimit)
@@ -46,6 +52,20 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
 
     public int Frames { get; private set; }
 
+    /// <summary>The mean time between frames after the first, which pays for loading and compiling.</summary>
+    public TimeSpan AverageFrameTime
+    {
+        get
+        {
+            if (Frames < 2)
+            {
+                return TimeSpan.Zero;
+            }
+
+            return _clock.Elapsed / (Frames - 1);
+        }
+    }
+
     public void Initialize()
     {
     }
@@ -57,6 +77,10 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
     public void Update(in GameTime t)
     {
         Frames++;
+        if (Frames == 2)
+        {
+            _clock.Start();
+        }
         Vector2D<int> size = _window.Size;
         bool visible = size.X > 0 && size.Y > 0;
         if (visible && (size.X != _swapchain.Width || size.Y != _swapchain.Height))

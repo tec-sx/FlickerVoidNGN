@@ -54,6 +54,41 @@ public sealed class SceneRendererTests : IDisposable
         pixels.Should().Equal(expected);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void MovesSkinnedMeshesWithTheirAnimatedJoints(float time)
+    {
+        _builder.WithModel("Walker.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red).WithMovingJoint(Vector3.Zero, new Vector3(1, 1, 0), 2));
+        string walker = $$"""{ "name": "Walker", "components": { "transform": {}, "meshRenderer": { "mesh": "Walker.glb" }, "meshAnimator": { "time": {{time}} } } }""";
+        _builder.WithScene(Camera, walker);
+
+        uint[] pixels = _builder.Render();
+
+        uint[] centered =
+        [
+            BlackPixel, BlackPixel, BlackPixel, BlackPixel,
+            BlackPixel, RedPixel, RedPixel, BlackPixel,
+            BlackPixel, RedPixel, RedPixel, BlackPixel,
+            BlackPixel, BlackPixel, BlackPixel, BlackPixel,
+        ];
+        uint[] moved =
+        [
+            BlackPixel, BlackPixel, RedPixel, RedPixel,
+            BlackPixel, BlackPixel, RedPixel, RedPixel,
+            BlackPixel, BlackPixel, BlackPixel, BlackPixel,
+            BlackPixel, BlackPixel, BlackPixel, BlackPixel,
+        ];
+        if (time == 0)
+        {
+            pixels.Should().Equal(centered);
+        }
+        else
+        {
+            pixels.Should().Equal(moved);
+        }
+    }
+
     [Fact]
     public void CullsMeshesFacingAway()
     {
