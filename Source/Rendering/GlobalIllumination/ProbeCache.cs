@@ -7,12 +7,12 @@ using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Engine.Rendering.GlobalIllumination;
 
-/// <summary>Finds the scene's first irradiance volume with probes, loads its probes once per file and uploads them when they change.</summary>
+/// <summary>Finds the scene's first irradiance volume with probes, loads its probes once per file (again when the file changes on disk) and uploads them when they change.</summary>
 internal sealed class ProbeCache : IDisposable
 {
     private readonly IGraphicsDevice _device;
     private readonly IContentManager _content;
-    private readonly Dictionary<string, IrradianceProbes> _loaded = [];
+    private readonly Dictionary<string, IrradianceProbes> _loaded = new(ContentManager.PathComparer);
     private IrradianceProbes? _uploaded;
     private IBuffer? _buffer;
 
@@ -20,6 +20,7 @@ internal sealed class ProbeCache : IDisposable
     {
         _device = device;
         _content = content;
+        _content.Changed += HandleChanged;
     }
 
     public ProbeSource? Find(RenderScene scene)
@@ -53,7 +54,13 @@ internal sealed class ProbeCache : IDisposable
 
     public void Dispose()
     {
+        _content.Changed -= HandleChanged;
         _buffer?.Dispose();
+    }
+
+    private void HandleChanged(string fullPath)
+    {
+        _loaded.Remove(fullPath);
     }
 
     private IrradianceProbes Load(in IrradianceVolume volume)

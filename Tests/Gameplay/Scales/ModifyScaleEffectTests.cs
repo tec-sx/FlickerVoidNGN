@@ -1,6 +1,7 @@
 using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Scales;
+using FlickerVoid.Engine.Gameplay.Tests.Facts;
 
 namespace FlickerVoid.Engine.Gameplay.Tests.Scales;
 

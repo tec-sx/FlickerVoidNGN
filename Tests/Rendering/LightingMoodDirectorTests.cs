@@ -108,4 +108,38 @@ public sealed class LightingMoodDirectorTests : IDisposable
     {
         _builder.Dispose();
     }
+
+    [Fact]
+    public void AppliesTheMoodItShowsAtOnceWhenItsFileIsEdited()
+    {
+        LightingMoodDirector director = _builder.WithNightRule().Build();
+
+        _builder.EditFile(LightingMoodDirectorTestsBuilder.Day, """{ "exposure": 0.7 }""");
+
+        director.Current.Exposure.Should().Be(0.7f);
+        director.IsBlending.Should().BeFalse();
+    }
+
+    [Fact]
+    public void KeepsTheMoodAndLogsWhenItsEditedFileIsInvalid()
+    {
+        LightingMoodDirector director = _builder.WithNightRule().Build();
+
+        _builder.EditFile(LightingMoodDirectorTestsBuilder.Day, """{ "exposure": """);
+
+        director.Current.Exposure.Should().Be(LightingMoodDirectorTestsBuilder.DayExposure);
+        _builder.Warnings.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void ReloadsTheMoodItBlendsTowardWhenItsFileIsEdited()
+    {
+        LightingMoodDirector director = _builder.WithNightRule().Build();
+        _builder.SetNight(1);
+
+        _builder.EditFile(LightingMoodDirectorTestsBuilder.Night, """{ "exposure": 0.1 }""");
+        director.Update(director.BlendSeconds);
+
+        director.Current.Exposure.Should().Be(0.1f);
+    }
 }
