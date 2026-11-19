@@ -51,6 +51,10 @@ internal static class VulkanFormats
                 return Format.B8G8R8A8Unorm;
             case PixelFormat.Bgra8UNormSrgb:
                 return Format.B8G8R8A8Srgb;
+            case PixelFormat.Bc7UNorm:
+                return Format.BC7UnormBlock;
+            case PixelFormat.Bc7UNormSrgb:
+                return Format.BC7SrgbBlock;
             default:
                 throw new ArgumentOutOfRangeException(nameof(format), format, null);
         }

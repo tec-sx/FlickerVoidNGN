@@ -98,29 +98,18 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         _content.NotifyChanged(path);
     }
 
-    /// <summary>Writes an uncompressed TGA from Rgba8 pixels, top row first, into the content folder.</summary>
+    /// <summary>
+    /// Writes Rgba8 pixels, top row first, as the content build leaves a texture named <paramref name="path"/>: an sRGB DDS
+    /// with the .dds extension, uncompressed so the pixels stay exact.
+    /// </summary>
     public SceneRendererTestsBuilder WithTexture(string path, int width, int height, uint[] pixels)
     {
-        byte[] file = new byte[18 + (pixels.Length * 4)];
-        file[2] = 2;
-        file[12] = (byte)width;
-        file[13] = (byte)(width >> 8);
-        file[14] = (byte)height;
-        file[15] = (byte)(height >> 8);
-        file[16] = 32;
-        file[17] = 0x28;
-        for (int index = 0; index < pixels.Length; index++)
-        {
-            (byte red, byte green, byte blue) = Channels(pixels[index]);
-            int offset = 18 + (index * 4);
-            file[offset] = blue;
-            file[offset + 1] = green;
-            file[offset + 2] = red;
-            file[offset + 3] = (byte)(pixels[index] >> 24);
-        }
-
-        string fullPath = Path.Combine(_contentFolder, path);
-        File.WriteAllBytes(fullPath, file);
+        byte[] data = MemoryMarshal.AsBytes(pixels.AsSpan()).ToArray();
+        DdsImage image = new(width, height, PixelFormat.Rgba8UNormSrgb, 1, data);
+        string builtPath = Path.ChangeExtension(path, ".dds");
+        string fullPath = Path.Combine(_contentFolder, builtPath);
+        using FileStream stream = File.Create(fullPath);
+        image.Write(stream);
         return this;
     }
 

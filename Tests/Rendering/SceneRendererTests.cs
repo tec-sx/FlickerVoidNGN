@@ -492,7 +492,7 @@ public sealed class SceneRendererTests : IDisposable
         _builder.Render();
 
         _builder.WithTexture("Cookie.tga", 4, 1, [BlackPixel, BlackPixel, white, white]);
-        _builder.NotifyChanged("Cookie.tga");
+        _builder.NotifyChanged("Cookie.dds");
         uint[] pixels = _builder.Render();
 
         pixels[4].Should().Be(BlackPixel, "the edited cookie's left half is black");

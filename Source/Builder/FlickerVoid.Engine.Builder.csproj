@@ -4,6 +4,11 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="BCnEncoder.Net" />
+    <PackageReference Include="StbImageSharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Graphics/FlickerVoid.Engine.Graphics.csproj" />
     <ProjectReference Include="../Shaders/FlickerVoid.Engine.Shaders.csproj" />
   </ItemGroup>
 </Project>

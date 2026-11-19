@@ -21,8 +21,8 @@ public interface ICommandList : IDisposable
 
     void CopyBuffer(IBuffer source, long sourceOffset, IBuffer destination, long destinationOffset, long size);
 
-    /// <summary>Copies the whole texture from rows padded to <see cref="PixelFormatExtensions.GetCopyRowPitch"/>.</summary>
-    void CopyBufferToTexture(IBuffer source, long sourceOffset, ITexture destination);
+    /// <summary>Copies a whole mip level of the texture from rows padded to <see cref="PixelFormatExtensions.GetCopyRowPitch"/>.</summary>
+    void CopyBufferToTexture(IBuffer source, long sourceOffset, ITexture destination, int mipLevel = 0);
 
     /// <summary>Copies a whole mip level of the texture into rows padded to <see cref="PixelFormatExtensions.GetCopyRowPitch"/>.</summary>
     void CopyTextureToBuffer(ITexture source, IBuffer destination, long destinationOffset, int mipLevel = 0);
