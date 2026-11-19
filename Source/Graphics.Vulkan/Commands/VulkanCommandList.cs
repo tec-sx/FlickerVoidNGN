@@ -18,6 +18,9 @@ namespace FlickerVoid.Engine.Graphics.Vulkan.Commands;
 /// <summary>A command buffer with its own pool, reset on Begin once the GPU has finished its previous submission.</summary>
 internal sealed unsafe class VulkanCommandList : ICommandList
 {
+    /// <summary>The width and height in texels of a block of a block-compressed format.</summary>
+    private const int BlockTexels = 4;
+
     private readonly VulkanGraphicsDevice _device;
     private readonly Vk _vk;
     private readonly CommandPool _pool;
@@ -137,11 +140,11 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         MakeVisibleToHost(to);
     }
 
-    public void CopyBufferToTexture(IBuffer source, long sourceOffset, ITexture destination)
+    public void CopyBufferToTexture(IBuffer source, long sourceOffset, ITexture destination, int mipLevel = 0)
     {
         VulkanBuffer from = (VulkanBuffer)source;
         VulkanTexture to = (VulkanTexture)destination;
-        BufferImageCopy region = CreateTextureCopy(to, sourceOffset, 0);
+        BufferImageCopy region = CreateTextureCopy(to, sourceOffset, mipLevel);
         _vk.CmdCopyBufferToImage(Handle, from.Handle, to.Handle, ImageLayout.TransferDstOptimal, 1, &region);
     }
 
@@ -350,14 +353,29 @@ internal sealed unsafe class VulkanCommandList : ICommandList
 
     private static BufferImageCopy CreateTextureCopy(VulkanTexture texture, long bufferOffset, int mipLevel)
     {
+        // Row length and image height count texels, whole blocks of them for block-compressed formats.
         TextureDescription description = texture.Description.GetMipDescription(mipLevel);
-        int pitch = description.Format.GetCopyRowPitch(description.Width);
-        int texelsPerRow = pitch / description.Format.GetBytesPerPixel();
+        PixelFormat format = description.Format;
+        int pitch = format.GetCopyRowPitch(description.Width);
+        int texelsPerRow;
+        int rows;
+        if (format.IsBlockCompressed())
+        {
+            int bytesPerBlock = format.GetRowSize(BlockTexels);
+            texelsPerRow = pitch / bytesPerBlock * BlockTexels;
+            rows = format.GetRowCount(description.Height) * BlockTexels;
+        }
+        else
+        {
+            texelsPerRow = pitch / format.GetBytesPerPixel();
+            rows = description.Height;
+        }
+
         return new BufferImageCopy
         {
             BufferOffset = (ulong)bufferOffset,
             BufferRowLength = (uint)texelsPerRow,
-            BufferImageHeight = (uint)description.Height,
+            BufferImageHeight = (uint)rows,
             ImageSubresource = new ImageSubresourceLayers(texture.Aspect, (uint)mipLevel, 0, 1),
             ImageExtent = new Extent3D((uint)description.Width, (uint)description.Height, 1),
         };

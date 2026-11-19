@@ -1,5 +1,6 @@
 // Dusk: a low orange sun, hazy air, a glow around the lights and a warm, softer grade.
 {
+  "$schema": "../.schemas/mood.schema.json",
   "sunDirection": [-0.9, -0.25, -0.35],
   "ambient": 0.25,
   "fogDensity": 0.15,

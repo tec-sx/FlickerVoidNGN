@@ -10,7 +10,6 @@ using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Samples.SceneViewer;
 
@@ -20,9 +19,16 @@ public static class ModelProbes
     // About one probe per this many world units, two to eight along each axis.
     private const float ProbeSpacing = 1.5f;
 
-    public static void Bake(IGraphicsDevice device, IShaderCompiler compiler, IContentManager content, World world, string modelPath, LightingMood mood)
+    public static void Bake(IGraphicsDevice device, IContentManager content, World world, string modelPath, LightingMood mood)
     {
-        ModelData model = GltfImporter.Load(modelPath);
+        // The content build baked the model next to its source name.
+        string bakedPath = Path.ChangeExtension(modelPath, ".model");
+        ModelData model;
+        using (FileStream stream = File.OpenRead(bakedPath))
+        {
+            model = ModelFile.Read(stream);
+        }
+
         IReadOnlyList<MeshPart> parts = model.Parts;
         Vector3 min = new(float.MaxValue);
         Vector3 max = new(float.MinValue);
@@ -48,7 +54,7 @@ public static class ModelProbes
         };
 
         Stopwatch watch = Stopwatch.StartNew();
-        using IrradianceBaker baker = new(device, compiler, content);
+        using IrradianceBaker baker = new(device, content);
         baker.Renderer.Mood = mood;
 
         IrradianceProbes probes = baker.Bake(world, volume, center);

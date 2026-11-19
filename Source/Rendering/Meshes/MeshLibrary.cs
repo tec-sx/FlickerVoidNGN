@@ -9,15 +9,14 @@ using FlickerVoid.Engine.Runtime.Content;
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
 /// <summary>
-/// Imports each glTF model the first time it is drawn and keeps it on the GPU, its textures with full mip chains, until the
-/// model or a buffer or image file it reads changes on disk and the next draw imports it again.
+/// Loads each model the first time it is drawn and keeps it on the GPU until its file changes on disk and the next draw loads
+/// it again. A model is named by its source (Room.glb); the game loads what the content build baked of it (Room.model).
 /// </summary>
 internal sealed class MeshLibrary : IDisposable
 {
     private readonly IGraphicsDevice _device;
     private readonly IContentManager _content;
-    private readonly Dictionary<string, LoadedModel> _meshes = new(ContentManager.PathComparer);
-    private readonly List<string> _stale = [];
+    private readonly Dictionary<string, GpuModel> _models = new(ContentManager.PathComparer);
 
     public MeshLibrary(IGraphicsDevice device, IContentManager content)
     {
@@ -28,29 +27,34 @@ internal sealed class MeshLibrary : IDisposable
 
     public GpuModel Get(string path)
     {
-        string fullPath = _content.GetFullPath(path);
-        if (_meshes.TryGetValue(fullPath, out LoadedModel? loaded))
+        string builtPath = Path.ChangeExtension(path, ".model");
+        string fullPath = _content.GetFullPath(builtPath);
+        if (_models.TryGetValue(fullPath, out GpuModel? loaded))
         {
-            return loaded.Model;
+            return loaded;
         }
 
-        ModelData data = GltfImporter.Load(fullPath);
-        IReadOnlyList<string> files = GltfImporter.FindFiles(fullPath);
+        ModelData data;
+        using (FileStream stream = File.OpenRead(fullPath))
+        {
+            data = ModelFile.Read(stream);
+        }
+
         GpuMeshPart[] uploaded = [.. data.Parts.Select(part => Upload(part, path))];
         GpuModel model = new(uploaded, data.Animations);
-        _meshes.Add(fullPath, new LoadedModel(model, files));
+        _models.Add(fullPath, model);
         return model;
     }
 
     public void Dispose()
     {
         _content.Changed -= HandleChanged;
-        foreach (LoadedModel loaded in _meshes.Values)
+        foreach (GpuModel model in _models.Values)
         {
-            Release(loaded.Model);
+            Release(model);
         }
 
-        _meshes.Clear();
+        _models.Clear();
     }
 
     // The device releases the old buffers and textures once the GPU is done with them.
@@ -64,19 +68,9 @@ internal sealed class MeshLibrary : IDisposable
 
     private void HandleChanged(string fullPath)
     {
-        _stale.Clear();
-        foreach ((string modelPath, LoadedModel loaded) in _meshes)
+        if (_models.Remove(fullPath, out GpuModel? model))
         {
-            if (loaded.Files.Contains(fullPath, ContentManager.PathComparer))
-            {
-                _stale.Add(modelPath);
-            }
-        }
-
-        foreach (string modelPath in _stale)
-        {
-            _meshes.Remove(modelPath, out LoadedModel? loaded);
-            Release(loaded!.Model);
+            Release(model);
         }
     }
 
@@ -98,20 +92,13 @@ internal sealed class MeshLibrary : IDisposable
         }
 
         ITexture? texture = null;
-        TextureData? data = part.Material.BaseColorTexture;
-        if (data is not null)
+        DdsImage? image = part.Material.BaseColorTexture;
+        if (image is not null)
         {
-            TextureDescription description = new(data.Width, data.Height, PixelFormat.Rgba8UNormSrgb, TextureUsage.ShaderRead)
-            {
-                MipLevels = TextureDescription.CountMipLevels(data.Width, data.Height),
-                Name = $"{name} base color",
-            };
-            texture = _device.CreateTexture(description, data.Rgba);
+            TextureDescription description = image.Describe(TextureUsage.ShaderRead) with { Name = $"{name} base color" };
+            texture = _device.CreateTexture(description, image.Data);
         }
 
         return new GpuMeshPart(vertices, part.Vertices.Length, indices, part.Indices.Length, skin, texture, part.Material.BaseColor);
     }
-
-    /// <summary>A model on the GPU and the full paths of the files it was read from.</summary>
-    private sealed record LoadedModel(GpuModel Model, IReadOnlyList<string> Files);
 }

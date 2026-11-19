@@ -2,8 +2,10 @@
 // color times its texture, lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster,
 // shadowed through the shadow atlas and tinted by spot light cookies, plus bounced light from irradiance probes, seen
 // through fog lit by the same lights.
-// The frame buffer holds FrameData (Frame.hlsl, compiled ahead of this file), then the lights, the shadows, each cluster's
+// The frame buffer holds FrameData (Frame.hlsl), then the lights, the shadows, each cluster's
 // range of light indices, and the indices. ScreenShadows.hlsl gives each pixel its ambient occlusion and contact shadow.
+
+#include "Frame.hlsl"
 
 struct SceneConstants
 {

@@ -9,7 +9,6 @@ using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Runtime.Loop;
 
 using FlickerVoid.Engine.Debug;
-using FlickerVoid.Engine.Shaders;
 using FlickerVoid.Samples.TexturedMesh;
 
 using Microsoft.Extensions.Logging;
@@ -42,14 +41,13 @@ for (int index = 0; index < args.Length; index++)
 using ILoggerFactory loggerFactory = LoggerFactory.Create(static logging => logging.AddSimpleConsole());
 GraphicsDeviceOptions options = new() { Validation = validation };
 using VulkanGraphicsDevice device = new(options, loggerFactory);
-using DxcShaderCompiler compiler = new();
 using Game game = new(loggerFactory);
 using GameWindow window = new(game, $"FlickerVoid  Vulkan on {device.AdapterName}", 1280, 720);
 MeshWindow meshWindow = new();
 DebugUi CreateDebugUi(PixelFormat format)
 {
     string settings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FlickerVoid", "TexturedMesh");
-    DebugUi ui = new(device, compiler, window, format, settings);
+    DebugUi ui = new(device, window, format, settings);
     ui.AddEngineWindows(game, device);
     ui.Windows.Add(meshWindow);
     ui.LoadLayout();
@@ -61,7 +59,7 @@ DebugUi CreateDebugUi(PixelFormat format)
     return ui;
 }
 
-using MeshRenderSystem renderer = new(window, device, compiler, frameLimit, meshWindow, CreateDebugUi);
+using MeshRenderSystem renderer = new(window, device, frameLimit, meshWindow, CreateDebugUi);
 game.FrameSystems.Add(renderer);
 window.Run();
 Console.WriteLine($"Rendered {renderer.Frames} frames with Vulkan on {device.AdapterName}.");

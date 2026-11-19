@@ -1,4 +1,7 @@
 using System.Numerics;
+using System.Text.Json.Serialization;
+
+using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Engine.Rendering.Lighting;
 
@@ -8,6 +11,10 @@ namespace FlickerVoid.Engine.Rendering.Lighting;
 /// </summary>
 public sealed record LightingMood
 {
+    /// <summary>The schema the file names for text editors; the game ignores it.</summary>
+    [JsonPropertyName(JsonSchemas.SchemaProperty)]
+    public string? Schema { get; set; }
+
     /// <summary>The direction the sunlight travels, in world space, of any length.</summary>
     public Vector3 SunDirection { get; set; } = Vector3.Normalize(new Vector3(-0.4f, -0.8f, -0.45f));
 

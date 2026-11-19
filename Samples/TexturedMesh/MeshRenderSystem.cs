@@ -7,7 +7,6 @@ using FlickerVoid.Engine.Graphics.Presentation;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Runtime.Loop;
-using FlickerVoid.Engine.Shaders;
 
 using Silk.NET.Input;
 using Silk.NET.Maths;
@@ -35,7 +34,7 @@ public sealed class MeshRenderSystem : ISystem<GameTime>
     private float _angle;
     private bool _disposed;
 
-    public MeshRenderSystem(IGameWindow window, IGraphicsDevice device, IShaderCompiler compiler, int frameLimit, MeshWindow meshWindow, Func<PixelFormat, DebugUi> createDebugUi)
+    public MeshRenderSystem(IGameWindow window, IGraphicsDevice device, int frameLimit, MeshWindow meshWindow, Func<PixelFormat, DebugUi> createDebugUi)
     {
         _window = window;
         _device = device;
@@ -44,7 +43,7 @@ public sealed class MeshRenderSystem : ISystem<GameTime>
         Vector2D<int> size = window.Size;
         SwapchainDescription swapchainDescription = new(window.Native, size.X, size.Y) { Name = "Window" };
         _swapchain = device.CreateSwapchain(swapchainDescription);
-        _cube = new CubeRenderer(device, compiler, _swapchain.Format);
+        _cube = new CubeRenderer(device, _swapchain.Format);
         _depth = _cube.CreateDepth(_swapchain.Width, _swapchain.Height);
         _debugUi = createDebugUi(_swapchain.Format);
 

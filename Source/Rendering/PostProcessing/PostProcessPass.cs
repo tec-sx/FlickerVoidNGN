@@ -1,7 +1,7 @@
 using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Pipeline;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering.PostProcessing;
 
@@ -10,9 +10,9 @@ internal sealed class PostProcessPass : IRenderPass
 {
     private readonly PostProcessor _post;
 
-    public PostProcessPass(IGraphicsDevice device, IShaderCompiler compiler, PixelFormat outputFormat)
+    public PostProcessPass(IGraphicsDevice device, ShaderLibrary shaders, PixelFormat outputFormat)
     {
-        _post = new PostProcessor(device, compiler, outputFormat);
+        _post = new PostProcessor(device, shaders, outputFormat);
     }
 
     public void Prepare(RenderContext context)

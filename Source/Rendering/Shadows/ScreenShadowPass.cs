@@ -3,7 +3,6 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Rendering.PostProcessing;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering.Shadows;
 
@@ -14,11 +13,11 @@ internal sealed class ScreenShadowPass : IRenderPass
 
     private readonly IPipeline _pipeline;
 
-    public ScreenShadowPass(IGraphicsDevice device, IShaderCompiler compiler)
+    public ScreenShadowPass(IGraphicsDevice device, ShaderLibrary shaders)
     {
         ComputePipelineDescription description = new()
         {
-            ComputeShader = EmbeddedShaders.Compile(compiler, "ScreenShadows.hlsl", "ComputeMain", ShaderStage.Compute, "Frame.hlsl"),
+            ComputeShader = shaders.Load("ScreenShadows", "ComputeMain"),
             Name = "Screen shadows",
         };
         _pipeline = device.CreateComputePipeline(description);

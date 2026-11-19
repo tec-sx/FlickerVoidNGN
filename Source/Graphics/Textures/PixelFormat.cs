@@ -18,5 +18,9 @@ public enum PixelFormat
     R8UNorm = 61,
     Bgra8UNorm = 87,
     Bgra8UNormSrgb = 91,
+
+    /// <summary>BC7: 4x4 texel blocks of 16 bytes holding RGBA.</summary>
+    Bc7UNorm = 98,
+    Bc7UNormSrgb = 99,
 }
 

@@ -1,6 +1,6 @@
 using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Rendering.Pipeline;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering.Shadows;
 
@@ -9,9 +9,9 @@ internal sealed class ShadowPass : IRenderPass
 {
     private readonly ShadowRenderer _shadows;
 
-    public ShadowPass(IGraphicsDevice device, IShaderCompiler compiler)
+    public ShadowPass(IGraphicsDevice device, ShaderLibrary shaders)
     {
-        _shadows = new ShadowRenderer(device, compiler);
+        _shadows = new ShadowRenderer(device, shaders);
     }
 
     public void Prepare(RenderContext context)

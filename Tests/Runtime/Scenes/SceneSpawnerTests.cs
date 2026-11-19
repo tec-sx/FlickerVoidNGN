@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using Arch.Core;
 
@@ -121,6 +122,26 @@ public sealed class SceneSpawnerTests : IDisposable
         Vector3 moved = new(4, 5, 6);
         lamp.Position.Should().Be(moved);
         fox.Position.Should().Be(walked, "the file left the fox's transform as it was, so the game's changes stay");
+    }
+
+    [Fact]
+    public void DescribesEveryRegisteredComponentInTheSceneSchema()
+    {
+        JsonObject schema = _spawner.GetSchema();
+
+        JsonNode components = schema["properties"]!["entities"]!["items"]!["properties"]!["components"]!;
+        JsonNode position = components["properties"]!["transform"]!["properties"]!["position"]!;
+        position["type"]!.GetValue<string>().Should().Be("array");
+        position["minItems"]!.GetValue<int>().Should().Be(3);
+        components["additionalProperties"]!.GetValue<bool>().Should().BeFalse("a misspelt component should be flagged");
+    }
+
+    [Fact]
+    public void ReadsASceneThatNamesItsSchema()
+    {
+        SceneData scene = Parse("""{ "$schema": "../.schemas/scene.schema.json", "entities": [ { "name": "Lamp" } ] }""");
+
+        scene.Entities.Should().ContainSingle();
     }
 
     [Fact]

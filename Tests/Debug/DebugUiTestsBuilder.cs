@@ -12,7 +12,6 @@ using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
-using FlickerVoid.Engine.Shaders;
 
 using Microsoft.Extensions.Logging;
 
@@ -37,7 +36,6 @@ internal sealed class DebugUiTestsBuilder : IDisposable
 
     private readonly RecordingLoggerProvider _logs = new();
     private readonly ILoggerFactory _loggerFactory;
-    private readonly DxcShaderCompiler _compiler = new();
     private readonly InputState _input = new();
     private readonly IGameWindow _window = Substitute.For<IGameWindow>();
     private readonly Dictionary<string, int> _renders = [];
@@ -157,7 +155,6 @@ internal sealed class DebugUiTestsBuilder : IDisposable
         _renderer?.Dispose();
         _game?.Dispose();
         _device?.Dispose();
-        _compiler.Dispose();
         _loggerFactory.Dispose();
         if (_ownsSettings && Directory.Exists(_settingsDirectory))
         {
@@ -183,7 +180,7 @@ internal sealed class DebugUiTestsBuilder : IDisposable
             return _ui;
         }
 
-        _ui = new DebugUi(device, _compiler, _window, PixelFormat.Rgba8UNorm, _settingsDirectory);
+        _ui = new DebugUi(device, _window, PixelFormat.Rgba8UNorm, _settingsDirectory);
         foreach (DebugWindow window in _pending.All)
         {
             _ui.Windows.Add(window);
@@ -212,7 +209,7 @@ internal sealed class DebugUiTestsBuilder : IDisposable
 
         if (_renderingWindows)
         {
-            _renderer = new SceneRenderer(device, _compiler, new ContentManager(_settingsDirectory), PixelFormat.Rgba8UNorm);
+            _renderer = new SceneRenderer(device, new ContentManager(_settingsDirectory), PixelFormat.Rgba8UNorm);
             _ui!.AddRenderingWindows(_renderer, _game.World);
         }
 
