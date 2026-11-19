@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Editor.Geometry;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Runtime.Components;
 
@@ -127,5 +128,67 @@ public sealed class EditorCamera
         }
 
         return new Transform { Position = eye, Rotation = Rotation };
+    }
+
+    /// <summary>The ray from the camera through a point of the viewport given in pixels from its top left.</summary>
+    public Ray GetRay(Vector2 pixel, int width, int height)
+    {
+        Matrix4x4 viewProjection = GetViewProjection(width, height);
+        Matrix4x4.Invert(viewProjection, out Matrix4x4 inverse);
+        float x = (2 * pixel.X / width) - 1;
+        float y = 1 - (2 * pixel.Y / height);
+        Vector4 nearClip = new(x, y, 0, 1);
+        Vector4 farClip = new(x, y, 1, 1);
+        Vector4 near = Vector4.Transform(nearClip, inverse);
+        Vector4 far = Vector4.Transform(farClip, inverse);
+        Vector3 nearPoint = new Vector3(near.X, near.Y, near.Z) / near.W;
+        Vector3 farPoint = new Vector3(far.X, far.Y, far.Z) / far.W;
+        Vector3 direction = Vector3.Normalize(farPoint - nearPoint);
+        return new Ray(nearPoint, direction);
+    }
+
+    /// <summary>The viewport pixel, from its top left, a world point shows at.</summary>
+    public Vector2 Project(Vector3 point, int width, int height)
+    {
+        Matrix4x4 viewProjection = GetViewProjection(width, height);
+        Vector4 position = new(point, 1);
+        Vector4 clip = Vector4.Transform(position, viewProjection);
+        float x = clip.X / clip.W;
+        float y = clip.Y / clip.W;
+        return new Vector2((x + 1) * width / 2, (1 - y) * height / 2);
+    }
+
+    /// <summary>How many world units one pixel of a viewport of the given height covers at a point, so editor shapes keep their size on screen.</summary>
+    public float WorldUnitsPerPixel(Vector3 point, int viewportHeight)
+    {
+        if (Projection == CameraProjection.Orthographic)
+        {
+            return ViewHeight / viewportHeight;
+        }
+
+        Vector3 toPoint = point - Position;
+        float depth = MathF.Max(Vector3.Dot(toPoint, Forward), NearPlane);
+        float halfAngle = float.DegreesToRadians(FieldOfView) / 2;
+        return 2 * depth * MathF.Tan(halfAngle) / viewportHeight;
+    }
+
+    /// <summary>The direction from a point back toward the camera, which editor shapes face.</summary>
+    public Vector3 GetDirectionToEye(Vector3 point)
+    {
+        if (Projection == CameraProjection.Orthographic)
+        {
+            return -Forward;
+        }
+
+        Vector3 toEye = Position - point;
+        return Vector3.Normalize(toEye);
+    }
+
+    private Matrix4x4 GetViewProjection(int width, int height)
+    {
+        Camera camera = ToCamera();
+        Transform transform = ToTransform();
+        CameraView view = CameraView.Create(camera, transform, width, height);
+        return view.ViewProjection;
     }
 }

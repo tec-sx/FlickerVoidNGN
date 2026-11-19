@@ -1,6 +1,7 @@
 using System.Numerics;
 
 using FlickerVoid.Engine.Editor.Cameras;
+using FlickerVoid.Engine.Editor.Geometry;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Runtime.Components;
 
@@ -168,5 +169,45 @@ public sealed class EditorCameraTests
         float eyeDistance = transform.Position.Length();
         eyeDistance.Should().BeApproximately(view.FarPlane / 2, Precision);
         transform.Rotation.Should().Be(camera.Rotation);
+    }
+
+    [Fact]
+    public void CastsRaysThroughThePixelUnderTheMouse()
+    {
+        EditorCamera camera = _builder.LookingAt(new Vector3(1, 0, 2), 0.4f, -0.5f, 10).Build();
+
+        Ray ray = camera.GetRay(new Vector2(320, 240), 640, 480);
+
+        float distanceToPivot = Vector3.Cross(camera.Pivot - ray.Origin, ray.Direction).Length();
+        distanceToPivot.Should().BeLessThan(0.01f, "the middle of the viewport looks at the pivot");
+        ray.Direction.Length().Should().BeApproximately(1, Precision);
+    }
+
+    [Theory]
+    [InlineData(CameraProjection.Perspective)]
+    [InlineData(CameraProjection.Orthographic)]
+    public void ProjectsPointsToThePixelsTheirRaysPassThrough(CameraProjection projection)
+    {
+        EditorCamera camera = _builder.LookingAt(Vector3.Zero, 0.4f, -0.5f, 10).Build();
+        camera.Projection = projection;
+        Vector3 point = new(1.5f, 0.5f, -1);
+
+        Vector2 pixel = camera.Project(point, 640, 480);
+        Ray ray = camera.GetRay(pixel, 640, 480);
+
+        float distance = Vector3.Cross(point - ray.Origin, ray.Direction).Length();
+        distance.Should().BeLessThan(0.01f);
+    }
+
+    [Fact]
+    public void MeasuresHowManyWorldUnitsAPixelCoversAtAPoint()
+    {
+        EditorCamera camera = _builder.LookingAt(Vector3.Zero, 0, 0, 10).Build();
+
+        float atPivot = camera.WorldUnitsPerPixel(Vector3.Zero, 500);
+        float twiceAsFar = camera.WorldUnitsPerPixel(new Vector3(0, 0, -10), 500);
+
+        atPivot.Should().BeApproximately(camera.ViewHeight / 500, Precision);
+        twiceAsFar.Should().BeApproximately(2 * atPivot, Precision);
     }
 }

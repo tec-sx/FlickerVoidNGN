@@ -1,5 +1,6 @@
 using Arch.Core;
 
+using FlickerVoid.Engine.Editor.Overlays;
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
@@ -29,6 +30,7 @@ internal sealed class ViewportRenderer : IDisposable
     private readonly VulkanGraphicsDevice _device;
     private readonly SceneRenderer _scene;
     private readonly GridPass _grid;
+    private readonly OverlayPass _overlay;
     private readonly ICommandList _commands;
     private ITexture? _view;
 
@@ -40,12 +42,17 @@ internal sealed class ViewportRenderer : IDisposable
         ShaderLibrary shaders = ShaderLibrary.ForEngine("Editor");
         _grid = new GridPass(_device, shaders, ViewFormat);
         _scene.Pipeline.Add(_grid);
+        _overlay = new OverlayPass(_device, shaders, ViewFormat);
+        _scene.Pipeline.Add(_overlay);
         _commands = _device.CreateCommandList();
     }
 
     public string AdapterName => _device.AdapterName;
 
     public VulkanSharedTexture? Target { get; private set; }
+
+    /// <summary>What the overlay pass draws over the scene each frame.</summary>
+    public OverlayBuilder Overlay => _overlay.Overlay;
 
     public bool ShowGrid
     {

@@ -9,14 +9,22 @@
   <DockPanel>
     <Border DockPanel.Dock="Top" Padding="8,4" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
       <StackPanel Orientation="Horizontal" Spacing="8">
+        <ToggleButton Content="Select" IsChecked="{Binding Viewport.IsSelectMode}" ToolTip.Tip="Select (Q)" />
+        <ToggleButton Content="Move" IsChecked="{Binding Viewport.IsMoveMode}" ToolTip.Tip="Move (W)" />
+        <ToggleButton Content="Rotate" IsChecked="{Binding Viewport.IsRotateMode}" ToolTip.Tip="Rotate (E)" />
+        <ToggleButton Content="Scale" IsChecked="{Binding Viewport.IsScaleMode}" ToolTip.Tip="Scale (R)" />
+        <Separator Width="1" Margin="4,0" />
         <ToggleButton Content="Perspective" IsChecked="{Binding Viewport.IsPerspective}"
                       ToolTip.Tip="Perspective or orthographic view; both frame the same height at the pivot." />
         <ToggleButton Content="Grid" IsChecked="{Binding Viewport.ShowGrid}" />
       </StackPanel>
     </Border>
     <Border DockPanel.Dock="Bottom" Padding="8,2" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
-      <TextBlock Text="{Binding Viewport.Status}" TextTrimming="CharacterEllipsis"
-                 ToolTip.Tip="Alt+left drag orbits, Alt+middle drag pans, Alt+right drag or the wheel zooms; hold the right button to look round and fly with WASD, Q and E." />
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Right" Text="{Binding Viewport.SelectionText}" Margin="16,0,0,0" />
+        <TextBlock Text="{Binding Viewport.Status}" TextTrimming="CharacterEllipsis"
+                   ToolTip.Tip="Alt+left drag orbits, Alt+middle drag pans, Alt+right drag or the wheel zooms; hold the right button to look round and fly with WASD, Q and E." />
+      </DockPanel>
     </Border>
     <viewports:ViewportControl DataContext="{Binding Viewport}" />
   </DockPanel>
