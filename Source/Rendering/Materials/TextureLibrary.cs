@@ -2,13 +2,12 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Runtime.Content;
 
-using StbImageSharp;
-
 namespace FlickerVoid.Engine.Rendering.Materials;
 
 /// <summary>
-/// Loads each image file (PNG, JPEG, TGA, BMP...) the first time it is used and keeps it on the GPU as sRGB color, until the
-/// file changes on disk and the next use loads it again.
+/// Loads each texture the first time it is used and keeps it on the GPU until its file changes on disk and the next use
+/// loads it again. A texture is named by its source image (Paper.png); the game loads what the content build made of it
+/// (Paper.dds).
 /// </summary>
 internal sealed class TextureLibrary : IDisposable
 {
@@ -25,15 +24,20 @@ internal sealed class TextureLibrary : IDisposable
 
     public ITexture Get(string path)
     {
-        string fullPath = _content.GetFullPath(path);
+        string builtPath = Path.ChangeExtension(path, ".dds");
+        string fullPath = _content.GetFullPath(builtPath);
         if (_textures.TryGetValue(fullPath, out ITexture? loaded))
         {
             return loaded;
         }
 
-        using FileStream stream = File.OpenRead(fullPath);
-        ImageResult image = ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha);
-        TextureDescription description = new(image.Width, image.Height, PixelFormat.Rgba8UNormSrgb, TextureUsage.ShaderRead) { Name = path };
+        DdsImage image;
+        using (FileStream stream = File.OpenRead(fullPath))
+        {
+            image = DdsImage.Read(stream);
+        }
+
+        TextureDescription description = image.Describe(TextureUsage.ShaderRead) with { Name = path };
         ITexture texture = _device.CreateTexture(description, image.Data);
         _textures.Add(fullPath, texture);
         return texture;

@@ -1,9 +1,11 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
 
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Engine.Runtime.Scenes;
 
@@ -11,6 +13,7 @@ namespace FlickerVoid.Engine.Runtime.Scenes;
 public sealed class SceneSpawner : ISceneSpawner
 {
     private readonly Dictionary<string, ComponentAccess> _components = [];
+    private readonly Dictionary<string, JsonTypeInfo> _componentTypes = [];
 
     public SceneSpawner()
     {
@@ -52,8 +55,27 @@ public sealed class SceneSpawner : ISceneSpawner
             throw new ArgumentException($"A component named '{name}' is already registered.", nameof(name));
         }
 
+        _componentTypes.Add(name, typeInfo);
+
         // NativeAOT can't create Arch's component arrays through reflection, so every component type is registered up front.
         ArrayRegistry.Add<T>();
+    }
+
+    /// <summary>The schema of a scene file: its entities may have every registered component and no other.</summary>
+    public JsonObject GetSchema()
+    {
+        JsonObject components = [];
+        foreach ((string name, JsonTypeInfo typeInfo) in _componentTypes)
+        {
+            components[name] = JsonSchemas.Create(typeInfo);
+        }
+
+        JsonObject componentsSchema = new() { ["type"] = "object", ["properties"] = components, ["additionalProperties"] = false };
+        JsonObject entityProperties = new() { ["name"] = new JsonObject { ["type"] = "string" }, ["components"] = componentsSchema };
+        JsonObject entity = new() { ["type"] = "object", ["properties"] = entityProperties, ["additionalProperties"] = false };
+        JsonObject entities = new() { ["type"] = "array", ["items"] = entity };
+        JsonObject sceneProperties = new() { [JsonSchemas.SchemaProperty] = new JsonObject { ["type"] = "string" }, ["entities"] = entities };
+        return new JsonObject { ["type"] = "object", ["properties"] = sceneProperties, ["additionalProperties"] = false };
     }
 
     public IReadOnlyList<Entity> Spawn(SceneData scene, World world)

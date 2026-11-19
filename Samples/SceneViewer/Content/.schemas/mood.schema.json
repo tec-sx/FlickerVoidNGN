@@ -1,0 +1,81 @@
+{
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "sunDirection": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "ambient": {
+      "type": "number"
+    },
+    "sunShadowDistance": {
+      "type": "number"
+    },
+    "fogDensity": {
+      "type": "number"
+    },
+    "fogColor": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "fogAnisotropy": {
+      "type": "number"
+    },
+    "fogHeight": {
+      "type": "number"
+    },
+    "fogHeightFalloff": {
+      "type": "number"
+    },
+    "ambientOcclusion": {
+      "type": "number"
+    },
+    "ambientOcclusionRadius": {
+      "type": "number"
+    },
+    "contactShadowLength": {
+      "type": "number"
+    },
+    "bloom": {
+      "type": "number"
+    },
+    "exposure": {
+      "type": "number"
+    },
+    "contrast": {
+      "type": "number"
+    },
+    "saturation": {
+      "type": "number"
+    },
+    "tint": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "grain": {
+      "type": "number"
+    },
+    "paper": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

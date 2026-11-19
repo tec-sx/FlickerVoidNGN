@@ -1,5 +1,6 @@
 // Night: a faint moon, dark blue shade, strong glow and grain; the lamps carry the scene.
 {
+  "$schema": "../.schemas/mood.schema.json",
   "sunDirection": [0.3, -0.9, 0.3],
   "ambient": 0.12,
   "fogDensity": 0.08,
