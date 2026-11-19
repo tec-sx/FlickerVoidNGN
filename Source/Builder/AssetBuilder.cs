@@ -1,5 +1,6 @@
 using FlickerVoid.Engine.Builder.Caching;
 using FlickerVoid.Engine.Builder.Importing;
+using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Engine.Builder;
 
@@ -9,6 +10,9 @@ namespace FlickerVoid.Engine.Builder;
 /// </summary>
 public sealed class AssetBuilder(IReadOnlyList<IAssetImporter> importers)
 {
+    /// <summary>The schemas a development build writes into the source folder are for text editors, not the game.</summary>
+    private const string SchemaFolder = ContentSchemas.FolderName + "/";
+
     private readonly CopyImporter _copy = new();
 
     public BuildReport Build(string sourceDirectory, string outputDirectory)
@@ -65,6 +69,11 @@ public sealed class AssetBuilder(IReadOnlyList<IAssetImporter> importers)
         foreach (string fullPath in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
             string path = AssetPaths.ToRelativePath(source, fullPath);
+            if (path.StartsWith(SchemaFolder, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
             paths.Add(path);
         }
 

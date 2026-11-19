@@ -236,7 +236,7 @@ DebugUi CreateDebugUi(PixelFormat format, SceneRenderer sceneRenderer)
 }
 
 using SceneRenderSystem renderer = new(window, device, game.World, CreateRenderer, frameLimit, CreateDebugUi);
-game.FrameSystems.Add(new ContentWatcher(content));
+game.FrameSystems.Add(new ContentWatcher(content, game.Schemas));
 game.FrameSystems.Add(orbit);
 game.FrameSystems.Add(walkers);
 if (director is not null)

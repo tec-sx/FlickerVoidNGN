@@ -16,16 +16,9 @@ public sealed class ContentBuildProcess : IDisposable
         _process = process;
     }
 
-    /// <summary>Starts the builder for the content folder's manifest, or returns null when it has none, as in a published game.</summary>
-    public static ContentBuildProcess? Start(string contentRoot)
+    /// <summary>Starts the builder watching the manifest's folders; returns null if the process couldn't start.</summary>
+    public static ContentBuildProcess? Start(ContentBuildManifest manifest, string manifestPath)
     {
-        ContentBuildManifest? manifest = ContentBuildManifest.Find(contentRoot);
-        if (manifest is null)
-        {
-            return null;
-        }
-
-        string manifestPath = Path.Combine(contentRoot, ContentBuildManifest.FileName);
         ProcessStartInfo start = new(manifest.Dotnet) { UseShellExecute = false };
         start.ArgumentList.Add(manifest.Builder);
         start.ArgumentList.Add("--watch");
