@@ -8,6 +8,9 @@ public enum ResourceState : byte
     CopySource,
     CopyDestination,
     ShaderRead,
+
+    /// <summary>Shaders read and write it; barriers between two writing passes need it twice, once per pass.</summary>
+    ShaderWrite,
     RenderTarget,
     DepthWrite,
     DepthRead,

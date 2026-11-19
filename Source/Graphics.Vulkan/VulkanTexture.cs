@@ -3,7 +3,8 @@ using Silk.NET.Vulkan;
 namespace FlickerVoid.Engine.Graphics.Vulkan;
 
 /// <summary>
-/// A 2D Vulkan image, with its own memory unless something else owns it, and one view of the whole image. Memory created for export
+/// A 2D Vulkan image, with its own memory unless something else owns it, one view of every mip level, and a view of the top level
+/// shaders write to when it has <see cref="TextureUsage.ShaderWrite"/>. Memory created for export
 /// is a dedicated allocation, which is what importers such as Avalonia allocate on their side.
 /// </summary>
 internal sealed unsafe class VulkanTexture : ITexture
@@ -29,7 +30,7 @@ internal sealed unsafe class VulkanTexture : ITexture
             ImageType = ImageType.Type2D,
             Format = description.Format.ToVulkan(),
             Extent = new Extent3D((uint)description.Width, (uint)description.Height, 1),
-            MipLevels = 1,
+            MipLevels = (uint)description.MipLevels,
             ArrayLayers = 1,
             Samples = SampleCountFlags.Count1Bit,
             Tiling = ImageTiling.Optimal,
@@ -69,11 +70,23 @@ internal sealed unsafe class VulkanTexture : ITexture
         VulkanResult.Check(vk.BindImageMemory(device.Handle, image, Memory, 0));
 
         Aspect = description.Format.GetAspect();
-        View = CreateView();
-        if (description.Usage.HasFlag(TextureUsage.ShaderRead))
+        View = CreateView(description.MipLevels);
+        bool read = description.Usage.HasFlag(TextureUsage.ShaderRead);
+        bool write = description.Usage.HasFlag(TextureUsage.ShaderWrite);
+        if (read || write)
         {
             BindlessIndex = device.Bindless.Resources.Allocate();
+        }
+
+        if (read)
+        {
             device.Bindless.WriteTexture(BindlessIndex, View);
+        }
+
+        if (write)
+        {
+            StorageView = CreateView(1);
+            device.Bindless.WriteStorageImage(BindlessIndex, StorageView);
         }
 
         device.SetName(ObjectType.Image, image.Handle, description.Name);
@@ -86,7 +99,7 @@ internal sealed unsafe class VulkanTexture : ITexture
         Description = description;
         Handle = image;
         Aspect = description.Format.GetAspect();
-        View = CreateView();
+        View = CreateView(1);
         device.SetName(ObjectType.Image, image.Handle, description.Name);
     }
 
@@ -98,6 +111,9 @@ internal sealed unsafe class VulkanTexture : ITexture
     public long MemorySize { get; }
 
     public ImageView View { get; }
+
+    /// <summary>The top level, for shader writes; default when the texture has no <see cref="TextureUsage.ShaderWrite"/>.</summary>
+    public ImageView StorageView { get; }
 
     public ImageAspectFlags Aspect { get; }
 
@@ -118,6 +134,7 @@ internal sealed unsafe class VulkanTexture : ITexture
         _disposed = true;
         Image image = Handle;
         ImageView view = View;
+        ImageView storageView = StorageView;
         DeviceMemory memory = Memory;
         bool ownsImage = _ownsImage;
         uint index = BindlessIndex;
@@ -125,6 +142,10 @@ internal sealed unsafe class VulkanTexture : ITexture
         device.ReleaseLater(() =>
         {
             device.Vk.DestroyImageView(device.Handle, view, null);
+            if (storageView.Handle != 0)
+            {
+                device.Vk.DestroyImageView(device.Handle, storageView, null);
+            }
             if (ownsImage)
             {
                 device.Vk.DestroyImage(device.Handle, image, null);
@@ -135,7 +156,7 @@ internal sealed unsafe class VulkanTexture : ITexture
         });
     }
 
-    private ImageView CreateView()
+    private ImageView CreateView(int mipLevels)
     {
         ImageViewCreateInfo info = new()
         {
@@ -143,7 +164,7 @@ internal sealed unsafe class VulkanTexture : ITexture
             Image = Handle,
             ViewType = ImageViewType.Type2D,
             Format = Description.Format.ToVulkan(),
-            SubresourceRange = new ImageSubresourceRange(Aspect, 0, 1, 0, 1),
+            SubresourceRange = new ImageSubresourceRange(Aspect, 0, (uint)mipLevels, 0, 1),
         };
         VulkanResult.Check(_device.Vk.CreateImageView(_device.Handle, &info, null, out ImageView view));
         return view;
@@ -155,6 +176,11 @@ internal sealed unsafe class VulkanTexture : ITexture
         if (usage.HasFlag(TextureUsage.ShaderRead))
         {
             flags |= ImageUsageFlags.SampledBit;
+        }
+
+        if (usage.HasFlag(TextureUsage.ShaderWrite))
+        {
+            flags |= ImageUsageFlags.StorageBit;
         }
 
         if (usage.HasFlag(TextureUsage.RenderTarget))

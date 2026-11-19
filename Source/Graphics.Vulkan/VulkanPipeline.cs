@@ -3,7 +3,7 @@ using Silk.NET.Vulkan;
 
 namespace FlickerVoid.Engine.Graphics.Vulkan;
 
-/// <summary>A graphics pipeline on the bindless pipeline layout, built for dynamic rendering with dynamic viewport and scissor.</summary>
+/// <summary>A graphics pipeline built for dynamic rendering with dynamic viewport and scissor, or a compute pipeline, on the bindless pipeline layout.</summary>
 internal sealed unsafe class VulkanPipeline : IPipeline
 {
     private readonly VulkanGraphicsDevice _device;
@@ -36,9 +36,40 @@ internal sealed unsafe class VulkanPipeline : IPipeline
         }
 
         device.SetName(ObjectType.Pipeline, Handle.Handle, description.Name);
+        BindPoint = PipelineBindPoint.Graphics;
+    }
+
+    public VulkanPipeline(VulkanGraphicsDevice device, ComputePipelineDescription description)
+    {
+        _device = device;
+        ShaderModule module = CreateModule(description.ComputeShader.Code);
+        byte[] entry = Encoding.UTF8.GetBytes(description.ComputeShader.EntryPoint + '\0');
+        try
+        {
+            fixed (byte* name = entry)
+            {
+                ComputePipelineCreateInfo info = new()
+                {
+                    SType = StructureType.ComputePipelineCreateInfo,
+                    Stage = CreateStage(ShaderStageFlags.ComputeBit, module, name),
+                    Layout = device.Bindless.PipelineLayout,
+                };
+                VulkanResult.Check(device.Vk.CreateComputePipelines(device.Handle, default, 1, &info, null, out Pipeline pipeline));
+                Handle = pipeline;
+            }
+        }
+        finally
+        {
+            device.Vk.DestroyShaderModule(device.Handle, module, null);
+        }
+
+        device.SetName(ObjectType.Pipeline, Handle.Handle, description.Name);
+        BindPoint = PipelineBindPoint.Compute;
     }
 
     public Pipeline Handle { get; }
+
+    public PipelineBindPoint BindPoint { get; }
 
     public void Dispose()
     {

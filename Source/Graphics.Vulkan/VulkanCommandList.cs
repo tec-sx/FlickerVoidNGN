@@ -51,6 +51,7 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         };
         VulkanResult.Check(_vk.BeginCommandBuffer(Handle, &info));
         _device.Bindless.Bind(Handle, PipelineBindPoint.Graphics);
+        _device.Bindless.Bind(Handle, PipelineBindPoint.Compute);
     }
 
     public void End()
@@ -75,7 +76,7 @@ internal sealed unsafe class VulkanCommandList : ICommandList
             SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
             DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
             Image = vulkanTexture.Handle,
-            SubresourceRange = new ImageSubresourceRange(vulkanTexture.Aspect, 0, 1, 0, 1),
+            SubresourceRange = new ImageSubresourceRange(vulkanTexture.Aspect, 0, (uint)vulkanTexture.Description.MipLevels, 0, 1),
         };
         DependencyInfo dependency = new()
         {
@@ -128,15 +129,15 @@ internal sealed unsafe class VulkanCommandList : ICommandList
     {
         VulkanBuffer from = (VulkanBuffer)source;
         VulkanTexture to = (VulkanTexture)destination;
-        BufferImageCopy region = CreateTextureCopy(to, sourceOffset);
+        BufferImageCopy region = CreateTextureCopy(to, sourceOffset, 0);
         _vk.CmdCopyBufferToImage(Handle, from.Handle, to.Handle, ImageLayout.TransferDstOptimal, 1, &region);
     }
 
-    public void CopyTextureToBuffer(ITexture source, IBuffer destination, long destinationOffset)
+    public void CopyTextureToBuffer(ITexture source, IBuffer destination, long destinationOffset, int mipLevel = 0)
     {
         VulkanTexture from = (VulkanTexture)source;
         VulkanBuffer to = (VulkanBuffer)destination;
-        BufferImageCopy region = CreateTextureCopy(from, destinationOffset);
+        BufferImageCopy region = CreateTextureCopy(from, destinationOffset, mipLevel);
         _vk.CmdCopyImageToBuffer(Handle, from.Handle, ImageLayout.TransferSrcOptimal, to.Handle, 1, &region);
         MakeVisibleToHost(to);
     }
@@ -208,7 +209,7 @@ internal sealed unsafe class VulkanCommandList : ICommandList
     public void SetPipeline(IPipeline pipeline)
     {
         VulkanPipeline vulkanPipeline = (VulkanPipeline)pipeline;
-        _vk.CmdBindPipeline(Handle, PipelineBindPoint.Graphics, vulkanPipeline.Handle);
+        _vk.CmdBindPipeline(Handle, vulkanPipeline.BindPoint, vulkanPipeline.Handle);
     }
 
     public void SetIndexBuffer(IBuffer buffer, IndexFormat format, long offset = 0)
@@ -237,9 +238,51 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         _vk.CmdDraw(Handle, (uint)vertexCount, (uint)instanceCount, (uint)firstVertex, (uint)firstInstance);
     }
 
+    public void Dispatch(int groupsX, int groupsY = 1, int groupsZ = 1)
+    {
+        _vk.CmdDispatch(Handle, (uint)groupsX, (uint)groupsY, (uint)groupsZ);
+    }
+
     public void DrawIndexed(int indexCount, int instanceCount = 1, int firstIndex = 0, int vertexOffset = 0, int firstInstance = 0)
     {
         _vk.CmdDrawIndexed(Handle, (uint)indexCount, (uint)instanceCount, (uint)firstIndex, vertexOffset, (uint)firstInstance);
+    }
+
+    /// <summary>
+    /// Fills every mip level below the top one by blitting from the level above with linear filtering. Every level must be in
+    /// CopyDestination, as after copying the top level in, and they stay there.
+    /// </summary>
+    internal void FillMipLevels(VulkanTexture texture)
+    {
+        TextureDescription description = texture.Description;
+        for (int level = 1; level < description.MipLevels; level++)
+        {
+            uint source = (uint)(level - 1);
+            MoveMipLevel(texture, source, ImageLayout.TransferDstOptimal, AccessFlags2.TransferWriteBit, ImageLayout.TransferSrcOptimal, AccessFlags2.TransferReadBit);
+            TextureDescription from = description.GetMipDescription(level - 1);
+            TextureDescription to = description.GetMipDescription(level);
+            ImageBlit2 region = new()
+            {
+                SType = StructureType.ImageBlit2,
+                SrcSubresource = new ImageSubresourceLayers(texture.Aspect, source, 0, 1),
+                DstSubresource = new ImageSubresourceLayers(texture.Aspect, (uint)level, 0, 1),
+            };
+            region.SrcOffsets[1] = new Offset3D(from.Width, from.Height, 1);
+            region.DstOffsets[1] = new Offset3D(to.Width, to.Height, 1);
+            BlitImageInfo2 blit = new()
+            {
+                SType = StructureType.BlitImageInfo2,
+                SrcImage = texture.Handle,
+                SrcImageLayout = ImageLayout.TransferSrcOptimal,
+                DstImage = texture.Handle,
+                DstImageLayout = ImageLayout.TransferDstOptimal,
+                RegionCount = 1,
+                PRegions = &region,
+                Filter = Filter.Linear,
+            };
+            _vk.CmdBlitImage2(Handle, &blit);
+            MoveMipLevel(texture, source, ImageLayout.TransferSrcOptimal, AccessFlags2.TransferReadBit, ImageLayout.TransferDstOptimal, AccessFlags2.TransferWriteBit);
+        }
     }
 
     public void Dispose()
@@ -255,6 +298,31 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         device.ReleaseLater(() => device.Vk.DestroyCommandPool(device.Handle, pool, null));
     }
 
+    private void MoveMipLevel(VulkanTexture texture, uint level, ImageLayout oldLayout, AccessFlags2 oldAccess, ImageLayout newLayout, AccessFlags2 newAccess)
+    {
+        ImageMemoryBarrier2 barrier = new()
+        {
+            SType = StructureType.ImageMemoryBarrier2,
+            SrcStageMask = PipelineStageFlags2.AllTransferBit,
+            SrcAccessMask = oldAccess,
+            DstStageMask = PipelineStageFlags2.AllTransferBit,
+            DstAccessMask = newAccess,
+            OldLayout = oldLayout,
+            NewLayout = newLayout,
+            SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
+            DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
+            Image = texture.Handle,
+            SubresourceRange = new ImageSubresourceRange(texture.Aspect, level, 1, 0, 1),
+        };
+        DependencyInfo dependency = new()
+        {
+            SType = StructureType.DependencyInfo,
+            ImageMemoryBarrierCount = 1,
+            PImageMemoryBarriers = &barrier,
+        };
+        _vk.CmdPipelineBarrier2(Handle, &dependency);
+    }
+
     private static RenderingAttachmentInfo CreateAttachment(VulkanTexture texture, ImageLayout layout, LoadAction load, ClearValue clear)
     {
         return new RenderingAttachmentInfo
@@ -268,9 +336,9 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         };
     }
 
-    private static BufferImageCopy CreateTextureCopy(VulkanTexture texture, long bufferOffset)
+    private static BufferImageCopy CreateTextureCopy(VulkanTexture texture, long bufferOffset, int mipLevel)
     {
-        TextureDescription description = texture.Description;
+        TextureDescription description = texture.Description.GetMipDescription(mipLevel);
         int pitch = description.Format.GetCopyRowPitch(description.Width);
         int texelsPerRow = pitch / description.Format.GetBytesPerPixel();
         return new BufferImageCopy
@@ -278,7 +346,7 @@ internal sealed unsafe class VulkanCommandList : ICommandList
             BufferOffset = (ulong)bufferOffset,
             BufferRowLength = (uint)texelsPerRow,
             BufferImageHeight = (uint)description.Height,
-            ImageSubresource = new ImageSubresourceLayers(texture.Aspect, 0, 0, 1),
+            ImageSubresource = new ImageSubresourceLayers(texture.Aspect, (uint)mipLevel, 0, 1),
             ImageExtent = new Extent3D((uint)description.Width, (uint)description.Height, 1),
         };
     }

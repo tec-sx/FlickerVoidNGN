@@ -5,14 +5,16 @@ namespace FlickerVoid.Engine.Graphics.Vulkan;
 /// <summary>
 /// The device-wide descriptor sets shaders index into, and the one pipeline layout every pipeline uses.
 /// DXC maps register space N to set N, so set 1 holds Texture2D[] (t0, space1), set 2 ByteAddressBuffer[]
-/// (t0, space2) and set 3 SamplerState[] (s0, space3); set 0 is empty. Push constants are b0, space0.
+/// (t0, space2; RWByteAddressBuffer[] at u0, space2 reads the same storage buffers), set 3 SamplerState[] (s0, space3) and
+/// set 4 RWTexture2D[] (u0, space4), indexed like set 1; set 0 is empty. Push constants are b0, space0.
 /// </summary>
 internal sealed unsafe class VulkanBindlessTables : IDisposable
 {
     public const uint TextureSet = 1;
     public const uint BufferSet = 2;
     public const uint SamplerSet = 3;
-    private const int SetCount = 4;
+    public const uint StorageImageSet = 4;
+    private const int SetCount = 5;
 
     private readonly Vk _vk;
     private readonly Device _device;
@@ -24,7 +26,7 @@ internal sealed unsafe class VulkanBindlessTables : IDisposable
     {
         _vk = vk;
         _device = device;
-        ResourceCapacity = (uint)Math.Min(GraphicsLimits.BindlessResourceCapacity, Math.Min(limits.MaxDescriptorSetUpdateAfterBindSampledImages, limits.MaxDescriptorSetUpdateAfterBindStorageBuffers));
+        ResourceCapacity = (uint)Math.Min(GraphicsLimits.BindlessResourceCapacity, Math.Min(limits.MaxDescriptorSetUpdateAfterBindSampledImages, Math.Min(limits.MaxDescriptorSetUpdateAfterBindStorageBuffers, limits.MaxDescriptorSetUpdateAfterBindStorageImages)));
         SamplerCapacity = (uint)Math.Min(GraphicsLimits.BindlessSamplerCapacity, limits.MaxDescriptorSetUpdateAfterBindSamplers);
         Resources = new BindlessIndexAllocator((int)ResourceCapacity);
         Samplers = new BindlessIndexAllocator((int)SamplerCapacity);
@@ -33,6 +35,7 @@ internal sealed unsafe class VulkanBindlessTables : IDisposable
         _layouts[TextureSet] = CreateArrayLayout(DescriptorType.SampledImage, ResourceCapacity);
         _layouts[BufferSet] = CreateArrayLayout(DescriptorType.StorageBuffer, ResourceCapacity);
         _layouts[SamplerSet] = CreateArrayLayout(DescriptorType.Sampler, SamplerCapacity);
+        _layouts[StorageImageSet] = CreateArrayLayout(DescriptorType.StorageImage, ResourceCapacity);
         _pool = CreatePool();
         AllocateSets();
         PipelineLayout = CreatePipelineLayout();
@@ -61,6 +64,14 @@ internal sealed unsafe class VulkanBindlessTables : IDisposable
     {
         DescriptorImageInfo image = new() { ImageView = view, ImageLayout = ImageLayout.ShaderReadOnlyOptimal };
         WriteDescriptorSet write = CreateWrite(TextureSet, index, DescriptorType.SampledImage);
+        write.PImageInfo = &image;
+        _vk.UpdateDescriptorSets(_device, 1, &write, 0, null);
+    }
+
+    public void WriteStorageImage(uint index, ImageView view)
+    {
+        DescriptorImageInfo image = new() { ImageView = view, ImageLayout = ImageLayout.General };
+        WriteDescriptorSet write = CreateWrite(StorageImageSet, index, DescriptorType.StorageImage);
         write.PImageInfo = &image;
         _vk.UpdateDescriptorSets(_device, 1, &write, 0, null);
     }
@@ -143,16 +154,17 @@ internal sealed unsafe class VulkanBindlessTables : IDisposable
 
     private DescriptorPool CreatePool()
     {
-        DescriptorPoolSize* sizes = stackalloc DescriptorPoolSize[3];
+        DescriptorPoolSize* sizes = stackalloc DescriptorPoolSize[4];
         sizes[0] = new DescriptorPoolSize(DescriptorType.SampledImage, ResourceCapacity);
         sizes[1] = new DescriptorPoolSize(DescriptorType.StorageBuffer, ResourceCapacity);
         sizes[2] = new DescriptorPoolSize(DescriptorType.Sampler, SamplerCapacity);
+        sizes[3] = new DescriptorPoolSize(DescriptorType.StorageImage, ResourceCapacity);
         DescriptorPoolCreateInfo info = new()
         {
             SType = StructureType.DescriptorPoolCreateInfo,
             Flags = DescriptorPoolCreateFlags.UpdateAfterBindBit,
             MaxSets = SetCount,
-            PoolSizeCount = 3,
+            PoolSizeCount = 4,
             PPoolSizes = sizes,
         };
         VulkanResult.Check(_vk.CreateDescriptorPool(_device, &info, null, out DescriptorPool pool));

@@ -20,6 +20,8 @@ internal readonly record struct VulkanResourceStates(ImageLayout Layout, Pipelin
                 return new(ImageLayout.TransferDstOptimal, PipelineStageFlags2.AllTransferBit, AccessFlags2.TransferWriteBit);
             case ResourceState.ShaderRead:
                 return new(ImageLayout.ShaderReadOnlyOptimal, ShaderStages, AccessFlags2.ShaderReadBit);
+            case ResourceState.ShaderWrite:
+                return new(ImageLayout.General, ShaderStages, AccessFlags2.ShaderStorageReadBit | AccessFlags2.ShaderStorageWriteBit);
             case ResourceState.RenderTarget:
                 return new(ImageLayout.ColorAttachmentOptimal, PipelineStageFlags2.ColorAttachmentOutputBit, AccessFlags2.ColorAttachmentReadBit | AccessFlags2.ColorAttachmentWriteBit);
             case ResourceState.DepthWrite:

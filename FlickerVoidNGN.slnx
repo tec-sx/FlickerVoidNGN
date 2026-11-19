@@ -5,6 +5,7 @@
     <Project Path="Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
     <Project Path="Source/Physics/FlickerVoid.Engine.Physics.csproj" />
     <Project Path="Source/Platform/FlickerVoid.Engine.Platform.csproj" />
+    <Project Path="Source/Rendering/FlickerVoid.Engine.Rendering.csproj" />
     <Project Path="Source/Runtime/FlickerVoid.Engine.Runtime.csproj" />
     <Project Path="Source/Shaders/FlickerVoid.Engine.Shaders.csproj" />
   </Folder>
@@ -13,6 +14,7 @@
     <Project Path="Tests/Graphics/FlickerVoid.Engine.Graphics.Tests.csproj" />
     <Project Path="Tests/Physics/FlickerVoid.Engine.Physics.Tests.csproj" />
     <Project Path="Tests/Platform/FlickerVoid.Engine.Platform.Tests.csproj" />
+    <Project Path="Tests/Rendering/FlickerVoid.Engine.Rendering.Tests.csproj" />
     <Project Path="Tests/Runtime/FlickerVoid.Engine.Runtime.Tests.csproj" />
     <Project Path="Tests/Shaders/FlickerVoid.Engine.Shaders.Tests.csproj" />
   </Folder>

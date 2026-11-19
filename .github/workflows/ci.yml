@@ -26,6 +26,9 @@ jobs:
       - name: Install the Vulkan runtime, the validation layer and lavapipe (software Vulkan)
         if: runner.os == 'Windows'
         uses: jakoch/install-vulkan-sdk-action@v1
+        # Authenticated, so fetching lavapipe's release doesn't hit the anonymous GitHub API rate limit.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           install_runtime: true
           install_lavapipe: true
@@ -66,6 +69,7 @@ jobs:
           dotnet publish Samples/FallingBodies -c Release --use-current-runtime -o artifacts/aot/FallingBodies
           dotnet publish Samples/Window -c Release --use-current-runtime -o artifacts/aot/Window
           dotnet publish Samples/TexturedMesh -c Release --use-current-runtime -o artifacts/aot/TexturedMesh
+          dotnet publish Samples/SceneViewer -c Release --use-current-runtime -o artifacts/aot/SceneViewer
           dotnet publish Samples/EditorViewport -c Release --use-current-runtime -o artifacts/aot/EditorViewport
       - name: Run the samples
         shell: bash
@@ -74,7 +78,7 @@ jobs:
         run: |
           ./artifacts/aot/FallingBodies/FlickerVoid.Samples.FallingBodies
           ./artifacts/aot/Window/FlickerVoid.Samples.Window --frames 120
-      - name: Run the textured mesh sample on lavapipe (under Xvfb on Linux)
+      - name: Run the textured mesh and scene viewer samples on lavapipe (under Xvfb on Linux)
         shell: bash
         env:
           LP_PERF: no_rast_linear
@@ -82,6 +86,7 @@ jobs:
           display=""
           if [ "$RUNNER_OS" = "Linux" ]; then display="xvfb-run -a"; fi
           $display ./artifacts/aot/TexturedMesh/FlickerVoid.Samples.TexturedMesh --validation --frames 120
+          $display ./artifacts/aot/SceneViewer/FlickerVoid.Samples.SceneViewer --validation --frames 120
 
   # When main's engine version (Source/Directory.Build.props) has no tag yet, tag the commit v<Version> and pack the engine modules.
   release:

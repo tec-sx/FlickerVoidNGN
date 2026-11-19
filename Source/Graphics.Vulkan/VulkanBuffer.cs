@@ -39,7 +39,7 @@ internal sealed unsafe class VulkanBuffer : IBuffer
             _mapped = (byte*)mapped;
         }
 
-        if (description.Usage.HasFlag(BufferUsage.ShaderRead))
+        if (description.Usage.HasFlag(BufferUsage.ShaderRead) || description.Usage.HasFlag(BufferUsage.ShaderWrite))
         {
             BindlessIndex = device.Bindless.Resources.Allocate();
             device.Bindless.WriteBuffer(BindlessIndex, buffer);
@@ -94,7 +94,7 @@ internal sealed unsafe class VulkanBuffer : IBuffer
     private static BufferUsageFlags GetUsage(BufferUsage usage)
     {
         BufferUsageFlags flags = 0;
-        if (usage.HasFlag(BufferUsage.ShaderRead))
+        if (usage.HasFlag(BufferUsage.ShaderRead) || usage.HasFlag(BufferUsage.ShaderWrite))
         {
             flags |= BufferUsageFlags.StorageBufferBit;
         }

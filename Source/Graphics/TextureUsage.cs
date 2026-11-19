@@ -12,4 +12,7 @@ public enum TextureUsage : byte
     DepthStencil = 4,
     CopySource = 8,
     CopyDestination = 16,
+
+    /// <summary>Shaders write it as a RWTexture2D through its bindless index, the same index sampling uses.</summary>
+    ShaderWrite = 32,
 }

@@ -11,4 +11,7 @@ public enum BufferUsage : byte
     Index = 2,
     CopySource = 4,
     CopyDestination = 8,
+
+    /// <summary>Shaders write it as a RWByteAddressBuffer or RWStructuredBuffer through its bindless index.</summary>
+    ShaderWrite = 16,
 }

@@ -7,6 +7,7 @@ internal static class TestShaders
         Texture2D Textures[] : register(t0, space1);
         ByteAddressBuffer Buffers[] : register(t0, space2);
         SamplerState Samplers[] : register(s0, space3);
+        RWTexture2D<float4> RWTextures[] : register(u0, space4);
 
         struct DrawConstants
         {
@@ -63,6 +64,35 @@ internal static class TestShaders
         float4 main(VertexOutput input) : SV_Target
         {
             return Textures[Draw.Indices.y].Sample(Samplers[Draw.Indices.z], input.Uv);
+        }
+        """;
+
+    /// <summary>Writes each 4-byte word's index times 3 into the writable buffer at Indices.x, one thread per word.</summary>
+    public const string WriteBufferCompute = """
+        RWByteAddressBuffer RWBuffers[] : register(u0, space2);
+
+        struct DrawConstants
+        {
+            uint4 Indices;
+            float4 Color;
+        };
+
+        [[vk::push_constant]] ConstantBuffer<DrawConstants> Draw : register(b0, space0);
+
+        [numthreads(64, 1, 1)]
+        void main(uint3 id : SV_DispatchThreadID)
+        {
+            RWBuffers[Draw.Indices.x].Store(id.x * 4, id.x * 3);
+        }
+        """;
+
+    /// <summary>Fills the writable texture at Indices.y with Color, one thread per texel.</summary>
+    public const string FillTextureCompute = Bindless + """
+
+        [numthreads(8, 8, 1)]
+        void main(uint3 id : SV_DispatchThreadID)
+        {
+            RWTextures[Draw.Indices.y][id.xy] = Draw.Color;
         }
         """;
 }

@@ -34,7 +34,7 @@ public sealed class SwapchainTests : IDisposable
 
         swapchain.Width.Should().Be(SwapchainTestsBuilder.WindowWidth);
         swapchain.Height.Should().Be(SwapchainTestsBuilder.WindowHeight);
-        swapchain.Format.Should().Be(PixelFormat.Bgra8UNorm);
+        swapchain.Format.Should().Be(PixelFormat.Bgra8UNormSrgb, "shaders write linear light, which the back buffer encodes for the display");
         TextureDescription expected = new(swapchain.Width, swapchain.Height, swapchain.Format, TextureUsage.RenderTarget | TextureUsage.CopySource);
         backBuffer.Description.Should().BeEquivalentTo(expected, static options => options.Excluding(static description => description.Name));
     }

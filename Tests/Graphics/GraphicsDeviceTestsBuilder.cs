@@ -65,6 +65,13 @@ internal sealed class GraphicsDeviceTestsBuilder : IDisposable
         return device.CreateGraphicsPipeline(description);
     }
 
+    public IPipeline CreateComputePipeline(IGraphicsDevice device, string source)
+    {
+        ShaderBytecode compute = Compile(source, ShaderStage.Compute);
+        ComputePipelineDescription description = new() { ComputeShader = compute };
+        return device.CreateComputePipeline(description);
+    }
+
     /// <summary>Starts rendering to the target, cleared to the color, with the viewport and scissor covering it.</summary>
     public static void BeginRendering(ICommandList commands, ITexture target, Vector4 clearColor)
     {
@@ -75,10 +82,10 @@ internal sealed class GraphicsDeviceTestsBuilder : IDisposable
         commands.SetScissor(0, 0, TargetSize, TargetSize);
     }
 
-    /// <summary>Copies the texture to the CPU as tightly packed rows of 4-byte pixels.</summary>
-    public static uint[] ReadPixels(IGraphicsDevice device, ITexture texture)
+    /// <summary>Copies a mip level of the texture to the CPU as tightly packed rows of 4-byte pixels.</summary>
+    public static uint[] ReadPixels(IGraphicsDevice device, ITexture texture, int mipLevel = 0)
     {
-        TextureDescription description = texture.Description;
+        TextureDescription description = texture.Description.GetMipDescription(mipLevel);
         int pitch = description.Format.GetCopyRowPitch(description.Width);
         BufferDescription readbackDescription = new((long)pitch * description.Height, BufferUsage.CopyDestination, MemoryLocation.Readback);
         using IBuffer readback = device.CreateBuffer(readbackDescription);
@@ -86,7 +93,7 @@ internal sealed class GraphicsDeviceTestsBuilder : IDisposable
 
         commands.Begin();
         commands.Barrier(texture, ResourceState.CopySource);
-        commands.CopyTextureToBuffer(texture, readback, 0);
+        commands.CopyTextureToBuffer(texture, readback, 0, mipLevel);
         commands.End();
         device.Submit(commands);
         device.WaitIdle();
