@@ -47,7 +47,7 @@ public sealed partial class ViewportViewModel : ObservableObject
 
     public EditorCamera Camera { get; } = new();
 
-    public EditorSelection Selection { get; } = new();
+    public EditorSelection Selection => Scene.Selection;
 
     public TransformGizmo Gizmo { get; } = new();
 

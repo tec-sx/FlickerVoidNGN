@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="using:FlickerVoid.Engine.Editor.Shell"
+        xmlns:inspector="using:FlickerVoid.Engine.Editor.Inspector"
         xmlns:viewports="using:FlickerVoid.Engine.Editor.Viewports"
         x:Class="FlickerVoid.Engine.Editor.Shell.MainWindow"
         x:DataType="shell:MainWindowViewModel"
@@ -27,6 +28,10 @@
         <TextBlock Text="{Binding Viewport.Status}" TextTrimming="CharacterEllipsis"
                    ToolTip.Tip="Alt+left drag orbits, Alt+middle drag pans, Alt+right drag or the wheel zooms; hold the right button to look round and fly with WASD, Q and E." />
       </DockPanel>
+    </Border>
+    <Border DockPanel.Dock="Right" Width="380" BorderThickness="1,0,0,0"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+      <inspector:InspectorView DataContext="{Binding Inspector}" />
     </Border>
     <viewports:ViewportControl DataContext="{Binding Viewport}" />
   </DockPanel>

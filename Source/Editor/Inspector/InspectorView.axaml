@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:inspector="using:FlickerVoid.Engine.Editor.Inspector"
+             x:Class="FlickerVoid.Engine.Editor.Inspector.InspectorView"
+             x:DataType="inspector:InspectorViewModel">
+  <!-- One template per kind of field, picked by the field's type: components need no inspector code of their own. -->
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="inspector:NumberFieldViewModel">
+      <TextBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:BoolFieldViewModel">
+      <CheckBox IsChecked="{Binding Value}" IsEnabled="{Binding !IsReadOnly}" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:TextFieldViewModel">
+      <TextBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:EnumFieldViewModel">
+      <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Value}" IsEnabled="{Binding !IsReadOnly}"
+                HorizontalAlignment="Stretch" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:VectorFieldViewModel">
+      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+        <TextBox Grid.Column="0" Text="{Binding X, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="X" />
+        <TextBox Grid.Column="1" Text="{Binding Y, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Y" />
+        <TextBox Grid.Column="2" Text="{Binding Z, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Z" />
+      </Grid>
+    </DataTemplate>
+    <DataTemplate DataType="inspector:RotationFieldViewModel">
+      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+        <TextBox Grid.Column="0" Text="{Binding X, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Pitch about X, in degrees" />
+        <TextBox Grid.Column="1" Text="{Binding Y, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Yaw about Y, in degrees" />
+        <TextBox Grid.Column="2" Text="{Binding Z, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Roll about Z, in degrees" />
+      </Grid>
+    </DataTemplate>
+    <DataTemplate DataType="inspector:ColorFieldViewModel">
+      <ColorPicker Color="{Binding Color}" IsAlphaEnabled="False" HorizontalAlignment="Left" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:ReadOnlyFieldViewModel">
+      <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Opacity="0.7" VerticalAlignment="Center" />
+    </DataTemplate>
+  </UserControl.DataTemplates>
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontWeight="SemiBold" FontSize="15" Margin="12,8" />
+    <ScrollViewer>
+      <ItemsControl ItemsSource="{Binding Components}" Margin="4,0,4,8">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="inspector:ComponentViewModel">
+            <Expander Header="{Binding Title}" IsExpanded="True" HorizontalAlignment="Stretch" Margin="0,2">
+              <ItemsControl ItemsSource="{Binding Fields}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="inspector:FieldViewModel">
+                    <Grid ColumnDefinitions="96,*" Margin="0,2">
+                      <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <ContentControl Grid.Column="1" Content="{Binding}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Expander>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

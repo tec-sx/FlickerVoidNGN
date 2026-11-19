@@ -1,5 +1,7 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Runtime.Components;
+
 namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>Light shining in every direction from its entity's position, fading out to nothing at its range.</summary>
@@ -9,6 +11,7 @@ public struct PointLight
     {
     }
 
+    [Color]
     public Vector3 Color { get; set; } = Vector3.One;
 
     /// <summary>Scales the color; a light one unit away from a surface facing it lights it by Intensity / 2.</summary>

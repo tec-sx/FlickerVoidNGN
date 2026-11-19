@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
+using FlickerVoid.Engine.Editor.Inspector;
 using FlickerVoid.Engine.Editor.Scenes;
 using FlickerVoid.Engine.Editor.Viewports;
 
@@ -35,7 +36,8 @@ public sealed partial class App : Application
             }
 
             ViewportViewModel viewport = new(_scene, Options.Validation);
-            MainWindowViewModel main = new(viewport);
+            InspectorViewModel inspector = new(_scene);
+            MainWindowViewModel main = new(viewport, inspector);
             desktop.MainWindow = new MainWindow { DataContext = main };
             desktop.Exit += HandleExit;
         }

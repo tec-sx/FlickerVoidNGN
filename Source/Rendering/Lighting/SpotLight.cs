@@ -1,4 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using System.Numerics;
+
+using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Rendering.Lighting;
 
@@ -9,6 +12,7 @@ public struct SpotLight
     {
     }
 
+    [Color]
     public Vector3 Color { get; set; } = Vector3.One;
 
     /// <summary>Scales the color, as a <see cref="PointLight"/>'s does.</summary>
@@ -18,9 +22,11 @@ public struct SpotLight
     public float Range { get; set; } = 5;
 
     /// <summary>The angle in degrees between the cone's axis and its edge of full light.</summary>
+    [Range(0, 90)]
     public float InnerConeAngle { get; set; } = 20;
 
     /// <summary>The angle in degrees between the cone's axis and its outer edge, where the light has faded out.</summary>
+    [Range(0, 90)]
     public float OuterConeAngle { get; set; } = 30;
 
     /// <summary>Whether meshes block its light, through a tile of the <see cref="ShadowAtlas"/> while tiles are free.</summary>
