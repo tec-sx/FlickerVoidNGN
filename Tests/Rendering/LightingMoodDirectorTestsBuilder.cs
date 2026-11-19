@@ -13,9 +13,9 @@ namespace FlickerVoid.Engine.Rendering.Tests;
 /// </summary>
 internal sealed class LightingMoodDirectorTestsBuilder : IDisposable
 {
-    public const string Day = "Day.json";
-    public const string Night = "Night.json";
-    public const string Storm = "Storm.json";
+    public const string Day = "Day.fvmood";
+    public const string Night = "Night.fvmood";
+    public const string Storm = "Storm.fvmood";
     public const float DayExposure = 1;
     public const float NightExposure = 0.4f;
     public const float StormExposure = 0.2f;

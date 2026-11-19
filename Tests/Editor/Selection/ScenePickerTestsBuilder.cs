@@ -47,7 +47,7 @@ internal sealed class ScenePickerTestsBuilder : IDisposable
         MaterialData material = new(Vector4.One, null);
         MeshPart part = new(vertices, indices, material);
         ModelData model = new([part], []);
-        string builtPath = Path.ChangeExtension(path, ".model");
+        string builtPath = Path.ChangeExtension(path, ".fvmodel");
         string fullPath = Path.Combine(_contentFolder, builtPath);
         using FileStream stream = File.Create(fullPath);
         ModelFile.Write(model, stream);

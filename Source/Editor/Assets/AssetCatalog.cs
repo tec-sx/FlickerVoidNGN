@@ -1,26 +1,20 @@
-using System.Text.Json;
-
 namespace FlickerVoid.Engine.Editor.Assets;
 
 /// <summary>
 /// Lists the files and folders of a content folder for the asset browser, skipping hidden ones (a leading dot, such as the
-/// schemas and build caches), and tells each file's kind: by its extensions, or, for a plain JSON file, by the schema it names.
+/// schemas and build caches), and tells each file's kind by its extension.
 /// </summary>
 public sealed class AssetCatalog(string root)
 {
-    private const string JsonExtension = ".json";
-    private const string SchemaSuffix = ".schema.json";
-
-    // Longest suffixes first, so Name.scene.json is a scene rather than plain JSON.
     private static readonly (string Suffix, AssetKind Kind)[] Suffixes =
     [
-        (".scene.json", AssetKind.Scene),
-        (".material.json", AssetKind.Material),
-        (".shader.json", AssetKind.Shader),
-        (".mood.json", AssetKind.Mood),
+        (".fvscene", AssetKind.Scene),
+        (".fvmat", AssetKind.Material),
+        (".fvshader", AssetKind.Shader),
+        (".fvmood", AssetKind.Mood),
         (".glb", AssetKind.Model),
         (".gltf", AssetKind.Model),
-        (".model", AssetKind.Model),
+        (".fvmodel", AssetKind.Model),
         (".png", AssetKind.Texture),
         (".jpg", AssetKind.Texture),
         (".jpeg", AssetKind.Texture),
@@ -67,11 +61,6 @@ public sealed class AssetCatalog(string root)
             {
                 return kind;
             }
-        }
-
-        if (fullPath.EndsWith(JsonExtension, StringComparison.OrdinalIgnoreCase))
-        {
-            return GetKindBySchema(fullPath);
         }
 
         return AssetKind.Other;
@@ -151,7 +140,7 @@ public sealed class AssetCatalog(string root)
         return name.StartsWith('.');
     }
 
-    /// <summary>The file name without its extensions: Room for Room.scene.json.</summary>
+    /// <summary>The file name without its extensions: Room for Room.fvscene.</summary>
     private static string GetName(string fullPath)
     {
         string name = Path.GetFileName(fullPath);
@@ -162,56 +151,5 @@ public sealed class AssetCatalog(string root)
         }
 
         return name;
-    }
-
-    /// <summary>A mood names mood.schema.json, for example; only the top-level <c>$schema</c> is read.</summary>
-    private static AssetKind GetKindBySchema(string fullPath)
-    {
-        string? schema = ReadSchema(fullPath);
-        if (schema is null || !schema.EndsWith(SchemaSuffix, StringComparison.OrdinalIgnoreCase))
-        {
-            return AssetKind.Other;
-        }
-
-        string fileName = Path.GetFileName(schema);
-        string kindName = fileName[..^SchemaSuffix.Length];
-        if (Enum.TryParse(kindName, ignoreCase: true, out AssetKind kind))
-        {
-            return kind;
-        }
-
-        return AssetKind.Other;
-    }
-
-    private static string? ReadSchema(string fullPath)
-    {
-        byte[] bytes = File.ReadAllBytes(fullPath);
-        JsonReaderOptions options = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
-        Utf8JsonReader reader = new(bytes, options);
-        try
-        {
-            if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject)
-            {
-                return null;
-            }
-
-            while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
-            {
-                string property = reader.GetString()!;
-                reader.Read();
-                if (property == "$schema" && reader.TokenType == JsonTokenType.String)
-                {
-                    return reader.GetString();
-                }
-
-                reader.Skip();
-            }
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-
-        return null;
     }
 }

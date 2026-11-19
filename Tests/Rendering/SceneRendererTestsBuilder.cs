@@ -58,13 +58,13 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         _content = new ContentManager(_contentFolder);
     }
 
-    /// <summary>Writes a model as the content build leaves one named <paramref name="path"/>: baked, with the .model extension.</summary>
+    /// <summary>Writes a model as the content build leaves one named <paramref name="path"/>: baked, with the .fvmodel extension.</summary>
     public SceneRendererTestsBuilder WithModel(string path, Action<TestModelBuilder> build)
     {
         TestModelBuilder model = new();
         build(model);
         ModelData data = model.Build();
-        string builtPath = Path.ChangeExtension(path, ".model");
+        string builtPath = Path.ChangeExtension(path, ".fvmodel");
         string fullPath = Path.Combine(_contentFolder, builtPath);
         using FileStream stream = File.Create(fullPath);
         ModelFile.Write(data, stream);

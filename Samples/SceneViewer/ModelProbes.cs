@@ -22,7 +22,7 @@ public static class ModelProbes
     public static void Bake(IGraphicsDevice device, IContentManager content, World world, string modelPath, LightingMood mood)
     {
         // The content build baked the model next to its source name.
-        string bakedPath = Path.ChangeExtension(modelPath, ".model");
+        string bakedPath = Path.ChangeExtension(modelPath, ".fvmodel");
         ModelData model;
         using (FileStream stream = File.OpenRead(bakedPath))
         {
@@ -43,7 +43,7 @@ public static class ModelProbes
 
         Vector3 size = max - min;
         Vector3 center = (min + max) / 2;
-        string probesName = Path.GetFileNameWithoutExtension(modelPath) + ".probes";
+        string probesName = Path.GetFileNameWithoutExtension(modelPath) + ".fvprobes";
         IrradianceVolume volume = new()
         {
             Size = size,

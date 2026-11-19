@@ -19,9 +19,9 @@ public sealed class SceneLoaderTests : IDisposable
     [Fact]
     public void SpawnsTheSceneFile()
     {
-        SceneLoader loader = _builder.WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp" } ] }""").Build();
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp" } ] }""").Build();
 
-        IReadOnlyList<Entity> entities = loader.Load("Room.scene.json");
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
 
         EntityName name = _builder.World.Get<EntityName>(entities[0]);
         name.Value.Should().Be("Lamp");
@@ -30,10 +30,10 @@ public sealed class SceneLoaderTests : IDisposable
     [Fact]
     public void PatchesTheWorldWhenTheFileChanges()
     {
-        SceneLoader loader = _builder.WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Build();
-        IReadOnlyList<Entity> entities = loader.Load("Room.scene.json");
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
 
-        _builder.ChangeScene("Room.scene.json", """{ "entities": [ { "name": "Lamp", "components": { "transform": { "position": [0, 3, 0] } } } ] }""");
+        _builder.ChangeScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "components": { "transform": { "position": [0, 3, 0] } } } ] }""");
 
         Transform lamp = _builder.World.Get<Transform>(entities[0]);
         Vector3 raised = new(0, 3, 0);
@@ -43,11 +43,11 @@ public sealed class SceneLoaderTests : IDisposable
     [Fact]
     public void KeepsTheWorldAndLogsWhenTheChangedFileIsInvalid()
     {
-        SceneLoader loader = _builder.WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp" } ] }""").Build();
-        IReadOnlyList<Entity> entities = loader.Load("Room.scene.json");
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp" } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
 
-        _builder.ChangeScene("Room.scene.json", """{ "entities": [ { "name": "Lamp", "components": { "unknown": {} } } ] }""");
-        _builder.ChangeScene("Room.scene.json", """{ "entities": [ { "name": "Lamp" """);
+        _builder.ChangeScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "components": { "unknown": {} } } ] }""");
+        _builder.ChangeScene("Room.fvscene", """{ "entities": [ { "name": "Lamp" """);
 
         _builder.World.IsAlive(entities[0]).Should().BeTrue();
         _builder.Warnings.Should().HaveCount(2);
@@ -56,10 +56,10 @@ public sealed class SceneLoaderTests : IDisposable
     [Fact]
     public void IgnoresChangesToOtherFiles()
     {
-        SceneLoader loader = _builder.WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp" } ] }""").Build();
-        IReadOnlyList<Entity> entities = loader.Load("Room.scene.json");
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp" } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
 
-        _builder.ChangeScene("Other.scene.json", """{ "entities": [] }""");
+        _builder.ChangeScene("Other.fvscene", """{ "entities": [] }""");
 
         _builder.World.IsAlive(entities[0]).Should().BeTrue();
         _builder.Warnings.Should().BeEmpty();
@@ -68,38 +68,38 @@ public sealed class SceneLoaderTests : IDisposable
     [Fact]
     public void SavesTheWorldIntoTheSceneFile()
     {
-        SceneLoader loader = _builder.WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Build();
-        IReadOnlyList<Entity> entities = loader.Load("Room.scene.json");
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
         Vector3 raised = new(0, 3, 0);
         _builder.World.Get<Transform>(entities[0]).Position = raised;
 
-        loader.Save("Room.scene.json");
+        loader.Save("Room.fvscene");
 
-        Transform saved = _builder.LoadInNewWorld("Room.scene.json");
+        Transform saved = _builder.LoadInNewWorld("Room.fvscene");
         saved.Position.Should().Be(raised);
     }
 
     [Fact]
     public void SavesComponentsTheWorldDidNotChangeAsTheFileWroteThem()
     {
-        SceneLoader loader = _builder.WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } }, { "name": "Box", "components": { "transform": { "position": [1, 0, 0] } } } ] }""").Build();
-        IReadOnlyList<Entity> entities = loader.Load("Room.scene.json");
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } }, { "name": "Box", "components": { "transform": { "position": [1, 0, 0] } } } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
         _builder.World.Get<Transform>(entities[0]).Position = Vector3.UnitY;
 
-        loader.Save("Room.scene.json");
+        loader.Save("Room.fvscene");
 
-        string box = _builder.ReadComponent("Room.scene.json", entity: 1, "transform");
+        string box = _builder.ReadComponent("Room.fvscene", entity: 1, "transform");
         box.Should().Be("""{"position":[1,0,0]}""");
     }
 
     [Fact]
     public void KeepsTheEntitiesWhenItSaves()
     {
-        SceneLoader loader = _builder.WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Build();
-        IReadOnlyList<Entity> entities = loader.Load("Room.scene.json");
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
         _builder.World.Get<Transform>(entities[0]).Position = Vector3.UnitY;
 
-        loader.Save("Room.scene.json");
+        loader.Save("Room.fvscene");
 
         _builder.World.IsAlive(entities[0]).Should().BeTrue();
         _builder.World.Get<Transform>(entities[0]).Position.Should().Be(Vector3.UnitY);
@@ -111,7 +111,7 @@ public sealed class SceneLoaderTests : IDisposable
     {
         SceneLoader loader = _builder.Build();
 
-        Action save = () => loader.Save("Room.scene.json");
+        Action save = () => loader.Save("Room.fvscene");
 
         save.Should().Throw<InvalidOperationException>();
     }
@@ -119,15 +119,15 @@ public sealed class SceneLoaderTests : IDisposable
     [Fact]
     public void UnloadingDestroysTheScenesEntitiesAndStopsFollowingTheFile()
     {
-        SceneLoader loader = _builder.WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp" } ] }""").Build();
-        IReadOnlyList<Entity> entities = loader.Load("Room.scene.json");
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp" } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
 
-        loader.Unload("Room.scene.json");
-        _builder.ChangeScene("Room.scene.json", """{ "entities": [ { "name": "Lamp" }, { "name": "Box" } ] }""");
+        loader.Unload("Room.fvscene");
+        _builder.ChangeScene("Room.fvscene", """{ "entities": [ { "name": "Lamp" }, { "name": "Box" } ] }""");
 
         _builder.World.IsAlive(entities[0]).Should().BeFalse();
         _builder.World.CountEntities(new QueryDescription()).Should().Be(0);
-        IReadOnlyList<Entity> reloaded = loader.Load("Room.scene.json");
+        IReadOnlyList<Entity> reloaded = loader.Load("Room.fvscene");
         reloaded.Should().HaveCount(2);
     }
 }

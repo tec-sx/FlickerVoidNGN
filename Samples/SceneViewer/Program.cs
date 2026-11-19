@@ -36,11 +36,11 @@ using Microsoft.Extensions.Logging;
 // Usage: SceneViewer [model] [--validation] [--frames <count>] [--lights <count>] [--sun <x,y,z>] [--ambient <0..1>] [--fog <density>] [--probes]
 //        [--moods <file,file,...>] [--scene <file>] [--debug].
 // --scene spawns a scene file from the model's folder instead of the model, and walks its animated entities round the
-// origin; Content/Scenes/PaintedRoom.scene.json is the stage 4 gate: the room, a walking fox and 36 lamps.
+// origin; Content/Scenes/PaintedRoom.fvscene is the stage 4 gate: the room, a walking fox and 36 lamps.
 // F1 shows the debug interface (engine stats, console, rendering values, lights, and the viewer's own panel); --debug starts with it shown.
-// --moods takes lighting mood files in the model's folder (Content/Moods/Day.json, Dusk.json and Night.json beside the
+// --moods takes lighting mood files in the model's folder (Content/Moods/Day.fvmood, Dusk.fvmood and Night.fvmood beside the
 // default room); N steps a fact through them, which mood rules turn into a blend to the next mood. --sun, --ambient and --fog override the mood.
-// --probes bakes an irradiance volume fitted to the model at startup and saves it beside the model as <model>.probes. Without a model it shows Content/Room.glb.
+// --probes bakes an irradiance volume fitted to the model at startup and saves it beside the model as <model>.fvprobes. Without a model it shows Content/Room.glb.
 // Content reloads while the viewer runs: save a model, texture, scene or mood in Samples/SceneViewer/Content and the builder
 // rebuilds it beside the build, where it shows within a second. A model passed by path must be in a built content folder.
 string model = Path.Combine(AppContext.BaseDirectory, "Content", "Room.glb");
@@ -109,8 +109,8 @@ for (int index = 0; index < args.Length; index++)
     }
 }
 
-// The build bakes Room.glb into Room.model; content still names the model by its source.
-string bakedModel = Path.ChangeExtension(model, ".model");
+// The build bakes Room.glb into Room.fvmodel; content still names the model by its source.
+string bakedModel = Path.ChangeExtension(model, ".fvmodel");
 if (!File.Exists(model) && !File.Exists(bakedModel))
 {
     Console.Error.WriteLine($"{model} doesn't exist.");

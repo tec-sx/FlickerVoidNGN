@@ -16,7 +16,7 @@ namespace FlickerVoid.Engine.Editor.Scenes;
 public static class SceneProbes
 {
     private const string UnsavedScene = "Untitled";
-    private const string ProbesExtension = ".probes";
+    private const string ProbesExtension = ".fvprobes";
 
     /// <summary>Bakes with the mood's sun, ambient light, fog and shadows, and returns the probes files written.</summary>
     public static IReadOnlyList<string> Bake(IGraphicsDevice device, EditorScene scene, LightingMood mood)
@@ -70,7 +70,7 @@ public static class SceneProbes
             return $"{UnsavedScene}.{volumeName}{ProbesExtension}";
         }
 
-        // Scene files are Name.scene.json.
+        // Scene files are Name.fvscene.
         string withoutJson = Path.GetFileNameWithoutExtension(scenePath);
         string sceneName = Path.GetFileNameWithoutExtension(withoutJson);
         string fileName = $"{sceneName}.{volumeName}{ProbesExtension}";

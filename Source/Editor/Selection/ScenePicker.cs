@@ -119,7 +119,7 @@ public sealed class ScenePicker : IDisposable
 
     private PickModel? Load(string mesh)
     {
-        string builtPath = Path.ChangeExtension(mesh, ".model");
+        string builtPath = Path.ChangeExtension(mesh, ".fvmodel");
         string fullPath = _content.GetFullPath(builtPath);
         if (_models.TryGetValue(fullPath, out PickModel? loaded))
         {

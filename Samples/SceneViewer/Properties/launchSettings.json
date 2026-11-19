@@ -2,7 +2,7 @@
   "profiles": {
     "Gate scene": {
       "commandName": "Project",
-      "commandLineArgs": "--scene Scenes/PaintedRoom.scene.json --moods Moods/Day.json,Moods/Dusk.json,Moods/Night.json --debug"
+      "commandLineArgs": "--scene Scenes/PaintedRoom.fvscene --moods Moods/Day.fvmood,Moods/Dusk.fvmood,Moods/Night.fvmood --debug"
     },
     "Room": {
       "commandName": "Project",

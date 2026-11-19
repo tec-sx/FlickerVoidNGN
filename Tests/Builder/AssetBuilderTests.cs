@@ -36,13 +36,13 @@ public sealed class AssetBuilderTests : IDisposable
     [Fact]
     public void CopiesFilesNoImporterTakes()
     {
-        _files.WithSource("Scenes/Room.scene.json", """{ "entities": [] }""");
+        _files.WithSource("Scenes/Room.fvscene", """{ "entities": [] }""");
         AssetBuilder builder = _files.Build();
 
         BuildReport report = _files.BuildAll(builder);
 
-        report.Built.Should().Equal("Scenes/Room.scene.json");
-        _files.ReadOutput("Scenes/Room.scene.json").Should().Be("""{ "entities": [] }""");
+        report.Built.Should().Equal("Scenes/Room.fvscene");
+        _files.ReadOutput("Scenes/Room.fvscene").Should().Be("""{ "entities": [] }""");
     }
 
     [Fact]
@@ -127,6 +127,20 @@ public sealed class AssetBuilderTests : IDisposable
         report.Removed.Should().BeEquivalentTo("A.txt", "B.json");
         _files.OutputExists("A.upper").Should().BeFalse();
         _files.OutputExists("B.json").Should().BeFalse();
+    }
+
+    [Fact]
+    public void KeepsAnOutputThatADeletedFileAndACurrentOneBothMake()
+    {
+        _files.WithSource("A.txt", "a");
+        AssetBuilder builder = _files.Build();
+        _files.BuildAll(builder);
+        _files.DeleteSource("A.txt");
+        _files.WithSource("A.upper", "renamed");
+
+        _files.BuildAll(builder);
+
+        _files.ReadOutput("A.upper").Should().Be("renamed", "a renamed source still makes the output its old name made");
     }
 
     [Fact]

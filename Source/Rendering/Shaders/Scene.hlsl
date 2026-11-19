@@ -1,5 +1,5 @@
 // Draws a mesh part whose vertices (float3 position, float3 normal, float2 uv) are pulled from a bindless buffer: its base
-// color times its texture and its material's tint, shaded by the material's controls (Scene.shader.json) and lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster,
+// color times its texture and its material's tint, shaded by the material's controls (Scene.fvshader) and lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster,
 // shadowed through the shadow atlas and tinted by spot light cookies, plus bounced light from irradiance probes, seen
 // through fog lit by the same lights.
 // The frame buffer holds FrameData (Frame.hlsl), then the lights, the shadows, each cluster's
@@ -18,7 +18,7 @@ struct SceneConstants
     uint Material;
 };
 
-// The parameters Scene.shader.json declares, in its order.
+// The parameters Scene.fvshader declares, in its order.
 struct Material
 {
     float3 Tint;

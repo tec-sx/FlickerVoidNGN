@@ -4,14 +4,14 @@ using FlickerVoid.Engine.Rendering.Meshes;
 namespace FlickerVoid.Engine.Builder.Models;
 
 /// <summary>
-/// Bakes a glTF model (.glb, or .gltf with the buffers and images it names) into <c>Name.model</c>, which the game loads
+/// Bakes a glTF model (.glb, or .gltf with the buffers and images it names) into <c>Name.fvmodel</c>, which the game loads
 /// without parsing glTF or decoding images.
 /// </summary>
 public sealed class ModelImporter : IAssetImporter
 {
     public string Name => "Model";
 
-    public int Version => 1;
+    public int Version => 2;
 
     public IReadOnlyList<string> Extensions { get; } = [".glb", ".gltf"];
 
@@ -24,7 +24,7 @@ public sealed class ModelImporter : IAssetImporter
         }
 
         ModelData model = GltfImporter.Load(context.SourceFullPath);
-        string outputPath = Path.ChangeExtension(context.SourcePath, ".model");
+        string outputPath = Path.ChangeExtension(context.SourcePath, ".fvmodel");
         string fullOutputPath = context.GetOutputPath(outputPath);
         using FileStream output = File.Create(fullOutputPath);
         ModelFile.Write(model, output);

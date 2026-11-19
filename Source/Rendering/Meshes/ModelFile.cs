@@ -8,7 +8,7 @@ using FlickerVoid.Engine.Rendering.Materials;
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
 /// <summary>
-/// Reads and writes a model as the content build bakes it (<c>Name.model</c>): its parts' vertices, indices, skins and
+/// Reads and writes a model as the content build bakes it (<c>Name.fvmodel</c>): its parts' vertices, indices, skins and
 /// materials with their textures as DDS images, then its animation clips, all little-endian.
 /// </summary>
 public static class ModelFile

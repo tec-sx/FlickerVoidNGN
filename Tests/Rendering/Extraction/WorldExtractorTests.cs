@@ -81,12 +81,12 @@ public sealed class WorldExtractorTests : IDisposable
     [Fact]
     public void CopiesIrradianceVolumesWithTheirCenter()
     {
-        IrradianceVolume volume = new() { Probes = "Room.probes" };
+        IrradianceVolume volume = new() { Probes = "Room.fvprobes" };
 
         RenderScene scene = _builder.WithVolume(volume, new Vector3(0, 2, 0)).Extract();
 
         scene.ProbeVolumes.Should().ContainSingle();
-        scene.ProbeVolumes[0].Volume.Probes.Should().Be("Room.probes");
+        scene.ProbeVolumes[0].Volume.Probes.Should().Be("Room.fvprobes");
         scene.ProbeVolumes[0].Center.Should().Be(new Vector3(0, 2, 0));
     }
 

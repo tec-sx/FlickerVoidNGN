@@ -67,6 +67,16 @@
       "minItems": 3,
       "maxItems": 3
     },
+    "tonemapper": {
+      "enum": [
+        "None",
+        "Uncharted2",
+        "Aces"
+      ]
+    },
+    "whitePoint": {
+      "type": "number"
+    },
     "grain": {
       "type": "number"
     },

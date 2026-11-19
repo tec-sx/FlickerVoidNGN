@@ -17,20 +17,20 @@ public sealed class MaterialEditorViewModelTests : IDisposable
     [Fact]
     public void ListsTheMaterialsOfTheContentFolder()
     {
-        _builder.WithMaterial("Brick.material.json", """{ "parameters": {} }""");
+        _builder.WithMaterial("Brick.fvmat", """{ "parameters": {} }""");
 
         MaterialEditorViewModel editor = _builder.Build();
 
-        editor.Materials.Should().Equal("Brick.material.json");
+        editor.Materials.Should().Equal("Brick.fvmat");
     }
 
     [Fact]
     public void ShowsAFieldForEveryParameterTheSceneShaderDeclares()
     {
-        _builder.WithMaterial("Brick.material.json", """{ "parameters": { "wrap": 0.5 } }""");
+        _builder.WithMaterial("Brick.fvmat", """{ "parameters": { "wrap": 0.5 } }""");
         MaterialEditorViewModel editor = _builder.Build();
 
-        editor.SelectedMaterial = "Brick.material.json";
+        editor.SelectedMaterial = "Brick.fvmat";
 
         string[] labels = [.. editor.Parameters.Select(field => field.Label)];
         labels.Should().StartWith(["Tint", "Ramp Softness", "Wrap", "Shadow Tint"]);
@@ -43,26 +43,26 @@ public sealed class MaterialEditorViewModelTests : IDisposable
     [Fact]
     public void SavesAnEditAndTellsTheSceneTheMaterialChanged()
     {
-        _builder.WithMaterial("Brick.material.json", """{ "parameters": {} }""");
+        _builder.WithMaterial("Brick.fvmat", """{ "parameters": {} }""");
         MaterialEditorViewModel editor = _builder.Build();
-        editor.SelectedMaterial = "Brick.material.json";
+        editor.SelectedMaterial = "Brick.fvmat";
         List<string> changed = [];
         _builder.Scene.Content.Changed += changed.Add;
 
         NumberFieldViewModel specular = editor.Parameters.OfType<NumberFieldViewModel>().Single(field => field.Label == "Specular");
         specular.Value = 2;
 
-        string saved = _builder.ReadMaterial("Brick.material.json");
+        string saved = _builder.ReadMaterial("Brick.fvmat");
         saved.Should().Contain("\"specular\": 2");
-        changed.Should().ContainSingle().Which.Should().EndWith("Brick.material.json");
+        changed.Should().ContainSingle().Which.Should().EndWith("Brick.fvmat");
     }
 
     [Fact]
     public void PreviewsTheEditedMaterialOnTheChosenShape()
     {
-        _builder.WithMaterial("Brick.material.json", """{ "parameters": {} }""");
+        _builder.WithMaterial("Brick.fvmat", """{ "parameters": {} }""");
         MaterialEditorViewModel editor = _builder.Build();
-        editor.SelectedMaterial = "Brick.material.json";
+        editor.SelectedMaterial = "Brick.fvmat";
 
         editor.Parameters.OfType<ColorFieldViewModel>().Single(field => field.Label == "Emissive").Color = Avalonia.Media.Colors.White;
         editor.IsCube = true;
@@ -82,16 +82,16 @@ public sealed class MaterialEditorViewModelTests : IDisposable
 
         editor.CreateMaterialCommand.Execute(null);
 
-        editor.Materials.Should().Equal("New Material.material.json");
-        editor.SelectedMaterial.Should().Be("New Material.material.json");
+        editor.Materials.Should().Equal("New Material.fvmat");
+        editor.SelectedMaterial.Should().Be("New Material.fvmat");
     }
 
     [Fact]
     public void TurnsThePreviewWhenDragged()
     {
-        _builder.WithMaterial("Brick.material.json", """{ "parameters": {} }""");
+        _builder.WithMaterial("Brick.fvmat", """{ "parameters": {} }""");
         MaterialEditorViewModel editor = _builder.Build();
-        editor.SelectedMaterial = "Brick.material.json";
+        editor.SelectedMaterial = "Brick.fvmat";
         float before = editor.PreviewYaw;
 
         editor.DragPreview(new Vector2(50, 0));

@@ -10,17 +10,17 @@ using FlickerVoid.Engine.Shaders;
 namespace FlickerVoid.Engine.Builder.Shaders;
 
 /// <summary>
-/// Compiles <c>Name.shader.json</c> assets: each listed entry point of <c>Name.hlsl</c> becomes <c>Name.EntryPoint.spv</c>.
+/// Compiles <c>Name.fvshader</c> assets: each listed entry point of <c>Name.hlsl</c> becomes <c>Name.EntryPoint.spv</c>.
 /// The HLSL and the files it includes are recorded as dependencies. Declared material parameters are written to
-/// <c>Name.parameters.json</c>, where the renderer and the editor read them.
+/// <c>Name.fvparams</c>, where the renderer and the editor read them.
 /// </summary>
 public sealed partial class ShaderImporter(IShaderCompiler compiler) : IAssetImporter
 {
-    private const string Extension = ".shader.json";
+    private const string Extension = ".fvshader";
 
     public string Name => "Shader";
 
-    public int Version => 2;
+    public int Version => 3;
 
     public IReadOnlyList<string> Extensions { get; } = [Extension];
 
@@ -50,7 +50,7 @@ public sealed partial class ShaderImporter(IShaderCompiler compiler) : IAssetImp
         if (asset.Parameters is { Count: > 0 } parameters)
         {
             ShaderParameters declared = new() { Parameters = parameters };
-            string parametersPath = context.GetOutputPath($"{name}.parameters.json");
+            string parametersPath = context.GetOutputPath($"{name}.fvparams");
             byte[] parametersJson = JsonSerializer.SerializeToUtf8Bytes(declared, RenderingJsonContext.Default.ShaderParameters);
             File.WriteAllBytes(parametersPath, parametersJson);
         }

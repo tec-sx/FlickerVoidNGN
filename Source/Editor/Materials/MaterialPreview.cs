@@ -29,7 +29,7 @@ namespace FlickerVoid.Engine.Editor.Materials;
 /// </summary>
 public sealed class MaterialPreview : IMaterialPreview, IDisposable
 {
-    private const string MaterialPath = "Preview.material.json";
+    private const string MaterialPath = "Preview.fvmat";
     private const string SpherePath = "Sphere.glb";
     private const string CubePath = "Cube.glb";
     private const PixelFormat Format = PixelFormat.Rgba8UNormSrgb;
@@ -52,8 +52,8 @@ public sealed class MaterialPreview : IMaterialPreview, IDisposable
         string folderName = "FlickerVoidMaterialPreview-" + Path.GetRandomFileName();
         _folder = Path.Combine(Path.GetTempPath(), folderName);
         Directory.CreateDirectory(_folder);
-        WriteModel("Sphere.model", PreviewMeshes.CreateSphere(radius: 0.75f, rings: 32, segments: 48));
-        WriteModel("Cube.model", PreviewMeshes.CreateCube(size: 0.95f));
+        WriteModel("Sphere.fvmodel", PreviewMeshes.CreateSphere(radius: 0.75f, rings: 32, segments: 48));
+        WriteModel("Cube.fvmodel", PreviewMeshes.CreateCube(size: 0.95f));
         _content = new ContentManager(_folder);
         _game = new Game(loggerFactory);
         _game.AddRendering();

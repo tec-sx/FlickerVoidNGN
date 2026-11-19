@@ -16,9 +16,9 @@ public sealed class ContentManagerTests : IDisposable
     [Fact]
     public void LoadsJsonByPathUnderTheRoot()
     {
-        ContentManager content = _builder.WithFile("Scenes/Room.scene.json", """{ "entities": [ { "name": "Crate" } ] }""").Build();
+        ContentManager content = _builder.WithFile("Scenes/Room.fvscene", """{ "entities": [ { "name": "Crate" } ] }""").Build();
 
-        SceneData scene = content.Load("Scenes/Room.scene.json", RuntimeJsonContext.Default.SceneData);
+        SceneData scene = content.Load("Scenes/Room.fvscene", RuntimeJsonContext.Default.SceneData);
 
         scene.Entities.Should().ContainSingle().Which.Name.Should().Be("Crate");
     }
@@ -26,12 +26,12 @@ public sealed class ContentManagerTests : IDisposable
     [Fact]
     public void ReturnsTheSameObjectUntilUnloaded()
     {
-        ContentManager content = _builder.WithFile("Room.scene.json", """{ "entities": [] }""").Build();
+        ContentManager content = _builder.WithFile("Room.fvscene", """{ "entities": [] }""").Build();
 
-        SceneData first = content.Load("Room.scene.json", RuntimeJsonContext.Default.SceneData);
-        SceneData again = content.Load("./Room.scene.json", RuntimeJsonContext.Default.SceneData);
-        bool unloaded = content.Unload("Room.scene.json");
-        SceneData reloaded = content.Load("Room.scene.json", RuntimeJsonContext.Default.SceneData);
+        SceneData first = content.Load("Room.fvscene", RuntimeJsonContext.Default.SceneData);
+        SceneData again = content.Load("./Room.fvscene", RuntimeJsonContext.Default.SceneData);
+        bool unloaded = content.Unload("Room.fvscene");
+        SceneData reloaded = content.Load("Room.fvscene", RuntimeJsonContext.Default.SceneData);
 
         again.Should().BeSameAs(first);
         unloaded.Should().BeTrue();
@@ -39,8 +39,8 @@ public sealed class ContentManagerTests : IDisposable
     }
 
     [Theory]
-    [InlineData("../Room.scene.json")]
-    [InlineData("Scenes/../../Room.scene.json")]
+    [InlineData("../Room.fvscene")]
+    [InlineData("Scenes/../../Room.fvscene")]
     public void RejectsPathsOutsideTheRoot(string path)
     {
         ContentManager content = _builder.Build();
@@ -66,28 +66,28 @@ public sealed class ContentManagerTests : IDisposable
     {
         ContentManager content = _builder.Build();
 
-        string fullPath = content.GetFullPath("..Room.scene.json");
+        string fullPath = content.GetFullPath("..Room.fvscene");
 
-        string expected = Path.Combine(_builder.RootDirectory, "..Room.scene.json");
+        string expected = Path.Combine(_builder.RootDirectory, "..Room.fvscene");
         fullPath.Should().Be(expected);
     }
 
     [Fact]
     public void JsonErrorsNameTheFile()
     {
-        ContentManager content = _builder.WithFile("Broken.scene.json", """{ "entities": [ { "nam": "Crate" } ] }""").Build();
+        ContentManager content = _builder.WithFile("Broken.fvscene", """{ "entities": [ { "nam": "Crate" } ] }""").Build();
 
-        Action load = () => content.Load("Broken.scene.json", RuntimeJsonContext.Default.SceneData);
+        Action load = () => content.Load("Broken.fvscene", RuntimeJsonContext.Default.SceneData);
 
-        load.Should().Throw<InvalidDataException>().WithMessage("Broken.scene.json: *");
+        load.Should().Throw<InvalidDataException>().WithMessage("Broken.fvscene: *");
     }
 
     [Fact]
     public void NullContentThrows()
     {
-        ContentManager content = _builder.WithFile("Empty.scene.json", "null").Build();
+        ContentManager content = _builder.WithFile("Empty.fvscene", "null").Build();
 
-        Action load = () => content.Load("Empty.scene.json", RuntimeJsonContext.Default.SceneData);
+        Action load = () => content.Load("Empty.fvscene", RuntimeJsonContext.Default.SceneData);
 
         load.Should().Throw<InvalidDataException>();
     }
@@ -95,16 +95,16 @@ public sealed class ContentManagerTests : IDisposable
     [Fact]
     public void ForgetsAChangedFileAndTellsWhoListens()
     {
-        ContentManager content = _builder.WithFile("Room.scene.json", """{ "entities": [] }""").Build();
-        SceneData before = content.Load("Room.scene.json", RuntimeJsonContext.Default.SceneData);
+        ContentManager content = _builder.WithFile("Room.fvscene", """{ "entities": [] }""").Build();
+        SceneData before = content.Load("Room.fvscene", RuntimeJsonContext.Default.SceneData);
         List<string> changed = [];
         content.Changed += changed.Add;
 
-        _builder.WithFile("Room.scene.json", """{ "entities": [ { "name": "Lamp" } ] }""");
-        content.NotifyChanged("Room.scene.json");
-        SceneData after = content.Load("Room.scene.json", RuntimeJsonContext.Default.SceneData);
+        _builder.WithFile("Room.fvscene", """{ "entities": [ { "name": "Lamp" } ] }""");
+        content.NotifyChanged("Room.fvscene");
+        SceneData after = content.Load("Room.fvscene", RuntimeJsonContext.Default.SceneData);
 
-        string fullPath = content.GetFullPath("Room.scene.json");
+        string fullPath = content.GetFullPath("Room.fvscene");
         changed.Should().Equal(fullPath);
         after.Should().NotBeSameAs(before);
         after.Entities.Should().ContainSingle().Which.Name.Should().Be("Lamp");
@@ -117,9 +117,9 @@ public sealed class ContentManagerTests : IDisposable
         List<string> changed = [];
         content.Changed += changed.Add;
 
-        content.Write("Scenes/Room.scene.json", "{}"u8.ToArray());
+        content.Write("Scenes/Room.fvscene", "{}"u8.ToArray());
 
-        string fullPath = Path.Combine(_builder.RootDirectory, "Scenes", "Room.scene.json");
+        string fullPath = Path.Combine(_builder.RootDirectory, "Scenes", "Room.fvscene");
         File.ReadAllText(fullPath).Should().Be("{}");
         changed.Should().Equal(fullPath);
     }
@@ -130,11 +130,11 @@ public sealed class ContentManagerTests : IDisposable
         string source = _builder.WithSourceFolder("Game");
         ContentManager content = _builder.Build();
 
-        content.Write("Game/Scenes/Room.scene.json", "{}"u8.ToArray());
+        content.Write("Game/Scenes/Room.fvscene", "{}"u8.ToArray());
 
-        string sourcePath = Path.Combine(source, "Scenes", "Room.scene.json");
+        string sourcePath = Path.Combine(source, "Scenes", "Room.fvscene");
         File.ReadAllText(sourcePath).Should().Be("{}");
-        string builtPath = Path.Combine(_builder.RootDirectory, "Game", "Scenes", "Room.scene.json");
+        string builtPath = Path.Combine(_builder.RootDirectory, "Game", "Scenes", "Room.fvscene");
         File.ReadAllText(builtPath).Should().Be("{}");
     }
 
@@ -144,7 +144,7 @@ public sealed class ContentManagerTests : IDisposable
         string source = _builder.WithSourceFolder("Game");
         ContentManager content = _builder.Build();
 
-        content.Write("Other/Room.scene.json", "{}"u8.ToArray());
+        content.Write("Other/Room.fvscene", "{}"u8.ToArray());
 
         Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories).Should().BeEmpty();
     }

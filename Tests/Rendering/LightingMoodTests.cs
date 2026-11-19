@@ -12,8 +12,8 @@ public sealed class LightingMoodTests : IDisposable
     public void LoadsAFileThatNamesOnlyWhatItChanges()
     {
         LightingMood mood = _builder
-            .WithFile("Dusk.json", """{ "exposure": 1.4, "tint": [1, 0.8, 0.6], "paper": "Paper.png" }""")
-            .Load("Dusk.json");
+            .WithFile("Dusk.fvmood", """{ "exposure": 1.4, "tint": [1, 0.8, 0.6], "paper": "Paper.png" }""")
+            .Load("Dusk.fvmood");
 
         mood.Exposure.Should().Be(1.4f);
         mood.Tint.Should().Be(new Vector3(1, 0.8f, 0.6f));
@@ -25,8 +25,8 @@ public sealed class LightingMoodTests : IDisposable
     public void LoadsAFileThatNamesItsSchema()
     {
         LightingMood mood = _builder
-            .WithFile("Dusk.json", """{ "$schema": "../.schemas/mood.schema.json", "exposure": 1.4 }""")
-            .Load("Dusk.json");
+            .WithFile("Dusk.fvmood", """{ "$schema": "../.schemas/mood.schema.json", "exposure": 1.4 }""")
+            .Load("Dusk.fvmood");
 
         mood.Exposure.Should().Be(1.4f);
     }
