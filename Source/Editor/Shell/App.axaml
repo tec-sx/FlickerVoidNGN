@@ -6,15 +6,17 @@
   <!-- One template per kind of field, picked by the field's type, for the inspector and the material editor alike:
        components and materials need no editor code of their own. -->
   <Application.DataTemplates>
+    <!-- Ranged numbers first: a template matches subclasses too, and the first match wins. A slider only where there are
+         limits, as an unbound slider would clamp the value to its own default range. -->
+    <DataTemplate DataType="inspector:RangedNumberFieldViewModel">
+      <Grid ColumnDefinitions="*,72" ColumnSpacing="6">
+        <Slider Minimum="{Binding SliderMinimum}" Maximum="{Binding SliderMaximum}" Value="{Binding Value}"
+                IsEnabled="{Binding !IsReadOnly}" VerticalAlignment="Center" />
+        <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}" VerticalAlignment="Center" />
+      </Grid>
+    </DataTemplate>
     <DataTemplate DataType="inspector:NumberFieldViewModel">
-      <Panel>
-        <Grid ColumnDefinitions="*,72" ColumnSpacing="6" IsVisible="{Binding HasRange}">
-          <Slider Minimum="{Binding SliderMinimum}" Maximum="{Binding SliderMaximum}" Value="{Binding Value}"
-                  IsEnabled="{Binding !IsReadOnly}" VerticalAlignment="Center" />
-          <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}" VerticalAlignment="Center" />
-        </Grid>
-        <TextBox IsVisible="{Binding !HasRange}" Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}" />
-      </Panel>
+      <TextBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}" />
     </DataTemplate>
     <DataTemplate DataType="inspector:BoolFieldViewModel">
       <CheckBox IsChecked="{Binding Value}" IsEnabled="{Binding !IsReadOnly}" />

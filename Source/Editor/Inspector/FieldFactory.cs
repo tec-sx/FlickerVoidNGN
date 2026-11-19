@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Numerics;
 
 using FlickerVoid.Engine.Runtime.Components;
@@ -45,6 +46,12 @@ public static class FieldFactory
 
         if (type == typeof(float) || type == typeof(double) || type == typeof(int))
         {
+            RangeAttribute? range = property.GetAttribute<RangeAttribute>();
+            if (range is not null)
+            {
+                return new RangedNumberFieldViewModel(property);
+            }
+
             return new NumberFieldViewModel(property);
         }
 
