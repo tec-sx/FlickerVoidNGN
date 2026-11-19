@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <PublishAot>true</PublishAot>
+    <RuntimeFrameworkVersion>10.0.15</RuntimeFrameworkVersion>
     <!-- Third-party libraries' trim and AOT warnings stay warnings when publishing: Collections.Pooled (used by Arch) has a reflection-based
          JSON converter nothing here uses, and Silk.NET's native library loader probes paths that single-file apps don't have.
          Our own assemblies are checked when they build, and CI runs the published samples. -->
