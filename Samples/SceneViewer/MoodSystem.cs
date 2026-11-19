@@ -1,0 +1,67 @@
+using Arch.System;
+
+using FlickerVoid.Engine.Gameplay.Facts;
+using FlickerVoid.Engine.Gameplay.Tags;
+using FlickerVoid.Engine.Platform;
+using FlickerVoid.Engine.Rendering;
+using FlickerVoid.Engine.Runtime;
+
+using Silk.NET.Input;
+
+namespace FlickerVoid.Samples.SceneViewer;
+
+/// <summary>
+/// Plays the story's part for the viewer: N steps the Viewer.Mood fact through the mood files, the director's rules turn the
+/// fact into a mood, and the renderer draws with the blended mood each frame.
+/// </summary>
+public sealed class MoodSystem : ISystem<GameTime>
+{
+    public static readonly Tag MoodFact = new("Viewer.Mood");
+
+    private readonly IGameWindow _window;
+    private readonly IFactDatabase _facts;
+    private readonly LightingMoodDirector _director;
+    private readonly SceneRenderSystem _renderSystem;
+    private readonly Func<LightingMood, LightingMood> _configure;
+    private readonly int _moodCount;
+
+    public MoodSystem(IGameWindow window, IFactDatabase facts, LightingMoodDirector director, SceneRenderSystem renderSystem, Func<LightingMood, LightingMood> configure, int moodCount)
+    {
+        _window = window;
+        _facts = facts;
+        _director = director;
+        _renderSystem = renderSystem;
+        _configure = configure;
+        _moodCount = moodCount;
+    }
+
+    public void Initialize()
+    {
+    }
+
+    public void BeforeUpdate(in GameTime t)
+    {
+    }
+
+    public void Update(in GameTime t)
+    {
+        if (_window.Input.WasPressed(Key.N))
+        {
+            int current = _facts.GetFact(MoodFact);
+            int next = (current + 1) % _moodCount;
+            _facts.SetFact(MoodFact, next);
+        }
+
+        float seconds = (float)t.Elapsed.TotalSeconds;
+        _director.Update(seconds);
+        _renderSystem.Renderer.Mood = _configure(_director.Current);
+    }
+
+    public void AfterUpdate(in GameTime t)
+    {
+    }
+
+    public void Dispose()
+    {
+    }
+}

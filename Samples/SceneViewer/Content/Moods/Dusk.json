@@ -1,0 +1,15 @@
+// Dusk: a low orange sun, hazy air, a glow around the lights and a warm, softer grade.
+{
+  "sunDirection": [-0.9, -0.25, -0.35],
+  "ambient": 0.25,
+  "fogDensity": 0.15,
+  "fogColor": [1, 0.75, 0.55],
+  "fogHeightFalloff": 1.5,
+  "bloom": 0.2,
+  "exposure": 1.15,
+  "contrast": 0.95,
+  "saturation": 1.15,
+  "tint": [1.1, 0.88, 0.72],
+  "grain": 0.02,
+  "paper": "Paper.png"
+}

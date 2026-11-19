@@ -42,6 +42,8 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
         }
     }
 
+    public SceneRenderer Renderer => _renderer;
+
     public int Frames { get; private set; }
 
     public void Initialize()

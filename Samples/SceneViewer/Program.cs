@@ -3,6 +3,8 @@ using System.Numerics;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Graphics;
 using FlickerVoid.Engine.Graphics.Vulkan;
 using FlickerVoid.Engine.Platform;
@@ -17,7 +19,10 @@ using Microsoft.Extensions.Logging;
 
 // Shows a glTF model (.glb, or .gltf with its files) through a camera that orbits it, lit by a sun, ambient light and
 // optionally a ring of coloured point lights that cast shadows while the shadow atlas has room (eight of them).
-// Usage: SceneViewer [model] [--validation] [--frames <count>] [--lights <count>] [--sun <x,y,z>] [--ambient <0..1>] [--fog <density>] [--probes].
+// Usage: SceneViewer [model] [--validation] [--frames <count>] [--lights <count>] [--sun <x,y,z>] [--ambient <0..1>] [--fog <density>] [--probes]
+//        [--moods <file,file,...>].
+// --moods takes lighting mood files in the model's folder (Content/Moods/Day.json, Dusk.json and Night.json beside the
+// default room); N steps a fact through them, which mood rules turn into a blend to the next mood. --sun, --ambient and --fog override the mood.
 // --probes bakes an irradiance volume fitted to the model at startup and saves it beside the model as <model>.probes. Without a model it shows Content/Room.glb.
 string model = Path.Combine(AppContext.BaseDirectory, "Content", "Room.glb");
 bool validation = false;
@@ -26,7 +31,8 @@ int lightCount = 0;
 Vector3? sunDirection = null;
 bool bakeProbes = false;
 float? ambient = null;
-float fogDensity = 0;
+float? fogDensity = null;
+string[] moodFiles = [];
 for (int index = 0; index < args.Length; index++)
 {
     switch (args[index])
@@ -49,6 +55,10 @@ for (int index = 0; index < args.Length; index++)
         case "--fog":
             index++;
             fogDensity = float.Parse(args[index], CultureInfo.InvariantCulture);
+            break;
+        case "--moods":
+            index++;
+            moodFiles = args[index].Split(',');
             break;
         case "--probes":
             bakeProbes = true;
@@ -87,7 +97,7 @@ using VulkanGraphicsDevice device = new(options, loggerFactory);
 using DxcShaderCompiler compiler = new();
 using Game game = new(loggerFactory);
 game.AddRendering();
-using GameWindow window = new(game, $"FlickerVoid  {fileName}  (drag to turn, wheel to zoom, WASD to move, P for perspective)", 1280, 720);
+using GameWindow window = new(game, $"FlickerVoid  {fileName}  (drag to turn, wheel to zoom, WASD to move, P for perspective, N for the next mood)", 1280, 720);
 
 Entity camera = game.World.Create(new Transform(), new Camera());
 game.World.Create(new Transform(), new MeshRenderer { Mesh = fileName });
@@ -102,21 +112,42 @@ for (int index = 0; index < lightCount; index++)
 }
 
 OrbitCameraSystem orbit = new(window, game.World, camera, new Vector3(0, 0.5f, 0), distance: 10);
+
+// The first mood file is the default; each later one has a rule that holds while the viewer's mood fact is its index.
+FactDatabase facts = new(new FactSettings());
+List<MoodRule> rules = [];
+for (int index = 1; index < moodFiles.Length; index++)
+{
+    FactCondition isThisMood = new() { Fact = MoodSystem.MoodFact, Compare = FactCompare.Equal, Value = index };
+    ConditionSet when = new() { Conditions = [isThisMood] };
+    rules.Add(new MoodRule { When = when, Mood = moodFiles[index] });
+}
+
+using LightingMoodDirector? director = CreateDirector();
+LightingMood startMood = director?.Current ?? new LightingMood();
+LightingMood configuredMood = Configure(startMood);
 if (bakeProbes)
 {
-    ModelProbes.Bake(device, compiler, content, game.World, model, Configure);
+    ModelProbes.Bake(device, compiler, content, game.World, model, configuredMood);
+}
+
+LightingMoodDirector? CreateDirector()
+{
+    if (moodFiles.Length == 0)
+    {
+        return null;
+    }
+
+    return new LightingMoodDirector(facts, content, moodFiles[0], rules);
 }
 
 SceneRenderer CreateRenderer(PixelFormat format)
 {
-    SceneRenderer sceneRenderer = new(device, compiler, content, format);
-    Configure(sceneRenderer);
-    return sceneRenderer;
+    return new SceneRenderer(device, compiler, content, format) { Mood = configuredMood };
 }
 
-void Configure(SceneRenderer sceneRenderer)
+LightingMood Configure(LightingMood mood)
 {
-    LightingMood mood = sceneRenderer.Mood;
     if (sunDirection is { } direction)
     {
         mood = mood with { SunDirection = direction };
@@ -127,12 +158,23 @@ void Configure(SceneRenderer sceneRenderer)
         mood = mood with { Ambient = share };
     }
 
-    // Ground fog: full density up to the floor, thinning by e every 2/3 of a unit above it.
-    sceneRenderer.Mood = mood with { FogDensity = fogDensity, FogHeightFalloff = 1.5f };
+    if (fogDensity is { } density)
+    {
+        // Ground fog: full density up to the floor, thinning by e every 2/3 of a unit above it.
+        mood = mood with { FogDensity = density, FogHeightFalloff = 1.5f };
+    }
+
+    return mood;
 }
 
 using SceneRenderSystem renderer = new(window, device, game.World, CreateRenderer, frameLimit);
 game.FrameSystems.Add(orbit);
+if (director is not null)
+{
+    MoodSystem moods = new(window, facts, director, renderer, Configure, moodFiles.Length);
+    game.FrameSystems.Add(moods);
+}
+
 game.FrameSystems.Add(renderer);
 window.Run();
 Console.WriteLine($"Rendered {renderer.Frames} frames of {fileName} with Vulkan on {device.AdapterName}.");

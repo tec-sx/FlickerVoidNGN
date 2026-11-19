@@ -8,7 +8,7 @@ namespace FlickerVoid.Engine.Rendering;
 /// </summary>
 public sealed record LightingMood
 {
-    /// <summary>The direction the sunlight travels, in world space.</summary>
+    /// <summary>The direction the sunlight travels, in world space, of any length.</summary>
     public Vector3 SunDirection { get; set; } = Vector3.Normalize(new Vector3(-0.4f, -0.8f, -0.45f));
 
     /// <summary>The share of light that reaches every surface, from 0 to 1; the sun lights the rest.</summary>
@@ -64,6 +64,51 @@ public sealed record LightingMood
 
     /// <summary>An image file in the content folder laid over the screen at one texel per pixel and multiplied in, such as paper.</summary>
     public string? Paper { get; set; }
+
+    /// <summary>
+    /// The mood <paramref name="amount"/> of the way from <paramref name="from"/> to <paramref name="to"/>: numbers and
+    /// colors blend, the sun turns between its directions, and the paper swaps halfway.
+    /// </summary>
+    public static LightingMood Lerp(LightingMood from, LightingMood to, float amount)
+    {
+        Vector3 sunDirection = Vector3.Lerp(from.SunDirection, to.SunDirection, amount);
+        if (sunDirection.LengthSquared() > 1e-12f)
+        {
+            sunDirection = Vector3.Normalize(sunDirection);
+        }
+        else
+        {
+            sunDirection = to.SunDirection;
+        }
+
+        string? paper = from.Paper;
+        if (amount >= 0.5f)
+        {
+            paper = to.Paper;
+        }
+
+        return new LightingMood
+        {
+            SunDirection = sunDirection,
+            Ambient = float.Lerp(from.Ambient, to.Ambient, amount),
+            SunShadowDistance = float.Lerp(from.SunShadowDistance, to.SunShadowDistance, amount),
+            FogDensity = float.Lerp(from.FogDensity, to.FogDensity, amount),
+            FogColor = Vector3.Lerp(from.FogColor, to.FogColor, amount),
+            FogAnisotropy = float.Lerp(from.FogAnisotropy, to.FogAnisotropy, amount),
+            FogHeight = float.Lerp(from.FogHeight, to.FogHeight, amount),
+            FogHeightFalloff = float.Lerp(from.FogHeightFalloff, to.FogHeightFalloff, amount),
+            AmbientOcclusion = float.Lerp(from.AmbientOcclusion, to.AmbientOcclusion, amount),
+            AmbientOcclusionRadius = float.Lerp(from.AmbientOcclusionRadius, to.AmbientOcclusionRadius, amount),
+            ContactShadowLength = float.Lerp(from.ContactShadowLength, to.ContactShadowLength, amount),
+            Bloom = float.Lerp(from.Bloom, to.Bloom, amount),
+            Exposure = float.Lerp(from.Exposure, to.Exposure, amount),
+            Contrast = float.Lerp(from.Contrast, to.Contrast, amount),
+            Saturation = float.Lerp(from.Saturation, to.Saturation, amount),
+            Tint = Vector3.Lerp(from.Tint, to.Tint, amount),
+            Grain = float.Lerp(from.Grain, to.Grain, amount),
+            Paper = paper,
+        };
+    }
 
     /// <summary>This mood with neutral post-processing, for captures that need the light as it is.</summary>
     public LightingMood WithoutPost()

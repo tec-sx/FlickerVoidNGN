@@ -304,7 +304,8 @@ public sealed class SceneRenderer : IDisposable
         LightingMood mood = Mood;
         if (mood.SunShadowDistance > 0)
         {
-            Matrix4x4 sun = ShadowProjections.FitSun(camera, view, mood.SunDirection, mood.SunShadowDistance, SunCasterReach);
+            Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
+            Matrix4x4 sun = ShadowProjections.FitSun(camera, view, sunDirection, mood.SunShadowDistance, SunCasterReach);
             _sunShadow = AddShadow(sun, _atlas.Sun, orthographic: true);
         }
 
@@ -420,10 +421,11 @@ public sealed class SceneRenderer : IDisposable
         Matrix4x4.Invert(viewMatrix, out Matrix4x4 cameraWorld);
         Matrix4x4.Invert(view.ViewProjection, out Matrix4x4 inverseViewProjection);
         LightingMood mood = Mood;
+        Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
         FrameData data = new(
             view.ViewProjection,
             depthAxis,
-            mood.SunDirection,
+            sunDirection,
             mood.Ambient,
             new Vector2(width, height),
             _clusters.SliceScale,

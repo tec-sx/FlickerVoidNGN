@@ -19,4 +19,5 @@ namespace FlickerVoid.Engine.Rendering;
 [JsonSerializable(typeof(PointLight))]
 [JsonSerializable(typeof(SpotLight))]
 [JsonSerializable(typeof(IrradianceVolume))]
+[JsonSerializable(typeof(LightingMood))]
 public sealed partial class RenderingJsonContext : JsonSerializerContext;
