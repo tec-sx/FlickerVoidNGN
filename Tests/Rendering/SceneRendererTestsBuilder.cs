@@ -2,6 +2,8 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
+using Arch.Core;
+
 using FlickerVoid.Engine.Graphics;
 using FlickerVoid.Engine.Graphics.Vulkan;
 using FlickerVoid.Engine.Runtime;
@@ -81,6 +83,15 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Saves the probes into the content folder.</summary>
+    public SceneRendererTestsBuilder WithProbes(string path, IrradianceProbes probes)
+    {
+        string fullPath = Path.Combine(_contentFolder, path);
+        using FileStream stream = File.Create(fullPath);
+        probes.Save(stream);
+        return this;
+    }
+
     public SceneRendererTestsBuilder WithScene(params string[] entities)
     {
         string json = $$"""{ "entities": [{{string.Join(",", entities)}}] }""";
@@ -133,6 +144,18 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
 
         return pixels;
     }
+
+    /// <summary>Creates a baker on the test device, reading the same content folder, lit like the renderer.</summary>
+    public IrradianceBaker BuildBaker()
+    {
+        IGraphicsDevice device = BuildDevice();
+        IrradianceBaker baker = new(device, _compiler, new ContentManager(_contentFolder));
+        baker.Renderer.SunDirection = _sunDirection;
+        baker.Renderer.Ambient = _ambient;
+        return baker;
+    }
+
+    public World World => _game.World;
 
     /// <summary>A pixel as Rgba8UNorm bytes read back little-endian.</summary>
     public static uint Rgba(byte r, byte g, byte b, byte a) => (uint)(r | g << 8 | b << 16 | a << 24);

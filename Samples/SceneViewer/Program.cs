@@ -17,12 +17,15 @@ using Microsoft.Extensions.Logging;
 
 // Shows a glTF model (.glb, or .gltf with its files) through a camera that orbits it, lit by a sun, ambient light and
 // optionally a ring of coloured point lights that cast shadows while the shadow atlas has room (eight of them).
-// Usage: SceneViewer [model] [--validation] [--frames <count>] [--lights <count>] [--sun <x,y,z>]. Without a model it shows Content/Room.glb.
+// Usage: SceneViewer [model] [--validation] [--frames <count>] [--lights <count>] [--sun <x,y,z>] [--ambient <0..1>] [--probes].
+// --probes bakes an irradiance volume fitted to the model at startup and saves it beside the model as <model>.probes. Without a model it shows Content/Room.glb.
 string model = Path.Combine(AppContext.BaseDirectory, "Content", "Room.glb");
 bool validation = false;
 int frameLimit = 0;
 int lightCount = 0;
 Vector3? sunDirection = null;
+bool bakeProbes = false;
+float? ambient = null;
 for (int index = 0; index < args.Length; index++)
 {
     switch (args[index])
@@ -37,6 +40,13 @@ for (int index = 0; index < args.Length; index++)
         case "--lights":
             index++;
             lightCount = int.Parse(args[index]);
+            break;
+        case "--ambient":
+            index++;
+            ambient = float.Parse(args[index], CultureInfo.InvariantCulture);
+            break;
+        case "--probes":
+            bakeProbes = true;
             break;
         case "--sun":
             index++;
@@ -87,15 +97,29 @@ for (int index = 0; index < lightCount; index++)
 }
 
 OrbitCameraSystem orbit = new(window, game.World, camera, new Vector3(0, 0.5f, 0), distance: 10);
+if (bakeProbes)
+{
+    ModelProbes.Bake(device, compiler, content, game.World, model, Configure);
+}
+
 SceneRenderer CreateRenderer(PixelFormat format)
 {
     SceneRenderer sceneRenderer = new(device, compiler, content, format);
+    Configure(sceneRenderer);
+    return sceneRenderer;
+}
+
+void Configure(SceneRenderer sceneRenderer)
+{
     if (sunDirection is { } direction)
     {
         sceneRenderer.SunDirection = direction;
     }
 
-    return sceneRenderer;
+    if (ambient is { } share)
+    {
+        sceneRenderer.Ambient = share;
+    }
 }
 
 using SceneRenderSystem renderer = new(window, device, game.World, CreateRenderer, frameLimit);

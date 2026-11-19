@@ -203,6 +203,35 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void LightsMeshesInsideAnIrradianceVolumeByItsProbes()
+    {
+        IrradianceProbes probes = new IrradianceProbesTestsBuilder().WithEvenIrradiance(new Vector3(0.5f, 0.5f, 0.5f)).Build();
+        _builder.WithProbes("Room.probes", probes);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Volume", "components": { "transform": {}, "irradianceVolume": { "size": [4, 4, 4], "probesX": 2, "probesY": 2, "probesZ": 2, "probes": "Room.probes" } } }""");
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(126, 129, "the probes give every surface half the light");
+    }
+
+    [Fact]
+    public void LeavesMeshesOutsideTheIrradianceVolumeToTheOtherLights()
+    {
+        IrradianceProbes probes = new IrradianceProbesTestsBuilder().WithEvenIrradiance(new Vector3(0.5f, 0.5f, 0.5f)).Build();
+        _builder.WithProbes("Room.probes", probes);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Volume", "components": { "transform": { "position": [10, 0, 0] }, "irradianceVolume": { "size": [4, 4, 4], "probesX": 2, "probesY": 2, "probesZ": 2, "probes": "Room.probes" } } }""");
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        pixels.Should().AllBeEquivalentTo(BlackPixel);
+    }
+
+    [Fact]
     public void OnlyClearsWithoutACamera()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));

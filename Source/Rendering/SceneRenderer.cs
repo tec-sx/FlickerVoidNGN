@@ -13,7 +13,8 @@ namespace FlickerVoid.Engine.Rendering;
 /// <summary>
 /// Draws every entity with a transform and a mesh renderer, seen through the world's camera and lit by a sun, an even ambient
 /// light, and point and spot lights sorted into <see cref="LightClusters"/> (clustered forward shading). The sun and the
-/// lights that cast shadows draw their depth into the <see cref="ShadowAtlas"/> first.
+/// lights that cast shadows draw their depth into the <see cref="ShadowAtlas"/> first. Inside the first
+/// <see cref="IrradianceVolume"/>, its baked probes add the light bounced off the scene.
 /// </summary>
 public sealed class SceneRenderer : IDisposable
 {
@@ -38,6 +39,7 @@ public sealed class SceneRenderer : IDisposable
     private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>();
     private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>();
     private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>();
+    private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
 
     private readonly IGraphicsDevice _device;
     private readonly IPipeline _pipeline;
@@ -55,12 +57,17 @@ public sealed class SceneRenderer : IDisposable
     private readonly List<GpuShadow> _gpuShadows = [];
     private readonly List<ShadowView> _shadowViews = [];
     private readonly IBuffer?[] _frames = new IBuffer?[MaxFramesInFlight];
+    private readonly Dictionary<string, IrradianceProbes> _loadedProbes = [];
+    private readonly IContentManager _content;
+    private IrradianceProbes? _uploadedProbes;
+    private IBuffer? _probeBuffer;
     private int _frameSlot;
     private uint _sunShadow;
 
     public SceneRenderer(IGraphicsDevice device, IShaderCompiler compiler, IContentManager content, PixelFormat colorFormat)
     {
         _device = device;
+        _content = content;
         _pipeline = CreatePipeline(device, compiler, colorFormat);
         TextureDescription whiteDescription = new(1, 1, PixelFormat.Rgba8UNorm, TextureUsage.ShaderRead) { Name = "White" };
         _white = device.CreateTexture(whiteDescription, [255, 255, 255, 255]);
@@ -82,6 +89,9 @@ public sealed class SceneRenderer : IDisposable
     /// <summary>How far from the camera the sun casts shadows, in world units; 0 turns them off.</summary>
     public float SunShadowDistance { get; set; } = 30;
 
+    /// <summary>Probes that replace the world's irradiance volume while a bake renders, or null.</summary>
+    internal ProbeSource? BakeProbes { get; set; }
+
     /// <summary>Clears both targets and draws the world from its first camera, or nothing without one; leaves the color target in the RenderTarget state.</summary>
     public void Render(ICommandList commands, World world, ITexture colorTarget, ITexture depthTarget)
     {
@@ -91,11 +101,53 @@ public sealed class SceneRenderer : IDisposable
         IBuffer? frame = null;
         if (hasCamera)
         {
-            CollectDraws(world);
-            GatherLights(world, camera, view);
-            _shadows.Draw(commands, _shadowViews, _draws);
-            frame = WriteFrame(camera, view, width, height);
+            frame = Prepare(commands, world, camera, view, width, height);
         }
+
+        DrawScene(commands, colorTarget, depthTarget, frame);
+    }
+
+    /// <summary>Clears both targets and draws the world through the given camera; leaves the color target in the RenderTarget state.</summary>
+    public void Render(ICommandList commands, World world, ITexture colorTarget, ITexture depthTarget, in Camera camera, in Transform cameraTransform)
+    {
+        int width = colorTarget.Description.Width;
+        int height = colorTarget.Description.Height;
+        CameraView view = CameraView.Create(camera, cameraTransform, width, height);
+        IBuffer frame = Prepare(commands, world, camera, view, width, height);
+        DrawScene(commands, colorTarget, depthTarget, frame);
+    }
+
+    public void Dispose()
+    {
+        foreach (IBuffer? frame in _frames)
+        {
+            frame?.Dispose();
+        }
+
+        _probeBuffer?.Dispose();
+        _shadows.Dispose();
+        _textures.Dispose();
+        _meshes.Dispose();
+        _clampSampler.Dispose();
+        _sampler.Dispose();
+        _white.Dispose();
+        _pipeline.Dispose();
+    }
+
+    // Draws the shadows and writes the frame buffer the scene pass reads.
+    private IBuffer Prepare(ICommandList commands, World world, in Camera camera, in CameraView view, int width, int height)
+    {
+        CollectDraws(world);
+        GatherLights(world, camera, view);
+        _shadows.Draw(commands, _shadowViews, _draws);
+        ProbeSource? probes = FindProbes(world);
+        return WriteFrame(camera, view, width, height, probes);
+    }
+
+    private void DrawScene(ICommandList commands, ITexture colorTarget, ITexture depthTarget, IBuffer? frame)
+    {
+        int width = colorTarget.Description.Width;
+        int height = colorTarget.Description.Height;
 
         commands.Barrier(colorTarget, ResourceState.RenderTarget);
         commands.Barrier(depthTarget, ResourceState.DepthWrite);
@@ -113,20 +165,59 @@ public sealed class SceneRenderer : IDisposable
         commands.EndRendering();
     }
 
-    public void Dispose()
+    private ProbeSource? FindProbes(World world)
     {
-        foreach (IBuffer? frame in _frames)
+        if (BakeProbes is not null)
         {
-            frame?.Dispose();
+            return BakeProbes;
         }
 
-        _shadows.Dispose();
-        _textures.Dispose();
-        _meshes.Dispose();
-        _clampSampler.Dispose();
-        _sampler.Dispose();
-        _white.Dispose();
-        _pipeline.Dispose();
+        ProbeSource? found = null;
+        world.Query(in Volumes, (ref IrradianceVolume volume, ref Transform transform) =>
+        {
+            if (found is null && volume.Probes is not null)
+            {
+                IrradianceProbes probes = LoadProbes(volume);
+                found = new ProbeSource(volume, transform.Position, probes);
+            }
+        });
+
+        return found;
+    }
+
+    private IrradianceProbes LoadProbes(in IrradianceVolume volume)
+    {
+        string path = volume.Probes!;
+        string fullPath = _content.GetFullPath(path);
+        if (!_loadedProbes.TryGetValue(fullPath, out IrradianceProbes? probes))
+        {
+            using FileStream stream = File.OpenRead(fullPath);
+            probes = IrradianceProbes.Load(stream);
+            _loadedProbes.Add(fullPath, probes);
+        }
+
+        bool matches = probes.CountX == volume.ProbesX && probes.CountY == volume.ProbesY && probes.CountZ == volume.ProbesZ;
+        if (!matches)
+        {
+            throw new InvalidDataException($"{path} holds {probes.CountX}x{probes.CountY}x{probes.CountZ} probes, but its volume has {volume.ProbesX}x{volume.ProbesY}x{volume.ProbesZ}; bake it again.");
+        }
+
+        return probes;
+    }
+
+    // Uploads the probes when they change; the device releases the old buffer once the GPU is done with it.
+    private uint UploadProbes(IrradianceProbes probes)
+    {
+        if (!ReferenceEquals(probes, _uploadedProbes))
+        {
+            _probeBuffer?.Dispose();
+            ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes<IrradianceProbe>(probes.Probes);
+            BufferDescription description = new(bytes.Length, BufferUsage.ShaderRead) { Name = "Irradiance probes" };
+            _probeBuffer = _device.CreateBuffer(description, bytes);
+            _uploadedProbes = probes;
+        }
+
+        return _probeBuffer!.BindlessIndex;
     }
 
     private static bool TryFindCamera(World world, int width, int height, out Camera camera, out CameraView view)
@@ -255,7 +346,7 @@ public sealed class SceneRenderer : IDisposable
     }
 
     // Writes this frame's view, sun, lights, shadows and clusters into the next buffer of the ring, growing it when they don't fit.
-    private IBuffer WriteFrame(in Camera camera, in CameraView view, int width, int height)
+    private IBuffer WriteFrame(in Camera camera, in CameraView view, int width, int height, ProbeSource? probes)
     {
         ReadOnlySpan<LightBounds> bounds = CollectionsMarshal.AsSpan(_lightBounds);
         _clusters.Build(camera, view, bounds);
@@ -279,6 +370,18 @@ public sealed class SceneRenderer : IDisposable
             logarithmic = 1;
         }
 
+        uint probeBuffer = GpuLight.None;
+        Vector3 probeMin = Vector3.Zero;
+        Vector3 probeSize = Vector3.Zero;
+        IrradianceVolume volume = new();
+        if (probes?.Probes is not null)
+        {
+            probeBuffer = UploadProbes(probes.Probes);
+            volume = probes.Volume;
+            probeSize = volume.Size;
+            probeMin = probes.Center - (volume.Size / 2);
+        }
+
         FrameData data = new(
             view.ViewProjection,
             depthAxis,
@@ -294,7 +397,15 @@ public sealed class SceneRenderer : IDisposable
             (uint)shadowsOffset,
             _sunShadow,
             _shadows.Atlas.BindlessIndex,
-            _clampSampler.BindlessIndex);
+            _clampSampler.BindlessIndex,
+            probeMin,
+            probeBuffer,
+            probeSize,
+            (uint)volume.ProbesX,
+            (uint)volume.ProbesY,
+            (uint)volume.ProbesZ,
+            0,
+            0);
 
         _frameSlot = (_frameSlot + 1) % MaxFramesInFlight;
         IBuffer frame = GetFrameBuffer(_frameSlot, size);

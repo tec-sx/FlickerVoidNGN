@@ -1,6 +1,6 @@
 // Draws a mesh part whose vertices (float3 position, float3 normal, float2 uv) are pulled from a bindless buffer: its base
 // color times its texture, lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster,
-// shadowed through the shadow atlas and tinted by spot light cookies.
+// shadowed through the shadow atlas and tinted by spot light cookies, plus bounced light from irradiance probes.
 // The frame buffer holds FrameData, then the lights, the shadows, each cluster's range of light indices, and the indices.
 
 Texture2D Textures[] : register(t0, space1);
@@ -34,6 +34,10 @@ struct FrameData
     uint SunShadow;
     uint ShadowAtlas;
     uint ClampSampler;
+    float3 ProbeMin;
+    uint Probes;
+    float3 ProbeSize;
+    uint3 ProbeCounts;
 };
 
 struct Light
@@ -60,7 +64,8 @@ struct Shadow
 [[vk::push_constant]] ConstantBuffer<SceneConstants> Scene : register(b0, space0);
 
 static const uint VertexStride = 32;
-static const uint FrameDataSize = 144;
+static const uint FrameDataSize = 192;
+static const uint ProbeSize = 48;
 static const uint LightSize = 80;
 static const uint ShadowSize = 96;
 static const uint None = 0xFFFFFFFF;
@@ -102,6 +107,10 @@ FrameData LoadFrame()
     frame.SunShadow = buffer.Load<uint>(132);
     frame.ShadowAtlas = buffer.Load<uint>(136);
     frame.ClampSampler = buffer.Load<uint>(140);
+    frame.ProbeMin = buffer.Load<float3>(144);
+    frame.Probes = buffer.Load<uint>(156);
+    frame.ProbeSize = buffer.Load<float3>(160);
+    frame.ProbeCounts = buffer.Load<uint3>(172);
     return frame;
 }
 
@@ -276,6 +285,50 @@ float3 ShadeClusterLights(FrameData frame, float2 pixel, float3 worldPosition, f
     return light;
 }
 
+// A probe's spherical harmonics turned into the irradiance (over pi) a surface facing the normal gets.
+float3 EvaluateProbe(ByteAddressBuffer probes, uint index, float3 normal)
+{
+    uint offset = index * ProbeSize;
+    float4 basis = float4(1, normal);
+    float red = dot(probes.Load<float4>(offset), basis);
+    float green = dot(probes.Load<float4>(offset + 16), basis);
+    float blue = dot(probes.Load<float4>(offset + 32), basis);
+    return max(float3(red, green, blue), 0);
+}
+
+// The irradiance blended from the eight probes round the point, or nothing outside the volume.
+float3 SampleProbes(FrameData frame, float3 worldPosition, float3 normal)
+{
+    if (frame.Probes == None)
+    {
+        return 0;
+    }
+
+    float3 local = (worldPosition - frame.ProbeMin) / frame.ProbeSize;
+    if (any(local < 0) || any(local > 1))
+    {
+        return 0;
+    }
+
+    ByteAddressBuffer probes = Buffers[frame.Probes];
+    uint3 last = frame.ProbeCounts - 1;
+    float3 grid = clamp(local * float3(frame.ProbeCounts) - 0.5, 0, float3(last));
+    uint3 low = min(uint3(grid), last);
+    uint3 high = min(low + 1, last);
+    float3 blend = grid - float3(low);
+    float3 irradiance = 0;
+    for (uint corner = 0; corner < 8; corner++)
+    {
+        uint3 bits = uint3(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
+        uint3 cell = low + bits * (high - low);
+        float3 weights = lerp(1 - blend, blend, float3(bits));
+        uint index = (cell.z * frame.ProbeCounts.y + cell.y) * frame.ProbeCounts.x + cell.x;
+        irradiance += weights.x * weights.y * weights.z * EvaluateProbe(probes, index, normal);
+    }
+
+    return irradiance;
+}
+
 float4 PixelMain(VertexOutput input) : SV_Target
 {
     FrameData frame = LoadFrame();
@@ -288,6 +341,7 @@ float4 PixelMain(VertexOutput input) : SV_Target
     }
 
     float3 light = frame.Ambient + (1 - frame.Ambient) * sun;
+    light += SampleProbes(frame, input.WorldPosition, normal);
     light += ShadeClusterLights(frame, input.Position.xy, input.WorldPosition, normal);
     return float4(albedo.rgb * light, albedo.a);
 }
