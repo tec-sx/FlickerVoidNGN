@@ -1,9 +1,11 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 
 using FlickerVoid.Engine.Editor.Inspector;
+using FlickerVoid.Engine.Editor.Projects;
 using FlickerVoid.Engine.Editor.Scenes;
 using FlickerVoid.Engine.Editor.Viewports;
 
@@ -11,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FlickerVoid.Engine.Editor.Shell;
 
-/// <summary>Creates the edited scene and its view models, and shows them in the main window.</summary>
+/// <summary>Shows the project picker, or, given a project or content folder, the edited scene and its view models in the main window.</summary>
 public sealed partial class App : Application
 {
     private ILoggerFactory? _loggerFactory;
@@ -31,22 +33,57 @@ public sealed partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             _loggerFactory = LoggerFactory.Create(static logging => logging.AddSimpleConsole());
-            _scene = new EditorScene(_loggerFactory, Options.Content);
-            if (Options.Scene is not null)
-            {
-                _scene.Open(Options.Scene);
-            }
-
-            ViewportViewModel viewport = new(_scene, Options.Validation);
-            InspectorViewModel inspector = new(_scene);
-            MainWindowViewModel main = new(viewport, inspector);
-            desktop.MainWindow = new MainWindow { DataContext = main };
-            _poll = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, HandlePoll);
-            _poll.Start();
             desktop.Exit += HandleExit;
+            if (Options.Content is null)
+            {
+                desktop.MainWindow = CreatePicker(desktop);
+            }
+            else
+            {
+                desktop.MainWindow = CreateEditor(Options.Content, Options.Scene);
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>The project picker, which replaces itself with the editor once a project is built.</summary>
+    private Window CreatePicker(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        string folder = ProjectPickerViewModel.GetDefaultProjectsFolder();
+        ProjectPickerViewModel picker = new(folder, new DotnetProjectBuilder(), new TemplateProjectCreator());
+        ProjectPickerWindow window = new() { DataContext = picker };
+        picker.Opened += project =>
+        {
+            Window editor = CreateEditor(project.ContentFolder, project.StartupScene);
+            desktop.MainWindow = editor;
+            editor.Show();
+            window.Close();
+        };
+        return window;
+    }
+
+    private Window CreateEditor(string content, string? scene)
+    {
+        _scene = new EditorScene(_loggerFactory!, content);
+        ViewportViewModel viewport = new(_scene, Options.Validation);
+        if (scene is not null)
+        {
+            try
+            {
+                _scene.Open(scene);
+            }
+            catch (Exception exception) when (exception is InvalidDataException or IOException)
+            {
+                viewport.Status = $"Can't open {scene}: {exception.Message}";
+            }
+        }
+
+        InspectorViewModel inspector = new(_scene);
+        MainWindowViewModel main = new(viewport, inspector);
+        _poll = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, HandlePoll);
+        _poll.Start();
+        return new MainWindow { DataContext = main };
     }
 
     private void HandlePoll(object? sender, EventArgs e)
