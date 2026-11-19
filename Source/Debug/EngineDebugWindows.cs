@@ -1,0 +1,29 @@
+using Arch.Core;
+
+using FlickerVoid.Engine.Graphics;
+using FlickerVoid.Engine.Rendering;
+using FlickerVoid.Engine.Runtime;
+
+namespace FlickerVoid.Engine.Debug;
+
+/// <summary>Adds the engine's own debug windows to a <see cref="DebugUi"/>.</summary>
+public static class EngineDebugWindows
+{
+    /// <summary>Adds Stats (frame rate, CPU, memory, GPU) and Console to the Engine menu.</summary>
+    public static void AddEngineWindows(this DebugUi ui, Game game, IGraphicsDevice device)
+    {
+        StatsWindow stats = new(ui, device, game.World) { IsOpen = true };
+        ConsoleWindow console = new(game.DebugConsole);
+        ui.Windows.Add(stats);
+        ui.Windows.Add(console);
+    }
+
+    /// <summary>Adds Rendering (features and lighting mood) and Lights to the Rendering menu.</summary>
+    public static void AddRenderingWindows(this DebugUi ui, SceneRenderer renderer, World world)
+    {
+        RenderingWindow rendering = new(renderer);
+        LightsWindow lights = new(world);
+        ui.Windows.Add(rendering);
+        ui.Windows.Add(lights);
+    }
+}
