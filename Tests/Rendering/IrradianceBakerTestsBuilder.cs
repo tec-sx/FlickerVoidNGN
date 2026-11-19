@@ -46,7 +46,7 @@ internal sealed class IrradianceBakerTestsBuilder : IDisposable
         using IrradianceBaker baker = _scene.BuildBaker();
         if (!_sunShadows)
         {
-            baker.Renderer.SunShadowDistance = 0;
+            baker.Renderer.Mood = baker.Renderer.Mood with { SunShadowDistance = 0 };
         }
 
         IrradianceProbes probes = baker.Bake(_scene.World, volume, Vector3.UnitY, bounces);

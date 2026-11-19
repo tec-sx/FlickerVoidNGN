@@ -116,19 +116,19 @@ SceneRenderer CreateRenderer(PixelFormat format)
 
 void Configure(SceneRenderer sceneRenderer)
 {
+    LightingMood mood = sceneRenderer.Mood;
     if (sunDirection is { } direction)
     {
-        sceneRenderer.SunDirection = direction;
+        mood = mood with { SunDirection = direction };
     }
 
     if (ambient is { } share)
     {
-        sceneRenderer.Ambient = share;
+        mood = mood with { Ambient = share };
     }
 
     // Ground fog: full density up to the floor, thinning by e every 2/3 of a unit above it.
-    sceneRenderer.FogDensity = fogDensity;
-    sceneRenderer.FogHeightFalloff = 1.5f;
+    sceneRenderer.Mood = mood with { FogDensity = fogDensity, FogHeightFalloff = 1.5f };
 }
 
 using SceneRenderSystem renderer = new(window, device, game.World, CreateRenderer, frameLimit);

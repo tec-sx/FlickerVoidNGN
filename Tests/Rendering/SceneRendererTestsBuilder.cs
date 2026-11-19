@@ -20,11 +20,10 @@ namespace FlickerVoid.Engine.Rendering.Tests;
 
 /// <summary>
 /// Builds a game with rendering, its models in a temporary content folder, and the scene renderer on a Vulkan device with
-/// validation on, skipping the test without Vulkan 1.3. Renders 4x4 frames; disposing it fails the test on any logged error.
+/// validation on, skipping the test without Vulkan 1.3. Renders 4x4 frames unless told otherwise; disposing it fails the test on any logged error.
 /// </summary>
 internal sealed class SceneRendererTestsBuilder : IDisposable
 {
-    public const int TargetSize = 4;
 
     private readonly RecordingLoggerProvider _logs = new();
     private readonly ILoggerFactory _loggerFactory;
@@ -39,6 +38,8 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     private Vector3 _fogColor = Vector3.One;
     private float _fogHeight;
     private float _fogHeightFalloff;
+    private int _targetSize = 4;
+    private LightingMood _mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0 };
 
     public SceneRendererTestsBuilder()
     {
@@ -112,6 +113,13 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Changes the mood the renderer and baker get; the sun, ambient light and fog come from their own calls.</summary>
+    public SceneRendererTestsBuilder WithMood(Func<LightingMood, LightingMood> change)
+    {
+        _mood = change(_mood);
+        return this;
+    }
+
     /// <summary>Without a height falloff, the fog is even everywhere.</summary>
     public SceneRendererTestsBuilder WithFog(float density, Vector3 color, float height = 0, float heightFalloff = 0)
     {
@@ -122,41 +130,40 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         return this;
     }
 
-    /// <summary>Renders the world into a new 4x4 target and reads it back as Rgba8 pixels, top row first.</summary>
+    public SceneRendererTestsBuilder WithTargetSize(int size)
+    {
+        _targetSize = size;
+        return this;
+    }
+
+    /// <summary>Renders the world into a new 4x4 target (or the size given) and reads it back as Rgba8 pixels, top row first.</summary>
     public uint[] Render()
     {
         IGraphicsDevice device = BuildDevice();
         _renderer ??= new SceneRenderer(device, _compiler, new ContentManager(_contentFolder), PixelFormat.Rgba8UNorm);
-        _renderer.SunDirection = _sunDirection;
-        _renderer.Ambient = _ambient;
-        _renderer.FogDensity = _fogDensity;
-        _renderer.FogColor = _fogColor;
-        _renderer.FogHeight = _fogHeight;
-        _renderer.FogHeightFalloff = _fogHeightFalloff;
+        _renderer.Mood = BuildMood();
 
-        TextureDescription colorDescription = new(TargetSize, TargetSize, PixelFormat.Rgba8UNorm, TextureUsage.RenderTarget | TextureUsage.CopySource);
-        TextureDescription depthDescription = new(TargetSize, TargetSize, SceneRenderer.DepthFormat, TextureUsage.DepthStencil);
+        TextureDescription colorDescription = new(_targetSize, _targetSize, PixelFormat.Rgba8UNorm, TextureUsage.RenderTarget | TextureUsage.CopySource);
         using ITexture color = device.CreateTexture(colorDescription);
-        using ITexture depth = device.CreateTexture(depthDescription);
-        int pitch = PixelFormat.Rgba8UNorm.GetCopyRowPitch(TargetSize);
-        BufferDescription readbackDescription = new(pitch * TargetSize, BufferUsage.CopyDestination, MemoryLocation.Readback);
+        int pitch = PixelFormat.Rgba8UNorm.GetCopyRowPitch(_targetSize);
+        BufferDescription readbackDescription = new(pitch * _targetSize, BufferUsage.CopyDestination, MemoryLocation.Readback);
         using IBuffer readback = device.CreateBuffer(readbackDescription);
         using ICommandList commands = device.CreateCommandList();
 
         commands.Begin();
-        _renderer.Render(commands, _game.World, color, depth);
+        _renderer.Render(commands, _game.World, color);
         commands.Barrier(color, ResourceState.CopySource);
         commands.CopyTextureToBuffer(color, readback, 0);
         commands.End();
         device.Submit(commands);
         device.WaitIdle();
 
-        uint[] pixels = new uint[TargetSize * TargetSize];
-        byte[] row = new byte[TargetSize * 4];
-        for (int y = 0; y < TargetSize; y++)
+        uint[] pixels = new uint[_targetSize * _targetSize];
+        byte[] row = new byte[_targetSize * 4];
+        for (int y = 0; y < _targetSize; y++)
         {
             readback.Read(row, (long)y * pitch);
-            Span<uint> destination = pixels.AsSpan(y * TargetSize, TargetSize);
+            Span<uint> destination = pixels.AsSpan(y * _targetSize, _targetSize);
             MemoryMarshal.Cast<byte, uint>(row).CopyTo(destination);
         }
 
@@ -168,8 +175,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     {
         IGraphicsDevice device = BuildDevice();
         IrradianceBaker baker = new(device, _compiler, new ContentManager(_contentFolder));
-        baker.Renderer.SunDirection = _sunDirection;
-        baker.Renderer.Ambient = _ambient;
+        baker.Renderer.Mood = BuildMood();
         return baker;
     }
 
@@ -189,6 +195,21 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         _loggerFactory.Dispose();
         Directory.Delete(_contentFolder, recursive: true);
         _logs.Errors.Should().BeEmpty("the device logged no errors");
+    }
+
+    // Screen-space shadows and post effects stay off unless a test asks for them, so pixels show the plain lighting.
+    private LightingMood BuildMood()
+    {
+        LightingMood mood = _mood with
+        {
+            SunDirection = _sunDirection,
+            Ambient = _ambient,
+            FogDensity = _fogDensity,
+            FogColor = _fogColor,
+            FogHeight = _fogHeight,
+            FogHeightFalloff = _fogHeightFalloff,
+        };
+        return mood;
     }
 
     private IGraphicsDevice BuildDevice()

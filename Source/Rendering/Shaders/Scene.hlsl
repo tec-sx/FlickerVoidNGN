@@ -2,11 +2,8 @@
 // color times its texture, lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster,
 // shadowed through the shadow atlas and tinted by spot light cookies, plus bounced light from irradiance probes, seen
 // through fog lit by the same lights.
-// The frame buffer holds FrameData, then the lights, the shadows, each cluster's range of light indices, and the indices.
-
-Texture2D Textures[] : register(t0, space1);
-ByteAddressBuffer Buffers[] : register(t0, space2);
-SamplerState Samplers[] : register(s0, space3);
+// The frame buffer holds FrameData (Frame.hlsl, compiled ahead of this file), then the lights, the shadows, each cluster's
+// range of light indices, and the indices. ScreenShadows.hlsl gives each pixel its ambient occlusion and contact shadow.
 
 struct SceneConstants
 {
@@ -16,36 +13,6 @@ struct SceneConstants
     uint Vertices;
     uint Texture;
     uint Sampler;
-};
-
-struct FrameData
-{
-    float4x4 ViewProjection;
-    float4 DepthAxis;
-    float3 SunDirection;
-    float Ambient;
-    float2 TargetSize;
-    float SliceScale;
-    float SliceBias;
-    uint LogarithmicSlices;
-    uint LightCount;
-    uint ClustersOffset;
-    uint IndicesOffset;
-    uint ShadowsOffset;
-    uint SunShadow;
-    uint ShadowAtlas;
-    uint ClampSampler;
-    float3 ProbeMin;
-    uint Probes;
-    float3 ProbeSize;
-    uint3 ProbeCounts;
-    float3 CameraPosition;
-    float NearPlane;
-    float3 FogColor;
-    float FogDensity;
-    float FogAnisotropy;
-    float FogHeight;
-    float FogHeightFalloff;
 };
 
 struct Light
@@ -72,13 +39,11 @@ struct Shadow
 [[vk::push_constant]] ConstantBuffer<SceneConstants> Scene : register(b0, space0);
 
 static const uint VertexStride = 32;
-static const uint FrameDataSize = 240;
 static const uint FogSteps = 16;
 static const float Pi = 3.14159265;
 static const uint ProbeSize = 48;
 static const uint LightSize = 80;
 static const uint ShadowSize = 96;
-static const uint None = 0xFFFFFFFF;
 static const float AtlasSize = 4096;
 
 // Normal offset in texels and depth bias that keep surfaces from shadowing themselves.
@@ -97,43 +62,9 @@ struct VertexOutput
     float2 Uv : TEXCOORD0;
 };
 
-FrameData LoadFrame()
-{
-    ByteAddressBuffer buffer = Buffers[Scene.Frame];
-    FrameData frame;
-    // Rows of a System.Numerics matrix, which multiplies row vectors.
-    frame.ViewProjection = float4x4(buffer.Load<float4>(0), buffer.Load<float4>(16), buffer.Load<float4>(32), buffer.Load<float4>(48));
-    frame.DepthAxis = buffer.Load<float4>(64);
-    frame.SunDirection = buffer.Load<float3>(80);
-    frame.Ambient = buffer.Load<float>(92);
-    frame.TargetSize = buffer.Load<float2>(96);
-    frame.SliceScale = buffer.Load<float>(104);
-    frame.SliceBias = buffer.Load<float>(108);
-    frame.LogarithmicSlices = buffer.Load<uint>(112);
-    frame.LightCount = buffer.Load<uint>(116);
-    frame.ClustersOffset = buffer.Load<uint>(120);
-    frame.IndicesOffset = buffer.Load<uint>(124);
-    frame.ShadowsOffset = buffer.Load<uint>(128);
-    frame.SunShadow = buffer.Load<uint>(132);
-    frame.ShadowAtlas = buffer.Load<uint>(136);
-    frame.ClampSampler = buffer.Load<uint>(140);
-    frame.ProbeMin = buffer.Load<float3>(144);
-    frame.Probes = buffer.Load<uint>(156);
-    frame.ProbeSize = buffer.Load<float3>(160);
-    frame.ProbeCounts = buffer.Load<uint3>(172);
-    frame.CameraPosition = buffer.Load<float3>(192);
-    frame.NearPlane = buffer.Load<float>(204);
-    frame.FogColor = buffer.Load<float3>(208);
-    frame.FogDensity = buffer.Load<float>(220);
-    frame.FogAnisotropy = buffer.Load<float>(224);
-    frame.FogHeight = buffer.Load<float>(228);
-    frame.FogHeightFalloff = buffer.Load<float>(232);
-    return frame;
-}
-
 VertexOutput VertexMain(uint vertexId : SV_VertexID)
 {
-    FrameData frame = LoadFrame();
+    FrameData frame = LoadFrame(Scene.Frame);
     ByteAddressBuffer vertices = Buffers[Scene.Vertices];
     uint offset = vertexId * VertexStride;
     float3 position = vertices.Load<float3>(offset);
@@ -443,19 +374,45 @@ float4 MarchFog(FrameData frame, float2 pixel, float3 surface)
     return float4(scattered * frame.FogColor, transmittance);
 }
 
+// The pixel's ambient occlusion averaged over the 3x3 pixels round it, which smooths out the noise that turns its
+// samples, and its own contact shadow, which stays sharp.
+float2 BlurScreenShadows(FrameData frame, float2 pixel)
+{
+    Texture2D screenShadows = Textures[frame.ScreenShadows];
+    int2 last = int2(frame.TargetSize) - 1;
+    float occlusion = 0;
+    for (int y = -1; y <= 1; y++)
+    {
+        for (int x = -1; x <= 1; x++)
+        {
+            int2 neighbour = clamp(int2(pixel) + int2(x, y), 0, last);
+            occlusion += screenShadows.Load(int3(neighbour, 0)).r;
+        }
+    }
+
+    float contact = screenShadows.Load(int3(pixel, 0)).g;
+    return float2(occlusion / 9, contact);
+}
+
+// The depth prepass runs VertexMain too, so its depth matches the scene pass exactly.
+void DepthMain()
+{
+}
+
 float4 PixelMain(VertexOutput input) : SV_Target
 {
-    FrameData frame = LoadFrame();
+    FrameData frame = LoadFrame(Scene.Frame);
     float4 albedo = Textures[Scene.Texture].Sample(Samplers[Scene.Sampler], input.Uv) * Scene.BaseColor;
     float3 normal = normalize(input.Normal);
-    float sun = saturate(dot(normal, -normalize(frame.SunDirection)));
+    float2 screenShadows = BlurScreenShadows(frame, input.Position.xy);
+    float sun = saturate(dot(normal, -normalize(frame.SunDirection))) * screenShadows.g;
     if (sun > 0 && frame.SunShadow != None)
     {
         sun *= SampleShadow(frame, frame.SunShadow, input.WorldPosition, normal, 0, true);
     }
 
-    float3 light = frame.Ambient + (1 - frame.Ambient) * sun;
-    light += SampleProbes(frame, input.WorldPosition, normal);
+    float3 ambient = frame.Ambient + SampleProbes(frame, input.WorldPosition, normal);
+    float3 light = ambient * screenShadows.r + (1 - frame.Ambient) * sun;
     light += ShadeClusterLights(frame, input.Position.xy, input.WorldPosition, normal);
     float3 color = albedo.rgb * light;
     if (frame.FogDensity > 0)

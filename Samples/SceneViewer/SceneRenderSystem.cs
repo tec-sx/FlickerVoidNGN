@@ -23,7 +23,6 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
     private readonly int _frameLimit;
     private readonly ISwapchain _swapchain;
     private readonly ICommandList[] _commandLists = new ICommandList[FramesInFlight];
-    private ITexture _depth;
     private bool _disposed;
 
     public SceneRenderSystem(IGameWindow window, IGraphicsDevice device, World world, Func<PixelFormat, SceneRenderer> createRenderer, int frameLimit)
@@ -36,7 +35,6 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
         SwapchainDescription swapchainDescription = new(window.Native, size.X, size.Y) { Name = "Window" };
         _swapchain = device.CreateSwapchain(swapchainDescription);
         _renderer = createRenderer(_swapchain.Format);
-        _depth = CreateDepth();
 
         for (int index = 0; index < FramesInFlight; index++)
         {
@@ -62,8 +60,6 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
         if (visible && (size.X != _swapchain.Width || size.Y != _swapchain.Height))
         {
             _swapchain.Resize(size.X, size.Y);
-            _depth.Dispose();
-            _depth = CreateDepth();
         }
 
         if (visible)
@@ -97,14 +93,7 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
         }
 
         _renderer.Dispose();
-        _depth.Dispose();
         _swapchain.Dispose();
-    }
-
-    private ITexture CreateDepth()
-    {
-        TextureDescription description = new(_swapchain.Width, _swapchain.Height, SceneRenderer.DepthFormat, TextureUsage.DepthStencil) { Name = "Depth" };
-        return _device.CreateTexture(description);
     }
 
     private void Render()
@@ -112,7 +101,7 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
         ITexture backBuffer = _swapchain.AcquireNextTexture();
         ICommandList commands = _commandLists[Frames % FramesInFlight];
         commands.Begin();
-        _renderer.Render(commands, _world, backBuffer, _depth);
+        _renderer.Render(commands, _world, backBuffer);
         commands.Barrier(backBuffer, ResourceState.Present);
         commands.End();
         _device.Submit(commands);

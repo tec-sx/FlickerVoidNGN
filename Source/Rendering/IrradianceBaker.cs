@@ -24,7 +24,6 @@ public sealed class IrradianceBaker : IDisposable
 
     private readonly IGraphicsDevice _device;
     private readonly ITexture _color;
-    private readonly ITexture _depth;
     private readonly IBuffer _readback;
     private readonly ICommandList _commands;
     private readonly int _rowPitch;
@@ -34,21 +33,21 @@ public sealed class IrradianceBaker : IDisposable
         _device = device;
         Renderer = new SceneRenderer(device, compiler, content, CaptureFormat);
         TextureDescription colorDescription = new(FaceSize, FaceSize, CaptureFormat, TextureUsage.RenderTarget | TextureUsage.CopySource) { Name = "Probe capture" };
-        TextureDescription depthDescription = new(FaceSize, FaceSize, SceneRenderer.DepthFormat, TextureUsage.DepthStencil) { Name = "Probe capture depth" };
         _color = device.CreateTexture(colorDescription);
-        _depth = device.CreateTexture(depthDescription);
         _rowPitch = CaptureFormat.GetCopyRowPitch(FaceSize);
         BufferDescription readbackDescription = new(_rowPitch * FaceSize, BufferUsage.CopyDestination, MemoryLocation.Readback) { Name = "Probe readback" };
         _readback = device.CreateBuffer(readbackDescription);
         _commands = device.CreateCommandList();
     }
 
-    /// <summary>The renderer the probes see the scene through; give it the sun and ambient light the game uses.</summary>
+    /// <summary>The renderer the probes see the scene through; give it the game's mood. Baking ignores its post-processing.</summary>
     public SceneRenderer Renderer { get; }
 
     /// <summary>Bakes the probes of a volume centred on the position; waits for the GPU after every face.</summary>
     public IrradianceProbes Bake(World world, in IrradianceVolume volume, Vector3 center, int bounces = 2)
     {
+        LightingMood mood = Renderer.Mood;
+        Renderer.Mood = mood.WithoutPost();
         IrradianceProbes? previous = null;
         Vector4[] pixels = new Vector4[CubeCapture.Faces * FaceSize * FaceSize];
         for (int bounce = 0; bounce < bounces; bounce++)
@@ -73,6 +72,7 @@ public sealed class IrradianceBaker : IDisposable
         }
 
         Renderer.BakeProbes = null;
+        Renderer.Mood = mood;
         return previous ?? new IrradianceProbes(volume.ProbesX, volume.ProbesY, volume.ProbesZ);
     }
 
@@ -81,7 +81,6 @@ public sealed class IrradianceBaker : IDisposable
         _device.WaitIdle();
         _commands.Dispose();
         _readback.Dispose();
-        _depth.Dispose();
         _color.Dispose();
         Renderer.Dispose();
     }
@@ -93,7 +92,7 @@ public sealed class IrradianceBaker : IDisposable
         {
             Transform transform = new() { Position = position, Rotation = CubeCapture.GetFaceRotation(face) };
             _commands.Begin();
-            Renderer.Render(_commands, world, _color, _depth, camera, transform);
+            Renderer.Render(_commands, world, _color, camera, transform);
             _commands.Barrier(_color, ResourceState.CopySource);
             _commands.CopyTextureToBuffer(_color, _readback, 0);
             _commands.End();

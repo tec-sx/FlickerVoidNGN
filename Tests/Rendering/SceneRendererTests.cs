@@ -304,6 +304,92 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void DarkensAmbientLightNearOccluders()
+    {
+        _builder.WithTargetSize(16).WithMood(static mood => mood with { AmbientOcclusion = 1, AmbientOcclusionRadius = 0.5f });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Step", "components": { "transform": { "position": [-0.5, 0, 0.3], "scale": [0.5, 1, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+
+        uint[] pixels = _builder.Render();
+
+        (byte nearTheStep, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 8]);
+        (byte open, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 15]);
+        open.Should().Be(255, "nothing stands within the radius of the wall's far side");
+        nearTheStep.Should().BeLessThan(235, "the step in front of the wall hides part of the sky from the wall beside it");
+    }
+
+    [Fact]
+    public void CastsContactShadowsTheShadowMapMisses()
+    {
+        _builder.WithTargetSize(16).WithMood(static mood => mood with { SunShadowDistance = 0, ContactShadowLength = 0.3f });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Blocker", "components": { "transform": { "position": [0.5, 0, 0.15], "scale": [0.25, 0.25, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+
+        uint[] pixels = _builder.Render();
+
+        (byte shadowed, _, _) = SceneRendererTestsBuilder.Channels(pixels[(7 * 16) + 9]);
+        (byte lit, _, _) = SceneRendererTestsBuilder.Channels(pixels[(7 * 16) + 3]);
+        shadowed.Should().BeInRange(62, 66, "the blocker just in front of the wall hides the sun from the strip beside it");
+        lit.Should().BeInRange(195, 203);
+    }
+
+    [Fact]
+    public void SpreadsBrightLightIntoBloom()
+    {
+        const string light = """{ "name": "Light", "components": { "transform": { "position": [0, 0, 0.5] }, "pointLight": { "intensity": 40, "range": 2 } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, light);
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+        uint[] withoutBloom = _builder.Render();
+
+        _builder.WithMood(static mood => mood with { Bloom = 0.3f });
+        uint[] withBloom = _builder.Render();
+
+        withoutBloom[0].Should().Be(BlackPixel);
+        (byte glow, _, _) = SceneRendererTestsBuilder.Channels(withBloom[0]);
+        glow.Should().BeGreaterThan(0, "the bright quad glows onto the dark corner");
+    }
+
+    [Fact]
+    public void GradesTheImage()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+
+        _builder.WithMood(static mood => mood with { Exposure = 0.5f });
+        (byte exposed, _, _) = SceneRendererTestsBuilder.Channels(_builder.Render()[5]);
+        _builder.WithMood(static mood => mood with { Exposure = 1, Saturation = 0 });
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(_builder.Render()[5]);
+        _builder.WithMood(static mood => mood with { Saturation = 1, Tint = new Vector3(0.5f, 1, 1) });
+        (byte tinted, _, _) = SceneRendererTestsBuilder.Channels(_builder.Render()[5]);
+
+        exposed.Should().BeInRange(126, 129);
+        red.Should().BeInRange(53, 55, "a grey red keeps red's luminance, 0.2126");
+        green.Should().Be(red);
+        blue.Should().Be(red);
+        tinted.Should().BeInRange(126, 129);
+    }
+
+    [Fact]
+    public void LaysGrainAndPaperOverTheImage()
+    {
+        uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
+        _builder.WithTexture("Paper.tga", 1, 1, [grey]);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+
+        _builder.WithMood(static mood => mood with { Paper = "Paper.tga" });
+        uint[] paper = _builder.Render();
+        _builder.WithMood(static mood => mood with { Paper = null, Grain = 0.2f });
+        uint[] grain = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(paper[5]);
+        red.Should().BeInRange(53, 57, "paper at sRGB 128 lets about a fifth of the light through");
+        grain.Distinct().Should().HaveCountGreaterThan(1, "grain varies from pixel to pixel");
+    }
+
+    [Fact]
     public void OnlyClearsWithoutACamera()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
