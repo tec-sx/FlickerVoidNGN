@@ -5,6 +5,7 @@
     <Project Path="../../Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
     <Project Path="../../Source/Physics/FlickerVoid.Engine.Physics.csproj" />
     <Project Path="../../Source/Platform/FlickerVoid.Engine.Platform.csproj" />
+    <Project Path="../../Source/Rendering/FlickerVoid.Engine.Rendering.csproj" />
     <Project Path="../../Source/Runtime/FlickerVoid.Engine.Runtime.csproj" />
     <Project Path="../../Source/Shaders/FlickerVoid.Engine.Shaders.csproj" />
   </Folder>

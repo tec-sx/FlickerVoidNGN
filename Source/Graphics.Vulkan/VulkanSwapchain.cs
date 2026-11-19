@@ -12,7 +12,7 @@ namespace FlickerVoid.Engine.Graphics.Vulkan;
 internal sealed unsafe class VulkanSwapchain : ISwapchain
 {
     private const uint PreferredImageCount = 3;
-    private const Silk.NET.Vulkan.Format SurfaceFormat = Silk.NET.Vulkan.Format.B8G8R8A8Unorm;
+    private const Silk.NET.Vulkan.Format SurfaceFormat = Silk.NET.Vulkan.Format.B8G8R8A8Srgb;
 
     private static readonly CompositeAlphaFlagsKHR[] CompositeAlphaPreference =
     [
@@ -69,7 +69,7 @@ internal sealed unsafe class VulkanSwapchain : ISwapchain
 
     public int Height { get; private set; }
 
-    public PixelFormat Format => PixelFormat.Bgra8UNorm;
+    public PixelFormat Format => PixelFormat.Bgra8UNormSrgb;
 
     public ITexture AcquireNextTexture()
     {
