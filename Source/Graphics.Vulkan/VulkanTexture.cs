@@ -149,7 +149,7 @@ internal sealed unsafe class VulkanTexture : ITexture
             if (ownsImage)
             {
                 device.Vk.DestroyImage(device.Handle, image, null);
-                device.Vk.FreeMemory(device.Handle, memory, null);
+                device.FreeMemory(memory);
             }
 
             device.Bindless.Resources.Free(index);

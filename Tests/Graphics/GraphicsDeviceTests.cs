@@ -24,6 +24,28 @@ public sealed class GraphicsDeviceTests : IDisposable
     }
 
     [Fact]
+    public void ReportsItsMemoryAndWhatItHasAllocated()
+    {
+        using IGraphicsDevice device = CreateDevice();
+        GraphicsInfo before = device.GetInfo();
+        BufferDescription description = new(1 << 20, BufferUsage.ShaderRead);
+
+        IBuffer buffer = device.CreateBuffer(description);
+        GraphicsInfo during = device.GetInfo();
+        buffer.Dispose();
+        device.WaitIdle();
+        GraphicsInfo after = device.GetInfo();
+
+        before.AdapterName.Should().Be(device.AdapterName);
+        before.ApiVersion.Should().MatchRegex(@"^1\.\d+\.\d+$");
+        before.DeviceMemoryBytes.Should().BeGreaterThan(0);
+        during.AllocatedBytes.Should().BeGreaterThanOrEqualTo(before.AllocatedBytes + (1 << 20));
+        during.Allocations.Should().Be(before.Allocations + 1);
+        after.AllocatedBytes.Should().BeLessThanOrEqualTo(during.AllocatedBytes - (1 << 20));
+        after.Allocations.Should().BeLessThan(during.Allocations);
+    }
+
+    [Fact]
     public void CopiesInitialBufferDataToTheGpu()
     {
         using IGraphicsDevice device = CreateDevice();

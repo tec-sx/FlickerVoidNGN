@@ -115,6 +115,7 @@ public sealed class GameWindow : IGameWindow, IDisposable
     {
         keyboard.KeyDown += HandleKeyDown;
         keyboard.KeyUp += HandleKeyUp;
+        keyboard.KeyChar += HandleKeyChar;
     }
 
     private void Attach(IMouse mouse)
@@ -155,6 +156,11 @@ public sealed class GameWindow : IGameWindow, IDisposable
     private void HandleKeyDown(IKeyboard keyboard, Key key, int scancode)
     {
         _input.PressKey(key);
+    }
+
+    private void HandleKeyChar(IKeyboard keyboard, char character)
+    {
+        _input.TypeText(character);
     }
 
     private void HandleKeyUp(IKeyboard keyboard, Key key, int scancode)
