@@ -2,10 +2,10 @@ using System.Numerics;
 
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Runtime.Content;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
@@ -18,10 +18,10 @@ internal sealed class SkinningPass : IRenderPass
     private readonly MeshLibrary _meshes;
     private readonly MeshSkinner _skinner;
 
-    public SkinningPass(IGraphicsDevice device, IShaderCompiler compiler, IContentManager content)
+    public SkinningPass(IGraphicsDevice device, ShaderLibrary shaders, IContentManager content)
     {
         _meshes = new MeshLibrary(device, content);
-        _skinner = new MeshSkinner(device, compiler);
+        _skinner = new MeshSkinner(device, shaders);
     }
 
     public void Prepare(RenderContext context)

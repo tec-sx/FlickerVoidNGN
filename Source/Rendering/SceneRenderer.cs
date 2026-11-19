@@ -5,6 +5,7 @@ using Arch.Core;
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Cameras;
@@ -18,7 +19,6 @@ using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Rendering.Shadows;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering;
 
@@ -50,8 +50,9 @@ public sealed class SceneRenderer : IDisposable
     private readonly RenderScene _scene = new();
     private readonly RenderContext _context;
 
-    public SceneRenderer(IGraphicsDevice device, IShaderCompiler compiler, IContentManager content, PixelFormat colorFormat)
+    public SceneRenderer(IGraphicsDevice device, IContentManager content, PixelFormat colorFormat)
     {
+        ShaderLibrary shaders = ShaderLibrary.ForEngine("Rendering");
         _targets = new ScreenTargets(device);
         TextureDescription whiteDescription = new(1, 1, PixelFormat.Rgba8UNorm, TextureUsage.ShaderRead) { Name = "White" };
         _white = device.CreateTexture(whiteDescription, [255, 255, 255, 255]);
@@ -71,13 +72,13 @@ public sealed class SceneRenderer : IDisposable
             White = _white,
         };
 
-        Pipeline.Add(new SkinningPass(device, compiler, content));
+        Pipeline.Add(new SkinningPass(device, shaders, content));
         Pipeline.Add(new LightGatherPass());
-        Pipeline.Add(new ShadowPass(device, compiler));
-        Pipeline.Add(new DepthPrepass(device, compiler));
-        Pipeline.Add(new ScreenShadowPass(device, compiler));
-        Pipeline.Add(new OpaquePass(device, compiler));
-        Pipeline.Add(new PostProcessPass(device, compiler, colorFormat));
+        Pipeline.Add(new ShadowPass(device, shaders));
+        Pipeline.Add(new DepthPrepass(device, shaders));
+        Pipeline.Add(new ScreenShadowPass(device, shaders));
+        Pipeline.Add(new OpaquePass(device, shaders));
+        Pipeline.Add(new PostProcessPass(device, shaders, colorFormat));
     }
 
     /// <summary>The passes that draw each frame, in order; add, insert or replace passes to change how frames are drawn.</summary>

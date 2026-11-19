@@ -6,31 +6,30 @@ using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Lighting;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering.PostProcessing;
 
 /// <summary>Blurs the lit scene into bloom and grades it into the output target, as the mood says.</summary>
 internal sealed class PostProcessor : IDisposable
 {
-    private const string BloomShader = "Bloom.hlsl";
-    private const string PostShader = "Post.hlsl";
+    private const string BloomShader = "Bloom";
+    private const string PostShader = "Post";
     private const int GroupSize = 8;
 
     private readonly IPipeline _down;
     private readonly IPipeline _up;
     private readonly IPipeline _composite;
 
-    public PostProcessor(IGraphicsDevice device, IShaderCompiler compiler, PixelFormat outputFormat)
+    public PostProcessor(IGraphicsDevice device, ShaderLibrary shaders, PixelFormat outputFormat)
     {
-        ComputePipelineDescription down = new() { ComputeShader = EmbeddedShaders.Compile(compiler, BloomShader, "DownMain", ShaderStage.Compute), Name = "Bloom down" };
-        ComputePipelineDescription up = new() { ComputeShader = EmbeddedShaders.Compile(compiler, BloomShader, "UpMain", ShaderStage.Compute), Name = "Bloom up" };
+        ComputePipelineDescription down = new() { ComputeShader = shaders.Load(BloomShader, "DownMain"), Name = "Bloom down" };
+        ComputePipelineDescription up = new() { ComputeShader = shaders.Load(BloomShader, "UpMain"), Name = "Bloom up" };
         _down = device.CreateComputePipeline(down);
         _up = device.CreateComputePipeline(up);
         GraphicsPipelineDescription composite = new()
         {
-            VertexShader = EmbeddedShaders.Compile(compiler, PostShader, "VertexMain", ShaderStage.Vertex),
-            PixelShader = EmbeddedShaders.Compile(compiler, PostShader, "PixelMain", ShaderStage.Pixel),
+            VertexShader = shaders.Load(PostShader, "VertexMain"),
+            PixelShader = shaders.Load(PostShader, "PixelMain"),
             ColorFormats = [outputFormat],
             CullMode = CullMode.None,
             Name = "Post",

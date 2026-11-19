@@ -7,9 +7,10 @@ using SharpGLTF.Memory;
 using SharpGLTF.Scenes;
 using SharpGLTF.Schema2;
 
+using FlickerVoid.Engine.Builder.Models;
 using FlickerVoid.Engine.Rendering.Meshes;
 
-namespace FlickerVoid.Engine.Rendering.Tests;
+namespace FlickerVoid.Engine.Builder.Tests.Models;
 
 /// <summary>
 /// Builds glTF models in memory and imports them: triangles facing +Z, wound counter-clockwise as glTF requires. A moving

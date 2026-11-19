@@ -7,7 +7,6 @@ using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
@@ -29,12 +28,12 @@ internal sealed class MeshSkinner : IDisposable
     private readonly HashSet<int> _seen = [];
     private Matrix4x4[] _sample = [];
 
-    public MeshSkinner(IGraphicsDevice device, IShaderCompiler compiler)
+    public MeshSkinner(IGraphicsDevice device, ShaderLibrary shaders)
     {
         _device = device;
         ComputePipelineDescription description = new()
         {
-            ComputeShader = EmbeddedShaders.Compile(compiler, "Skinning.hlsl", "ComputeMain", ShaderStage.Compute),
+            ComputeShader = shaders.Load("Skinning", "ComputeMain"),
             Name = "Skinning",
         };
         _pipeline = device.CreateComputePipeline(description);

@@ -143,6 +143,12 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
     public ITexture CreateTexture(in TextureDescription description, ReadOnlySpan<byte> initialData = default)
     {
+        bool fillsMipLevels = false;
+        if (!initialData.IsEmpty)
+        {
+            fillsMipLevels = CheckInitialData(description, initialData.Length);
+        }
+
         ImageUsageFlags extraUsage = 0;
         if (!initialData.IsEmpty)
         {
@@ -150,7 +156,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         }
 
         // Lower mip levels are blitted from the level above.
-        if (!initialData.IsEmpty && description.MipLevels > 1)
+        if (fillsMipLevels)
         {
             extraUsage |= ImageUsageFlags.TransferSrcBit;
         }
@@ -158,7 +164,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         VulkanTexture texture = new(this, description, extraUsage);
         if (!initialData.IsEmpty)
         {
-            UploadTexture(texture, initialData);
+            UploadTexture(texture, initialData, fillsMipLevels);
         }
 
         return texture;
@@ -633,7 +639,8 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             && features12.DescriptorBindingSampledImageUpdateAfterBind && features12.DescriptorBindingStorageBufferUpdateAfterBind
             && features12.DescriptorBindingStorageImageUpdateAfterBind
             && features12.ShaderSampledImageArrayNonUniformIndexing && features12.ShaderStorageBufferArrayNonUniformIndexing
-            && features12.ShaderStorageImageArrayNonUniformIndexing && features.Features.ShaderStorageImageWriteWithoutFormat;
+            && features12.ShaderStorageImageArrayNonUniformIndexing && features.Features.ShaderStorageImageWriteWithoutFormat
+            && features.Features.TextureCompressionBC;
         if (!supported)
         {
             return false;
@@ -701,7 +708,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         {
             SType = StructureType.PhysicalDeviceFeatures2,
             PNext = &features12,
-            Features = new PhysicalDeviceFeatures { ShaderStorageImageWriteWithoutFormat = true },
+            Features = new PhysicalDeviceFeatures { ShaderStorageImageWriteWithoutFormat = true, TextureCompressionBC = true },
         };
         List<string> extensions = [];
         CanPresent = CanPresent && Vk.IsDeviceExtensionPresent(PhysicalDevice, KhrSwapchain.ExtensionName);
@@ -813,29 +820,75 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         WaitIdle();
     }
 
-    /// <summary>Copies tightly packed rows of the top level through a staging buffer with padded rows, filters the other levels from it and waits, leaving shader-readable textures in ShaderRead.</summary>
-    private void UploadTexture(VulkanTexture texture, ReadOnlySpan<byte> data)
+    /// <summary>
+    /// Initial data holds every mip level's tightly packed rows, or only the top level's, from which the device filters the
+    /// others; block-compressed textures must give every level. Returns whether the device fills the lower levels.
+    /// </summary>
+    private static bool CheckInitialData(in TextureDescription description, int length)
+    {
+        int allLevels = description.GetDataSize();
+        if (length == allLevels)
+        {
+            return false;
+        }
+
+        int topLevel = description.GetLevelSize(0);
+        if (length == topLevel && !description.Format.IsBlockCompressed())
+        {
+            return true;
+        }
+
+        throw new ArgumentException($"Expected {allLevels} bytes of tightly packed rows for every level, or {topLevel} for the top level of an uncompressed texture, got {length}.", "initialData");
+    }
+
+    /// <summary>
+    /// Copies each given level's tightly packed rows through a staging buffer with padded rows, filters the other levels
+    /// from the top one when only it was given, and waits, leaving shader-readable textures in ShaderRead.
+    /// </summary>
+    private void UploadTexture(VulkanTexture texture, ReadOnlySpan<byte> data, bool fillsMipLevels)
     {
         TextureDescription description = texture.Description;
-        int rowSize = description.Format.GetBytesPerPixel() * description.Width;
-        int pitch = description.Format.GetCopyRowPitch(description.Width);
-        if (data.Length != rowSize * description.Height)
+        int levels = description.MipLevels;
+        if (fillsMipLevels)
         {
-            throw new ArgumentException($"Expected {rowSize * description.Height} bytes of tightly packed rows, got {data.Length}.", nameof(data));
+            levels = 1;
         }
 
-        BufferDescription stagingDescription = new((long)pitch * description.Height, BufferUsage.CopySource, MemoryLocation.Upload);
+        long stagingSize = 0;
+        for (int level = 0; level < levels; level++)
+        {
+            TextureDescription mip = description.GetMipDescription(level);
+            stagingSize += (long)description.Format.GetCopyRowPitch(mip.Width) * description.Format.GetRowCount(mip.Height);
+        }
+
+        BufferDescription stagingDescription = new(stagingSize, BufferUsage.CopySource, MemoryLocation.Upload);
         using VulkanBuffer staging = new(this, stagingDescription, 0);
-        for (int y = 0; y < description.Height; y++)
-        {
-            ReadOnlySpan<byte> row = data.Slice(y * rowSize, rowSize);
-            staging.Write(row, (long)y * pitch);
-        }
-
         _uploadCommands.Begin();
         _uploadCommands.Barrier(texture, ResourceState.CopyDestination);
-        _uploadCommands.CopyBufferToTexture(staging, 0, texture);
-        _uploadCommands.FillMipLevels(texture);
+        int dataOffset = 0;
+        long stagingOffset = 0;
+        for (int level = 0; level < levels; level++)
+        {
+            TextureDescription mip = description.GetMipDescription(level);
+            int rowSize = description.Format.GetRowSize(mip.Width);
+            int rowCount = description.Format.GetRowCount(mip.Height);
+            int pitch = description.Format.GetCopyRowPitch(mip.Width);
+            for (int row = 0; row < rowCount; row++)
+            {
+                ReadOnlySpan<byte> rowData = data.Slice(dataOffset + row * rowSize, rowSize);
+                staging.Write(rowData, stagingOffset + (long)row * pitch);
+            }
+
+            _uploadCommands.CopyBufferToTexture(staging, stagingOffset, texture, level);
+            dataOffset += rowSize * rowCount;
+            stagingOffset += (long)pitch * rowCount;
+        }
+
+        if (fillsMipLevels)
+        {
+            _uploadCommands.FillMipLevels(texture);
+        }
+
         if (description.Usage.HasFlag(TextureUsage.ShaderRead))
         {
             _uploadCommands.Barrier(texture, ResourceState.ShaderRead);

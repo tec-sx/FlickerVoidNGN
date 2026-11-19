@@ -16,6 +16,27 @@ public readonly record struct TextureDescription(int Width, int Height, PixelFor
         return (int)Math.Log2(largest) + 1;
     }
 
+    /// <summary>Bytes in one mip level's tightly packed rows.</summary>
+    public int GetLevelSize(int mipLevel)
+    {
+        TextureDescription level = GetMipDescription(mipLevel);
+        int rowSize = Format.GetRowSize(level.Width);
+        int rowCount = Format.GetRowCount(level.Height);
+        return rowSize * rowCount;
+    }
+
+    /// <summary>Bytes in every mip level's tightly packed rows, the full size first.</summary>
+    public int GetDataSize()
+    {
+        int size = 0;
+        for (int level = 0; level < MipLevels; level++)
+        {
+            size += GetLevelSize(level);
+        }
+
+        return size;
+    }
+
     /// <summary>This description sized to one mip level, with only that level.</summary>
     public TextureDescription GetMipDescription(int mipLevel)
     {

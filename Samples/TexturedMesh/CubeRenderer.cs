@@ -7,7 +7,6 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Samples.TexturedMesh;
 
@@ -30,10 +29,10 @@ public sealed class CubeRenderer : IDisposable
     private readonly ITexture _texture;
     private readonly ISampler _sampler;
 
-    public CubeRenderer(IGraphicsDevice device, IShaderCompiler compiler, PixelFormat colorFormat)
+    public CubeRenderer(IGraphicsDevice device, PixelFormat colorFormat)
     {
         _device = device;
-        _pipeline = CreatePipeline(compiler, colorFormat);
+        _pipeline = CreatePipeline(colorFormat);
 
         byte[] vertexData = Cube.CreateVertices();
         ushort[] indices = Cube.CreateIndices();
@@ -100,31 +99,20 @@ public sealed class CubeRenderer : IDisposable
         return new MeshConstants(worldViewProjection, light, _vertices.BindlessIndex, _texture.BindlessIndex, _sampler.BindlessIndex);
     }
 
-    private IPipeline CreatePipeline(IShaderCompiler compiler, PixelFormat colorFormat)
+    private IPipeline CreatePipeline(PixelFormat colorFormat)
     {
-        string path = Path.Combine(AppContext.BaseDirectory, "Content", "Mesh.hlsl");
-        string source = File.ReadAllText(path);
+        // The content build compiles Content/Mesh.hlsl, as Mesh.shader.json lists its entry points.
+        string folder = Path.Combine(AppContext.BaseDirectory, "Content");
+        ShaderLibrary shaders = new(folder);
         GraphicsPipelineDescription description = new()
         {
-            VertexShader = Compile(compiler, source, "VertexMain", ShaderStage.Vertex),
-            PixelShader = Compile(compiler, source, "PixelMain", ShaderStage.Pixel),
+            VertexShader = shaders.Load("Mesh", "VertexMain"),
+            PixelShader = shaders.Load("Mesh", "PixelMain"),
             ColorFormats = [colorFormat],
             DepthFormat = DepthFormat,
             Depth = new DepthState(Test: true, Write: true),
             Name = "Mesh",
         };
         return _device.CreateGraphicsPipeline(description);
-    }
-
-    private static ShaderBytecode Compile(IShaderCompiler compiler, string source, string entryPoint, ShaderStage stage)
-    {
-        ShaderSource shader = new(source, entryPoint, stage) { Name = "Mesh.hlsl" };
-        ShaderCompileResult result = compiler.Compile(shader);
-        if (!result.Succeeded)
-        {
-            throw new InvalidOperationException($"Mesh.hlsl {entryPoint} failed to compile:\n{result.Messages}");
-        }
-
-        return new ShaderBytecode(result.Bytecode, entryPoint);
     }
 }

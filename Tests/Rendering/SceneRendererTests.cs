@@ -474,7 +474,7 @@ public sealed class SceneRendererTests : IDisposable
         _builder.Render();
 
         _builder.WithModel("Quad.glb", model => model.WithQuad(1).WithBaseColor(blue));
-        _builder.NotifyChanged("Quad.glb");
+        _builder.NotifyChanged("Quad.model");
         uint[] pixels = _builder.Render();
 
         uint bluePixel = SceneRendererTestsBuilder.Rgba(0, 0, 255, 255);
@@ -492,30 +492,11 @@ public sealed class SceneRendererTests : IDisposable
         _builder.Render();
 
         _builder.WithTexture("Cookie.tga", 4, 1, [BlackPixel, BlackPixel, white, white]);
-        _builder.NotifyChanged("Cookie.tga");
+        _builder.NotifyChanged("Cookie.dds");
         uint[] pixels = _builder.Render();
 
         pixels[4].Should().Be(BlackPixel, "the edited cookie's left half is black");
         (byte right, _, _) = SceneRendererTestsBuilder.Channels(pixels[7]);
         right.Should().BeGreaterThan(0, "the edited cookie's right half is white");
-    }
-
-    [Fact]
-    public void RedrawsAModelWhenATextureFileItUsesChanges()
-    {
-        _builder.WithGltfModel("Quad.gltf", static model => model.WithQuad(1).WithRedBlueTexture());
-        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.gltf" } } }""");
-        _builder.Render();
-
-        IReadOnlyList<string> images = _builder.OverwriteImages(GltfImporterTestsBuilder.BlueRedPng);
-        foreach (string image in images)
-        {
-            _builder.NotifyChanged(image);
-        }
-
-        uint[] pixels = _builder.Render();
-
-        (byte red, _, byte blue) = SceneRendererTestsBuilder.Channels(pixels[0]);
-        blue.Should().BeGreaterThan(red, "the left of the quad now samples a blue texel");
     }
 }

@@ -1,19 +1,20 @@
 using System.Numerics;
 using System.Text.Json;
 
+using FlickerVoid.Engine.Builder.Textures;
+using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Rendering.Materials;
+using FlickerVoid.Engine.Rendering.Meshes;
+
 using SharpGLTF.Memory;
 using SharpGLTF.Schema2;
 
-using StbImageSharp;
-
-using FlickerVoid.Engine.Rendering.Materials;
-
-namespace FlickerVoid.Engine.Rendering.Meshes;
+namespace FlickerVoid.Engine.Builder.Models;
 
 /// <summary>
 /// Reads glTF models into mesh parts, one per primitive, with each node's transform baked in. Skinned meshes stay in their
 /// bind pose with their joints and weights, and the animations of the model's skin are baked into <see cref="AnimationClip"/>s;
-/// a model has at most one skin.
+/// a model has at most one skin. Textures are compressed to BC7.
 /// </summary>
 public static class GltfImporter
 {
@@ -216,22 +217,16 @@ public static class GltfImporter
             return new MaterialData(Vector4.One, null);
         }
 
-        TextureData? texture = null;
+        DdsImage? texture = null;
         Image? image = channel.Value.Texture?.PrimaryImage;
         if (image is not null)
         {
             MemoryImage content = image.Content;
-            texture = Decode(content);
+            byte[] encoded = content.Content.ToArray();
+            texture = TextureCompressor.Compress(encoded);
         }
 
         return new MaterialData(channel.Value.Color, texture);
-    }
-
-    private static TextureData Decode(MemoryImage image)
-    {
-        byte[] bytes = image.Content.ToArray();
-        ImageResult decoded = ImageResult.FromMemory(bytes, ColorComponents.RedGreenBlueAlpha);
-        return new TextureData(decoded.Width, decoded.Height, decoded.Data);
     }
 
     private static void AddUris(JsonElement root, string arrayName, string folder, List<string> files)

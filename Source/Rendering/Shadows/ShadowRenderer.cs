@@ -4,23 +4,22 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Meshes;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering.Shadows;
 
 /// <summary>Draws the depth of every mesh into the shadow atlas, once per shadow view, leaving the atlas ready to sample.</summary>
 internal sealed class ShadowRenderer : IDisposable
 {
-    private const string ShaderName = "Shadow.hlsl";
+    private const string ShaderName = "Shadow";
 
     private readonly IPipeline _pipeline;
 
-    public ShadowRenderer(IGraphicsDevice device, IShaderCompiler compiler)
+    public ShadowRenderer(IGraphicsDevice device, ShaderLibrary shaders)
     {
         GraphicsPipelineDescription description = new()
         {
-            VertexShader = EmbeddedShaders.Compile(compiler, ShaderName, "VertexMain", ShaderStage.Vertex),
-            PixelShader = EmbeddedShaders.Compile(compiler, ShaderName, "PixelMain", ShaderStage.Pixel),
+            VertexShader = shaders.Load(ShaderName, "VertexMain"),
+            PixelShader = shaders.Load(ShaderName, "PixelMain"),
             ColorFormats = [],
             DepthFormat = SceneRenderer.DepthFormat,
             Depth = new DepthState(Test: true, Write: true),

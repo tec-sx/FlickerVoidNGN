@@ -1,5 +1,8 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
+
+using BCnEncoder.Shared;
+
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
@@ -328,6 +331,89 @@ public sealed class GraphicsDeviceTests : IDisposable
         byte[] grey = BitConverter.GetBytes(last[0]);
         grey[0].Should().BeInRange(126, 129);
         grey[3].Should().Be(255);
+    }
+
+    [Fact]
+    public void UploadsEveryLevelGivenInsteadOfFilteringThem()
+    {
+        using IGraphicsDevice device = CreateDevice();
+
+        // The 1x1 level is green, which filtering the black and white 2x2 level could never give.
+        uint black = GraphicsDeviceTestsBuilder.Rgba(0, 0, 0, 255);
+        uint white = GraphicsDeviceTestsBuilder.Rgba(255, 255, 255, 255);
+        uint green = GraphicsDeviceTestsBuilder.Rgba(0, 255, 0, 255);
+        uint[] texels = [black, white, white, black, green];
+        byte[] data = MemoryMarshal.AsBytes(texels.AsSpan()).ToArray();
+        TextureDescription description = new(2, 2, PixelFormat.Rgba8UNorm, TextureUsage.ShaderRead | TextureUsage.CopySource) { MipLevels = 2 };
+        using ITexture texture = device.CreateTexture(description, data);
+
+        uint[] top = GraphicsDeviceTestsBuilder.ReadPixels(device, texture);
+        uint[] last = GraphicsDeviceTestsBuilder.ReadPixels(device, texture, mipLevel: 1);
+
+        top.Should().Equal(black, white, white, black);
+        last.Should().Equal(green);
+    }
+
+    [Fact]
+    public void SamplesABlockCompressedTexture()
+    {
+        using IGraphicsDevice device = CreateDevice();
+        GraphicsDeviceTestsBuilder builder = _builder!;
+
+        // A 4x4 orange texture is one BC7 block; its 2x2 and 1x1 levels are a block each too.
+        BCnEncoder.Encoder.BcEncoder encoder = new(CompressionFormat.Bc7);
+        encoder.OutputOptions.GenerateMipMaps = true;
+        byte[] orange = [.. Enumerable.Repeat<byte[]>([255, 128, 0, 255], 16).SelectMany(texel => texel)];
+        byte[][] levels = encoder.EncodeToRawBytes(orange, 4, 4, BCnEncoder.Encoder.PixelFormat.Rgba32);
+        byte[] data = [.. levels.SelectMany(level => level)];
+        TextureDescription textureDescription = new(4, 4, PixelFormat.Bc7UNorm, TextureUsage.ShaderRead) { MipLevels = levels.Length };
+        SamplerDescription samplerDescription = new(SamplerFilter.Point, SamplerAddressMode.Clamp);
+        using ITexture texture = device.CreateTexture(textureDescription, data);
+        using ISampler sampler = device.CreateSampler(samplerDescription);
+        using ITexture target = GraphicsDeviceTestsBuilder.CreateTarget(device);
+        using IPipeline pipeline = builder.CreatePipeline(device, TestShaders.FullScreenVertex, TestShaders.TexturedPixel);
+        using ICommandList commands = device.CreateCommandList();
+
+        commands.Begin();
+        GraphicsDeviceTestsBuilder.BeginRendering(commands, target, Vector4.Zero);
+        commands.SetPipeline(pipeline);
+        DrawConstants constants = new(0, texture.BindlessIndex, sampler.BindlessIndex, 0, Vector4.Zero);
+        commands.PushConstants(constants);
+        commands.Draw(3);
+        commands.EndRendering();
+        commands.End();
+        device.Submit(commands);
+
+        uint[] pixels = GraphicsDeviceTestsBuilder.ReadPixels(device, target);
+        levels.Should().HaveCount(3);
+        foreach (uint pixel in pixels)
+        {
+            byte[] channels = BitConverter.GetBytes(pixel);
+            channels[0].Should().BeInRange(253, 255);
+            channels[1].Should().BeInRange(126, 130);
+            channels[2].Should().BeInRange(0, 2);
+        }
+    }
+
+    [Theory]
+    [InlineData(PixelFormat.Rgba8UNorm, 10, 3, 40, 3)]
+    [InlineData(PixelFormat.R8UNorm, 5, 2, 5, 2)]
+    [InlineData(PixelFormat.Bc7UNormSrgb, 10, 10, 48, 3)]
+    [InlineData(PixelFormat.Bc7UNorm, 1, 1, 16, 1)]
+    public void MeasuresRowsInBlocksOfCompressedFormats(PixelFormat format, int width, int height, int rowSize, int rowCount)
+    {
+        format.GetRowSize(width).Should().Be(rowSize);
+        format.GetRowCount(height).Should().Be(rowCount);
+    }
+
+    [Fact]
+    public void MeasuresTheDataOfEveryLevel()
+    {
+        TextureDescription description = new(10, 10, PixelFormat.Bc7UNorm, TextureUsage.ShaderRead) { MipLevels = 4 };
+
+        // 10x10, 5x5, 2x2 and 1x1 texels are 3x3, 2x2, 1 and 1 blocks of 16 bytes.
+        description.GetLevelSize(1).Should().Be(64);
+        description.GetDataSize().Should().Be((9 + 4 + 1 + 1) * 16);
     }
 
     [Theory]

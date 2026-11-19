@@ -5,7 +5,6 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Rendering.PostProcessing;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
@@ -16,9 +15,9 @@ internal sealed class OpaquePass : IRenderPass
 
     private readonly IPipeline _pipeline;
 
-    public OpaquePass(IGraphicsDevice device, IShaderCompiler compiler)
+    public OpaquePass(IGraphicsDevice device, ShaderLibrary shaders)
     {
-        _pipeline = MeshDrawing.CreatePipeline(device, compiler, "PixelMain", [ScreenTargets.HdrFormat], "Scene");
+        _pipeline = MeshDrawing.CreatePipeline(device, shaders, "PixelMain", [ScreenTargets.HdrFormat], "Scene");
     }
 
     public void Prepare(RenderContext context)

@@ -100,4 +100,39 @@ public sealed class DxcShaderCompilerTests : IDisposable
 
         result.Succeeded.Should().BeTrue(result.Messages);
     }
+
+    [Fact]
+    public void ReadsIncludesNextToTheShaderAndInIncludeFolders()
+    {
+        using TemporaryFolder folder = new();
+        folder.Write("Shaders/Colors.hlsli", "float4 Red() { return float4(1, 0, 0, 1); }");
+        folder.Write("Common/Math.hlsli", "float Twice(float value) { return value * 2; }");
+        const string source = """
+            #include "Colors.hlsli"
+            #include "Math.hlsli"
+
+            float4 main() : SV_Position
+            {
+                return Red() * Twice(1);
+            }
+            """;
+        string name = folder.FullPath("Shaders/Main.hlsl");
+        string includeFolder = folder.FullPath("Common");
+        ShaderSource shader = new(source, "main", ShaderStage.Vertex) { Name = name, IncludeDirectories = [includeFolder] };
+
+        ShaderCompileResult result = _compiler.Compile(shader);
+
+        result.Succeeded.Should().BeTrue(result.Messages);
+    }
+
+    [Fact]
+    public void AMissingIncludeFails()
+    {
+        ShaderSource shader = new("#include \"Missing.hlsli\"\nfloat4 main() : SV_Position { return 0; }", "main", ShaderStage.Vertex);
+
+        ShaderCompileResult result = _compiler.Compile(shader);
+
+        result.Succeeded.Should().BeFalse();
+        result.Messages.Should().Contain("Missing.hlsli");
+    }
 }

@@ -3,7 +3,6 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Textures;
-using FlickerVoid.Engine.Shaders;
 using FlickerVoid.Samples.TexturedMesh;
 
 using Microsoft.Extensions.Logging;
@@ -19,7 +18,6 @@ internal sealed class ViewportRenderer : IDisposable
 
     private readonly ILoggerFactory _loggerFactory;
     private readonly VulkanGraphicsDevice _device;
-    private readonly DxcShaderCompiler _compiler = new();
     private readonly CubeRenderer _cube;
     private readonly ICommandList _commands;
     private ITexture? _depth;
@@ -29,7 +27,7 @@ internal sealed class ViewportRenderer : IDisposable
         _loggerFactory = LoggerFactory.Create(static logging => logging.AddSimpleConsole());
         GraphicsDeviceOptions options = new() { Validation = validation };
         _device = new VulkanGraphicsDevice(options, _loggerFactory);
-        _cube = new CubeRenderer(_device, _compiler, SharedFormat);
+        _cube = new CubeRenderer(_device, SharedFormat);
         _commands = _device.CreateCommandList();
     }
 
@@ -74,7 +72,6 @@ internal sealed class ViewportRenderer : IDisposable
         Target?.Dispose();
         _depth?.Dispose();
         _cube.Dispose();
-        _compiler.Dispose();
         _device.Dispose();
         _loggerFactory.Dispose();
     }

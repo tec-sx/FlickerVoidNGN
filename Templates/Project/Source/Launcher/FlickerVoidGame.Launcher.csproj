@@ -12,4 +12,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
+  <!-- Builds content: the shaders of the engine modules referenced here, and any FlickerVoidContent folders listed above. -->
+  <Import Project="$(FlickerVoidEngine)Source/Builder/FlickerVoid.Engine.Builder.targets" />
 </Project>

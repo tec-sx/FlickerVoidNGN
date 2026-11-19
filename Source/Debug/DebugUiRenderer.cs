@@ -7,7 +7,6 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
-using FlickerVoid.Engine.Shaders;
 
 using Hexa.NET.ImGui;
 
@@ -33,14 +32,14 @@ internal sealed unsafe class DebugUiRenderer : IDisposable
     private readonly Dictionary<int, ITexture> _textures = [];
     private int _slot;
 
-    public DebugUiRenderer(IGraphicsDevice device, IShaderCompiler compiler, PixelFormat targetFormat)
+    public DebugUiRenderer(IGraphicsDevice device, ShaderLibrary shaders, PixelFormat targetFormat)
     {
         _device = device;
         _linearOutput = targetFormat is PixelFormat.Bgra8UNormSrgb or PixelFormat.Rgba8UNormSrgb;
         GraphicsPipelineDescription description = new()
         {
-            VertexShader = EmbeddedShaders.Compile(compiler, "DebugUi.hlsl", "VertexMain", ShaderStage.Vertex),
-            PixelShader = EmbeddedShaders.Compile(compiler, "DebugUi.hlsl", "PixelMain", ShaderStage.Pixel),
+            VertexShader = shaders.Load("DebugUi", "VertexMain"),
+            PixelShader = shaders.Load("DebugUi", "PixelMain"),
             ColorFormats = [targetFormat],
             CullMode = CullMode.None,
             Blend = BlendMode.AlphaBlend,

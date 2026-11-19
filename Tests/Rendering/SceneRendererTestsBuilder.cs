@@ -11,15 +11,14 @@ using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
-using FlickerVoid.Engine.Shaders;
 
 using Microsoft.Extensions.Logging;
 
-using SharpGLTF.Schema2;
 
 namespace FlickerVoid.Engine.Rendering.Tests;
 
@@ -32,7 +31,6 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
 
     private readonly RecordingLoggerProvider _logs = new();
     private readonly ILoggerFactory _loggerFactory;
-    private readonly DxcShaderCompiler _compiler = new();
     private readonly string _contentFolder;
     private readonly ContentManager _content;
     private readonly Game _game;
@@ -59,39 +57,17 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         _content = new ContentManager(_contentFolder);
     }
 
-    /// <summary>Writes a .glb built by the importer tests' builder into the content folder.</summary>
-    public SceneRendererTestsBuilder WithModel(string path, Action<GltfImporterTestsBuilder> build)
+    /// <summary>Writes a model as the content build leaves one named <paramref name="path"/>: baked, with the .model extension.</summary>
+    public SceneRendererTestsBuilder WithModel(string path, Action<TestModelBuilder> build)
     {
-        GltfImporterTestsBuilder model = new();
+        TestModelBuilder model = new();
         build(model);
-        ModelRoot root = model.BuildModel();
-        string fullPath = Path.Combine(_contentFolder, path);
-        root.SaveGLB(fullPath);
+        ModelData data = model.Build();
+        string builtPath = Path.ChangeExtension(path, ".model");
+        string fullPath = Path.Combine(_contentFolder, builtPath);
+        using FileStream stream = File.Create(fullPath);
+        ModelFile.Write(data, stream);
         return this;
-    }
-
-    /// <summary>Writes a .gltf with its buffers and images as files beside it into the content folder.</summary>
-    public SceneRendererTestsBuilder WithGltfModel(string path, Action<GltfImporterTestsBuilder> build)
-    {
-        GltfImporterTestsBuilder model = new();
-        build(model);
-        ModelRoot root = model.BuildModel();
-        string fullPath = Path.Combine(_contentFolder, path);
-        root.SaveGLTF(fullPath);
-        return this;
-    }
-
-    /// <summary>Replaces every PNG in the content folder with the given one and returns their content paths.</summary>
-    public IReadOnlyList<string> OverwriteImages(string base64Png)
-    {
-        byte[] png = Convert.FromBase64String(base64Png);
-        string[] images = Directory.GetFiles(_contentFolder, "*.png");
-        foreach (string image in images)
-        {
-            File.WriteAllBytes(image, png);
-        }
-
-        return [.. images.Select(Path.GetFileName).OfType<string>()];
     }
 
     /// <summary>Reports a content file changed, as the content watcher would.</summary>
@@ -100,29 +76,18 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         _content.NotifyChanged(path);
     }
 
-    /// <summary>Writes an uncompressed TGA from Rgba8 pixels, top row first, into the content folder.</summary>
+    /// <summary>
+    /// Writes Rgba8 pixels, top row first, as the content build leaves a texture named <paramref name="path"/>: an sRGB DDS
+    /// with the .dds extension, uncompressed so the pixels stay exact.
+    /// </summary>
     public SceneRendererTestsBuilder WithTexture(string path, int width, int height, uint[] pixels)
     {
-        byte[] file = new byte[18 + (pixels.Length * 4)];
-        file[2] = 2;
-        file[12] = (byte)width;
-        file[13] = (byte)(width >> 8);
-        file[14] = (byte)height;
-        file[15] = (byte)(height >> 8);
-        file[16] = 32;
-        file[17] = 0x28;
-        for (int index = 0; index < pixels.Length; index++)
-        {
-            (byte red, byte green, byte blue) = Channels(pixels[index]);
-            int offset = 18 + (index * 4);
-            file[offset] = blue;
-            file[offset + 1] = green;
-            file[offset + 2] = red;
-            file[offset + 3] = (byte)(pixels[index] >> 24);
-        }
-
-        string fullPath = Path.Combine(_contentFolder, path);
-        File.WriteAllBytes(fullPath, file);
+        byte[] data = MemoryMarshal.AsBytes(pixels.AsSpan()).ToArray();
+        DdsImage image = new(width, height, PixelFormat.Rgba8UNormSrgb, 1, data);
+        string builtPath = Path.ChangeExtension(path, ".dds");
+        string fullPath = Path.Combine(_contentFolder, builtPath);
+        using FileStream stream = File.Create(fullPath);
+        image.Write(stream);
         return this;
     }
 
@@ -185,7 +150,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     public uint[] Render()
     {
         IGraphicsDevice device = BuildDevice();
-        _renderer ??= new SceneRenderer(device, _compiler, _content, PixelFormat.Rgba8UNorm);
+        _renderer ??= new SceneRenderer(device, _content, PixelFormat.Rgba8UNorm);
         _renderer.Mood = BuildMood();
         _configure?.Invoke(_renderer);
 
@@ -220,7 +185,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     public IrradianceBaker BuildBaker()
     {
         IGraphicsDevice device = BuildDevice();
-        IrradianceBaker baker = new(device, _compiler, new ContentManager(_contentFolder));
+        IrradianceBaker baker = new(device, new ContentManager(_contentFolder));
         baker.Renderer.Mood = BuildMood();
         return baker;
     }
@@ -237,7 +202,6 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         _renderer?.Dispose();
         _device?.Dispose();
         _game.Dispose();
-        _compiler.Dispose();
         _loggerFactory.Dispose();
         Directory.Delete(_contentFolder, recursive: true);
         _logs.Errors.Should().BeEmpty("the device logged no errors");

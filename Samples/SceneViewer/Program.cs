@@ -27,7 +27,6 @@ using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
-using FlickerVoid.Engine.Shaders;
 using FlickerVoid.Samples.SceneViewer;
 
 using Microsoft.Extensions.Logging;
@@ -42,8 +41,8 @@ using Microsoft.Extensions.Logging;
 // --moods takes lighting mood files in the model's folder (Content/Moods/Day.json, Dusk.json and Night.json beside the
 // default room); N steps a fact through them, which mood rules turn into a blend to the next mood. --sun, --ambient and --fog override the mood.
 // --probes bakes an irradiance volume fitted to the model at startup and saves it beside the model as <model>.probes. Without a model it shows Content/Room.glb.
-// Files in the model's folder reload while the viewer runs: save a model, texture, scene or mood and it shows within a second.
-// To edit the sample's own content, pass the source copy (Samples/SceneViewer/Content/Room.glb), not the one beside the build.
+// Content reloads while the viewer runs: save a model, texture, scene or mood in Samples/SceneViewer/Content and the builder
+// rebuilds it beside the build, where it shows within a second. A model passed by path must be in a built content folder.
 string model = Path.Combine(AppContext.BaseDirectory, "Content", "Room.glb");
 bool validation = false;
 int frameLimit = 0;
@@ -110,7 +109,9 @@ for (int index = 0; index < args.Length; index++)
     }
 }
 
-if (!File.Exists(model))
+// The build bakes Room.glb into Room.model; content still names the model by its source.
+string bakedModel = Path.ChangeExtension(model, ".model");
+if (!File.Exists(model) && !File.Exists(bakedModel))
 {
     Console.Error.WriteLine($"{model} doesn't exist.");
     return 1;
@@ -123,7 +124,6 @@ ContentManager content = new(folder);
 using ILoggerFactory loggerFactory = LoggerFactory.Create(static logging => logging.AddSimpleConsole());
 GraphicsDeviceOptions options = new() { Validation = validation };
 using VulkanGraphicsDevice device = new(options, loggerFactory);
-using DxcShaderCompiler compiler = new();
 using Game game = new(loggerFactory);
 game.AddRendering();
 string shown = fileName;
@@ -177,7 +177,7 @@ LightingMood startMood = director?.Current ?? new LightingMood();
 LightingMood configuredMood = Configure(startMood);
 if (bakeProbes)
 {
-    ModelProbes.Bake(device, compiler, content, game.World, model, configuredMood);
+    ModelProbes.Bake(device, content, game.World, model, configuredMood);
 }
 
 LightingMoodDirector? CreateDirector()
@@ -193,7 +193,7 @@ LightingMoodDirector? CreateDirector()
 
 SceneRenderer CreateRenderer(PixelFormat format)
 {
-    return new SceneRenderer(device, compiler, content, format) { Mood = configuredMood };
+    return new SceneRenderer(device, content, format) { Mood = configuredMood };
 }
 
 LightingMood Configure(LightingMood mood)
@@ -220,7 +220,7 @@ LightingMood Configure(LightingMood mood)
 DebugUi CreateDebugUi(PixelFormat format, SceneRenderer sceneRenderer)
 {
     string settings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FlickerVoid", "SceneViewer");
-    DebugUi ui = new(device, compiler, window, format, settings);
+    DebugUi ui = new(device, window, format, settings);
     ui.AddEngineWindows(game, device);
     ui.AddRenderingWindows(sceneRenderer, game.World);
     ViewerWindow viewer = new(game.World, camera, walkers, facts, moodFiles);
@@ -236,7 +236,7 @@ DebugUi CreateDebugUi(PixelFormat format, SceneRenderer sceneRenderer)
 }
 
 using SceneRenderSystem renderer = new(window, device, game.World, CreateRenderer, frameLimit, CreateDebugUi);
-game.FrameSystems.Add(new ContentWatcher(content));
+game.FrameSystems.Add(new ContentWatcher(content, game.Schemas));
 game.FrameSystems.Add(orbit);
 game.FrameSystems.Add(walkers);
 if (director is not null)
