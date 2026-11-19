@@ -32,7 +32,8 @@ internal sealed class ContentWatcherTestsBuilder : IDisposable
         return _watcher;
     }
 
-    public string FullPath(string path) => Path.Combine(_content.RootDirectory, path);
+    /// <summary>The full path the watcher reports for a content path, with the platform's separators.</summary>
+    public string FullPath(string path) => Path.GetFullPath(path, _content.RootDirectory);
 
     public void WriteFile(string path, string text)
     {
