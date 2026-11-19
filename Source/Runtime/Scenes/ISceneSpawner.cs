@@ -13,4 +13,11 @@ public interface ISceneSpawner
 
     /// <summary>Creates the scene's entities in order; if one fails, destroys those already created and throws.</summary>
     IReadOnlyList<Entity> Spawn(SceneData scene, World world);
+
+    /// <summary>
+    /// Brings entities spawned from <paramref name="previous"/> in line with <paramref name="current"/>, a newer version of the
+    /// same file: entities match by name (unnamed ones by identical data), only components whose data changed are set, and
+    /// entities the file added or removed are created or destroyed. Returns the entities in the order of <paramref name="current"/>.
+    /// </summary>
+    IReadOnlyList<Entity> Patch(SceneData previous, SceneData current, IReadOnlyList<Entity> entities, World world);
 }

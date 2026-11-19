@@ -34,6 +34,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     private readonly ILoggerFactory _loggerFactory;
     private readonly DxcShaderCompiler _compiler = new();
     private readonly string _contentFolder;
+    private readonly ContentManager _content;
     private readonly Game _game;
     private IGraphicsDevice? _device;
     private SceneRenderer? _renderer;
@@ -55,6 +56,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         string folderName = Path.GetRandomFileName();
         _contentFolder = Path.Combine(Path.GetTempPath(), folderName);
         Directory.CreateDirectory(_contentFolder);
+        _content = new ContentManager(_contentFolder);
     }
 
     /// <summary>Writes a .glb built by the importer tests' builder into the content folder.</summary>
@@ -66,6 +68,36 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         string fullPath = Path.Combine(_contentFolder, path);
         root.SaveGLB(fullPath);
         return this;
+    }
+
+    /// <summary>Writes a .gltf with its buffers and images as files beside it into the content folder.</summary>
+    public SceneRendererTestsBuilder WithGltfModel(string path, Action<GltfImporterTestsBuilder> build)
+    {
+        GltfImporterTestsBuilder model = new();
+        build(model);
+        ModelRoot root = model.BuildModel();
+        string fullPath = Path.Combine(_contentFolder, path);
+        root.SaveGLTF(fullPath);
+        return this;
+    }
+
+    /// <summary>Replaces every PNG in the content folder with the given one and returns their content paths.</summary>
+    public IReadOnlyList<string> OverwriteImages(string base64Png)
+    {
+        byte[] png = Convert.FromBase64String(base64Png);
+        string[] images = Directory.GetFiles(_contentFolder, "*.png");
+        foreach (string image in images)
+        {
+            File.WriteAllBytes(image, png);
+        }
+
+        return [.. images.Select(Path.GetFileName).OfType<string>()];
+    }
+
+    /// <summary>Reports a content file changed, as the content watcher would.</summary>
+    public void NotifyChanged(string path)
+    {
+        _content.NotifyChanged(path);
     }
 
     /// <summary>Writes an uncompressed TGA from Rgba8 pixels, top row first, into the content folder.</summary>
@@ -153,7 +185,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     public uint[] Render()
     {
         IGraphicsDevice device = BuildDevice();
-        _renderer ??= new SceneRenderer(device, _compiler, new ContentManager(_contentFolder), PixelFormat.Rgba8UNorm);
+        _renderer ??= new SceneRenderer(device, _compiler, _content, PixelFormat.Rgba8UNorm);
         _renderer.Mood = BuildMood();
         _configure?.Invoke(_renderer);
 

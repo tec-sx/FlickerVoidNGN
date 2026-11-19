@@ -18,6 +18,9 @@ namespace FlickerVoid.Engine.Rendering.Tests;
 internal sealed class GltfImporterTestsBuilder
 {
     /// <summary>A 2x1 PNG: a red pixel, then a blue one.</summary>
+    /// <summary>A 2x1 PNG: a blue pixel, then a red one.</summary>
+    public const string BlueRedPng = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAAEElEQVR4nGNgYPj//z+QAAAP+QP9HTMzcAAAAABJRU5ErkJggg==";
+
     public const string RedBluePng = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGP4z8AAQv8BD/kD/YURmXYAAAAASUVORK5CYII=";
 
     private readonly List<(Vector3 Position, Vector2 Uv)[]> _triangles = [];

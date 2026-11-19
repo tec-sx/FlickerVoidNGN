@@ -15,14 +15,13 @@ public sealed class ContentManager : IContentManager
         string fullRoot = Path.GetFullPath(rootDirectory);
         RootDirectory = Path.TrimEndingDirectorySeparator(fullRoot);
 
-        StringComparer comparer = StringComparer.Ordinal;
-        if (OperatingSystem.IsWindows())
-        {
-            comparer = StringComparer.OrdinalIgnoreCase;
-        }
-
-        _loaded = new Dictionary<string, object>(comparer);
+        _loaded = new Dictionary<string, object>(PathComparer);
     }
+
+    /// <summary>Compares full paths as the file system does: ignoring case on Windows.</summary>
+    public static StringComparer PathComparer { get; } = CreatePathComparer();
+
+    public event Action<string>? Changed;
 
     public string RootDirectory { get; }
 
@@ -51,6 +50,13 @@ public sealed class ContentManager : IContentManager
         return _loaded.Remove(fullPath);
     }
 
+    public void NotifyChanged(string path)
+    {
+        string fullPath = GetFullPath(path);
+        _loaded.Remove(fullPath);
+        Changed?.Invoke(fullPath);
+    }
+
     public string GetFullPath(string path)
     {
         string combined = Path.Combine(RootDirectory, path);
@@ -63,6 +69,16 @@ public sealed class ContentManager : IContentManager
         }
 
         return fullPath;
+    }
+
+    private static StringComparer CreatePathComparer()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return StringComparer.OrdinalIgnoreCase;
+        }
+
+        return StringComparer.Ordinal;
     }
 
     private static T Read<T>(string fullPath, string path, JsonTypeInfo<T> typeInfo)
