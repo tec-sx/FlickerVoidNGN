@@ -7,7 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace FlickerVoid.Engine.Editor.Inspector;
 
 /// <summary>A linear RGB colour property, marked with <c>[Color]</c>, picked as the sRGB colour it looks like on screen.</summary>
-public sealed partial class ColorFieldViewModel(ComponentProperty property) : FieldViewModel(property)
+public sealed partial class ColorFieldViewModel(IEditableValue property) : FieldViewModel(property)
 {
     [ObservableProperty]
     public partial Color Color { get; set; }

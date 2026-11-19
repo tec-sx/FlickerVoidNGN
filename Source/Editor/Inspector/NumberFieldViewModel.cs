@@ -8,7 +8,7 @@ namespace FlickerVoid.Engine.Editor.Inspector;
 /// <summary>A float or integer property, kept within the <see cref="RangeAttribute"/> the component gives it.</summary>
 public sealed partial class NumberFieldViewModel : FieldViewModel
 {
-    public NumberFieldViewModel(ComponentProperty property)
+    public NumberFieldViewModel(IEditableValue property)
         : base(property)
     {
         RangeAttribute? range = property.GetAttribute<RangeAttribute>();
@@ -22,6 +22,13 @@ public sealed partial class NumberFieldViewModel : FieldViewModel
     public double? Minimum { get; }
 
     public double? Maximum { get; }
+
+    /// <summary>Whether the value has both limits, so a slider can span them.</summary>
+    public bool HasRange => Minimum is not null && Maximum is not null;
+
+    public double SliderMinimum => Minimum ?? 0;
+
+    public double SliderMaximum => Maximum ?? 1;
 
     [ObservableProperty]
     public partial double Value { get; set; }

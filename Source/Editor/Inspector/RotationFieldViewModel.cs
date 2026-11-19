@@ -8,7 +8,7 @@ namespace FlickerVoid.Engine.Editor.Inspector;
 /// A <see cref="Quaternion"/> property edited as angles in degrees about X (pitch), Y (yaw) and Z (roll), in the order
 /// <see cref="Quaternion.CreateFromYawPitchRoll"/> applies them.
 /// </summary>
-public sealed partial class RotationFieldViewModel(ComponentProperty property) : FieldViewModel(property)
+public sealed partial class RotationFieldViewModel(IEditableValue property) : FieldViewModel(property)
 {
     private const float SameRotation = 0.999999f;
 

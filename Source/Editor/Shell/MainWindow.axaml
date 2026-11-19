@@ -18,6 +18,8 @@
         <ToggleButton Content="Perspective" IsChecked="{Binding Viewport.IsPerspective}"
                       ToolTip.Tip="Perspective or orthographic view; both frame the same height at the pivot." />
         <ToggleButton Content="Grid" IsChecked="{Binding Viewport.ShowGrid}" />
+        <Separator Width="1" Margin="4,0" />
+        <Button Content="Materials" Click="HandleMaterialsClick" ToolTip.Tip="Open the material editor." />
         <ToggleButton Content="Game View" IsChecked="{Binding Viewport.IsGameView}"
                       ToolTip.Tip="Game View (G): hides the grid, icons, selection and gizmo to show the world as the game will." />
       </StackPanel>
