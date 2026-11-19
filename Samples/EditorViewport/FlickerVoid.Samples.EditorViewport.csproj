@@ -14,6 +14,6 @@
   <!-- The cube comes from the textured mesh sample. -->
   <ItemGroup>
     <Compile Include="../TexturedMesh/Cube.cs;../TexturedMesh/CubeRenderer.cs;../TexturedMesh/MeshConstants.cs;../TexturedMesh/PaintedTexture.cs" LinkBase="TexturedMesh" />
-    <None Include="../TexturedMesh/Content/**" Link="Content/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <FlickerVoidContent Include="../TexturedMesh/Content" />
   </ItemGroup>
 </Project>

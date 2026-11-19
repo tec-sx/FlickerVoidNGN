@@ -9,6 +9,6 @@
     <ProjectReference Include="../../Source/Shaders/FlickerVoid.Engine.Shaders.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Content/**" CopyToOutputDirectory="PreserveNewest" />
+    <FlickerVoidContent Include="Content" />
   </ItemGroup>
 </Project>

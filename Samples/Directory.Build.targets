@@ -1,0 +1,3 @@
+<Project>
+  <Import Project="../Source/Builder/FlickerVoid.Engine.Builder.targets" />
+</Project>
