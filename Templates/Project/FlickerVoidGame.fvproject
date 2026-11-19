@@ -1,0 +1,4 @@
+{
+  "game": "Source/Launcher/FlickerVoidGame.Launcher.csproj",
+  "startupScene": "Scenes/Main.fvscene"
+}

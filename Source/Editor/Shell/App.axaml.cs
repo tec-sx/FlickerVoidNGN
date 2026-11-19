@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 
 using FlickerVoid.Engine.Editor.Inspector;
 using FlickerVoid.Engine.Editor.Scenes;
@@ -15,6 +16,7 @@ public sealed partial class App : Application
 {
     private ILoggerFactory? _loggerFactory;
     private EditorScene? _scene;
+    private DispatcherTimer? _poll;
 
     /// <summary>What to open, from the command line.</summary>
     public EditorOptions Options { get; init; } = new();
@@ -39,14 +41,22 @@ public sealed partial class App : Application
             InspectorViewModel inspector = new(_scene);
             MainWindowViewModel main = new(viewport, inspector);
             desktop.MainWindow = new MainWindow { DataContext = main };
+            _poll = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, HandlePoll);
+            _poll.Start();
             desktop.Exit += HandleExit;
         }
 
         base.OnFrameworkInitializationCompleted();
     }
 
+    private void HandlePoll(object? sender, EventArgs e)
+    {
+        _scene?.Poll();
+    }
+
     private void HandleExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
     {
+        _poll?.Stop();
         _scene?.Dispose();
         _loggerFactory?.Dispose();
     }

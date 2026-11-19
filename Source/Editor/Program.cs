@@ -1,15 +1,34 @@
 using Avalonia;
 
 using FlickerVoid.Engine.Editor;
+using FlickerVoid.Engine.Editor.Projects;
 using FlickerVoid.Engine.Editor.Shell;
 
-// The FlickerVoid editor. Usage: FlickerVoid.Engine.Editor [--content <built content folder> [--scene <scene file in it>]] [--validation].
+// The FlickerVoid editor. Usage: FlickerVoid.Engine.Editor [<project.fvproject> | --content <built content folder>] [--scene <scene>] [--validation].
+// A project is built first (its game builds its content), then the editor opens the built content and its startup scene.
 // Avalonia and the engine both run on Vulkan and share the viewport's texture; --validation turns on the Vulkan validation layer.
 EditorOptions? options = EditorOptions.Parse(args, out string? error);
 if (options is null)
 {
     Console.Error.WriteLine(error);
     return 2;
+}
+
+if (options.Project is not null)
+{
+    Console.WriteLine($"Building {options.Project}...");
+    try
+    {
+        DotnetProjectBuilder builder = new();
+        EditorProject project = EditorProject.Open(options.Project, builder);
+        string? scene = options.Scene ?? project.StartupScene;
+        options = options with { Content = project.ContentFolder, Scene = scene };
+    }
+    catch (Exception exception) when (exception is InvalidDataException or ProjectBuildException or IOException)
+    {
+        Console.Error.WriteLine(exception.Message);
+        return 1;
+    }
 }
 
 AppBuilder.Configure(() => new App { Options = options })

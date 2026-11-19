@@ -15,6 +15,7 @@ namespace FlickerVoid.Engine.Editor.Scenes;
 public sealed class EditorScene : IDisposable
 {
     private readonly SceneLoader _loader;
+    private readonly ContentWatcher _watcher;
 
     /// <summary>Opens an empty world over the content folder, or over the editor's own content without one.</summary>
     public EditorScene(ILoggerFactory loggerFactory, string? contentFolder)
@@ -26,6 +27,8 @@ public sealed class EditorScene : IDisposable
         ILogger<SceneLoader> logger = loggerFactory.CreateLogger<SceneLoader>();
         _loader = new SceneLoader(Game.Spawner, Content, Game.World, logger);
         Picker = new ScenePicker(Content);
+        _watcher = new ContentWatcher(Content, Game.Schemas);
+        _watcher.Initialize();
     }
 
     public Game Game { get; }
@@ -59,6 +62,16 @@ public sealed class EditorScene : IDisposable
         Opened?.Invoke();
     }
 
+    /// <summary>
+    /// Reports content files that changed on disk, so caches reload them; in a development build the watcher also keeps the
+    /// builder running over the source folders, so source edits made outside the editor arrive too. Call it often.
+    /// </summary>
+    public void Poll()
+    {
+        GameTime time = default;
+        _watcher.Update(in time);
+    }
+
     /// <summary>Writes the world into the open scene file; false when the world has no scene file yet.</summary>
     public bool Save()
     {
@@ -73,6 +86,7 @@ public sealed class EditorScene : IDisposable
 
     public void Dispose()
     {
+        _watcher.Dispose();
         Picker.Dispose();
         _loader.Dispose();
         Game.Dispose();

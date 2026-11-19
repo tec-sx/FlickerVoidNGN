@@ -2,9 +2,10 @@ namespace FlickerVoid.Engine.Editor.Assets;
 
 /// <summary>
 /// Lists the files and folders of a content folder for the asset browser, skipping hidden ones (a leading dot, such as the
-/// schemas and build caches), and tells each file's kind by its extension.
+/// schemas and build caches), and tells each file's kind by its extension. Paths are content paths: a source folder built into
+/// a folder of the content folder lists its files under that folder's path, the <paramref name="prefix"/>.
 /// </summary>
-public sealed class AssetCatalog(string root)
+public sealed class AssetCatalog(string root, string prefix = "")
 {
     private static readonly (string Suffix, AssetKind Kind)[] Suffixes =
     [
@@ -28,10 +29,25 @@ public sealed class AssetCatalog(string root)
 
     public string Root { get; } = root;
 
-    /// <summary>The content folder's visible folders as a tree, sorted by name.</summary>
+    /// <summary>The content path of <see cref="Root"/>, with forward slashes; empty for the content folder itself.</summary>
+    public string Prefix { get; } = prefix;
+
+    /// <summary>The visible folders as a tree, sorted by name, under a root named after the folder.</summary>
     public AssetFolder GetFolders()
     {
-        return ReadFolder(Root, "", "");
+        string name = Path.GetFileName(Path.TrimEndingDirectorySeparator(Root));
+        return ReadFolder(Root, Prefix, name);
+    }
+
+    /// <summary>Whether the content path is this catalog's root or below it.</summary>
+    public bool Holds(string path)
+    {
+        if (Prefix.Length == 0)
+        {
+            return true;
+        }
+
+        return path == Prefix || path.StartsWith(Prefix + "/", StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -40,7 +56,13 @@ public sealed class AssetCatalog(string root)
     /// </summary>
     public IReadOnlyList<AssetEntry> Find(string folder, bool recursive, AssetKind? kind, string text)
     {
-        string fullFolder = Path.Combine(Root, folder);
+        string local = folder;
+        if (Prefix.Length > 0)
+        {
+            local = folder.Length > Prefix.Length ? folder[(Prefix.Length + 1)..] : "";
+        }
+
+        string fullFolder = Path.Combine(Root, local);
         List<AssetEntry> found = [];
         if (!Directory.Exists(fullFolder))
         {
@@ -131,7 +153,13 @@ public sealed class AssetCatalog(string root)
     private string ToContentPath(string fullPath)
     {
         string relative = Path.GetRelativePath(Root, fullPath);
-        return relative.Replace(Path.DirectorySeparatorChar, '/');
+        string path = relative.Replace(Path.DirectorySeparatorChar, '/');
+        if (Prefix.Length == 0)
+        {
+            return path;
+        }
+
+        return $"{Prefix}/{path}";
     }
 
     private static bool IsHidden(string fullPath)

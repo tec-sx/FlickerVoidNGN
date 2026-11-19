@@ -149,4 +149,16 @@ public sealed class AssetBrowserViewModelTests : IDisposable
         browser.Assets.Should().BeEmpty();
         _builder.Exists("Room.fvscene").Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData("", "Room.glb")]
+    [InlineData("Shared", "Shared/Room.glb")]
+    public void ShowsTheSourceFoldersOfADevelopmentBuildByTheirContentPaths(string outputFolder, string path)
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Room.fvmodel").WithSourceFile(outputFolder, "Room.glb").Build();
+
+        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Kind == AssetKind.Model);
+
+        browser.Assets.Select(static asset => asset.Path).Should().Equal(path);
+    }
 }
