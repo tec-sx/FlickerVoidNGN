@@ -3,7 +3,7 @@ namespace FlickerVoid.Engine.Runtime.Content;
 /// <summary>
 /// Names the builder and the source folders a development build's content came from, so the running game can keep them built.
 /// The game's build writes it into the content folder as <see cref="FileName"/>, one <c>key=value</c> per line
-/// (<c>dotnet</c>, <c>builder</c>, and <c>folder=source|output folder under the content root</c>); published games leave it out.
+/// (<c>dotnet</c>, <c>builder</c>, and <c>folder=source|output folder under the content root</c>, or <c>engine=</c> for the engine's own); published games leave it out.
 /// </summary>
 public sealed class ContentBuildManifest
 {
@@ -60,10 +60,12 @@ public sealed class ContentBuildManifest
                     builder = value;
                     break;
                 case "folder":
+                case "engine":
                     string[] parts = value.Split('|');
                     string output = Path.GetFullPath(parts[1], root);
                     string trimmed = Path.TrimEndingDirectorySeparator(output);
-                    folders.Add(new ContentBuildFolder(parts[0], trimmed));
+                    bool engine = key == "engine";
+                    folders.Add(new ContentBuildFolder(parts[0], trimmed, engine));
                     break;
             }
         }

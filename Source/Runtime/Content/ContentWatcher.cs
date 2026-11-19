@@ -8,8 +8,9 @@ namespace FlickerVoid.Engine.Runtime.Content;
 
 /// <summary>
 /// Watches the content folder for files that change on disk and reports each one to the content manager once per frame, on
-/// the game thread, after its writes have settled and it can be read. In a development build it also runs the builder over
-/// the source folders (<see cref="ContentBuildProcess"/>), so a saved source file reaches the game the same way.
+/// the game thread, after its writes have settled and it can be read. In a development build (one with a
+/// <see cref="ContentBuildManifest"/>) it also writes the game's <see cref="ContentSchemas"/> into its source folders and runs
+/// the builder over them (<see cref="ContentBuildProcess"/>), so a saved source file reaches the game the same way.
 /// </summary>
 public sealed class ContentWatcher : ISystem<GameTime>
 {
@@ -17,14 +18,16 @@ public sealed class ContentWatcher : ISystem<GameTime>
     public static readonly TimeSpan SettleTime = TimeSpan.FromMilliseconds(100);
 
     private readonly IContentManager _content;
+    private readonly ContentSchemas? _schemas;
     private readonly Dictionary<string, long> _pending = [];
     private readonly List<string> _ready = [];
     private FileSystemWatcher? _watcher;
     private ContentBuildProcess? _builder;
 
-    public ContentWatcher(IContentManager content)
+    public ContentWatcher(IContentManager content, ContentSchemas? schemas = null)
     {
         _content = content;
+        _schemas = schemas;
     }
 
     public void Initialize()
@@ -38,7 +41,7 @@ public sealed class ContentWatcher : ISystem<GameTime>
         _watcher.Created += HandleChanged;
         _watcher.Renamed += HandleRenamed;
         _watcher.EnableRaisingEvents = true;
-        _builder = ContentBuildProcess.Start(_content.RootDirectory);
+        StartBuilder();
     }
 
     public void BeforeUpdate(in GameTime t)
@@ -79,6 +82,26 @@ public sealed class ContentWatcher : ISystem<GameTime>
         {
             return false;
         }
+    }
+
+    private void StartBuilder()
+    {
+        ContentBuildManifest? manifest = ContentBuildManifest.Find(_content.RootDirectory);
+        if (manifest is null)
+        {
+            return;
+        }
+
+        foreach (ContentBuildFolder folder in manifest.Folders)
+        {
+            if (!folder.Engine)
+            {
+                _schemas?.Write(folder.Source);
+            }
+        }
+
+        string manifestPath = Path.Combine(_content.RootDirectory, ContentBuildManifest.FileName);
+        _builder = ContentBuildProcess.Start(manifest, manifestPath);
     }
 
     /// <summary>Moves the files whose last write is older than the settle time and that can be opened into the ready list; files still locked wait for a later frame.</summary>

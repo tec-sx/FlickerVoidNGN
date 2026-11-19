@@ -26,8 +26,8 @@
       <_FlickerVoidReferences>;@(ReferencePath->'%(Filename)');</_FlickerVoidReferences>
     </PropertyGroup>
     <ItemGroup>
-      <_FlickerVoidContentToBuild Include="@(FlickerVoidContent)" />
-      <_FlickerVoidContentToBuild Include="@(FlickerVoidEngineContent)" Condition="$(_FlickerVoidReferences.Contains(';%(FlickerVoidEngineContent.Assembly);'))" />
+      <_FlickerVoidEngineContentToBuild Include="@(FlickerVoidEngineContent)" Condition="$(_FlickerVoidReferences.Contains(';%(FlickerVoidEngineContent.Assembly);'))" />
+      <_FlickerVoidContentToBuild Include="@(FlickerVoidContent);@(_FlickerVoidEngineContentToBuild)" />
     </ItemGroup>
     <MSBuild Projects="$(MSBuildThisFileDirectory)FlickerVoid.Engine.Builder.csproj"
              Targets="GetTargetPath"
@@ -46,7 +46,8 @@
     <ItemGroup>
       <_FlickerVoidManifestLine Include="dotnet=$(_FlickerVoidDotnet)" />
       <_FlickerVoidManifestLine Include="builder=$(_FlickerVoidBuilderPath)" />
-      <_FlickerVoidManifestLine Include="@(_FlickerVoidContentToBuild->'folder=%(FullPath)|%(OutputFolder)')" />
+      <_FlickerVoidManifestLine Include="@(FlickerVoidContent->'folder=%(FullPath)|%(OutputFolder)')" />
+      <_FlickerVoidManifestLine Include="@(_FlickerVoidEngineContentToBuild->'engine=%(FullPath)|%(OutputFolder)')" />
     </ItemGroup>
     <WriteLinesToFile File="$(_FlickerVoidBuiltContent).content-build"
                       Lines="@(_FlickerVoidManifestLine)"

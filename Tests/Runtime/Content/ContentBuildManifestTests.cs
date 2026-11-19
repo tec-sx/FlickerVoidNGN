@@ -18,7 +18,7 @@ public sealed class ContentBuildManifestTests : IDisposable
             "dotnet=/usr/bin/dotnet",
             "builder=/engine/Builder.dll",
             "folder=/game/Content|",
-            "folder=/engine/Rendering/Shaders|Engine/Rendering");
+            "engine=/engine/Rendering/Shaders|Engine/Rendering");
 
         ContentBuildManifest? manifest = _builder.Find();
 
@@ -28,7 +28,7 @@ public sealed class ContentBuildManifestTests : IDisposable
         string shaders = _builder.FullPath("Engine/Rendering");
         manifest.Folders.Should().Equal(
             new ContentBuildFolder("/game/Content", _builder.RootDirectory),
-            new ContentBuildFolder("/engine/Rendering/Shaders", shaders));
+            new ContentBuildFolder("/engine/Rendering/Shaders", shaders, Engine: true));
     }
 
     [Fact]
