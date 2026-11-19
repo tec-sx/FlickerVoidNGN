@@ -26,6 +26,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
     private readonly GCHandle _self;
     private readonly Silk.NET.Vulkan.Semaphore _timeline;
     private readonly PhysicalDeviceMemoryProperties _memoryProperties;
+    private readonly Dictionary<ulong, ulong> _allocations = [];
     private readonly Queue<(ulong Value, Action Release)> _releases = new();
     private readonly VulkanCommandList _uploadCommands;
     private readonly List<IDisposable> _placeholders = [];
@@ -319,7 +320,49 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             MemoryTypeIndex = typeIndex,
         };
         VulkanResult.Check(Vk.AllocateMemory(Handle, &info, null, out DeviceMemory memory));
+        lock (_allocations)
+        {
+            _allocations[memory.Handle] = requirements.Size;
+        }
+
         return memory;
+    }
+
+    /// <summary>Frees memory from <see cref="AllocateMemory"/>.</summary>
+    internal void FreeMemory(DeviceMemory memory)
+    {
+        lock (_allocations)
+        {
+            _allocations.Remove(memory.Handle);
+        }
+
+        Vk.FreeMemory(Handle, memory, null);
+    }
+
+    public GraphicsInfo GetInfo()
+    {
+        long deviceMemory = 0;
+        for (int index = 0; index < _memoryProperties.MemoryHeapCount; index++)
+        {
+            MemoryHeap heap = _memoryProperties.MemoryHeaps[index];
+            if (heap.Flags.HasFlag(MemoryHeapFlags.DeviceLocalBit))
+            {
+                deviceMemory += (long)heap.Size;
+            }
+        }
+
+        long allocated;
+        int count;
+        lock (_allocations)
+        {
+            allocated = (long)_allocations.Values.Sum(static size => (decimal)size);
+            count = _allocations.Count;
+        }
+
+        Vk.GetPhysicalDeviceProperties(PhysicalDevice, out PhysicalDeviceProperties properties);
+        uint packed = properties.ApiVersion;
+        string version = $"{(packed >> 22) & 0x7F}.{(packed >> 12) & 0x3FF}.{packed & 0xFFF}";
+        return new GraphicsInfo(AdapterName, version, deviceMemory, allocated, count);
     }
 
     internal void SetName(ObjectType type, ulong handle, string? name)

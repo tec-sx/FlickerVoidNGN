@@ -15,14 +15,16 @@ public sealed class CircleWalkSystem : ISystem<GameTime>
     private static readonly QueryDescription Walkers = new QueryDescription().WithAll<Transform, MeshAnimator>();
 
     private readonly World _world;
-    private readonly float _speed;
 
     /// <summary>Walks at <paramref name="speed"/> world units per second.</summary>
     public CircleWalkSystem(World world, float speed)
     {
         _world = world;
-        _speed = speed;
+        Speed = speed;
     }
+
+    /// <summary>How fast they walk, in world units per second.</summary>
+    public float Speed { get; set; }
 
     public void Initialize()
     {
@@ -35,7 +37,7 @@ public sealed class CircleWalkSystem : ISystem<GameTime>
     public void Update(in GameTime t)
     {
         float seconds = (float)t.Elapsed.TotalSeconds;
-        float speed = _speed;
+        float speed = Speed;
         _world.Query(in Walkers, (ref Transform transform) =>
         {
             Vector3 position = transform.Position;

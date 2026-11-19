@@ -5,6 +5,9 @@ public interface IGraphicsDevice : IDisposable
 {
     string AdapterName { get; }
 
+    /// <summary>The adapter, the API version and the memory the device's resources hold now.</summary>
+    GraphicsInfo GetInfo();
+
     /// <summary>Creates a buffer; initial data is copied in before the call returns, leaving a GPU buffer in its shader-read or index state.</summary>
     IBuffer CreateBuffer(in BufferDescription description, ReadOnlySpan<byte> initialData = default);
 

@@ -10,6 +10,9 @@
   <ItemGroup Label="Physics">
     <PackageVersion Include="BepuPhysics" Version="2.5.0-beta.33" />
   </ItemGroup>
+  <ItemGroup Label="Debug">
+    <PackageVersion Include="Hexa.NET.ImGui" Version="2.2.9" />
+  </ItemGroup>
   <ItemGroup Label="Platform">
     <PackageVersion Include="Silk.NET.Input.Sdl" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Windowing.Sdl" Version="2.23.0" />

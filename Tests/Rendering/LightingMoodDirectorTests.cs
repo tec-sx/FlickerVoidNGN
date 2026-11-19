@@ -74,6 +74,34 @@ public sealed class LightingMoodDirectorTests : IDisposable
         director.Current.Exposure.Should().BeApproximately(before, 1e-5f);
     }
 
+    [Fact]
+    public void KeepsTheSameMoodObjectOnceTheBlendIsDone()
+    {
+        LightingMoodDirector director = _builder.WithNightRule().Build();
+        _builder.SetNight(1);
+        director.Update(director.BlendSeconds);
+        LightingMood done = director.Current;
+
+        director.Update(0.5f);
+
+        director.Current.Should().BeSameAs(done);
+        director.IsBlending.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsBlendingFromAFactChangeUntilTheBlendTimeHasPassed()
+    {
+        LightingMoodDirector director = _builder.WithNightRule().Build();
+
+        _builder.SetNight(1);
+        bool atStart = director.IsBlending;
+        director.Update(director.BlendSeconds / 2);
+        bool halfway = director.IsBlending;
+
+        atStart.Should().BeTrue();
+        halfway.Should().BeTrue();
+    }
+
     public void Dispose()
     {
         _builder.Dispose();
