@@ -130,4 +130,16 @@ public sealed class SceneLoaderTests : IDisposable
         IReadOnlyList<Entity> reloaded = loader.Load("Room.fvscene");
         reloaded.Should().HaveCount(2);
     }
+
+    [Fact]
+    public void KeepsTheWorldAndLogsWhenTheFileIsDeleted()
+    {
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp" } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
+
+        _builder.DeleteScene("Room.fvscene");
+
+        _builder.World.IsAlive(entities[0]).Should().BeTrue();
+        _builder.Warnings.Should().ContainSingle();
+    }
 }

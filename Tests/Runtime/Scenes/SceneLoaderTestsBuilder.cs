@@ -51,6 +51,12 @@ internal sealed class SceneLoaderTestsBuilder : IDisposable
         _content!.NotifyChanged(path);
     }
 
+    /// <summary>Deletes the file and reports it changed, as the content watcher would.</summary>
+    public void DeleteScene(string path)
+    {
+        _content!.Delete(path);
+    }
+
     /// <summary>The transform of the first entity of the scene file, spawned into a world of its own.</summary>
     public Transform LoadInNewWorld(string path)
     {

@@ -1,4 +1,5 @@
 using FlickerVoid.Engine.Editor.Assets;
+using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Engine.Editor.Tests.Assets;
 
@@ -23,7 +24,11 @@ internal sealed class AssetBrowserViewModelTestsBuilder : IDisposable
         return this;
     }
 
-    public AssetBrowserViewModel Build() => new(new AssetCatalog(_folder));
+    public AssetBrowserViewModel Build() => new(new ContentManager(_folder));
+
+    public string ReadFile(string path) => File.ReadAllText(Path.Combine(_folder, path));
+
+    public bool Exists(string path) => File.Exists(Path.Combine(_folder, path));
 
     public void Dispose()
     {

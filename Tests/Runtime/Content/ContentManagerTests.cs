@@ -148,4 +148,52 @@ public sealed class ContentManagerTests : IDisposable
 
         Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories).Should().BeEmpty();
     }
+
+    [Fact]
+    public void DeletesAFileAndItsSourceAndTellsWhoListens()
+    {
+        string source = _builder.WithSourceFolder("Game");
+        ContentManager content = _builder.Build();
+        content.Write("Game/Room.fvscene", "{}"u8.ToArray());
+        List<string> changed = [];
+        content.Changed += changed.Add;
+
+        content.Delete("Game/Room.fvscene");
+
+        File.Exists(Path.Combine(source, "Room.fvscene")).Should().BeFalse();
+        string builtPath = Path.Combine(_builder.RootDirectory, "Game", "Room.fvscene");
+        File.Exists(builtPath).Should().BeFalse();
+        changed.Should().Equal(builtPath);
+    }
+
+    [Fact]
+    public void MovesAFileAndItsSource()
+    {
+        string source = _builder.WithSourceFolder("Game");
+        ContentManager content = _builder.Build();
+        content.Write("Game/Room.fvscene", "{}"u8.ToArray());
+
+        content.Move("Game/Room.fvscene", "Game/Scenes/Hall.fvscene");
+
+        File.Exists(Path.Combine(source, "Room.fvscene")).Should().BeFalse();
+        File.ReadAllText(Path.Combine(source, "Scenes", "Hall.fvscene")).Should().Be("{}");
+        File.Exists(Path.Combine(_builder.RootDirectory, "Game", "Scenes", "Hall.fvscene")).Should().BeTrue();
+    }
+
+    [Fact]
+    public void MovesAndDeletesFoldersWithTheirSources()
+    {
+        string source = _builder.WithSourceFolder("Game");
+        ContentManager content = _builder.Build();
+        content.CreateFolder("Game/Old");
+        content.Write("Game/Old/Room.fvscene", "{}"u8.ToArray());
+
+        content.Move("Game/Old", "Game/New");
+
+        Directory.Exists(Path.Combine(source, "Old")).Should().BeFalse();
+        File.Exists(Path.Combine(source, "New", "Room.fvscene")).Should().BeTrue();
+        content.Delete("Game/New");
+        Directory.Exists(Path.Combine(source, "New")).Should().BeFalse();
+        Directory.Exists(Path.Combine(_builder.RootDirectory, "Game", "New")).Should().BeFalse();
+    }
 }

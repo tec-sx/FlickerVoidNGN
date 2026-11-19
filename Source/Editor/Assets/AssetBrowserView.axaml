@@ -13,7 +13,7 @@
     </TreeView>
     <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
     <DockPanel Grid.Column="2">
-      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="4">
+      <WrapPanel DockPanel.Dock="Top" Margin="4" ItemSpacing="6" LineSpacing="4">
         <ComboBox ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Width="120">
           <ComboBox.ItemTemplate>
             <DataTemplate DataType="assets:AssetFilter">
@@ -21,10 +21,34 @@
             </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
-        <TextBox Text="{Binding SearchText}" PlaceholderText="Search" Width="220" />
+        <TextBox Text="{Binding SearchText}" PlaceholderText="Search" Width="160" />
         <Button Content="Refresh" Command="{Binding RefreshCommand}" />
-      </StackPanel>
-      <ListBox x:Name="AssetList" ItemsSource="{Binding Assets}" DoubleTapped="HandleDoubleTapped" KeyDown="HandleKeyDown">
+        <Button Content="New">
+          <Button.Flyout>
+            <MenuFlyout>
+              <MenuItem Header="Folder" Command="{Binding CreateFolderCommand}" />
+              <MenuItem Header="Scene" Command="{Binding CreateSceneCommand}" />
+              <MenuItem Header="Material" Command="{Binding CreateMaterialCommand}" />
+              <MenuItem Header="Mood" Command="{Binding CreateMoodCommand}" />
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+        <TextBox x:Name="RenameBox" Text="{Binding SelectedAsset.Name, Mode=OneWay}" PlaceholderText="New name" Width="140"
+                 ToolTip.Tip="The selected file's new name, or the selected folder's when no file is selected." />
+        <Button Content="Rename" Command="{Binding RenameCommand}" CommandParameter="{Binding #RenameBox.Text}" />
+        <Button Content="Delete" ToolTip.Tip="Deletes the selected file, or the selected folder with everything in it.">
+          <Button.Flyout>
+            <Flyout>
+              <StackPanel Spacing="8">
+                <TextBlock Text="Delete it, with its source file?" />
+                <Button Content="Delete" Command="{Binding DeleteCommand}" />
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+        <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Foreground="OrangeRed" />
+      </WrapPanel>
+      <ListBox x:Name="AssetList" ItemsSource="{Binding Assets}" SelectedItem="{Binding SelectedAsset}" DoubleTapped="HandleDoubleTapped" KeyDown="HandleKeyDown">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="assets:AssetEntry">
             <Grid ColumnDefinitions="200,90,*" ToolTip.Tip="{Binding Path}">

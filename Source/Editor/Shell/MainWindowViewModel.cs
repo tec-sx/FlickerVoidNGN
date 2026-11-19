@@ -17,8 +17,7 @@ public sealed class MainWindowViewModel : ObservableObject
         Viewport = viewport;
         Inspector = inspector;
         ViewSettings = new ViewSettingsViewModel(viewport.Mood);
-        AssetCatalog catalog = new(viewport.Scene.Content.RootDirectory);
-        Assets = new AssetBrowserViewModel(catalog);
+        Assets = new AssetBrowserViewModel(viewport.Scene.Content);
         Assets.Opened += OpenAsset;
         viewport.Scene.Opened += HandleSceneOpened;
     }
