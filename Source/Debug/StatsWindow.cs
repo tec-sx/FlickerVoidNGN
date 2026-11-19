@@ -33,7 +33,7 @@ public sealed class StatsWindow : DebugWindow
         }
 
         ImGui.SeparatorText("CPU");
-        ImGui.Text($"Process {_process.CpuPercent:0.0}% of {Environment.ProcessorCount} cores");
+        ImGui.Text($"Process {_process.CpuPercent:0.0}%% of {Environment.ProcessorCount} cores");
 
         ImGui.SeparatorText("Memory");
         ImGui.Text($"Working set {DebugFormat.Bytes(_process.WorkingSetBytes)}");

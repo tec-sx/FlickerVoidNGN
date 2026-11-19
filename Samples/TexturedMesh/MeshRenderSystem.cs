@@ -1,5 +1,6 @@
 using Arch.System;
 
+using FlickerVoid.Engine.Debug;
 using FlickerVoid.Engine.Graphics;
 using FlickerVoid.Engine.Platform;
 using FlickerVoid.Engine.Runtime;
@@ -26,19 +27,23 @@ public sealed class MeshRenderSystem : ISystem<GameTime>
     private readonly CubeRenderer _cube;
     private readonly ICommandList[] _commandLists = new ICommandList[FramesInFlight];
     private ITexture _depth;
+    private readonly MeshWindow _meshWindow;
+    private readonly DebugUi _debugUi;
     private float _angle;
     private bool _disposed;
 
-    public MeshRenderSystem(IGameWindow window, IGraphicsDevice device, IShaderCompiler compiler, int frameLimit)
+    public MeshRenderSystem(IGameWindow window, IGraphicsDevice device, IShaderCompiler compiler, int frameLimit, MeshWindow meshWindow, Func<PixelFormat, DebugUi> createDebugUi)
     {
         _window = window;
         _device = device;
         _frameLimit = frameLimit;
+        _meshWindow = meshWindow;
         Vector2D<int> size = window.Size;
         SwapchainDescription swapchainDescription = new(window.Native, size.X, size.Y) { Name = "Window" };
         _swapchain = device.CreateSwapchain(swapchainDescription);
         _cube = new CubeRenderer(device, compiler, _swapchain.Format);
         _depth = _cube.CreateDepth(_swapchain.Width, _swapchain.Height);
+        _debugUi = createDebugUi(_swapchain.Format);
 
         for (int index = 0; index < FramesInFlight; index++)
         {
@@ -59,7 +64,9 @@ public sealed class MeshRenderSystem : ISystem<GameTime>
     public void Update(in GameTime t)
     {
         Frames++;
-        _angle += (float)t.Elapsed.TotalSeconds * RadiansPerSecond;
+        float seconds = (float)t.Elapsed.TotalSeconds;
+        _debugUi.Update(seconds);
+        _angle += seconds * RadiansPerSecond * _meshWindow.Speed;
         Vector2D<int> size = _window.Size;
         bool visible = size.X > 0 && size.Y > 0;
         if (visible && (size.X != _swapchain.Width || size.Y != _swapchain.Height))
@@ -99,6 +106,7 @@ public sealed class MeshRenderSystem : ISystem<GameTime>
             commands.Dispose();
         }
 
+        _debugUi.Dispose();
         _cube.Dispose();
         _depth.Dispose();
         _swapchain.Dispose();
@@ -110,6 +118,7 @@ public sealed class MeshRenderSystem : ISystem<GameTime>
         ICommandList commands = _commandLists[Frames % FramesInFlight];
         commands.Begin();
         _cube.Record(commands, backBuffer, _depth, _angle);
+        _debugUi.Draw(commands, backBuffer);
         commands.Barrier(backBuffer, ResourceState.Present);
         commands.End();
         _device.Submit(commands);
