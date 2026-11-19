@@ -38,14 +38,25 @@ public sealed class EditorScene : IDisposable
     /// <summary>The entity the viewport and the inspector work on.</summary>
     public EditorSelection Selection { get; } = new();
 
+    /// <summary>Raised after a scene file was opened.</summary>
+    public event Action? Opened;
+
     /// <summary>The open scene file, relative to the content folder, or null for an unsaved world.</summary>
     public string? ScenePath { get; private set; }
 
-    /// <summary>Spawns a scene file from the content folder into the world.</summary>
+    /// <summary>Spawns a scene file from the content folder into the world, in place of the scene open before.</summary>
     public void Open(string path)
     {
+        Selection.Select(null);
+        if (ScenePath is not null)
+        {
+            _loader.Unload(ScenePath);
+            ScenePath = null;
+        }
+
         _loader.Load(path);
         ScenePath = path;
+        Opened?.Invoke();
     }
 
     /// <summary>Writes the world into the open scene file; false when the world has no scene file yet.</summary>

@@ -45,6 +45,26 @@ public sealed partial class SceneLoader : IDisposable
         return entities;
     }
 
+    /// <summary>Destroys the entities spawned from the scene file and stops following it; does nothing when it isn't loaded.</summary>
+    public void Unload(string path)
+    {
+        string fullPath = _content.GetFullPath(path);
+        if (!_loaded.Remove(fullPath, out LoadedScene? loaded))
+        {
+            return;
+        }
+
+        foreach (Entity entity in loaded.Entities)
+        {
+            if (_world.IsAlive(entity))
+            {
+                _world.Destroy(entity);
+            }
+        }
+
+        _content.Unload(path);
+    }
+
     /// <summary>
     /// Writes the loaded scene file at <paramref name="path"/> as the world has its entities now (see
     /// <see cref="ISceneSpawner.Capture"/>), then reports the file changed so caches of it reload.
