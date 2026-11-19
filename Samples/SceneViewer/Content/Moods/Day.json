@@ -1,0 +1,10 @@
+// Clear afternoon: a warm high sun, soft shade and a gentle grade on paper.
+{
+  "sunDirection": [-0.4, -0.8, -0.45],
+  "ambient": 0.35,
+  "bloom": 0.05,
+  "contrast": 1.05,
+  "saturation": 1.05,
+  "tint": [1.02, 1, 0.96],
+  "paper": "Paper.png"
+}

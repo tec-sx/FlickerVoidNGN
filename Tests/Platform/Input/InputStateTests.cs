@@ -119,4 +119,26 @@ public class InputStateTests
         keyReleased.Should().BeTrue();
         buttonReleased.Should().BeTrue();
     }
+
+    [Fact]
+    public void CollectsTheCharactersTypedInAFrameInOrder()
+    {
+        InputState input = _builder.Build();
+
+        input.TypeText('h');
+        input.TypeText('i');
+
+        input.TypedText.Should().Be("hi");
+    }
+
+    [Fact]
+    public void ForgetsTypedTextWhenTheFrameEnds()
+    {
+        InputState input = _builder.Build();
+        input.TypeText('h');
+
+        input.EndFrame();
+
+        input.TypedText.Should().BeEmpty();
+    }
 }

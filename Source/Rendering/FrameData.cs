@@ -4,8 +4,8 @@ using System.Runtime.InteropServices;
 namespace FlickerVoid.Engine.Rendering;
 
 /// <summary>
-/// The start of Shaders/Scene.hlsl's frame buffer: the view, the sun, the shadow atlas, and where the lights, shadows and
-/// clusters follow. 144 bytes.
+/// The start of Shaders/Scene.hlsl's frame buffer: the view, the sun, the shadow atlas, the irradiance volume, and where the
+/// lights, shadows and clusters follow, the camera, the fog and the screen shadows. 320 bytes.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
 internal readonly record struct FrameData(
@@ -23,4 +23,25 @@ internal readonly record struct FrameData(
     uint ShadowsOffset,
     uint SunShadow,
     uint ShadowAtlas,
-    uint ClampSampler);
+    uint ClampSampler,
+    Vector3 ProbeMin,
+    uint Probes,
+    Vector3 ProbeSize,
+    uint ProbeCountX,
+    uint ProbeCountY,
+    uint ProbeCountZ,
+    uint Padding0,
+    uint Padding1,
+    Vector3 CameraPosition,
+    float NearPlane,
+    Vector3 FogColor,
+    float FogDensity,
+    float FogAnisotropy,
+    float FogHeight,
+    float FogHeightFalloff,
+    uint Padding2,
+    Matrix4x4 InverseViewProjection,
+    uint ScreenShadows,
+    float AmbientOcclusion,
+    float AmbientOcclusionRadius,
+    float ContactShadowLength);

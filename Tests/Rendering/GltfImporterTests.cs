@@ -74,4 +74,54 @@ public sealed class GltfImporterTests
         texture.Height.Should().Be(1);
         texture.Rgba.Should().Equal(255, 0, 0, 255, 0, 0, 255, 255);
     }
+
+    [Fact]
+    public void LeavesRigidModelsUnskinned()
+    {
+        ModelData data = _builder.WithTriangle().BuildData();
+
+        data.Parts[0].Skin.Should().BeNull();
+        data.Animations.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ImportsTheJointsAndWeightsOfSkinnedVertices()
+    {
+        ModelData data = _builder.WithTriangle().WithMovingJoint(Vector3.Zero, Vector3.UnitX, 1).BuildData();
+
+        SkinVertex[] skin = data.Parts[0].Skin!;
+        skin.Should().HaveCount(data.Parts[0].Vertices.Length);
+        skin[0].Joint0.Should().Be(1);
+        skin[0].Weights.X.Should().Be(1);
+    }
+
+    [Fact]
+    public void BakesEachAnimationIntoSkinMatricesForEveryJoint()
+    {
+        ModelData data = _builder.WithTriangle().WithMovingJoint(Vector3.Zero, new Vector3(2, 0, 0), 1).BuildData();
+        AnimationClip clip = data.Animations.Single();
+        Matrix4x4[] skin = new Matrix4x4[clip.JointCount];
+
+        clip.Sample(0.5f, skin);
+
+        clip.Name.Should().Be("Move");
+        clip.Duration.Should().BeApproximately(1, 1e-5f);
+        clip.JointCount.Should().Be(2);
+        skin[1].Translation.X.Should().BeApproximately(1, 1e-4f);
+        skin[0].Should().Be(Matrix4x4.Identity);
+    }
+
+    [Fact]
+    public void LoopsAnimationsPastTheirEnd()
+    {
+        ModelData data = _builder.WithTriangle().WithMovingJoint(Vector3.Zero, new Vector3(2, 0, 0), 1).BuildData();
+        AnimationClip clip = data.Animations.Single();
+        Matrix4x4[] early = new Matrix4x4[clip.JointCount];
+        Matrix4x4[] looped = new Matrix4x4[clip.JointCount];
+
+        clip.Sample(0.25f, early);
+        clip.Sample(1.25f, looped);
+
+        looped[1].Translation.X.Should().BeApproximately(early[1].Translation.X, 1e-4f);
+    }
 }

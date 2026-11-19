@@ -9,7 +9,10 @@ using SharpGLTF.Schema2;
 
 namespace FlickerVoid.Engine.Rendering.Tests;
 
-/// <summary>Builds glTF models in memory and imports them: a triangle facing +Z, wound counter-clockwise as glTF requires.</summary>
+/// <summary>
+/// Builds glTF models in memory and imports them: triangles facing +Z, wound counter-clockwise as glTF requires. A moving
+/// joint makes the model skinned: a root joint at the origin and a child joint that every vertex follows fully.
+/// </summary>
 internal sealed class GltfImporterTestsBuilder
 {
     /// <summary>A 2x1 PNG: a red pixel, then a blue one.</summary>
@@ -19,6 +22,7 @@ internal sealed class GltfImporterTestsBuilder
     private Matrix4x4 _nodeTransform = Matrix4x4.Identity;
     private Vector4 _baseColor = Vector4.One;
     private bool _textured;
+    private (Vector3 From, Vector3 To, float Seconds)? _movingJoint;
 
     public GltfImporterTestsBuilder WithTriangle()
     {
@@ -56,6 +60,13 @@ internal sealed class GltfImporterTestsBuilder
         return this;
     }
 
+    /// <summary>Skins the model to a joint that an animation called Move slides from one offset to another.</summary>
+    public GltfImporterTestsBuilder WithMovingJoint(Vector3 from, Vector3 to, float seconds)
+    {
+        _movingJoint = (from, to, seconds);
+        return this;
+    }
+
     public ModelRoot BuildModel()
     {
         MaterialBuilder material = new("Material");
@@ -71,22 +82,35 @@ internal sealed class GltfImporterTestsBuilder
             material.WithBaseColor(_baseColor);
         }
 
-        MeshBuilder<VertexPositionNormal, VertexTexture1> mesh = new("Mesh");
-        PrimitiveBuilder<MaterialBuilder, VertexPositionNormal, VertexTexture1, VertexEmpty> primitive = mesh.UsePrimitive(material);
-        foreach ((Vector3 Position, Vector2 Uv)[] triangle in _triangles)
+        SceneBuilder scene = new();
+        if (_movingJoint is { } joint)
         {
-            primitive.AddTriangle(Vertex(triangle[0]), Vertex(triangle[1]), Vertex(triangle[2]));
+            NodeBuilder root = new("Root");
+            NodeBuilder moving = root.CreateNode("Moving");
+            moving.UseTranslation("Move").WithPoint(0, joint.From).WithPoint(joint.Seconds, joint.To);
+            VertexJoints4 skin = new(1);
+            MeshBuilder<VertexPositionNormal, VertexTexture1, VertexJoints4> skinnedMesh = BuildMesh(material, skin);
+            scene.AddSkinnedMesh(skinnedMesh, Matrix4x4.Identity, root, moving);
+        }
+        else
+        {
+            MeshBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty> mesh = BuildMesh(material, default(VertexEmpty));
+            scene.AddRigidMesh(mesh, _nodeTransform);
         }
 
-        SceneBuilder scene = new();
-        scene.AddRigidMesh(mesh, _nodeTransform);
         return scene.ToGltf2();
+    }
+
+    public ModelData BuildData()
+    {
+        ModelRoot model = BuildModel();
+        return GltfImporter.Import(model);
     }
 
     public IReadOnlyList<MeshPart> Build()
     {
-        ModelRoot model = BuildModel();
-        return GltfImporter.Import(model);
+        ModelData data = BuildData();
+        return data.Parts;
     }
 
     /// <summary>The first triangle's corners in index order.</summary>
@@ -95,10 +119,24 @@ internal sealed class GltfImporterTestsBuilder
         return [part.Vertices[part.Indices[0]], part.Vertices[part.Indices[1]], part.Vertices[part.Indices[2]]];
     }
 
-    private static VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty> Vertex((Vector3 Position, Vector2 Uv) corner)
+    private MeshBuilder<VertexPositionNormal, VertexTexture1, TSkin> BuildMesh<TSkin>(MaterialBuilder material, TSkin skin)
+        where TSkin : struct, IVertexSkinning
+    {
+        MeshBuilder<VertexPositionNormal, VertexTexture1, TSkin> mesh = new("Mesh");
+        PrimitiveBuilder<MaterialBuilder, VertexPositionNormal, VertexTexture1, TSkin> primitive = mesh.UsePrimitive(material);
+        foreach ((Vector3 Position, Vector2 Uv)[] triangle in _triangles)
+        {
+            primitive.AddTriangle(Vertex(triangle[0], skin), Vertex(triangle[1], skin), Vertex(triangle[2], skin));
+        }
+
+        return mesh;
+    }
+
+    private static VertexBuilder<VertexPositionNormal, VertexTexture1, TSkin> Vertex<TSkin>((Vector3 Position, Vector2 Uv) corner, TSkin skin)
+        where TSkin : struct, IVertexSkinning
     {
         VertexPositionNormal geometry = new(corner.Position, Vector3.UnitZ);
         VertexTexture1 material = new(corner.Uv);
-        return new VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty>(geometry, material);
+        return new VertexBuilder<VertexPositionNormal, VertexTexture1, TSkin>(geometry, material, skin);
     }
 }

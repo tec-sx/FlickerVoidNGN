@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Gate scene": {
+      "commandName": "Project",
+      "commandLineArgs": "--scene Scenes/PaintedRoom.scene.json --moods Moods/Day.json,Moods/Dusk.json,Moods/Night.json --debug"
+    },
+    "Room": {
+      "commandName": "Project",
+      "commandLineArgs": "--debug"
+    }
+  }
+}

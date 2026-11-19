@@ -35,3 +35,13 @@ SOFTWARE.
 ```
 
 Stride's `ServiceRegistry` carries a further notice from SharpDX (Copyright (c) 2010-2013 SharpDX - Alexandre Mutel, MIT), kept in the adapted file.
+
+## Fox (glTF Sample Assets)
+
+https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/Fox
+
+Used in: `Samples/SceneViewer/Content/Fox.glb`, unchanged.
+
+- Model by PixelMannen, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/legalcode).
+- Rigging and animation by tomkranis on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode).
+- glTF conversion by AsoboStudio and scurest, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode).
