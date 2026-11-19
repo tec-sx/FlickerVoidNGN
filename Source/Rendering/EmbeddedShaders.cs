@@ -5,13 +5,17 @@ using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering;
 
-/// <summary>Compiles the shaders embedded in this assembly from Shaders/.</summary>
+/// <summary>
+/// Compiles the shaders embedded in this assembly from Shaders/. A shader can be compiled with others ahead of it, standing
+/// in for #include, which needs an include handler the compiler doesn't have.
+/// </summary>
 // TODO(Stage 5): load compiled bytecode from the asset pipeline instead of compiling at startup.
 internal static class EmbeddedShaders
 {
-    public static ShaderBytecode Compile(IShaderCompiler compiler, string fileName, string entryPoint, ShaderStage stage)
+    public static ShaderBytecode Compile(IShaderCompiler compiler, string fileName, string entryPoint, ShaderStage stage, params string[] ahead)
     {
-        string source = Read(fileName);
+        IEnumerable<string> sources = ahead.Append(fileName).Select(Read);
+        string source = string.Join('\n', sources);
         ShaderSource shader = new(source, entryPoint, stage) { Name = fileName };
         ShaderCompileResult result = compiler.Compile(shader);
         if (!result.Succeeded)

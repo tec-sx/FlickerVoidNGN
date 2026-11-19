@@ -66,7 +66,7 @@ internal sealed class ShadowRenderer : IDisposable
         commands.SetScissor(tile.X, tile.Y, tile.Size, tile.Size);
         foreach (MeshDraw draw in draws)
         {
-            ShadowConstants constants = new(draw.World * view.ViewProjection, draw.Part.Vertices.BindlessIndex);
+            ShadowConstants constants = new(draw.World * view.ViewProjection, draw.Vertices.BindlessIndex);
             commands.SetIndexBuffer(draw.Part.Indices, IndexFormat.UInt32);
             commands.PushConstants(constants);
             commands.DrawIndexed(draw.Part.IndexCount);
