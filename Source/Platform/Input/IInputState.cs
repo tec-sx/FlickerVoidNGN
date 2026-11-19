@@ -15,6 +15,9 @@ public interface IInputState
     /// <summary>Wheel movement this frame; positive scrolls away from the player.</summary>
     float ScrollDelta { get; }
 
+    /// <summary>The characters typed this frame, in order, as the keyboard layout produced them.</summary>
+    string TypedText { get; }
+
     bool IsDown(Key key);
 
     bool WasPressed(Key key);

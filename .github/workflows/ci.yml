@@ -87,6 +87,7 @@ jobs:
           if [ "$RUNNER_OS" = "Linux" ]; then display="xvfb-run -a"; fi
           $display ./artifacts/aot/TexturedMesh/FlickerVoid.Samples.TexturedMesh --validation --frames 120
           $display ./artifacts/aot/SceneViewer/FlickerVoid.Samples.SceneViewer --validation --frames 120 --lights 8 --moods Moods/Day.json,Moods/Night.json
+          $display ./artifacts/aot/SceneViewer/FlickerVoid.Samples.SceneViewer --validation --frames 60 --scene Scenes/PaintedRoom.scene.json --moods Moods/Night.json
 
   # When main's engine version (Source/Directory.Build.props) has no tag yet, tag the commit v<Version> and pack the engine modules.
   release:

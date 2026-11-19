@@ -19,7 +19,8 @@ public static class ModelProbes
 
     public static void Bake(IGraphicsDevice device, IShaderCompiler compiler, IContentManager content, World world, string modelPath, LightingMood mood)
     {
-        IReadOnlyList<MeshPart> parts = GltfImporter.Load(modelPath);
+        ModelData model = GltfImporter.Load(modelPath);
+        IReadOnlyList<MeshPart> parts = model.Parts;
         Vector3 min = new(float.MaxValue);
         Vector3 max = new(float.MinValue);
         foreach (MeshPart part in parts)

@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/Source/">
+    <Project Path="Source/Debug/FlickerVoid.Engine.Debug.csproj" />
     <Project Path="Source/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
     <Project Path="Source/Graphics/FlickerVoid.Engine.Graphics.csproj" />
     <Project Path="Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
@@ -10,6 +11,7 @@
     <Project Path="Source/Shaders/FlickerVoid.Engine.Shaders.csproj" />
   </Folder>
   <Folder Name="/Tests/">
+    <Project Path="Tests/Debug/FlickerVoid.Engine.Debug.Tests.csproj" />
     <Project Path="Tests/Gameplay/FlickerVoid.Engine.Gameplay.Tests.csproj" />
     <Project Path="Tests/Graphics/FlickerVoid.Engine.Graphics.Tests.csproj" />
     <Project Path="Tests/Physics/FlickerVoid.Engine.Physics.Tests.csproj" />

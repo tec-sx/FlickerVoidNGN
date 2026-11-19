@@ -18,6 +18,7 @@ public sealed class LightingMoodDirector : IDisposable
     private LightingMood _from;
     private LightingMood _to;
     private float _elapsed;
+    private bool _blended = true;
 
     public LightingMoodDirector(IFactDatabase facts, IContentManager content, string defaultMood, IReadOnlyList<MoodRule> rules)
     {
@@ -42,8 +43,16 @@ public sealed class LightingMoodDirector : IDisposable
     /// <summary>The mood to render now.</summary>
     public LightingMood Current { get; private set; }
 
+    /// <summary>True from a change of mood until the blend to it is done; while false, <see cref="Current"/> stays the same object.</summary>
+    public bool IsBlending => !_blended;
+
     public void Update(float deltaSeconds)
     {
+        if (_blended)
+        {
+            return;
+        }
+
         _elapsed += deltaSeconds;
         float amount = 1;
         if (BlendSeconds > 0)
@@ -52,6 +61,7 @@ public sealed class LightingMoodDirector : IDisposable
         }
 
         Current = LightingMood.Lerp(_from, _to, amount);
+        _blended = amount >= 1;
     }
 
     public void Dispose()
@@ -71,6 +81,7 @@ public sealed class LightingMoodDirector : IDisposable
         _from = Current;
         _to = Load(mood);
         _elapsed = 0;
+        _blended = false;
     }
 
     private string ChooseMood()

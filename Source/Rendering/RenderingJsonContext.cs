@@ -16,6 +16,7 @@ namespace FlickerVoid.Engine.Rendering;
     Converters = [typeof(Vector3JsonConverter)])]
 [JsonSerializable(typeof(Camera))]
 [JsonSerializable(typeof(MeshRenderer))]
+[JsonSerializable(typeof(MeshAnimator))]
 [JsonSerializable(typeof(PointLight))]
 [JsonSerializable(typeof(SpotLight))]
 [JsonSerializable(typeof(IrradianceVolume))]

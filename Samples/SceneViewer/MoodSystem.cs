@@ -24,8 +24,10 @@ public sealed class MoodSystem : ISystem<GameTime>
     private readonly SceneRenderSystem _renderSystem;
     private readonly Func<LightingMood, LightingMood> _configure;
     private readonly int _moodCount;
+    private readonly Func<bool> _keyboardBlocked;
+    private LightingMood? _applied;
 
-    public MoodSystem(IGameWindow window, IFactDatabase facts, LightingMoodDirector director, SceneRenderSystem renderSystem, Func<LightingMood, LightingMood> configure, int moodCount)
+    public MoodSystem(IGameWindow window, IFactDatabase facts, LightingMoodDirector director, SceneRenderSystem renderSystem, Func<LightingMood, LightingMood> configure, int moodCount, Func<bool> keyboardBlocked)
     {
         _window = window;
         _facts = facts;
@@ -33,6 +35,7 @@ public sealed class MoodSystem : ISystem<GameTime>
         _renderSystem = renderSystem;
         _configure = configure;
         _moodCount = moodCount;
+        _keyboardBlocked = keyboardBlocked;
     }
 
     public void Initialize()
@@ -45,7 +48,7 @@ public sealed class MoodSystem : ISystem<GameTime>
 
     public void Update(in GameTime t)
     {
-        if (_window.Input.WasPressed(Key.N))
+        if (_window.Input.WasPressed(Key.N) && !_keyboardBlocked())
         {
             int current = _facts.GetFact(MoodFact);
             int next = (current + 1) % _moodCount;
@@ -54,7 +57,11 @@ public sealed class MoodSystem : ISystem<GameTime>
 
         float seconds = (float)t.Elapsed.TotalSeconds;
         _director.Update(seconds);
-        _renderSystem.Renderer.Mood = _configure(_director.Current);
+        if (!ReferenceEquals(_director.Current, _applied))
+        {
+            _renderSystem.Renderer.Mood = _configure(_director.Current);
+            _applied = _director.Current;
+        }
     }
 
     public void AfterUpdate(in GameTime t)

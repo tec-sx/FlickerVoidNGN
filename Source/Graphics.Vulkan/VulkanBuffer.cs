@@ -86,7 +86,7 @@ internal sealed unsafe class VulkanBuffer : IBuffer
         device.ReleaseLater(() =>
         {
             device.Vk.DestroyBuffer(device.Handle, handle, null);
-            device.Vk.FreeMemory(device.Handle, memory, null);
+            device.FreeMemory(memory);
             device.Bindless.Resources.Free(index);
         });
     }

@@ -3,6 +3,7 @@ using System.Numerics;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Debug;
 using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Graphics;
@@ -12,6 +13,8 @@ using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Runtime;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Scenes;
+using FlickerVoid.Engine.Runtime.Serialization;
 using FlickerVoid.Engine.Shaders;
 using FlickerVoid.Samples.SceneViewer;
 
@@ -20,7 +23,10 @@ using Microsoft.Extensions.Logging;
 // Shows a glTF model (.glb, or .gltf with its files) through a camera that orbits it, lit by a sun, ambient light and
 // optionally a ring of coloured point lights that cast shadows while the shadow atlas has room (eight of them).
 // Usage: SceneViewer [model] [--validation] [--frames <count>] [--lights <count>] [--sun <x,y,z>] [--ambient <0..1>] [--fog <density>] [--probes]
-//        [--moods <file,file,...>].
+//        [--moods <file,file,...>] [--scene <file>] [--debug].
+// --scene spawns a scene file from the model's folder instead of the model, and walks its animated entities round the
+// origin; Content/Scenes/PaintedRoom.scene.json is the stage 4 gate: the room, a walking fox and 36 lamps.
+// F1 shows the debug interface (engine stats, console, rendering values, lights, and the viewer's own panel); --debug starts with it shown.
 // --moods takes lighting mood files in the model's folder (Content/Moods/Day.json, Dusk.json and Night.json beside the
 // default room); N steps a fact through them, which mood rules turn into a blend to the next mood. --sun, --ambient and --fog override the mood.
 // --probes bakes an irradiance volume fitted to the model at startup and saves it beside the model as <model>.probes. Without a model it shows Content/Room.glb.
@@ -33,6 +39,8 @@ bool bakeProbes = false;
 float? ambient = null;
 float? fogDensity = null;
 string[] moodFiles = [];
+string? sceneFile = null;
+bool showDebug = false;
 for (int index = 0; index < args.Length; index++)
 {
     switch (args[index])
@@ -59,6 +67,13 @@ for (int index = 0; index < args.Length; index++)
         case "--moods":
             index++;
             moodFiles = args[index].Split(',');
+            break;
+        case "--debug":
+            showDebug = true;
+            break;
+        case "--scene":
+            index++;
+            sceneFile = args[index];
             break;
         case "--probes":
             bakeProbes = true;
@@ -97,10 +112,25 @@ using VulkanGraphicsDevice device = new(options, loggerFactory);
 using DxcShaderCompiler compiler = new();
 using Game game = new(loggerFactory);
 game.AddRendering();
-using GameWindow window = new(game, $"FlickerVoid  {fileName}  (drag to turn, wheel to zoom, WASD to move, P for perspective, N for the next mood)", 1280, 720);
+string shown = fileName;
+if (sceneFile is not null)
+{
+    shown = Path.GetFileName(sceneFile);
+}
+
+using GameWindow window = new(game, $"FlickerVoid  {shown}  (drag to turn, wheel to zoom, WASD to move, P for perspective, N for the next mood)", 1280, 720);
 
 Entity camera = game.World.Create(new Transform(), new Camera());
-game.World.Create(new Transform(), new MeshRenderer { Mesh = fileName });
+if (sceneFile is null)
+{
+    game.World.Create(new Transform(), new MeshRenderer { Mesh = fileName });
+}
+else
+{
+    SceneData scene = content.Load(sceneFile, RuntimeJsonContext.Default.SceneData);
+    game.Spawner.Spawn(scene, game.World);
+}
+
 Vector3[] palette = [new(1, 0.3f, 0.2f), new(1, 0.8f, 0.3f), new(0.3f, 1, 0.4f), new(0.3f, 0.8f, 1), new(0.4f, 0.4f, 1), new(1, 0.4f, 0.9f)];
 for (int index = 0; index < lightCount; index++)
 {
@@ -111,7 +141,11 @@ for (int index = 0; index < lightCount; index++)
     game.World.Create(transform, light);
 }
 
-OrbitCameraSystem orbit = new(window, game.World, camera, new Vector3(0, 0.5f, 0), distance: 10);
+DebugUi? debugUi = null;
+bool MouseBlocked() => debugUi?.WantsMouse ?? false;
+bool KeyboardBlocked() => debugUi?.WantsKeyboard ?? false;
+OrbitCameraSystem orbit = new(window, game.World, camera, new Vector3(0, 0.5f, 0), distance: 10, MouseBlocked, KeyboardBlocked);
+CircleWalkSystem walkers = new(game.World, speed: 0.5f);
 
 // The first mood file is the default; each later one has a rule that holds while the viewer's mood fact is its index.
 FactDatabase facts = new(new FactSettings());
@@ -167,15 +201,41 @@ LightingMood Configure(LightingMood mood)
     return mood;
 }
 
-using SceneRenderSystem renderer = new(window, device, game.World, CreateRenderer, frameLimit);
+DebugUi CreateDebugUi(PixelFormat format, SceneRenderer sceneRenderer)
+{
+    string settings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FlickerVoid", "SceneViewer");
+    DebugUi ui = new(device, compiler, window, format, settings);
+    ui.AddEngineWindows(game, device);
+    ui.AddRenderingWindows(sceneRenderer, game.World);
+    ViewerWindow viewer = new(game.World, camera, walkers, facts, moodFiles);
+    ui.Windows.Add(viewer);
+    ui.LoadLayout();
+    if (showDebug)
+    {
+        ui.Visible = true;
+    }
+
+    debugUi = ui;
+    return ui;
+}
+
+using SceneRenderSystem renderer = new(window, device, game.World, CreateRenderer, frameLimit, CreateDebugUi);
 game.FrameSystems.Add(orbit);
+game.FrameSystems.Add(walkers);
 if (director is not null)
 {
-    MoodSystem moods = new(window, facts, director, renderer, Configure, moodFiles.Length);
+    MoodSystem moods = new(window, facts, director, renderer, Configure, moodFiles.Length, KeyboardBlocked);
     game.FrameSystems.Add(moods);
 }
 
 game.FrameSystems.Add(renderer);
 window.Run();
-Console.WriteLine($"Rendered {renderer.Frames} frames of {fileName} with Vulkan on {device.AdapterName}.");
+double milliseconds = renderer.AverageFrameTime.TotalMilliseconds;
+double framesPerSecond = 0;
+if (milliseconds > 0)
+{
+    framesPerSecond = 1000 / milliseconds;
+}
+
+Console.WriteLine($"Rendered {renderer.Frames} frames of {shown} with Vulkan on {device.AdapterName}: {milliseconds:0.00} ms a frame ({framesPerSecond:0} fps).");
 return 0;
