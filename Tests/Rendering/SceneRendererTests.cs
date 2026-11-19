@@ -1,6 +1,7 @@
 using System.Numerics;
 
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.PostProcessing;
 
 namespace FlickerVoid.Engine.Rendering.Tests;
 
@@ -589,5 +590,22 @@ public sealed class SceneRendererTests : IDisposable
     private static string MaterialQuad(string material)
     {
         return $$"""{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb", "materials": ["{{material}}"] } } }""";
+    }
+
+    [Theory]
+    [InlineData(Tonemapper.Uncharted2, 1f, 126)]
+    [InlineData(Tonemapper.Uncharted2, 4f, 234)]
+    [InlineData(Tonemapper.Aces, 1f, 205)]
+    [InlineData(Tonemapper.None, 4f, 255)]
+    public void BringsLightIntoTheScreensRangeByTheMoodsTonemapper(Tonemapper tonemapper, float exposure, byte expectedRed)
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(mood => mood with { Tonemapper = tonemapper, Exposure = exposure });
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange((byte)(expectedRed - 2), (byte)Math.Min(expectedRed + 2, 255));
     }
 }

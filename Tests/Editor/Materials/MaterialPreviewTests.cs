@@ -27,7 +27,7 @@ public sealed class MaterialPreviewTests : IDisposable
         pixels.Should().HaveCount(Size * Size * 4);
         (byte red, byte green, _) = MaterialPreviewTestsBuilder.PixelAt(pixels, Size, Size / 2, Size / 2);
         (_, byte cornerGreen, _) = MaterialPreviewTestsBuilder.PixelAt(pixels, Size, 0, 0);
-        green.Should().BeGreaterThan(200, "the shape glows green where it covers the middle");
+        green.Should().BeGreaterThan(100, "the shape glows green where it covers the middle");
         red.Should().BeLessThan(30);
         cornerGreen.Should().BeLessThan(30, "the shape leaves the corners empty");
     }
@@ -44,7 +44,7 @@ public sealed class MaterialPreviewTests : IDisposable
         byte[] pixels = preview.Render(material, PreviewShape.Sphere, yaw: 0, Size);
 
         (_, byte green, byte blueChannel) = MaterialPreviewTestsBuilder.PixelAt(pixels, Size, Size / 2, Size / 2);
-        blueChannel.Should().BeGreaterThan(200);
+        blueChannel.Should().BeGreaterThan(100);
         green.Should().BeLessThan(30);
     }
 }

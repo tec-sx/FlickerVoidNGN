@@ -11,6 +11,7 @@ using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -43,7 +44,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     private float _fogHeight;
     private float _fogHeightFalloff;
     private int _targetSize = 4;
-    private LightingMood _mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0 };
+    private LightingMood _mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0, Tonemapper = Tonemapper.None };
     private Action<SceneRenderer>? _configure;
 
     public SceneRendererTestsBuilder()

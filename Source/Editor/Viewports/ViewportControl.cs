@@ -343,6 +343,7 @@ public sealed partial class ViewportControl : Control
         }
 
         renderer.ShowGrid = viewModel.IsGridVisible;
+        renderer.Mood = viewModel.Mood;
         viewModel.BuildOverlay(renderer.Overlay, size.Height);
         Camera camera = viewModel.Camera.ToCamera();
         Transform transform = viewModel.Camera.ToTransform();

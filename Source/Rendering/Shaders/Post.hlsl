@@ -1,5 +1,5 @@
-// Turns the lit scene into the final image: adds bloom, then exposure, contrast, saturation and tint, then grain and a
-// paper texture laid over the screen. Draws one triangle that covers the target.
+// Turns the lit scene into the final image: adds bloom, then exposure, contrast, saturation and tint, then the tonemapper's
+// curve, then grain and a paper texture laid over the screen. Draws one triangle that covers the target.
 
 Texture2D Textures[] : register(t0, space1);
 SamplerState Samplers[] : register(s0, space3);
@@ -17,6 +17,8 @@ struct PostConstants
     uint Paper;
     uint ClampSampler;
     uint WrapSampler;
+    uint Tonemapper;
+    float WhitePoint;
 };
 
 [[vk::push_constant]] ConstantBuffer<PostConstants> Post : register(b0, space0);
@@ -33,6 +35,43 @@ float4 VertexMain(uint vertexId : SV_VertexID) : SV_Position
 {
     float2 corner = float2((vertexId << 1) & 2, vertexId & 2);
     return float4(corner * 2 - 1, 0, 1);
+}
+
+// The Tonemapper enum's values.
+static const uint TonemapUncharted2 = 1;
+static const uint TonemapAces = 2;
+
+// John Hable's filmic curve from Uncharted 2, with his shoulder, linear and toe constants.
+float3 Hable(float3 x)
+{
+    const float A = 0.15;
+    const float B = 0.50;
+    const float C = 0.10;
+    const float D = 0.20;
+    const float E = 0.02;
+    const float F = 0.30;
+    return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
+}
+
+// Krzysztof Narkowicz's fit of the ACES film curve.
+float3 Aces(float3 x)
+{
+    return saturate((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14));
+}
+
+// Brings the graded light into the screen's range by the mood's tonemapper; Hable's exposure bias of 2 keeps middle grey
+// where the untonemapped image has it.
+float3 Tonemap(float3 color)
+{
+    switch (Post.Tonemapper)
+    {
+        case TonemapUncharted2:
+            return Hable(color * 2) / Hable(Post.WhitePoint);
+        case TonemapAces:
+            return Aces(color);
+        default:
+            return color;
+    }
 }
 
 float PixelNoise(float2 pixel)
@@ -59,6 +98,7 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
     float luminance = dot(color, float3(0.2126, 0.7152, 0.0722));
     color = lerp(luminance, color, Post.Saturation);
     color *= Post.Tint;
+    color = Tonemap(color);
 
     if (Post.Paper != None)
     {

@@ -11,6 +11,7 @@ using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -110,7 +111,7 @@ internal sealed class OverlayPassTestsBuilder : IDisposable
     private SceneRenderer BuildRenderer(IGraphicsDevice device)
     {
         ContentManager content = new(_contentFolder);
-        LightingMood mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0 };
+        LightingMood mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0, Tonemapper = Tonemapper.None };
         SceneRenderer renderer = new(device, content, Format) { Mood = mood };
         ShaderLibrary shaders = ShaderLibrary.ForEngine("Editor");
         string icons = Path.Combine(AppContext.BaseDirectory, "Content", "Engine", "EditorIcons");

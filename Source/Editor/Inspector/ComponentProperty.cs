@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
@@ -38,19 +37,7 @@ public sealed class ComponentProperty : IEditableValue
     public TAttribute? GetAttribute<TAttribute>()
         where TAttribute : Attribute
     {
-        ICustomAttributeProvider? provider = _property.AttributeProvider;
-        if (provider is null)
-        {
-            return null;
-        }
-
-        object[] found = provider.GetCustomAttributes(typeof(TAttribute), inherit: true);
-        if (found.Length == 0)
-        {
-            return null;
-        }
-
-        return (TAttribute)found[0];
+        return PropertyAttributes.Find<TAttribute>(_property);
     }
 
     public object? Get()
