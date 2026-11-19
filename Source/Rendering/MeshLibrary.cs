@@ -10,7 +10,7 @@ internal sealed class MeshLibrary : IDisposable
 {
     private readonly IGraphicsDevice _device;
     private readonly IContentManager _content;
-    private readonly Dictionary<string, IReadOnlyList<GpuMeshPart>> _meshes = [];
+    private readonly Dictionary<string, GpuModel> _meshes = [];
 
     public MeshLibrary(IGraphicsDevice device, IContentManager content)
     {
@@ -18,25 +18,26 @@ internal sealed class MeshLibrary : IDisposable
         _content = content;
     }
 
-    public IReadOnlyList<GpuMeshPart> Get(string path)
+    public GpuModel Get(string path)
     {
         string fullPath = _content.GetFullPath(path);
-        if (_meshes.TryGetValue(fullPath, out IReadOnlyList<GpuMeshPart>? loaded))
+        if (_meshes.TryGetValue(fullPath, out GpuModel? loaded))
         {
             return loaded;
         }
 
-        IReadOnlyList<MeshPart> parts = GltfImporter.Load(fullPath);
-        GpuMeshPart[] uploaded = [.. parts.Select(part => Upload(part, path))];
-        _meshes.Add(fullPath, uploaded);
-        return uploaded;
+        ModelData data = GltfImporter.Load(fullPath);
+        GpuMeshPart[] uploaded = [.. data.Parts.Select(part => Upload(part, path))];
+        GpuModel model = new(uploaded, data.Animations);
+        _meshes.Add(fullPath, model);
+        return model;
     }
 
     public void Dispose()
     {
-        foreach (IReadOnlyList<GpuMeshPart> parts in _meshes.Values)
+        foreach (GpuModel model in _meshes.Values)
         {
-            foreach (GpuMeshPart part in parts)
+            foreach (GpuMeshPart part in model.Parts)
             {
                 part.Dispose();
             }
@@ -54,6 +55,14 @@ internal sealed class MeshLibrary : IDisposable
         IBuffer vertices = _device.CreateBuffer(vertexDescription, vertexData);
         IBuffer indices = _device.CreateBuffer(indexDescription, indexData);
 
+        IBuffer? skin = null;
+        if (part.Skin is not null)
+        {
+            byte[] skinData = MemoryMarshal.AsBytes(part.Skin.AsSpan()).ToArray();
+            BufferDescription skinDescription = new(skinData.Length, BufferUsage.ShaderRead) { Name = $"{name} skin" };
+            skin = _device.CreateBuffer(skinDescription, skinData);
+        }
+
         ITexture? texture = null;
         TextureData? data = part.Material.BaseColorTexture;
         if (data is not null)
@@ -66,6 +75,6 @@ internal sealed class MeshLibrary : IDisposable
             texture = _device.CreateTexture(description, data.Rgba);
         }
 
-        return new GpuMeshPart(vertices, indices, part.Indices.Length, texture, part.Material.BaseColor);
+        return new GpuMeshPart(vertices, part.Vertices.Length, indices, part.Indices.Length, skin, texture, part.Material.BaseColor);
     }
 }

@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/Engine/">
+    <Project Path="../../Source/Debug/FlickerVoid.Engine.Debug.csproj" />
     <Project Path="../../Source/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
     <Project Path="../../Source/Graphics/FlickerVoid.Engine.Graphics.csproj" />
     <Project Path="../../Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />

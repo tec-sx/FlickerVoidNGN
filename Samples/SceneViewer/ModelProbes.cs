@@ -17,9 +17,10 @@ public static class ModelProbes
     // About one probe per this many world units, two to eight along each axis.
     private const float ProbeSpacing = 1.5f;
 
-    public static void Bake(IGraphicsDevice device, IShaderCompiler compiler, IContentManager content, World world, string modelPath, Action<SceneRenderer> configure)
+    public static void Bake(IGraphicsDevice device, IShaderCompiler compiler, IContentManager content, World world, string modelPath, LightingMood mood)
     {
-        IReadOnlyList<MeshPart> parts = GltfImporter.Load(modelPath);
+        ModelData model = GltfImporter.Load(modelPath);
+        IReadOnlyList<MeshPart> parts = model.Parts;
         Vector3 min = new(float.MaxValue);
         Vector3 max = new(float.MinValue);
         foreach (MeshPart part in parts)
@@ -45,7 +46,7 @@ public static class ModelProbes
 
         Stopwatch watch = Stopwatch.StartNew();
         using IrradianceBaker baker = new(device, compiler, content);
-        configure(baker.Renderer);
+        baker.Renderer.Mood = mood;
 
         IrradianceProbes probes = baker.Bake(world, volume, center);
         string probesPath = content.GetFullPath(probesName);

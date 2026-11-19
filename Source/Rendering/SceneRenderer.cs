@@ -11,7 +11,7 @@ using FlickerVoid.Engine.Shaders;
 namespace FlickerVoid.Engine.Rendering;
 
 /// <summary>
-/// Draws every entity with a transform and a mesh renderer, seen through the world's camera and lit by a sun, an even ambient
+/// Draws every entity with a transform and a mesh renderer, posed by its <see cref="MeshAnimator"/> when it has one, seen through the world's camera and lit by a sun, an even ambient
 /// light, and point and spot lights sorted into <see cref="LightClusters"/> (clustered forward shading). The sun and the
 /// lights that cast shadows draw their depth into the <see cref="ShadowAtlas"/> first. Inside the first
 /// <see cref="IrradianceVolume"/>, its baked probes add the light bounced off the scene. A depth prepass gives ambient
@@ -39,7 +39,8 @@ public sealed class SceneRenderer : IDisposable
 
     private static readonly Vector4 Background = new(0, 0, 0, 1);
     private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>();
-    private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>();
+    private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>().WithNone<MeshAnimator>();
+    private static readonly QueryDescription AnimatedMeshes = new QueryDescription().WithAll<MeshRenderer, Transform, MeshAnimator>();
     private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>();
     private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>();
     private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
@@ -56,6 +57,7 @@ public sealed class SceneRenderer : IDisposable
     private readonly MeshLibrary _meshes;
     private readonly TextureLibrary _textures;
     private readonly ShadowRenderer _shadows;
+    private readonly MeshSkinner _skinner;
     private readonly ShadowAtlas _atlas = new();
     private readonly LightClusters _clusters = new();
     private readonly List<MeshDraw> _draws = [];
@@ -94,10 +96,17 @@ public sealed class SceneRenderer : IDisposable
         _meshes = new MeshLibrary(device, content);
         _textures = new TextureLibrary(device, content);
         _shadows = new ShadowRenderer(device, compiler);
+        _skinner = new MeshSkinner(device, compiler);
     }
 
     /// <summary>How the scene is lit and graded; replace it to change the mood.</summary>
     public LightingMood Mood { get; set; } = new();
+
+    /// <summary>Whether point and spot lights light the scene; switch it off to judge the sun and ambient light alone.</summary>
+    public bool LocalLights { get; set; } = true;
+
+    /// <summary>Whether the irradiance volume's probes add bounced light.</summary>
+    public bool Probes { get; set; } = true;
 
     /// <summary>Probes that replace the world's irradiance volume while a bake renders, or null.</summary>
     internal ProbeSource? BakeProbes { get; set; }
@@ -140,6 +149,7 @@ public sealed class SceneRenderer : IDisposable
         _targets.Dispose();
         _screenShadowPipeline.Dispose();
         _depthPipeline.Dispose();
+        _skinner.Dispose();
         _shadows.Dispose();
         _textures.Dispose();
         _meshes.Dispose();
@@ -149,13 +159,15 @@ public sealed class SceneRenderer : IDisposable
         _pipeline.Dispose();
     }
 
-    // Shadows, then a depth prepass the screen shadows are worked out from, then the lit scene, then post-processing.
+    // Skinning, shadows, then a depth prepass the screen shadows are worked out from, then the lit scene, then post-processing.
     private void RenderView(ICommandList commands, World world, ITexture colorTarget, in Camera camera, in CameraView view)
     {
         int width = colorTarget.Description.Width;
         int height = colorTarget.Description.Height;
         _targets.Ensure(width, height);
+        _frameSlot = (_frameSlot + 1) % MaxFramesInFlight;
         CollectDraws(world);
+        _skinner.Dispatch(commands, _frameSlot);
         GatherLights(world, camera, view);
         _shadows.Draw(commands, _shadowViews, _draws);
         ProbeSource? probes = FindProbes(world);
@@ -204,6 +216,11 @@ public sealed class SceneRenderer : IDisposable
         if (BakeProbes is not null)
         {
             return BakeProbes;
+        }
+
+        if (!Probes)
+        {
+            return null;
         }
 
         ProbeSource? found = null;
@@ -277,18 +294,44 @@ public sealed class SceneRenderer : IDisposable
     private void CollectDraws(World world)
     {
         _draws.Clear();
+        _skinner.Begin();
         world.Query(in Meshes, (ref MeshRenderer renderer, ref Transform transform) =>
         {
-            Matrix4x4 scale = Matrix4x4.CreateScale(transform.Scale);
-            Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(transform.Rotation);
-            Matrix4x4 translation = Matrix4x4.CreateTranslation(transform.Position);
-            Matrix4x4 meshWorld = scale * rotation * translation;
-            IReadOnlyList<GpuMeshPart> parts = _meshes.Get(renderer.Mesh);
-            foreach (GpuMeshPart part in parts)
-            {
-                _draws.Add(new MeshDraw(meshWorld, part));
-            }
+            Matrix4x4 meshWorld = GetWorldMatrix(transform);
+            GpuModel model = _meshes.Get(renderer.Mesh);
+            AddDraws(meshWorld, model, null);
         });
+
+        world.Query(in AnimatedMeshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform, ref MeshAnimator animator) =>
+        {
+            Matrix4x4 meshWorld = GetWorldMatrix(transform);
+            GpuModel model = _meshes.Get(renderer.Mesh);
+            IBuffer[]? posed = _skinner.Pose(entity, model, animator);
+            AddDraws(meshWorld, model, posed);
+        });
+    }
+
+    private void AddDraws(Matrix4x4 meshWorld, GpuModel model, IBuffer[]? posed)
+    {
+        for (int index = 0; index < model.Parts.Count; index++)
+        {
+            GpuMeshPart part = model.Parts[index];
+            IBuffer vertices = part.Vertices;
+            if (posed is not null)
+            {
+                vertices = posed[index];
+            }
+
+            _draws.Add(new MeshDraw(meshWorld, part, vertices));
+        }
+    }
+
+    private static Matrix4x4 GetWorldMatrix(in Transform transform)
+    {
+        Matrix4x4 scale = Matrix4x4.CreateScale(transform.Scale);
+        Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(transform.Rotation);
+        Matrix4x4 translation = Matrix4x4.CreateTranslation(transform.Position);
+        return scale * rotation * translation;
     }
 
     // Gathers the lights and hands out shadow atlas tiles: the sun first, then lights in query order while tiles last.
@@ -304,8 +347,14 @@ public sealed class SceneRenderer : IDisposable
         LightingMood mood = Mood;
         if (mood.SunShadowDistance > 0)
         {
-            Matrix4x4 sun = ShadowProjections.FitSun(camera, view, mood.SunDirection, mood.SunShadowDistance, SunCasterReach);
+            Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
+            Matrix4x4 sun = ShadowProjections.FitSun(camera, view, sunDirection, mood.SunShadowDistance, SunCasterReach);
             _sunShadow = AddShadow(sun, _atlas.Sun, orthographic: true);
+        }
+
+        if (!LocalLights)
+        {
+            return;
         }
 
         world.Query(in PointLights, (ref PointLight light, ref Transform transform) =>
@@ -420,10 +469,11 @@ public sealed class SceneRenderer : IDisposable
         Matrix4x4.Invert(viewMatrix, out Matrix4x4 cameraWorld);
         Matrix4x4.Invert(view.ViewProjection, out Matrix4x4 inverseViewProjection);
         LightingMood mood = Mood;
+        Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
         FrameData data = new(
             view.ViewProjection,
             depthAxis,
-            mood.SunDirection,
+            sunDirection,
             mood.Ambient,
             new Vector2(width, height),
             _clusters.SliceScale,
@@ -458,7 +508,6 @@ public sealed class SceneRenderer : IDisposable
             mood.AmbientOcclusionRadius,
             mood.ContactShadowLength);
 
-        _frameSlot = (_frameSlot + 1) % MaxFramesInFlight;
         IBuffer frame = GetFrameBuffer(_frameSlot, size);
         ReadOnlySpan<FrameData> header = new(in data);
         frame.Write(MemoryMarshal.AsBytes(header));
@@ -492,7 +541,7 @@ public sealed class SceneRenderer : IDisposable
         {
             GpuMeshPart part = draw.Part;
             ITexture texture = part.Texture ?? _white;
-            SceneConstants constants = new(draw.World, part.BaseColor, frame, part.Vertices.BindlessIndex, texture.BindlessIndex, _sampler.BindlessIndex);
+            SceneConstants constants = new(draw.World, part.BaseColor, frame, draw.Vertices.BindlessIndex, texture.BindlessIndex, _sampler.BindlessIndex);
             commands.SetIndexBuffer(part.Indices, IndexFormat.UInt32);
             commands.PushConstants(constants);
             commands.DrawIndexed(part.IndexCount);

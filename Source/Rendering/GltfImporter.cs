@@ -7,17 +7,26 @@ using StbImageSharp;
 
 namespace FlickerVoid.Engine.Rendering;
 
-/// <summary>Reads glTF models into mesh parts, one per primitive, with each node's transform baked in.</summary>
+/// <summary>
+/// Reads glTF models into mesh parts, one per primitive, with each node's transform baked in. Skinned meshes stay in their
+/// bind pose with their joints and weights, and the animations of the model's skin are baked into <see cref="AnimationClip"/>s;
+/// a model has at most one skin.
+/// </summary>
 public static class GltfImporter
 {
-    public static IReadOnlyList<MeshPart> Load(string path)
+    public static ModelData Load(string path)
     {
         ModelRoot model = ModelRoot.Load(path);
         return Import(model);
     }
 
-    public static IReadOnlyList<MeshPart> Import(ModelRoot model)
+    public static ModelData Import(ModelRoot model)
     {
+        if (model.LogicalSkins.Count > 1)
+        {
+            throw new NotSupportedException($"The model has {model.LogicalSkins.Count} skins; only one is supported.");
+        }
+
         List<MeshPart> parts = [];
         IEnumerable<Node> nodes = Node.Flatten(model.DefaultScene);
         foreach (Node node in nodes)
@@ -27,10 +36,17 @@ public static class GltfImporter
                 continue;
             }
 
+            // glTF places skinned meshes by their joints alone, ignoring the node's own transform.
+            bool skinned = node.Skin is not null;
             Matrix4x4 world = node.WorldMatrix;
+            if (skinned)
+            {
+                world = Matrix4x4.Identity;
+            }
+
             foreach (MeshPrimitive primitive in node.Mesh.Primitives)
             {
-                MeshPart? part = ImportPrimitive(primitive, world);
+                MeshPart? part = ImportPrimitive(primitive, world, skinned);
                 if (part is not null)
                 {
                     parts.Add(part);
@@ -38,11 +54,22 @@ public static class GltfImporter
             }
         }
 
-        return parts;
+        List<AnimationClip> animations = [];
+        if (model.LogicalSkins.Count == 1)
+        {
+            Skin skin = model.LogicalSkins[0];
+            foreach (Animation animation in model.LogicalAnimations)
+            {
+                AnimationClip clip = BakeAnimation(skin, animation);
+                animations.Add(clip);
+            }
+        }
+
+        return new ModelData(parts, animations);
     }
 
     /// <summary>Returns null for primitives without triangles, such as lines and points.</summary>
-    private static MeshPart? ImportPrimitive(MeshPrimitive primitive, Matrix4x4 world)
+    private static MeshPart? ImportPrimitive(MeshPrimitive primitive, Matrix4x4 world, bool skinned)
     {
         uint[] indices = ImportIndices(primitive, world);
         if (indices.Length == 0)
@@ -52,7 +79,54 @@ public static class GltfImporter
 
         MeshVertex[] vertices = ImportVertices(primitive, world);
         MaterialData material = ImportMaterial(primitive.Material);
-        return new MeshPart(vertices, indices, material);
+        SkinVertex[]? skin = null;
+        if (skinned)
+        {
+            skin = ImportSkin(primitive);
+        }
+
+        return new MeshPart(vertices, indices, material) { Skin = skin };
+    }
+
+    private static SkinVertex[] ImportSkin(MeshPrimitive primitive)
+    {
+        IAccessorArray<Vector4> joints = primitive.GetVertexAccessor("JOINTS_0").AsVector4Array();
+        IAccessorArray<Vector4> weights = primitive.GetVertexAccessor("WEIGHTS_0").AsVector4Array();
+        SkinVertex[] skin = new SkinVertex[joints.Count];
+        for (int index = 0; index < skin.Length; index++)
+        {
+            Vector4 joint = joints[index];
+            Vector4 weight = weights[index];
+            float total = weight.X + weight.Y + weight.Z + weight.W;
+            if (total > 0)
+            {
+                weight /= total;
+            }
+
+            skin[index] = new SkinVertex((uint)joint.X, (uint)joint.Y, (uint)joint.Z, (uint)joint.W, weight);
+        }
+
+        return skin;
+    }
+
+    // Each joint's matrix takes a vertex from the bind pose, through the joint's inverse bind matrix, to where the joint is now.
+    private static AnimationClip BakeAnimation(Skin skin, Animation animation)
+    {
+        int jointCount = skin.JointsCount;
+        int frameCount = (int)MathF.Ceiling(animation.Duration * AnimationClip.FrameRate) + 1;
+        Matrix4x4[] frames = new Matrix4x4[frameCount * jointCount];
+        for (int frame = 0; frame < frameCount; frame++)
+        {
+            float time = MathF.Min(frame / AnimationClip.FrameRate, animation.Duration);
+            for (int joint = 0; joint < jointCount; joint++)
+            {
+                Node node = skin.Joints[joint];
+                Matrix4x4 jointWorld = node.GetWorldMatrix(animation, time);
+                frames[(frame * jointCount) + joint] = skin.InverseBindMatrices[joint] * jointWorld;
+            }
+        }
+
+        return new AnimationClip(animation.Name, animation.Duration, jointCount, frames);
     }
 
     private static MeshVertex[] ImportVertices(MeshPrimitive primitive, Matrix4x4 world)

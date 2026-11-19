@@ -27,18 +27,22 @@ public sealed class OrbitCameraSystem : ISystem<GameTime>
     private readonly IGameWindow _window;
     private readonly World _world;
     private readonly Entity _camera;
+    private readonly Func<bool> _mouseBlocked;
+    private readonly Func<bool> _keyboardBlocked;
     private Vector3 _target;
     private float _yaw = MathF.PI / 4;
     private float _pitch = -0.6f;
     private float _distance;
 
-    public OrbitCameraSystem(IGameWindow window, World world, Entity camera, Vector3 target, float distance)
+    public OrbitCameraSystem(IGameWindow window, World world, Entity camera, Vector3 target, float distance, Func<bool> mouseBlocked, Func<bool> keyboardBlocked)
     {
         _window = window;
         _world = world;
         _camera = camera;
         _target = target;
         _distance = distance;
+        _mouseBlocked = mouseBlocked;
+        _keyboardBlocked = keyboardBlocked;
     }
 
     public void Initialize()
@@ -53,22 +57,32 @@ public sealed class OrbitCameraSystem : ISystem<GameTime>
     public void Update(in GameTime t)
     {
         IInputState input = _window.Input;
-        if (input.IsDown(MouseButton.Left))
+        bool mouseBlocked = _mouseBlocked();
+        bool keyboardBlocked = _keyboardBlocked();
+        if (input.IsDown(MouseButton.Left) && !mouseBlocked)
         {
             _yaw -= input.MouseDelta.X * RadiansPerPixel;
             _pitch = Math.Clamp(_pitch - input.MouseDelta.Y * RadiansPerPixel, MinPitch, MaxPitch);
         }
 
-        _distance *= MathF.Pow(ZoomPerNotch, input.ScrollDelta);
+        if (!mouseBlocked)
+        {
+            _distance *= MathF.Pow(ZoomPerNotch, input.ScrollDelta);
+        }
+
 
         Vector3 move = Vector3.Zero;
-        move += Axis(input, Key.D, Key.A) * Vector3.UnitX;
-        move += Axis(input, Key.S, Key.W) * Vector3.UnitZ;
+        if (!keyboardBlocked)
+        {
+            move += Axis(input, Key.D, Key.A) * Vector3.UnitX;
+            move += Axis(input, Key.S, Key.W) * Vector3.UnitZ;
+        }
+
         Quaternion turn = Quaternion.CreateFromAxisAngle(Vector3.UnitY, _yaw);
         Vector3 groundMove = Vector3.Transform(move, turn);
         _target += groundMove * _distance * (float)t.Elapsed.TotalSeconds;
 
-        if (input.WasPressed(Key.P))
+        if (input.WasPressed(Key.P) && !keyboardBlocked)
         {
             ref Camera camera = ref _world.Get<Camera>(_camera);
             if (camera.Projection == CameraProjection.Orthographic)
