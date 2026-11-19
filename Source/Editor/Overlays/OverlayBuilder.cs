@@ -15,17 +15,27 @@ public sealed class OverlayBuilder
     private const int ConeSegments = 12;
 
     private readonly List<OverlayVertex> _vertices = [];
+    private readonly List<OverlayIcon> _icons = [];
     private EditorCamera _camera = new();
     private int _viewportHeight = 1;
 
     public ReadOnlySpan<OverlayVertex> Vertices => CollectionsMarshal.AsSpan(_vertices);
 
+    /// <summary>Drawn over the triangles.</summary>
+    public ReadOnlySpan<OverlayIcon> Icons => CollectionsMarshal.AsSpan(_icons);
+
     /// <summary>Empties the builder for a frame seen by the camera in a viewport of the given height.</summary>
     public void Begin(EditorCamera camera, int viewportHeight)
     {
         _vertices.Clear();
+        _icons.Clear();
         _camera = camera;
         _viewportHeight = viewportHeight;
+    }
+
+    public void AddIcon(Vector3 position, EditorIcon icon, Vector4 color)
+    {
+        _icons.Add(new OverlayIcon(position, icon, color));
     }
 
     public void AddTriangle(Vector3 a, Vector3 b, Vector3 c, Vector4 color)

@@ -3,7 +3,6 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Engine.Editor.Geometry;
-using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
@@ -11,17 +10,12 @@ using FlickerVoid.Engine.Runtime.Content;
 namespace FlickerVoid.Engine.Editor.Selection;
 
 /// <summary>
-/// Finds the entity a ray hits first: meshes by their triangles (skinned ones in their bind pose) and lights by a small sphere
-/// round them. Keeps each model's triangles from the first pick until its file changes.
+/// Finds the mesh a ray hits first, by its triangles (skinned ones in their bind pose); entities without a mesh are picked by
+/// their icons. Keeps each model's triangles from the first pick until its file changes.
 /// </summary>
 public sealed class ScenePicker : IDisposable
 {
-    /// <summary>How close a ray must pass to a light to pick it.</summary>
-    public const float LightRadius = 0.25f;
-
     private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>();
-    private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>();
-    private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>();
 
     private readonly IContentManager _content;
     private readonly Dictionary<string, PickModel?> _models = new(ContentManager.PathComparer);
@@ -44,26 +38,10 @@ public sealed class ScenePicker : IDisposable
                 nearestDistance = distance;
             }
         });
-        world.Query(in PointLights, (Entity entity, ref Transform transform) =>
-        {
-            if (ray.IntersectSphere(transform.Position, LightRadius, out float distance) && distance < nearestDistance)
-            {
-                nearest = entity;
-                nearestDistance = distance;
-            }
-        });
-        world.Query(in SpotLights, (Entity entity, ref Transform transform) =>
-        {
-            if (ray.IntersectSphere(transform.Position, LightRadius, out float distance) && distance < nearestDistance)
-            {
-                nearest = entity;
-                nearestDistance = distance;
-            }
-        });
         return nearest;
     }
 
-    /// <summary>The box round an entity in its own space: its model's, or the picking sphere's for a light.</summary>
+    /// <summary>The box round an entity's model in its own space.</summary>
     public bool TryGetBounds(World world, Entity entity, out Vector3 min, out Vector3 max)
     {
         min = default;
@@ -73,27 +51,19 @@ public sealed class ScenePicker : IDisposable
             return false;
         }
 
-        if (world.TryGet(entity, out MeshRenderer renderer))
-        {
-            PickModel? model = Load(renderer.Mesh);
-            if (model is null)
-            {
-                return false;
-            }
-
-            min = model.Min;
-            max = model.Max;
-            return true;
-        }
-
-        bool isLight = world.Has<PointLight>(entity) || world.Has<SpotLight>(entity);
-        if (!isLight)
+        if (!world.TryGet(entity, out MeshRenderer renderer))
         {
             return false;
         }
 
-        min = new Vector3(-LightRadius);
-        max = new Vector3(LightRadius);
+        PickModel? model = Load(renderer.Mesh);
+        if (model is null)
+        {
+            return false;
+        }
+
+        min = model.Min;
+        max = model.Max;
         return true;
     }
 

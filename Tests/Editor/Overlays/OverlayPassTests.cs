@@ -1,5 +1,7 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Editor.Overlays;
+
 namespace FlickerVoid.Engine.Editor.Tests.Overlays;
 
 public sealed class OverlayPassTests : IDisposable
@@ -44,5 +46,21 @@ public sealed class OverlayPassTests : IDisposable
         }
 
         covered.Should().BeInRange(4, 6);
+    }
+
+    [Fact]
+    public void DrawsIconsInTheirColourWhereTheyAre()
+    {
+        Vector4 red = new(1, 0, 0, 1);
+        _builder.Camera.LookAt(Vector3.Zero, 0, 0, 10);
+        _builder.WithOverlay(overlay => overlay.AddIcon(Vector3.Zero, EditorIcon.PointLight, red));
+
+        uint[] pixels = _builder.Render();
+
+        // The middle of the bulb is solid; the icon is a few dozen pixels across, so the corners stay clear.
+        (byte red, byte green, byte blue) middle = OverlayPassTestsBuilder.Channels(pixels[((Centre - 4) * Size) + Centre]);
+        middle.red.Should().BeGreaterThan(200);
+        middle.green.Should().BeLessThan(30);
+        OverlayPassTestsBuilder.Channels(pixels[0]).Should().Be(((byte)0, (byte)0, (byte)0));
     }
 }

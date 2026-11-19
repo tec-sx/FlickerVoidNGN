@@ -13,19 +13,24 @@ using FlickerVoid.Engine.Editor.Overlays;
 using FlickerVoid.Engine.Editor.Scenes;
 using FlickerVoid.Engine.Editor.Selection;
 using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Editor.Viewports;
 
 /// <summary>
-/// The scene view: the world it shows, the editor camera looking at it, the selection and its gizmo. Clicking selects what is under
-/// the mouse, dragging a gizmo handle changes the selection's transform, and Q, W, E and R switch the gizmo as in Unreal.
+/// The scene view: the world it shows, the editor camera looking at it, the icons of lights, cameras and volumes, the selection and
+/// its gizmo. Clicking selects what is under the mouse, icons first, dragging a gizmo handle changes the selection's transform, and
+/// Q, W, E and R switch the gizmo as in Unreal.
 /// </summary>
 public sealed partial class ViewportViewModel : ObservableObject
 {
     private const float SelectionLineWidth = 2;
+    private const float ReachLineWidth = 1.5f;
+    private const int ConeEdges = 4;
 
-    private static readonly Vector4 SelectionColor = new(1, 0.55f, 0.1f, 1);
+    private static readonly Vector4 SelectionColor = EditorIcons.SelectedColor;
 
     private readonly EditorCameraController _controller;
 
@@ -45,6 +50,8 @@ public sealed partial class ViewportViewModel : ObservableObject
     public EditorSelection Selection { get; } = new();
 
     public TransformGizmo Gizmo { get; } = new();
+
+    public EditorIcons Icons { get; } = new();
 
     /// <summary>Whether the viewport's renderer turns on the Vulkan validation layer.</summary>
     public bool Validation { get; }
@@ -184,8 +191,14 @@ public sealed partial class ViewportViewModel : ObservableObject
             }
         }
 
-        Ray ray = Camera.GetRay(pixel, width, height);
-        Entity? picked = Scene.Picker.Pick(world, ray);
+        Icons.Collect(world, Selection.Selected);
+        Entity? picked = Icons.HitTest(Camera, pixel, width, height);
+        if (picked is null)
+        {
+            Ray ray = Camera.GetRay(pixel, width, height);
+            picked = Scene.Picker.Pick(world, ray);
+        }
+
         Selection.Select(picked);
     }
 
@@ -213,24 +226,74 @@ public sealed partial class ViewportViewModel : ObservableObject
         Gizmo.EndDrag();
     }
 
-    /// <summary>Fills the overlay with this frame's selection box and gizmo.</summary>
+    /// <summary>Fills the overlay with this frame's icons, the selection's outline or reach, and the gizmo.</summary>
     public void BuildOverlay(OverlayBuilder overlay, int viewportHeight)
     {
         overlay.Begin(Camera, viewportHeight);
         World world = Scene.Game.World;
+        Icons.Collect(world, Selection.Selected);
+        foreach (IconInstance icon in Icons.Icons)
+        {
+            overlay.AddIcon(icon.Position, icon.Icon, icon.Color);
+        }
+
         if (Selection.Selected is not { } selected || !world.IsAlive(selected))
         {
             return;
         }
 
         Transform transform = world.Get<Transform>(selected);
+        DrawSelection(overlay, world, selected, transform);
+        Gizmo.Draw(overlay, Camera, transform, viewportHeight);
+    }
+
+    /// <summary>A mesh's box, a point light's reach as three circles, a spot light's cone, or an irradiance volume's box.</summary>
+    private void DrawSelection(OverlayBuilder overlay, World world, Entity selected, in Transform transform)
+    {
         if (Scene.Picker.TryGetBounds(world, selected, out Vector3 min, out Vector3 max))
         {
             Matrix4x4 matrix = transform.ToMatrix();
             overlay.AddBox(min, max, matrix, SelectionColor, SelectionLineWidth);
         }
 
-        Gizmo.Draw(overlay, Camera, transform, viewportHeight);
+        Vector3 position = transform.Position;
+        if (world.TryGet(selected, out PointLight point))
+        {
+            overlay.AddCircle(position, Vector3.UnitX, point.Range, SelectionColor, ReachLineWidth);
+            overlay.AddCircle(position, Vector3.UnitY, point.Range, SelectionColor, ReachLineWidth);
+            overlay.AddCircle(position, Vector3.UnitZ, point.Range, SelectionColor, ReachLineWidth);
+        }
+
+        if (world.TryGet(selected, out SpotLight spot))
+        {
+            DrawCone(overlay, transform, spot);
+        }
+
+        if (world.TryGet(selected, out IrradianceVolume volume))
+        {
+            Vector3 half = volume.Size / 2;
+            Matrix4x4 moved = Matrix4x4.CreateTranslation(position);
+            overlay.AddBox(-half, half, moved, SelectionColor, SelectionLineWidth);
+        }
+    }
+
+    /// <summary>The spot light's outer cone along its -Z, out to its range.</summary>
+    private static void DrawCone(OverlayBuilder overlay, in Transform transform, in SpotLight spot)
+    {
+        Vector3 apex = transform.Position;
+        Vector3 direction = Vector3.Transform(-Vector3.UnitZ, transform.Rotation);
+        float angle = float.DegreesToRadians(spot.OuterConeAngle);
+        float radius = spot.Range * MathF.Tan(angle);
+        Vector3 baseCentre = apex + (direction * spot.Range);
+        overlay.AddCircle(baseCentre, direction, radius, SelectionColor, ReachLineWidth);
+        OverlayBuilder.GetPlaneAxes(direction, out Vector3 first, out Vector3 second);
+        for (int edge = 0; edge < ConeEdges; edge++)
+        {
+            float around = MathF.Tau * edge / ConeEdges;
+            Vector3 offset = (first * MathF.Cos(around)) + (second * MathF.Sin(around));
+            Vector3 rim = baseCentre + (offset * radius);
+            overlay.AddLine(apex, rim, SelectionColor, ReachLineWidth);
+        }
     }
 
     private void SetModeIf(bool chosen, GizmoMode mode)

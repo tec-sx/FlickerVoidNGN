@@ -5,9 +5,10 @@
   <ItemGroup>
     <ProjectReference Include="../../Source/Editor/FlickerVoid.Engine.Editor.csproj" />
   </ItemGroup>
-  <!-- Builds the engine's and the editor's shaders into Content/Engine, where the renderer and the grid load them. -->
+  <!-- Builds the engine's and the editor's shaders and icons into Content/Engine, where the renderer and the editor's passes load them. -->
   <ItemGroup>
     <FlickerVoidContent Include="../../Source/Editor/Shaders" OutputFolder="Engine/Editor" />
+    <FlickerVoidContent Include="../../Source/Editor/Icons" OutputFolder="Engine/EditorIcons" />
   </ItemGroup>
   <Import Project="../../Source/Builder/FlickerVoid.Engine.Builder.targets" />
 </Project>

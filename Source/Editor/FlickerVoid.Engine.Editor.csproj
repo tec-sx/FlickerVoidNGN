@@ -15,9 +15,10 @@
     <ProjectReference Include="../Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
     <ProjectReference Include="../Rendering/FlickerVoid.Engine.Rendering.csproj" />
   </ItemGroup>
-  <!-- The editor's own shaders go beside the engine modules' shaders in Content/Engine. -->
+  <!-- The editor's own shaders and icons (Material Symbols, Apache-2.0) go beside the engine modules' shaders in Content/Engine. -->
   <ItemGroup>
     <FlickerVoidContent Include="Shaders" OutputFolder="Engine/Editor" />
+    <FlickerVoidContent Include="Icons" OutputFolder="Engine/EditorIcons" />
   </ItemGroup>
   <Import Project="../Builder/FlickerVoid.Engine.Builder.targets" />
 </Project>

@@ -45,3 +45,11 @@ Used in: `Samples/SceneViewer/Content/Fox.glb`, unchanged.
 - Model by PixelMannen, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/legalcode).
 - Rigging and animation by tomkranis on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode).
 - glTF conversion by AsoboStudio and scurest, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode).
+
+## Material Symbols (Google Material Design Icons)
+
+https://github.com/google/material-design-icons
+
+Used in: `Source/Editor/Icons/*.png`, the Rounded filled glyphs `lightbulb`, `highlight`, `videocam` and `blur_on`, rasterised to 64 px white PNGs.
+
+Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0), Copyright Google LLC.
