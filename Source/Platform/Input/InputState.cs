@@ -13,12 +13,15 @@ public sealed class InputState : IInputState
     private readonly HashSet<MouseButton> _buttonsDown = [];
     private readonly HashSet<MouseButton> _buttonsPressed = [];
     private readonly HashSet<MouseButton> _buttonsReleased = [];
+    private readonly System.Text.StringBuilder _typed = new();
 
     public Vector2 MousePosition { get; private set; }
 
     public Vector2 MouseDelta { get; private set; }
 
     public float ScrollDelta { get; private set; }
+
+    public string TypedText => _typed.ToString();
 
     public bool IsDown(Key key)
     {
@@ -89,6 +92,11 @@ public sealed class InputState : IInputState
         MousePosition = position;
     }
 
+    public void TypeText(char character)
+    {
+        _typed.Append(character);
+    }
+
     public void Scroll(float amount)
     {
         ScrollDelta += amount;
@@ -112,5 +120,6 @@ public sealed class InputState : IInputState
         _buttonsReleased.Clear();
         MouseDelta = Vector2.Zero;
         ScrollDelta = 0;
+        _typed.Clear();
     }
 }

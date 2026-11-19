@@ -11,10 +11,11 @@ using FlickerVoid.Engine.Shaders;
 namespace FlickerVoid.Engine.Rendering;
 
 /// <summary>
-/// Draws every entity with a transform and a mesh renderer, seen through the world's camera and lit by a sun, an even ambient
+/// Draws every entity with a transform and a mesh renderer, posed by its <see cref="MeshAnimator"/> when it has one, seen through the world's camera and lit by a sun, an even ambient
 /// light, and point and spot lights sorted into <see cref="LightClusters"/> (clustered forward shading). The sun and the
 /// lights that cast shadows draw their depth into the <see cref="ShadowAtlas"/> first. Inside the first
-/// <see cref="IrradianceVolume"/>, its baked probes add the light bounced off the scene.
+/// <see cref="IrradianceVolume"/>, its baked probes add the light bounced off the scene. A depth prepass gives ambient
+/// occlusion and contact shadows, and the lit scene is drawn in HDR and graded into the output as the <see cref="Mood"/> says.
 /// </summary>
 public sealed class SceneRenderer : IDisposable
 {
@@ -27,6 +28,8 @@ public sealed class SceneRenderer : IDisposable
     public const int MaxFramesInFlight = 3;
 
     private const string ShaderName = "Scene.hlsl";
+    private const string FrameShader = "Frame.hlsl";
+    private const int GroupSize = 8;
 
     // How far beyond the view toward the sun shadow casters are still drawn, in world units.
     private const float SunCasterReach = 50;
@@ -36,19 +39,25 @@ public sealed class SceneRenderer : IDisposable
 
     private static readonly Vector4 Background = new(0, 0, 0, 1);
     private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>();
-    private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>();
+    private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>().WithNone<MeshAnimator>();
+    private static readonly QueryDescription AnimatedMeshes = new QueryDescription().WithAll<MeshRenderer, Transform, MeshAnimator>();
     private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>();
     private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>();
     private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
 
     private readonly IGraphicsDevice _device;
     private readonly IPipeline _pipeline;
+    private readonly IPipeline _depthPipeline;
+    private readonly IPipeline _screenShadowPipeline;
+    private readonly ScreenTargets _targets;
+    private readonly PostProcessor _post;
     private readonly ITexture _white;
     private readonly ISampler _sampler;
     private readonly ISampler _clampSampler;
     private readonly MeshLibrary _meshes;
     private readonly TextureLibrary _textures;
     private readonly ShadowRenderer _shadows;
+    private readonly MeshSkinner _skinner;
     private readonly ShadowAtlas _atlas = new();
     private readonly LightClusters _clusters = new();
     private readonly List<MeshDraw> _draws = [];
@@ -68,7 +77,16 @@ public sealed class SceneRenderer : IDisposable
     {
         _device = device;
         _content = content;
-        _pipeline = CreatePipeline(device, compiler, colorFormat);
+        _pipeline = CreatePipeline(device, compiler);
+        _depthPipeline = CreateDepthPipeline(device, compiler);
+        ComputePipelineDescription screenShadows = new()
+        {
+            ComputeShader = EmbeddedShaders.Compile(compiler, "ScreenShadows.hlsl", "ComputeMain", ShaderStage.Compute, FrameShader),
+            Name = "Screen shadows",
+        };
+        _screenShadowPipeline = device.CreateComputePipeline(screenShadows);
+        _targets = new ScreenTargets(device);
+        _post = new PostProcessor(device, compiler, colorFormat);
         TextureDescription whiteDescription = new(1, 1, PixelFormat.Rgba8UNorm, TextureUsage.ShaderRead) { Name = "White" };
         _white = device.CreateTexture(whiteDescription, [255, 255, 255, 255]);
         SamplerDescription samplerDescription = new(SamplerFilter.Linear, SamplerAddressMode.Wrap);
@@ -78,61 +96,45 @@ public sealed class SceneRenderer : IDisposable
         _meshes = new MeshLibrary(device, content);
         _textures = new TextureLibrary(device, content);
         _shadows = new ShadowRenderer(device, compiler);
+        _skinner = new MeshSkinner(device, compiler);
     }
 
-    /// <summary>The direction the sunlight travels, in world space.</summary>
-    public Vector3 SunDirection { get; set; } = Vector3.Normalize(new Vector3(-0.4f, -0.8f, -0.45f));
+    /// <summary>How the scene is lit and graded; replace it to change the mood.</summary>
+    public LightingMood Mood { get; set; } = new();
 
-    /// <summary>The share of light that reaches every surface, from 0 to 1; the sun lights the rest.</summary>
-    public float Ambient { get; set; } = 0.35f;
+    /// <summary>Whether point and spot lights light the scene; switch it off to judge the sun and ambient light alone.</summary>
+    public bool LocalLights { get; set; } = true;
 
-    /// <summary>How far from the camera the sun casts shadows, in world units; 0 turns them off.</summary>
-    public float SunShadowDistance { get; set; } = 30;
-
-    /// <summary>How much of the light crossing a world unit of fog it absorbs or scatters, at and below <see cref="FogHeight"/>; 0 clears the air.</summary>
-    public float FogDensity { get; set; }
-
-    /// <summary>The height below which fog keeps its full density.</summary>
-    public float FogHeight { get; set; }
-
-    /// <summary>How fast fog thins above <see cref="FogHeight"/>: its density falls by e every 1 / falloff units; 0 keeps it even.</summary>
-    public float FogHeightFalloff { get; set; }
-
-    /// <summary>The share of the light fog scatters rather than absorbs, per color channel: white fog glows, black fog only dims.</summary>
-    public Vector3 FogColor { get; set; } = Vector3.One;
-
-    /// <summary>
-    /// How much fog scatters light onward rather than back, from -1 to 1: above 0 it glows toward the camera when the
-    /// light shines from behind what it sees, as in god rays; 0 scatters evenly.
-    /// </summary>
-    public float FogAnisotropy { get; set; } = 0.3f;
+    /// <summary>Whether the irradiance volume's probes add bounced light.</summary>
+    public bool Probes { get; set; } = true;
 
     /// <summary>Probes that replace the world's irradiance volume while a bake renders, or null.</summary>
     internal ProbeSource? BakeProbes { get; set; }
 
-    /// <summary>Clears both targets and draws the world from its first camera, or nothing without one; leaves the color target in the RenderTarget state.</summary>
-    public void Render(ICommandList commands, World world, ITexture colorTarget, ITexture depthTarget)
+    /// <summary>Draws the world from its first camera into the color target, or clears it without one; leaves it in the RenderTarget state.</summary>
+    public void Render(ICommandList commands, World world, ITexture colorTarget)
     {
         int width = colorTarget.Description.Width;
         int height = colorTarget.Description.Height;
-        bool hasCamera = TryFindCamera(world, width, height, out Camera camera, out CameraView view);
-        IBuffer? frame = null;
-        if (hasCamera)
+        if (!TryFindCamera(world, width, height, out Camera camera, out CameraView view))
         {
-            frame = Prepare(commands, world, camera, view, width, height);
+            commands.Barrier(colorTarget, ResourceState.RenderTarget);
+            ColorTarget clear = new(colorTarget, LoadAction.Clear, Background);
+            commands.BeginRendering([clear]);
+            commands.EndRendering();
+            return;
         }
 
-        DrawScene(commands, colorTarget, depthTarget, frame);
+        RenderView(commands, world, colorTarget, camera, view);
     }
 
-    /// <summary>Clears both targets and draws the world through the given camera; leaves the color target in the RenderTarget state.</summary>
-    public void Render(ICommandList commands, World world, ITexture colorTarget, ITexture depthTarget, in Camera camera, in Transform cameraTransform)
+    /// <summary>Draws the world through the given camera into the color target; leaves it in the RenderTarget state.</summary>
+    public void Render(ICommandList commands, World world, ITexture colorTarget, in Camera camera, in Transform cameraTransform)
     {
         int width = colorTarget.Description.Width;
         int height = colorTarget.Description.Height;
         CameraView view = CameraView.Create(camera, cameraTransform, width, height);
-        IBuffer frame = Prepare(commands, world, camera, view, width, height);
-        DrawScene(commands, colorTarget, depthTarget, frame);
+        RenderView(commands, world, colorTarget, camera, view);
     }
 
     public void Dispose()
@@ -143,6 +145,11 @@ public sealed class SceneRenderer : IDisposable
         }
 
         _probeBuffer?.Dispose();
+        _post.Dispose();
+        _targets.Dispose();
+        _screenShadowPipeline.Dispose();
+        _depthPipeline.Dispose();
+        _skinner.Dispose();
         _shadows.Dispose();
         _textures.Dispose();
         _meshes.Dispose();
@@ -152,35 +159,56 @@ public sealed class SceneRenderer : IDisposable
         _pipeline.Dispose();
     }
 
-    // Draws the shadows and writes the frame buffer the scene pass reads.
-    private IBuffer Prepare(ICommandList commands, World world, in Camera camera, in CameraView view, int width, int height)
-    {
-        CollectDraws(world);
-        GatherLights(world, camera, view);
-        _shadows.Draw(commands, _shadowViews, _draws);
-        ProbeSource? probes = FindProbes(world);
-        return WriteFrame(camera, view, width, height, probes);
-    }
-
-    private void DrawScene(ICommandList commands, ITexture colorTarget, ITexture depthTarget, IBuffer? frame)
+    // Skinning, shadows, then a depth prepass the screen shadows are worked out from, then the lit scene, then post-processing.
+    private void RenderView(ICommandList commands, World world, ITexture colorTarget, in Camera camera, in CameraView view)
     {
         int width = colorTarget.Description.Width;
         int height = colorTarget.Description.Height;
+        _targets.Ensure(width, height);
+        _frameSlot = (_frameSlot + 1) % MaxFramesInFlight;
+        CollectDraws(world);
+        _skinner.Dispatch(commands, _frameSlot);
+        GatherLights(world, camera, view);
+        _shadows.Draw(commands, _shadowViews, _draws);
+        ProbeSource? probes = FindProbes(world);
+        IBuffer frame = WriteFrame(camera, view, width, height, probes);
+        Viewport viewport = new(0, 0, width, height);
 
-        commands.Barrier(colorTarget, ResourceState.RenderTarget);
-        commands.Barrier(depthTarget, ResourceState.DepthWrite);
-        ColorTarget color = new(colorTarget, LoadAction.Clear, Background);
-        DepthTarget depth = new(depthTarget, LoadAction.Clear);
-        commands.BeginRendering([color], depth);
-        if (frame is not null)
+        commands.Barrier(_targets.Depth, ResourceState.DepthWrite);
+        DepthTarget clearDepth = new(_targets.Depth, LoadAction.Clear);
+        commands.BeginRendering([], clearDepth);
+        commands.SetViewport(viewport);
+        commands.SetScissor(0, 0, width, height);
+        commands.SetPipeline(_depthPipeline);
+        DrawMeshes(commands, frame.BindlessIndex);
+        commands.EndRendering();
+
+        commands.Barrier(_targets.Depth, ResourceState.ShaderRead);
+        commands.Barrier(_targets.ScreenShadows, ResourceState.ShaderWrite);
+        commands.SetPipeline(_screenShadowPipeline);
+        ScreenShadowConstants screenShadows = new(frame.BindlessIndex, _targets.Depth.BindlessIndex, _targets.ScreenShadows.BindlessIndex);
+        commands.PushConstants(screenShadows);
+        commands.Dispatch((width + GroupSize - 1) / GroupSize, (height + GroupSize - 1) / GroupSize);
+        commands.Barrier(_targets.ScreenShadows, ResourceState.ShaderRead);
+
+        commands.Barrier(_targets.Depth, ResourceState.DepthWrite);
+        commands.Barrier(_targets.Hdr, ResourceState.RenderTarget);
+        ColorTarget hdr = new(_targets.Hdr, LoadAction.Clear, Background);
+        DepthTarget depth = new(_targets.Depth, LoadAction.Load);
+        commands.BeginRendering([hdr], depth);
+        commands.SetViewport(viewport);
+        commands.SetScissor(0, 0, width, height);
+        commands.SetPipeline(_pipeline);
+        DrawMeshes(commands, frame.BindlessIndex);
+        commands.EndRendering();
+
+        ITexture? paper = null;
+        if (Mood.Paper is not null)
         {
-            commands.SetViewport(new Viewport(0, 0, width, height));
-            commands.SetScissor(0, 0, width, height);
-            commands.SetPipeline(_pipeline);
-            DrawMeshes(commands, frame.BindlessIndex);
+            paper = _textures.Get(Mood.Paper);
         }
 
-        commands.EndRendering();
+        _post.Run(commands, _targets, colorTarget, Mood, paper, _clampSampler, _sampler);
     }
 
     private ProbeSource? FindProbes(World world)
@@ -188,6 +216,11 @@ public sealed class SceneRenderer : IDisposable
         if (BakeProbes is not null)
         {
             return BakeProbes;
+        }
+
+        if (!Probes)
+        {
+            return null;
         }
 
         ProbeSource? found = null;
@@ -261,18 +294,44 @@ public sealed class SceneRenderer : IDisposable
     private void CollectDraws(World world)
     {
         _draws.Clear();
+        _skinner.Begin();
         world.Query(in Meshes, (ref MeshRenderer renderer, ref Transform transform) =>
         {
-            Matrix4x4 scale = Matrix4x4.CreateScale(transform.Scale);
-            Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(transform.Rotation);
-            Matrix4x4 translation = Matrix4x4.CreateTranslation(transform.Position);
-            Matrix4x4 meshWorld = scale * rotation * translation;
-            IReadOnlyList<GpuMeshPart> parts = _meshes.Get(renderer.Mesh);
-            foreach (GpuMeshPart part in parts)
-            {
-                _draws.Add(new MeshDraw(meshWorld, part));
-            }
+            Matrix4x4 meshWorld = GetWorldMatrix(transform);
+            GpuModel model = _meshes.Get(renderer.Mesh);
+            AddDraws(meshWorld, model, null);
         });
+
+        world.Query(in AnimatedMeshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform, ref MeshAnimator animator) =>
+        {
+            Matrix4x4 meshWorld = GetWorldMatrix(transform);
+            GpuModel model = _meshes.Get(renderer.Mesh);
+            IBuffer[]? posed = _skinner.Pose(entity, model, animator);
+            AddDraws(meshWorld, model, posed);
+        });
+    }
+
+    private void AddDraws(Matrix4x4 meshWorld, GpuModel model, IBuffer[]? posed)
+    {
+        for (int index = 0; index < model.Parts.Count; index++)
+        {
+            GpuMeshPart part = model.Parts[index];
+            IBuffer vertices = part.Vertices;
+            if (posed is not null)
+            {
+                vertices = posed[index];
+            }
+
+            _draws.Add(new MeshDraw(meshWorld, part, vertices));
+        }
+    }
+
+    private static Matrix4x4 GetWorldMatrix(in Transform transform)
+    {
+        Matrix4x4 scale = Matrix4x4.CreateScale(transform.Scale);
+        Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(transform.Rotation);
+        Matrix4x4 translation = Matrix4x4.CreateTranslation(transform.Position);
+        return scale * rotation * translation;
     }
 
     // Gathers the lights and hands out shadow atlas tiles: the sun first, then lights in query order while tiles last.
@@ -285,10 +344,17 @@ public sealed class SceneRenderer : IDisposable
         _atlas.Reset();
 
         _sunShadow = GpuLight.None;
-        if (SunShadowDistance > 0)
+        LightingMood mood = Mood;
+        if (mood.SunShadowDistance > 0)
         {
-            Matrix4x4 sun = ShadowProjections.FitSun(camera, view, SunDirection, SunShadowDistance, SunCasterReach);
+            Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
+            Matrix4x4 sun = ShadowProjections.FitSun(camera, view, sunDirection, mood.SunShadowDistance, SunCasterReach);
             _sunShadow = AddShadow(sun, _atlas.Sun, orthographic: true);
+        }
+
+        if (!LocalLights)
+        {
+            return;
         }
 
         world.Query(in PointLights, (ref PointLight light, ref Transform transform) =>
@@ -401,11 +467,14 @@ public sealed class SceneRenderer : IDisposable
         }
 
         Matrix4x4.Invert(viewMatrix, out Matrix4x4 cameraWorld);
+        Matrix4x4.Invert(view.ViewProjection, out Matrix4x4 inverseViewProjection);
+        LightingMood mood = Mood;
+        Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
         FrameData data = new(
             view.ViewProjection,
             depthAxis,
-            SunDirection,
-            Ambient,
+            sunDirection,
+            mood.Ambient,
             new Vector2(width, height),
             _clusters.SliceScale,
             _clusters.SliceBias,
@@ -427,14 +496,18 @@ public sealed class SceneRenderer : IDisposable
             0,
             cameraWorld.Translation,
             camera.NearPlane,
-            FogColor,
-            FogDensity,
-            FogAnisotropy,
-            FogHeight,
-            FogHeightFalloff,
-            0);
+            mood.FogColor,
+            mood.FogDensity,
+            mood.FogAnisotropy,
+            mood.FogHeight,
+            mood.FogHeightFalloff,
+            0,
+            inverseViewProjection,
+            _targets.ScreenShadows.BindlessIndex,
+            mood.AmbientOcclusion,
+            mood.AmbientOcclusionRadius,
+            mood.ContactShadowLength);
 
-        _frameSlot = (_frameSlot + 1) % MaxFramesInFlight;
         IBuffer frame = GetFrameBuffer(_frameSlot, size);
         ReadOnlySpan<FrameData> header = new(in data);
         frame.Write(MemoryMarshal.AsBytes(header));
@@ -468,23 +541,37 @@ public sealed class SceneRenderer : IDisposable
         {
             GpuMeshPart part = draw.Part;
             ITexture texture = part.Texture ?? _white;
-            SceneConstants constants = new(draw.World, part.BaseColor, frame, part.Vertices.BindlessIndex, texture.BindlessIndex, _sampler.BindlessIndex);
+            SceneConstants constants = new(draw.World, part.BaseColor, frame, draw.Vertices.BindlessIndex, texture.BindlessIndex, _sampler.BindlessIndex);
             commands.SetIndexBuffer(part.Indices, IndexFormat.UInt32);
             commands.PushConstants(constants);
             commands.DrawIndexed(part.IndexCount);
         }
     }
 
-    private static IPipeline CreatePipeline(IGraphicsDevice device, IShaderCompiler compiler, PixelFormat colorFormat)
+    private static IPipeline CreatePipeline(IGraphicsDevice device, IShaderCompiler compiler)
     {
         GraphicsPipelineDescription description = new()
         {
-            VertexShader = EmbeddedShaders.Compile(compiler, ShaderName, "VertexMain", ShaderStage.Vertex),
-            PixelShader = EmbeddedShaders.Compile(compiler, ShaderName, "PixelMain", ShaderStage.Pixel),
-            ColorFormats = [colorFormat],
+            VertexShader = EmbeddedShaders.Compile(compiler, ShaderName, "VertexMain", ShaderStage.Vertex, FrameShader),
+            PixelShader = EmbeddedShaders.Compile(compiler, ShaderName, "PixelMain", ShaderStage.Pixel, FrameShader),
+            ColorFormats = [ScreenTargets.HdrFormat],
             DepthFormat = DepthFormat,
             Depth = new DepthState(Test: true, Write: true),
             Name = "Scene",
+        };
+        return device.CreateGraphicsPipeline(description);
+    }
+
+    private static IPipeline CreateDepthPipeline(IGraphicsDevice device, IShaderCompiler compiler)
+    {
+        GraphicsPipelineDescription description = new()
+        {
+            VertexShader = EmbeddedShaders.Compile(compiler, ShaderName, "VertexMain", ShaderStage.Vertex, FrameShader),
+            PixelShader = EmbeddedShaders.Compile(compiler, ShaderName, "DepthMain", ShaderStage.Pixel, FrameShader),
+            ColorFormats = [],
+            DepthFormat = DepthFormat,
+            Depth = new DepthState(Test: true, Write: true),
+            Name = "Depth prepass",
         };
         return device.CreateGraphicsPipeline(description);
     }
