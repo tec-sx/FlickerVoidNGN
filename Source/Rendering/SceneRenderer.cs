@@ -102,6 +102,12 @@ public sealed class SceneRenderer : IDisposable
     /// <summary>How the scene is lit and graded; replace it to change the mood.</summary>
     public LightingMood Mood { get; set; } = new();
 
+    /// <summary>Whether point and spot lights light the scene; switch it off to judge the sun and ambient light alone.</summary>
+    public bool LocalLights { get; set; } = true;
+
+    /// <summary>Whether the irradiance volume's probes add bounced light.</summary>
+    public bool Probes { get; set; } = true;
+
     /// <summary>Probes that replace the world's irradiance volume while a bake renders, or null.</summary>
     internal ProbeSource? BakeProbes { get; set; }
 
@@ -210,6 +216,11 @@ public sealed class SceneRenderer : IDisposable
         if (BakeProbes is not null)
         {
             return BakeProbes;
+        }
+
+        if (!Probes)
+        {
+            return null;
         }
 
         ProbeSource? found = null;
@@ -339,6 +350,11 @@ public sealed class SceneRenderer : IDisposable
             Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
             Matrix4x4 sun = ShadowProjections.FitSun(camera, view, sunDirection, mood.SunShadowDistance, SunCasterReach);
             _sunShadow = AddShadow(sun, _atlas.Sun, orthographic: true);
+        }
+
+        if (!LocalLights)
+        {
+            return;
         }
 
         world.Query(in PointLights, (ref PointLight light, ref Transform transform) =>

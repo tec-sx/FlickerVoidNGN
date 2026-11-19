@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Arch.Core;
 using Arch.System;
 
+using FlickerVoid.Engine.Debug;
 using FlickerVoid.Engine.Graphics;
 using FlickerVoid.Engine.Platform;
 using FlickerVoid.Engine.Rendering;
@@ -29,9 +30,10 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
     private readonly ISwapchain _swapchain;
     private readonly ICommandList[] _commandLists = new ICommandList[FramesInFlight];
     private readonly Stopwatch _clock = new();
+    private readonly DebugUi? _debugUi;
     private bool _disposed;
 
-    public SceneRenderSystem(IGameWindow window, IGraphicsDevice device, World world, Func<PixelFormat, SceneRenderer> createRenderer, int frameLimit)
+    public SceneRenderSystem(IGameWindow window, IGraphicsDevice device, World world, Func<PixelFormat, SceneRenderer> createRenderer, int frameLimit, Func<PixelFormat, SceneRenderer, DebugUi?> createDebugUi)
     {
         _window = window;
         _device = device;
@@ -41,6 +43,7 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
         SwapchainDescription swapchainDescription = new(window.Native, size.X, size.Y) { Name = "Window" };
         _swapchain = device.CreateSwapchain(swapchainDescription);
         _renderer = createRenderer(_swapchain.Format);
+        _debugUi = createDebugUi(_swapchain.Format, _renderer);
 
         for (int index = 0; index < FramesInFlight; index++)
         {
@@ -49,6 +52,8 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
     }
 
     public SceneRenderer Renderer => _renderer;
+
+    public DebugUi? DebugUi => _debugUi;
 
     public int Frames { get; private set; }
 
@@ -88,6 +93,7 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
             _swapchain.Resize(size.X, size.Y);
         }
 
+        _debugUi?.Update((float)t.Elapsed.TotalSeconds);
         if (visible)
         {
             Render();
@@ -118,6 +124,7 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
             commands.Dispose();
         }
 
+        _debugUi?.Dispose();
         _renderer.Dispose();
         _swapchain.Dispose();
     }
@@ -128,6 +135,7 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
         ICommandList commands = _commandLists[Frames % FramesInFlight];
         commands.Begin();
         _renderer.Render(commands, _world, backBuffer);
+        _debugUi?.Draw(commands, backBuffer);
         commands.Barrier(backBuffer, ResourceState.Present);
         commands.End();
         _device.Submit(commands);

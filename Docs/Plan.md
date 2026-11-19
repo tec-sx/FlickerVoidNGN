@@ -54,4 +54,6 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 6. **Editor.** Avalonia: project browser for `Documents/FlickerVoid`, scene view, inspector generated from schemas, light editing and probe baking, the per-material shading controls, layered painted textures (an idea to explore), Play in a separate process. Gate: build and light a room without touching a text file.
 7. **FlickerVoid systems and the demo project.** Interaction, inventory and outfits, dialogue and story graphs, navigation and map, UI, saves. Gate: the basic story loop from the Unreal milestone (inventory, dialogue, a quest, map, interaction) plays in NGN.
 
+A development-only debug UI (Dear ImGui through Hexa.NET.ImGui, in `Source/Debug`) arrived after stage 4 (owner, 2026-11-19): engine panels for frame, CPU, memory and GPU statistics, the console, the renderer's switches and moods, plus a public `DebugWindow` API for per-project panels (the samples have theirs). The editor will use its own Avalonia UI instead.
+
 Stage 1 runs in parallel with stages 2 and 3.

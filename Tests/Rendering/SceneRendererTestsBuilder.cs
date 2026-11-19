@@ -40,6 +40,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     private float _fogHeightFalloff;
     private int _targetSize = 4;
     private LightingMood _mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0 };
+    private Action<SceneRenderer>? _configure;
 
     public SceneRendererTestsBuilder()
     {
@@ -130,6 +131,13 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Sets up the renderer itself, such as its feature switches, before it draws.</summary>
+    public SceneRendererTestsBuilder WithRenderer(Action<SceneRenderer> configure)
+    {
+        _configure = configure;
+        return this;
+    }
+
     public SceneRendererTestsBuilder WithTargetSize(int size)
     {
         _targetSize = size;
@@ -142,6 +150,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         IGraphicsDevice device = BuildDevice();
         _renderer ??= new SceneRenderer(device, _compiler, new ContentManager(_contentFolder), PixelFormat.Rgba8UNorm);
         _renderer.Mood = BuildMood();
+        _configure?.Invoke(_renderer);
 
         TextureDescription colorDescription = new(_targetSize, _targetSize, PixelFormat.Rgba8UNorm, TextureUsage.RenderTarget | TextureUsage.CopySource);
         using ITexture color = device.CreateTexture(colorDescription);
