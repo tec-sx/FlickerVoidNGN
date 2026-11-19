@@ -157,6 +157,17 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         MakeVisibleToHost(to);
     }
 
+    public void CopyTexture(ITexture source, ITexture destination)
+    {
+        VulkanTexture from = (VulkanTexture)source;
+        VulkanTexture to = (VulkanTexture)destination;
+        ImageSubresourceLayers fromLevel = new(from.Aspect, 0, 0, 1);
+        ImageSubresourceLayers toLevel = new(to.Aspect, 0, 0, 1);
+        Extent3D extent = new((uint)from.Description.Width, (uint)from.Description.Height, 1);
+        ImageCopy region = new() { SrcSubresource = fromLevel, DstSubresource = toLevel, Extent = extent };
+        _vk.CmdCopyImage(Handle, from.Handle, ImageLayout.TransferSrcOptimal, to.Handle, ImageLayout.TransferDstOptimal, 1, &region);
+    }
+
     public void BeginRendering(ReadOnlySpan<ColorTarget> colorTargets, DepthTarget? depthTarget = null)
     {
         RenderingAttachmentInfo* colors = stackalloc RenderingAttachmentInfo[colorTargets.Length];

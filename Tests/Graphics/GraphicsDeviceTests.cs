@@ -119,6 +119,29 @@ public sealed class GraphicsDeviceTests : IDisposable
     }
 
     [Fact]
+    public void CopiesATextureIntoOneOfTheSameSizeAndAnotherFormatOfTheSameBytes()
+    {
+        using IGraphicsDevice device = CreateDevice();
+        TextureDescription sourceDescription = new(GraphicsDeviceTestsBuilder.TargetSize, GraphicsDeviceTestsBuilder.TargetSize, PixelFormat.Rgba8UNormSrgb, TextureUsage.RenderTarget | TextureUsage.CopySource);
+        using ITexture source = device.CreateTexture(sourceDescription);
+        TextureDescription destinationDescription = sourceDescription with { Format = PixelFormat.Rgba8UNorm, Usage = TextureUsage.CopyDestination | TextureUsage.CopySource | TextureUsage.ShaderRead };
+        using ITexture destination = device.CreateTexture(destinationDescription);
+        using ICommandList commands = device.CreateCommandList();
+
+        commands.Begin();
+        GraphicsDeviceTestsBuilder.BeginRendering(commands, source, Red);
+        commands.EndRendering();
+        commands.Barrier(source, ResourceState.CopySource);
+        commands.Barrier(destination, ResourceState.CopyDestination);
+        commands.CopyTexture(source, destination);
+        commands.End();
+        device.Submit(commands);
+
+        uint[] pixels = GraphicsDeviceTestsBuilder.ReadPixels(device, destination);
+        pixels.Should().AllBeEquivalentTo(RedPixel, "the bytes are copied as they are, without converting between formats");
+    }
+
+    [Fact]
     public void DrawsVerticesPulledFromABindlessBuffer()
     {
         using IGraphicsDevice device = CreateDevice();

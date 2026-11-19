@@ -1,0 +1,53 @@
+namespace FlickerVoid.Engine.Editor;
+
+/// <summary>What the editor opens and how, from its command line.</summary>
+public sealed record EditorOptions
+{
+    public const string Usage = "Usage: FlickerVoid.Engine.Editor [--content <built content folder> [--scene <scene file in it>]] [--validation]";
+
+    /// <summary>A built content folder, which the scene and the files it names are in; null opens an empty world.</summary>
+    public string? Content { get; init; }
+
+    /// <summary>The scene to open, relative to the content folder.</summary>
+    public string? Scene { get; init; }
+
+    public bool Validation { get; init; }
+
+    /// <summary>Reads the command line, or returns null and says what is wrong with it.</summary>
+    public static EditorOptions? Parse(IReadOnlyList<string> args, out string? error)
+    {
+        EditorOptions options = new();
+        error = null;
+        for (int index = 0; index < args.Count; index++)
+        {
+            string arg = args[index];
+            bool hasValue = index + 1 < args.Count;
+            switch (arg)
+            {
+                case "--validation":
+                    options = options with { Validation = true };
+                    break;
+                case "--content" when hasValue:
+                    index++;
+                    string content = Path.GetFullPath(args[index]);
+                    options = options with { Content = content };
+                    break;
+                case "--scene" when hasValue:
+                    index++;
+                    options = options with { Scene = args[index] };
+                    break;
+                default:
+                    error = $"Unknown or incomplete option {arg}. {Usage}";
+                    return null;
+            }
+        }
+
+        if (options.Scene is not null && options.Content is null)
+        {
+            error = $"--scene needs --content. {Usage}";
+            return null;
+        }
+
+        return options;
+    }
+}

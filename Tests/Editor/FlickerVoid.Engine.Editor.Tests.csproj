@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Source/Editor/FlickerVoid.Engine.Editor.csproj" />
+  </ItemGroup>
+  <!-- Builds the engine's and the editor's shaders into Content/Engine, where the renderer and the grid load them. -->
+  <ItemGroup>
+    <FlickerVoidContent Include="../../Source/Editor/Shaders" OutputFolder="Engine/Editor" />
+  </ItemGroup>
+  <Import Project="../../Source/Builder/FlickerVoid.Engine.Builder.targets" />
+</Project>

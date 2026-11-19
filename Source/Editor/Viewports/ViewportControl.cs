@@ -1,27 +1,36 @@
 using System.Diagnostics;
+using System.Numerics;
 using System.Runtime.InteropServices;
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Platform;
 using Avalonia.Rendering.Composition;
 using Avalonia.VisualTree;
 
+using FlickerVoid.Engine.Editor.Cameras;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Textures;
+using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Runtime.Components;
 
-namespace FlickerVoid.Samples.EditorViewport;
+namespace FlickerVoid.Engine.Editor.Viewports;
 
 /// <summary>
-/// Shows the engine's frames in Avalonia's compositor: imports the renderer's shared texture and semaphores once per size, then
-/// renders a frame each composition update once Avalonia has taken the previous one.
+/// The view of a <see cref="ViewportViewModel"/>: shows the engine's frames in Avalonia's compositor and passes the mouse and keys
+/// over it to the view model's camera. Imports the renderer's shared texture and semaphores once per size, then renders a frame
+/// each composition update once Avalonia has taken the previous one.
 /// </summary>
-internal sealed partial class ViewportControl(bool validation, TextBlock status) : Control
+public sealed partial class ViewportControl : Control
 {
-    private const float RadiansPerSecond = 0.6f;
     private const int TransferSourceLayout = (int)Silk.NET.Vulkan.ImageLayout.TransferSrcOptimal;
 
+    /// <summary>Avalonia reports a wheel notch as a delta of one.</summary>
+    private const float NotchesPerDelta = 1;
+
     private readonly Stopwatch _clock = new();
+    private readonly HashSet<Key> _keys = [];
     private CompositionSurfaceVisual? _visual;
     private CompositionDrawingSurface? _surface;
     private ICompositionGpuInterop? _interop;
@@ -31,6 +40,17 @@ internal sealed partial class ViewportControl(bool validation, TextBlock status)
     private ICompositionImportedGpuSemaphore? _released;
     private Task _lastUpdate = Task.CompletedTask;
     private bool _updateQueued;
+    private ViewportButtons _buttons;
+    private bool _alt;
+    private Point? _lastPointer;
+    private Vector2 _mouseDelta;
+    private float _wheel;
+
+    public ViewportControl()
+    {
+        Focusable = true;
+        ClipToBounds = true;
+    }
 
     private static string ImageHandleType => OperatingSystem.IsWindows()
         ? KnownPlatformGraphicsExternalImageHandleTypes.VulkanOpaqueNtHandle
@@ -39,6 +59,8 @@ internal sealed partial class ViewportControl(bool validation, TextBlock status)
     private static string SemaphoreHandleType => OperatingSystem.IsWindows()
         ? KnownPlatformGraphicsExternalSemaphoreHandleTypes.VulkanOpaqueNtHandle
         : KnownPlatformGraphicsExternalSemaphoreHandleTypes.VulkanOpaquePosixFileDescriptor;
+
+    private ViewportViewModel? ViewModel => DataContext as ViewportViewModel;
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -66,6 +88,104 @@ internal sealed partial class ViewportControl(bool validation, TextBlock status)
         }
     }
 
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+        Focus();
+        e.Pointer.Capture(this);
+        TrackPointer(e);
+        e.Handled = true;
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        TrackPointer(e);
+        if (_buttons == ViewportButtons.None)
+        {
+            e.Pointer.Capture(null);
+        }
+
+        e.Handled = true;
+    }
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        TrackPointer(e);
+    }
+
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+        _buttons = ViewportButtons.None;
+        _lastPointer = null;
+    }
+
+    protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
+    {
+        base.OnPointerWheelChanged(e);
+        _wheel += (float)e.Delta.Y * NotchesPerDelta;
+        _alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+        e.Handled = true;
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        _keys.Add(e.Key);
+        _alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+
+        // Alt alone would otherwise move focus to the window's access keys.
+        e.Handled = true;
+    }
+
+    protected override void OnKeyUp(KeyEventArgs e)
+    {
+        base.OnKeyUp(e);
+        _keys.Remove(e.Key);
+        _alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+        e.Handled = true;
+    }
+
+    protected override void OnLostFocus(FocusChangedEventArgs e)
+    {
+        base.OnLostFocus(e);
+        _keys.Clear();
+        _alt = false;
+    }
+
+    private void TrackPointer(PointerEventArgs e)
+    {
+        PointerPoint point = e.GetCurrentPoint(this);
+        PointerPointProperties properties = point.Properties;
+        ViewportButtons buttons = ViewportButtons.None;
+        if (properties.IsLeftButtonPressed)
+        {
+            buttons |= ViewportButtons.Left;
+        }
+
+        if (properties.IsMiddleButtonPressed)
+        {
+            buttons |= ViewportButtons.Middle;
+        }
+
+        if (properties.IsRightButtonPressed)
+        {
+            buttons |= ViewportButtons.Right;
+        }
+
+        _buttons = buttons;
+        _alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+        if (_lastPointer is { } last)
+        {
+            Point moved = point.Position - last;
+            _mouseDelta += new Vector2((float)moved.X, (float)moved.Y);
+        }
+
+        _lastPointer = point.Position;
+    }
+
     private async void Initialize()
     {
         CompositionVisual self = ElementComposition.GetElementVisual(this)!;
@@ -75,31 +195,37 @@ internal sealed partial class ViewportControl(bool validation, TextBlock status)
         _visual.Surface = _surface;
         ElementComposition.SetElementChildVisual(this, _visual);
 
+        ViewportViewModel? viewModel = ViewModel;
+        if (viewModel is null)
+        {
+            return;
+        }
+
         _interop = await compositor.TryGetCompositionGpuInterop();
         if (_interop is null)
         {
-            status.Text = "Avalonia's renderer offers no GPU interop: it needs its Vulkan backend on a GPU that exports memory and semaphores, which lavapipe doesn't.";
+            viewModel.Status = "Avalonia's renderer offers no GPU interop: it needs its Vulkan backend on a GPU that exports memory and semaphores.";
             return;
         }
 
         bool supported = _interop.SupportedImageHandleTypes.Contains(ImageHandleType) && _interop.SupportedSemaphoreTypes.Contains(SemaphoreHandleType);
         if (!supported)
         {
-            status.Text = "Avalonia can't import Vulkan images and semaphores on this GPU.";
+            viewModel.Status = "Avalonia can't import Vulkan images and semaphores on this GPU.";
             return;
         }
 
         try
         {
-            _renderer = new ViewportRenderer(validation);
+            _renderer = new ViewportRenderer(viewModel.Scene.Game.LoggerFactory, viewModel.Scene.Content, viewModel.Validation);
         }
         catch (GraphicsUnavailableException exception)
         {
-            status.Text = exception.Message;
+            viewModel.Status = exception.Message;
             return;
         }
 
-        status.Text = $"Vulkan on {_renderer.AdapterName}, shown by Avalonia's compositor.";
+        viewModel.Status = $"Vulkan on {_renderer.AdapterName}.";
         _clock.Start();
         QueueNextFrame();
     }
@@ -131,21 +257,40 @@ internal sealed partial class ViewportControl(bool validation, TextBlock status)
 
         if (_lastUpdate.IsFaulted)
         {
-            status.Text = _lastUpdate.Exception.InnerException?.Message;
+            ViewModel?.Status = _lastUpdate.Exception.InnerException?.Message ?? "The viewport stopped.";
             _renderer.Dispose();
             _renderer = null;
             return;
         }
 
-        _visual!.Size = new Vector(Bounds.Width, Bounds.Height);
+        _visual!.Size = new Avalonia.Vector(Bounds.Width, Bounds.Height);
         double scaling = this.GetPresentationSource()?.RenderScaling ?? 1;
         PixelSize size = PixelSize.FromSize(Bounds.Size, scaling);
         if (size.Width > 0 && size.Height > 0)
         {
+            float seconds = (float)_clock.Elapsed.TotalSeconds;
+            _clock.Restart();
+            MoveCamera(seconds, size.Height, scaling);
             Render(size);
         }
 
         QueueNextFrame();
+    }
+
+    /// <summary>Hands the input gathered since the last frame to the view model, with the mouse in pixels.</summary>
+    private void MoveCamera(float seconds, int viewportHeight, double scaling)
+    {
+        ViewportViewModel? viewModel = ViewModel;
+        if (viewModel is null)
+        {
+            return;
+        }
+
+        Vector2 pixels = _mouseDelta * (float)scaling;
+        ViewportInput input = new(_buttons, _alt, _keys, pixels, _wheel);
+        viewModel.Update(input, seconds, viewportHeight);
+        _mouseDelta = Vector2.Zero;
+        _wheel = 0;
     }
 
     private void Render(PixelSize size)
@@ -156,8 +301,16 @@ internal sealed partial class ViewportControl(bool validation, TextBlock status)
             Import(renderer.Target!, size);
         }
 
-        float angle = (float)_clock.Elapsed.TotalSeconds * RadiansPerSecond;
-        renderer.Render(angle);
+        ViewportViewModel? viewModel = ViewModel;
+        if (viewModel is null)
+        {
+            return;
+        }
+
+        renderer.ShowGrid = viewModel.ShowGrid;
+        Camera camera = viewModel.Camera.ToCamera();
+        Transform transform = viewModel.Camera.ToTransform();
+        renderer.Render(viewModel.Scene.Game.World, camera, transform);
         _lastUpdate = _surface!.UpdateWithSemaphoresAsync(_image!, _ready!, _released!);
     }
 

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
+    <ProjectReference Include="../Rendering/FlickerVoid.Engine.Rendering.csproj" />
+  </ItemGroup>
+  <!-- The editor's own shaders go beside the engine modules' shaders in Content/Engine. -->
+  <ItemGroup>
+    <FlickerVoidContent Include="Shaders" OutputFolder="Engine/Editor" />
+  </ItemGroup>
+  <Import Project="../Builder/FlickerVoid.Engine.Builder.targets" />
+</Project>
