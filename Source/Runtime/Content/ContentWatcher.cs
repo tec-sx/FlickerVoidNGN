@@ -8,7 +8,8 @@ namespace FlickerVoid.Engine.Runtime.Content;
 
 /// <summary>
 /// Watches the content folder for files that change on disk and reports each one to the content manager once per frame, on
-/// the game thread, after its writes have settled and it can be read.
+/// the game thread, after its writes have settled and it can be read. In a development build it also runs the builder over
+/// the source folders (<see cref="ContentBuildProcess"/>), so a saved source file reaches the game the same way.
 /// </summary>
 public sealed class ContentWatcher : ISystem<GameTime>
 {
@@ -19,6 +20,7 @@ public sealed class ContentWatcher : ISystem<GameTime>
     private readonly Dictionary<string, long> _pending = [];
     private readonly List<string> _ready = [];
     private FileSystemWatcher? _watcher;
+    private ContentBuildProcess? _builder;
 
     public ContentWatcher(IContentManager content)
     {
@@ -36,6 +38,7 @@ public sealed class ContentWatcher : ISystem<GameTime>
         _watcher.Created += HandleChanged;
         _watcher.Renamed += HandleRenamed;
         _watcher.EnableRaisingEvents = true;
+        _builder = ContentBuildProcess.Start(_content.RootDirectory);
     }
 
     public void BeforeUpdate(in GameTime t)
@@ -57,6 +60,7 @@ public sealed class ContentWatcher : ISystem<GameTime>
 
     public void Dispose()
     {
+        _builder?.Dispose();
         _watcher?.Dispose();
     }
 

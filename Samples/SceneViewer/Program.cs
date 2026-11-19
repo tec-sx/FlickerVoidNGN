@@ -41,8 +41,8 @@ using Microsoft.Extensions.Logging;
 // --moods takes lighting mood files in the model's folder (Content/Moods/Day.json, Dusk.json and Night.json beside the
 // default room); N steps a fact through them, which mood rules turn into a blend to the next mood. --sun, --ambient and --fog override the mood.
 // --probes bakes an irradiance volume fitted to the model at startup and saves it beside the model as <model>.probes. Without a model it shows Content/Room.glb.
-// Files in the model's folder reload while the viewer runs: save a model, texture, scene or mood and it shows within a second.
-// To edit the sample's own content, pass the source copy (Samples/SceneViewer/Content/Room.glb), not the one beside the build.
+// Content reloads while the viewer runs: save a model, texture, scene or mood in Samples/SceneViewer/Content and the builder
+// rebuilds it beside the build, where it shows within a second. A model passed by path must be in a built content folder.
 string model = Path.Combine(AppContext.BaseDirectory, "Content", "Room.glb");
 bool validation = false;
 int frameLimit = 0;
