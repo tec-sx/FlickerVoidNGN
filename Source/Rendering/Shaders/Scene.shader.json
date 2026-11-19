@@ -1,1 +1,18 @@
-{ "entryPoints": { "VertexMain": "Vertex", "DepthMain": "Pixel", "PixelMain": "Pixel" } }
+{
+  "entryPoints": { "VertexMain": "Vertex", "DepthMain": "Pixel", "PixelMain": "Pixel" },
+  // The shading controls materials set (Name.material.json), packed in this order into the buffer LoadMaterial reads.
+  // Every default keeps the plain look: the base color lit by plain diffuse light.
+  "parameters": [
+    { "name": "tint", "type": "color", "default": [1, 1, 1] },
+    { "name": "rampSoftness", "type": "float", "default": 1, "minimum": 0, "maximum": 1 },
+    { "name": "wrap", "type": "float", "default": 0, "minimum": 0, "maximum": 1 },
+    { "name": "shadowTint", "type": "color", "default": [0, 0, 0] },
+    { "name": "rimColor", "type": "color", "default": [1, 1, 1] },
+    { "name": "rimStrength", "type": "float", "default": 0, "minimum": 0, "maximum": 4 },
+    { "name": "rimPower", "type": "float", "default": 3, "minimum": 0.5, "maximum": 8 },
+    { "name": "specular", "type": "float", "default": 0, "minimum": 0, "maximum": 4 },
+    { "name": "glossiness", "type": "float", "default": 0.5, "minimum": 0, "maximum": 1 },
+    { "name": "emissive", "type": "color", "default": [0, 0, 0] },
+    { "name": "emissiveIntensity", "type": "float", "default": 1, "minimum": 0, "maximum": 16 }
+  ]
+}

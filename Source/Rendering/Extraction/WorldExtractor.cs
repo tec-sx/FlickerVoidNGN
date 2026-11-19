@@ -30,12 +30,12 @@ public sealed class WorldExtractor : IRenderExtractor
         world.Query(in Meshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform) =>
         {
             Matrix4x4 meshWorld = transform.ToMatrix();
-            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, null));
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, null, renderer.Materials));
         });
         world.Query(in AnimatedMeshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform, ref MeshAnimator animator) =>
         {
             Matrix4x4 meshWorld = transform.ToMatrix();
-            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, animator));
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, animator, renderer.Materials));
         });
         world.Query(in PointLights, (ref PointLight light, ref Transform transform) =>
         {

@@ -18,7 +18,7 @@ internal static class MeshDrawing
         {
             GpuMeshPart part = draw.Part;
             ITexture texture = part.Texture ?? context.White;
-            SceneConstants constants = new(draw.World, part.BaseColor, context.FrameBuffer, draw.Vertices.BindlessIndex, texture.BindlessIndex, context.Sampler.BindlessIndex);
+            SceneConstants constants = new(draw.World, part.BaseColor, context.FrameBuffer, draw.Vertices.BindlessIndex, texture.BindlessIndex, context.Sampler.BindlessIndex, draw.Material.BindlessIndex);
             commands.SetIndexBuffer(part.Indices, IndexFormat.UInt32);
             commands.PushConstants(constants);
             commands.DrawIndexed(part.IndexCount);

@@ -1,5 +1,5 @@
 // Draws a mesh part whose vertices (float3 position, float3 normal, float2 uv) are pulled from a bindless buffer: its base
-// color times its texture, lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster,
+// color times its texture and its material's tint, shaded by the material's controls (Scene.shader.json) and lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster,
 // shadowed through the shadow atlas and tinted by spot light cookies, plus bounced light from irradiance probes, seen
 // through fog lit by the same lights.
 // The frame buffer holds FrameData (Frame.hlsl), then the lights, the shadows, each cluster's
@@ -15,6 +15,23 @@ struct SceneConstants
     uint Vertices;
     uint Texture;
     uint Sampler;
+    uint Material;
+};
+
+// The parameters Scene.shader.json declares, in its order.
+struct Material
+{
+    float3 Tint;
+    float RampSoftness;
+    float Wrap;
+    float3 ShadowTint;
+    float3 RimColor;
+    float RimStrength;
+    float RimPower;
+    float Specular;
+    float Glossiness;
+    float3 Emissive;
+    float EmissiveIntensity;
 };
 
 struct Light
@@ -84,6 +101,59 @@ VertexOutput VertexMain(uint vertexId : SV_VertexID)
     output.Normal = mul(normal, cofactor) * mirror;
     output.Uv = vertices.Load<float2>(offset + 24);
     return output;
+}
+
+// The material's parameters, packed tightly in declared order by MaterialLayout.
+Material LoadMaterial()
+{
+    ByteAddressBuffer buffer = Buffers[Scene.Material];
+    Material material;
+    material.Tint = buffer.Load<float3>(0);
+    material.RampSoftness = buffer.Load<float>(12);
+    material.Wrap = buffer.Load<float>(16);
+    material.ShadowTint = buffer.Load<float3>(20);
+    material.RimColor = buffer.Load<float3>(32);
+    material.RimStrength = buffer.Load<float>(44);
+    material.RimPower = buffer.Load<float>(48);
+    material.Specular = buffer.Load<float>(52);
+    material.Glossiness = buffer.Load<float>(56);
+    material.Emissive = buffer.Load<float3>(60);
+    material.EmissiveIntensity = buffer.Load<float>(72);
+    return material;
+}
+
+// The share of light a surface takes at the cosine between its normal and the light: wrapped round past the terminator,
+// then pulled toward a hard step as the ramp softness falls (1 is plain wrapped diffuse light).
+float Diffuse(Material material, float cosine)
+{
+    float wrapped = saturate((cosine + material.Wrap) / (1 + material.Wrap));
+    float halfWidth = max(0.5 * material.RampSoftness, 0.001);
+    float stepped = smoothstep(0.5 - halfWidth, 0.5 + halfWidth, wrapped);
+    return lerp(stepped, wrapped, material.RampSoftness);
+}
+
+// A Blinn-Phong highlight, sharper as the glossiness rises, on surfaces facing the light.
+float Specular(Material material, float3 normal, float3 toLight, float3 toCamera)
+{
+    if (material.Specular <= 0 || dot(normal, toLight) <= 0)
+    {
+        return 0;
+    }
+
+    float3 halfway = normalize(toLight + toCamera);
+    float exponent = exp2(1 + material.Glossiness * 10);
+    return material.Specular * pow(saturate(dot(normal, halfway)), exponent);
+}
+
+// The direction from the point to the camera: toward its eye in perspective, against its view in orthographic.
+float3 ToCamera(FrameData frame, float3 worldPosition)
+{
+    if (frame.LogarithmicSlices != 0)
+    {
+        return normalize(frame.CameraPosition - worldPosition);
+    }
+
+    return -normalize(frame.DepthAxis.xyz);
 }
 
 // The point light shadow face whose view holds the offset from the light, by its largest axis: +X, -X, +Y, -Y, +Z, -Z.
@@ -226,27 +296,22 @@ float3 IncomingLight(FrameData frame, Light light, float3 worldPosition, float3 
     return color;
 }
 
-float3 ShadeLight(FrameData frame, Light light, float3 worldPosition, float3 normal)
-{
-    float3 direction;
-    float3 incoming = IncomingLight(frame, light, worldPosition, normal, true, direction);
-    return incoming * saturate(dot(normal, direction));
-}
-
-float3 ShadeClusterLights(FrameData frame, float2 pixel, float3 worldPosition, float3 normal)
+// Adds the diffuse and specular light of the pixel's cluster lights.
+void ShadeClusterLights(FrameData frame, Material material, float2 pixel, float3 worldPosition, float3 normal, float3 toCamera, inout float3 diffuse, inout float3 specular)
 {
     ByteAddressBuffer buffer = Buffers[Scene.Frame];
     uint cluster = FindCluster(frame, pixel, worldPosition);
     uint2 range = buffer.Load<uint2>(frame.ClustersOffset + cluster * 8);
-    float3 light = 0;
     for (uint index = 0; index < range.y; index++)
     {
         uint lightIndex = buffer.Load<uint>(frame.IndicesOffset + (range.x + index) * 4);
         Light clusterLight = buffer.Load<Light>(FrameDataSize + lightIndex * LightSize);
-        light += ShadeLight(frame, clusterLight, worldPosition, normal);
+        float3 direction;
+        float3 incoming = IncomingLight(frame, clusterLight, worldPosition, normal, true, direction);
+        float cosine = dot(normal, direction);
+        diffuse += incoming * Diffuse(material, cosine);
+        specular += incoming * Specular(material, normal, direction, toCamera);
     }
-
-    return light;
 }
 
 // A probe's spherical harmonics turned into the irradiance (over pi) a surface facing the normal gets.
@@ -404,19 +469,33 @@ void DepthMain()
 float4 PixelMain(VertexOutput input) : SV_Target
 {
     FrameData frame = LoadFrame(Scene.Frame);
+    Material material = LoadMaterial();
     float4 albedo = Textures[Scene.Texture].Sample(Samplers[Scene.Sampler], input.Uv) * Scene.BaseColor;
+    albedo.rgb *= material.Tint;
     float3 normal = normalize(input.Normal);
+    float3 toCamera = ToCamera(frame, input.WorldPosition);
     float2 screenShadows = BlurScreenShadows(frame, input.Position.xy);
-    float sun = saturate(dot(normal, -normalize(frame.SunDirection))) * screenShadows.g;
-    if (sun > 0 && frame.SunShadow != None)
+    float3 toSun = -normalize(frame.SunDirection);
+    float sunDiffuse = Diffuse(material, dot(normal, toSun));
+    float sunSpecular = Specular(material, normal, toSun, toCamera);
+    float sun = (1 - frame.Ambient) * screenShadows.g;
+    if (sun > 0 && sunDiffuse + sunSpecular > 0 && frame.SunShadow != None)
     {
         sun *= SampleShadow(frame, frame.SunShadow, input.WorldPosition, normal, 0, true);
     }
 
     float3 ambient = frame.Ambient + SampleProbes(frame, input.WorldPosition, normal);
-    float3 light = ambient * screenShadows.r + (1 - frame.Ambient) * sun;
-    light += ShadeClusterLights(frame, input.Position.xy, input.WorldPosition, normal);
-    float3 color = albedo.rgb * light;
+    float3 diffuse = ambient * screenShadows.r + sun * sunDiffuse;
+    float3 specular = sun * sunSpecular;
+    ShadeClusterLights(frame, material, input.Position.xy, input.WorldPosition, normal, toCamera, diffuse, specular);
+    float3 color = albedo.rgb * diffuse + specular;
+
+    // Painted touches: a tint where little light falls, a rim toward the silhouette, and the material's own glow.
+    float lit = saturate(max(diffuse.r, max(diffuse.g, diffuse.b)));
+    color += albedo.rgb * material.ShadowTint * (1 - lit);
+    float facing = saturate(dot(normal, toCamera));
+    color += material.RimColor * (material.RimStrength * pow(1 - facing, material.RimPower));
+    color += material.Emissive * material.EmissiveIntensity;
     if (frame.FogDensity > 0)
     {
         float4 fog = MarchFog(frame, input.Position.xy, input.WorldPosition);
