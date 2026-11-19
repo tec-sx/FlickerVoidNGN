@@ -22,7 +22,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     public AssetBrowserViewModel(IContentManager content)
     {
         _content = content;
-        _catalogs = CreateCatalogs(content);
+        _catalogs = AssetCatalog.ForContent(content);
         List<AssetFilter> filters = [new AssetFilter("All", null)];
         foreach (AssetKind kind in Enum.GetValues<AssetKind>())
         {
@@ -275,39 +275,6 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         }
 
         return found;
-    }
-
-    /// <summary>One catalog per game source folder the build manifest names, else one over the content folder.</summary>
-    private static List<AssetCatalog> CreateCatalogs(IContentManager content)
-    {
-        List<AssetCatalog> catalogs = [];
-        ContentBuildManifest? manifest = ContentBuildManifest.Find(content.RootDirectory);
-        if (manifest is not null)
-        {
-            foreach (ContentBuildFolder folder in manifest.Folders)
-            {
-                if (folder.Engine)
-                {
-                    continue;
-                }
-
-                string relative = Path.GetRelativePath(content.RootDirectory, folder.Output);
-                string prefix = relative.Replace(Path.DirectorySeparatorChar, '/');
-                if (prefix == ".")
-                {
-                    prefix = "";
-                }
-
-                catalogs.Add(new AssetCatalog(folder.Source, prefix));
-            }
-        }
-
-        if (catalogs.Count == 0)
-        {
-            catalogs.Add(new AssetCatalog(content.RootDirectory));
-        }
-
-        return catalogs;
     }
 
     /// <summary>The schema a new file in the folder (a path in its source folder) names: that source folder's .schemas, which development runs write.</summary>

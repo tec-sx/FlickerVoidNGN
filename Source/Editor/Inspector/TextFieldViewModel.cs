@@ -3,8 +3,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace FlickerVoid.Engine.Editor.Inspector;
 
 /// <summary>A string property, such as a file in the content folder; clearing an optional one sets it to null.</summary>
-public sealed partial class TextFieldViewModel(IEditableValue property) : FieldViewModel(property)
+public sealed partial class TextFieldViewModel(IEditableValue property, IReadOnlyList<string>? suggestions = null) : FieldViewModel(property)
 {
+    /// <summary>The content files the value may name, when it names a file.</summary>
+    public IReadOnlyList<string> Suggestions { get; } = suggestions ?? [];
+
     [ObservableProperty]
     public partial string Value { get; set; } = "";
 

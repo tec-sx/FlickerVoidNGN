@@ -36,6 +36,7 @@ public struct SpotLight
     /// An image file in the content folder that tints the light like a slide in a projector, filling the outer cone with the
     /// entity's +X to the right and +Y up; none lights the cone evenly.
     /// </summary>
+    [ContentFile(".png", ".jpg", ".jpeg", ".tga", ".bmp")]
     public string? Cookie { get; set; }
 }
 

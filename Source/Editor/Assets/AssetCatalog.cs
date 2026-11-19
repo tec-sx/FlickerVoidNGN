@@ -1,3 +1,5 @@
+using FlickerVoid.Engine.Runtime.Content;
+
 namespace FlickerVoid.Engine.Editor.Assets;
 
 /// <summary>
@@ -72,6 +74,39 @@ public sealed class AssetCatalog(string root, string prefix = "")
         Collect(fullFolder, recursive, kind, text, found);
         found.Sort(static (first, second) => StringComparer.OrdinalIgnoreCase.Compare(first.Path, second.Path));
         return found;
+    }
+
+    /// <summary>One catalog per game source folder the build manifest names, else one over the content folder.</summary>
+    public static List<AssetCatalog> ForContent(IContentManager content)
+    {
+        List<AssetCatalog> catalogs = [];
+        ContentBuildManifest? manifest = ContentBuildManifest.Find(content.RootDirectory);
+        if (manifest is not null)
+        {
+            foreach (ContentBuildFolder folder in manifest.Folders)
+            {
+                if (folder.Engine)
+                {
+                    continue;
+                }
+
+                string relative = Path.GetRelativePath(content.RootDirectory, folder.Output);
+                string prefix = relative.Replace(Path.DirectorySeparatorChar, '/');
+                if (prefix == ".")
+                {
+                    prefix = "";
+                }
+
+                catalogs.Add(new AssetCatalog(folder.Source, prefix));
+            }
+        }
+
+        if (catalogs.Count == 0)
+        {
+            catalogs.Add(new AssetCatalog(content.RootDirectory));
+        }
+
+        return catalogs;
     }
 
     /// <summary>The kind of the file at the full path.</summary>

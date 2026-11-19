@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Numerics;
 
+using FlickerVoid.Engine.Editor.Assets;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Editor.Inspector;
@@ -8,14 +9,15 @@ namespace FlickerVoid.Engine.Editor.Inspector;
 /// <summary>Picks the field for a value from its type and the attributes that refine it.</summary>
 public static class FieldFactory
 {
-    public static FieldViewModel Create(IEditableValue property)
+    /// <summary>The field for the value; with <paramref name="files"/>, a field naming a content file suggests those it may name.</summary>
+    public static FieldViewModel Create(IEditableValue property, ContentFileFinder? files = null)
     {
-        FieldViewModel field = CreateEmpty(property);
+        FieldViewModel field = CreateEmpty(property, files);
         field.Refresh();
         return field;
     }
 
-    private static FieldViewModel CreateEmpty(IEditableValue property)
+    private static FieldViewModel CreateEmpty(IEditableValue property, ContentFileFinder? files)
     {
         Type type = property.Type;
         if (type == typeof(Vector3))
@@ -41,7 +43,14 @@ public static class FieldFactory
 
         if (type == typeof(string))
         {
-            return new TextFieldViewModel(property);
+            IReadOnlyList<string> suggestions = FindSuggestions(property, files);
+            return new TextFieldViewModel(property, suggestions);
+        }
+
+        if (type == typeof(string[]))
+        {
+            IReadOnlyList<string> suggestions = FindSuggestions(property, files);
+            return new ListFieldViewModel(property, suggestions);
         }
 
         if (type == typeof(float) || type == typeof(double) || type == typeof(int))
@@ -61,5 +70,16 @@ public static class FieldFactory
         }
 
         return new ReadOnlyFieldViewModel(property);
+    }
+
+    private static IReadOnlyList<string> FindSuggestions(IEditableValue property, ContentFileFinder? files)
+    {
+        ContentFileAttribute? file = property.GetAttribute<ContentFileAttribute>();
+        if (file is null || files is null)
+        {
+            return [];
+        }
+
+        return files.Find(file.Extensions);
     }
 }

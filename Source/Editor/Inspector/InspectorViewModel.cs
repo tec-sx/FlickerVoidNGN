@@ -2,6 +2,7 @@ using Arch.Core;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 
+using FlickerVoid.Engine.Editor.Assets;
 using FlickerVoid.Engine.Editor.Scenes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Scenes;
@@ -71,12 +72,13 @@ public sealed partial class InspectorViewModel : ObservableObject
             Title = $"Entity {entity.Id}";
         }
 
+        ContentFileFinder files = new(_scene.Content);
         List<ComponentViewModel> components = [];
         foreach (SceneComponent component in _scene.Game.Spawner.Components)
         {
             if (component.Has(world, entity))
             {
-                ComponentViewModel shown = new(world, entity, component);
+                ComponentViewModel shown = new(world, entity, component, files);
                 components.Add(shown);
             }
         }
