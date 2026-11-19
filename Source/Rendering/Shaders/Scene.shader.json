@@ -1,0 +1,1 @@
+{ "entryPoints": { "VertexMain": "Vertex", "DepthMain": "Pixel", "PixelMain": "Pixel" } }

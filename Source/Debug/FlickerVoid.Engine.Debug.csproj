@@ -10,7 +10,4 @@
     <ProjectReference Include="../Platform/FlickerVoid.Engine.Platform.csproj" />
     <ProjectReference Include="../Rendering/FlickerVoid.Engine.Rendering.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Shaders/*.hlsl" LogicalName="FlickerVoid.Engine.Debug.Shaders.%(Filename)%(Extension)" />
-  </ItemGroup>
 </Project>

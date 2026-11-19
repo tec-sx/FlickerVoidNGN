@@ -11,7 +11,6 @@ using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering.GlobalIllumination;
 
@@ -33,10 +32,10 @@ public sealed class IrradianceBaker : IDisposable
     private readonly ICommandList _commands;
     private readonly int _rowPitch;
 
-    public IrradianceBaker(IGraphicsDevice device, IShaderCompiler compiler, IContentManager content)
+    public IrradianceBaker(IGraphicsDevice device, IContentManager content)
     {
         _device = device;
-        Renderer = new SceneRenderer(device, compiler, content, CaptureFormat);
+        Renderer = new SceneRenderer(device, content, CaptureFormat);
         TextureDescription colorDescription = new(FaceSize, FaceSize, CaptureFormat, TextureUsage.RenderTarget | TextureUsage.CopySource) { Name = "Probe capture" };
         _color = device.CreateTexture(colorDescription);
         _rowPitch = CaptureFormat.GetCopyRowPitch(FaceSize);

@@ -2,9 +2,9 @@ using System.Runtime.InteropServices;
 
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Platform.Windowing;
-using FlickerVoid.Engine.Shaders;
 
 using Hexa.NET.ImGui;
 
@@ -33,11 +33,12 @@ public sealed unsafe class DebugUi : IDisposable
     private bool _disposed;
 
     /// <summary>Creates the UI for a window and a target of the given format; with a settings directory it keeps the layout there between runs.</summary>
-    public DebugUi(IGraphicsDevice device, IShaderCompiler compiler, IGameWindow window, PixelFormat targetFormat, string? settingsDirectory = null)
+    public DebugUi(IGraphicsDevice device, IGameWindow window, PixelFormat targetFormat, string? settingsDirectory = null)
     {
         _window = window;
         _settingsDirectory = settingsDirectory;
-        _renderer = new DebugUiRenderer(device, compiler, targetFormat);
+        ShaderLibrary shaders = ShaderLibrary.ForEngine("Debug");
+        _renderer = new DebugUiRenderer(device, shaders, targetFormat);
         _context = ImGui.CreateContext();
         ImGui.SetCurrentContext(_context);
         ImGuiIOPtr io = ImGui.GetIO();

@@ -1,5 +1,7 @@
-// The bindless tables and the frame buffer's FrameData, shared by the scene renderer's shaders, which are compiled with this
-// file ahead of them. FrameData mirrors FrameData.cs.
+// The bindless tables and the frame buffer's FrameData, shared by the scene renderer's shaders, which include this file.
+// FrameData mirrors FrameData.cs.
+
+#pragma once
 
 Texture2D Textures[] : register(t0, space1);
 ByteAddressBuffer Buffers[] : register(t0, space2);

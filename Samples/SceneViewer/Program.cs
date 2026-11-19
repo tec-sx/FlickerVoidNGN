@@ -27,7 +27,6 @@ using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
-using FlickerVoid.Engine.Shaders;
 using FlickerVoid.Samples.SceneViewer;
 
 using Microsoft.Extensions.Logging;
@@ -123,7 +122,6 @@ ContentManager content = new(folder);
 using ILoggerFactory loggerFactory = LoggerFactory.Create(static logging => logging.AddSimpleConsole());
 GraphicsDeviceOptions options = new() { Validation = validation };
 using VulkanGraphicsDevice device = new(options, loggerFactory);
-using DxcShaderCompiler compiler = new();
 using Game game = new(loggerFactory);
 game.AddRendering();
 string shown = fileName;
@@ -177,7 +175,7 @@ LightingMood startMood = director?.Current ?? new LightingMood();
 LightingMood configuredMood = Configure(startMood);
 if (bakeProbes)
 {
-    ModelProbes.Bake(device, compiler, content, game.World, model, configuredMood);
+    ModelProbes.Bake(device, content, game.World, model, configuredMood);
 }
 
 LightingMoodDirector? CreateDirector()
@@ -193,7 +191,7 @@ LightingMoodDirector? CreateDirector()
 
 SceneRenderer CreateRenderer(PixelFormat format)
 {
-    return new SceneRenderer(device, compiler, content, format) { Mood = configuredMood };
+    return new SceneRenderer(device, content, format) { Mood = configuredMood };
 }
 
 LightingMood Configure(LightingMood mood)
@@ -220,7 +218,7 @@ LightingMood Configure(LightingMood mood)
 DebugUi CreateDebugUi(PixelFormat format, SceneRenderer sceneRenderer)
 {
     string settings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FlickerVoid", "SceneViewer");
-    DebugUi ui = new(device, compiler, window, format, settings);
+    DebugUi ui = new(device, window, format, settings);
     ui.AddEngineWindows(game, device);
     ui.AddRenderingWindows(sceneRenderer, game.World);
     ViewerWindow viewer = new(game.World, camera, walkers, facts, moodFiles);

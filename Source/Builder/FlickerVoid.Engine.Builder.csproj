@@ -3,4 +3,7 @@
     <OutputType>Exe</OutputType>
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Shaders/FlickerVoid.Engine.Shaders.csproj" />
+  </ItemGroup>
 </Project>

@@ -5,7 +5,6 @@ using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Pipeline;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
@@ -27,12 +26,12 @@ internal static class MeshDrawing
     }
 
     /// <summary>The scene shader's vertex stage with the given pixel stage, drawing into the given color formats and the scene depth.</summary>
-    public static IPipeline CreatePipeline(IGraphicsDevice device, IShaderCompiler compiler, string pixelEntryPoint, PixelFormat[] colorFormats, string name)
+    public static IPipeline CreatePipeline(IGraphicsDevice device, ShaderLibrary shaders, string pixelEntryPoint, PixelFormat[] colorFormats, string name)
     {
         GraphicsPipelineDescription description = new()
         {
-            VertexShader = EmbeddedShaders.Compile(compiler, "Scene.hlsl", "VertexMain", ShaderStage.Vertex, "Frame.hlsl"),
-            PixelShader = EmbeddedShaders.Compile(compiler, "Scene.hlsl", pixelEntryPoint, ShaderStage.Pixel, "Frame.hlsl"),
+            VertexShader = shaders.Load("Scene", "VertexMain"),
+            PixelShader = shaders.Load("Scene", pixelEntryPoint),
             ColorFormats = colorFormats,
             DepthFormat = SceneRenderer.DepthFormat,
             Depth = new DepthState(Test: true, Write: true),

@@ -3,20 +3,35 @@
     Builds content for a game: each FlickerVoidContent item is a source folder, built by the engine's builder into
     obj/Content/<OutputFolder> and copied to the output and publish folders under Content/<OutputFolder>.
     Example: <FlickerVoidContent Include="Content" />, or <FlickerVoidContent Include="../Shared" OutputFolder="Shared" />.
+    The shaders of the engine modules the project references are added as Content/Engine/<module>.
   -->
+
   <!-- The reference only gets the builder restored and built first; the game doesn't load it, so a self-contained game may reference it. -->
   <PropertyGroup>
     <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
   </PropertyGroup>
-  <ItemGroup Condition="'@(FlickerVoidContent)' != ''">
+  <ItemGroup>
     <ProjectReference Include="$(MSBuildThisFileDirectory)FlickerVoid.Engine.Builder.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
 
-  <Target Name="BuildFlickerVoidContent" BeforeTargets="AssignTargetPaths" Condition="'@(FlickerVoidContent)' != ''">
+  <ItemGroup>
+    <FlickerVoidEngineContent Include="$(MSBuildThisFileDirectory)../Rendering/Shaders" Assembly="FlickerVoid.Engine.Rendering" OutputFolder="Engine/Rendering" />
+    <FlickerVoidEngineContent Include="$(MSBuildThisFileDirectory)../Debug/Shaders" Assembly="FlickerVoid.Engine.Debug" OutputFolder="Engine/Debug" />
+  </ItemGroup>
+
+  <Target Name="BuildFlickerVoidContent" AfterTargets="ResolveReferences">
+    <PropertyGroup>
+      <_FlickerVoidReferences>;@(ReferencePath->'%(Filename)');</_FlickerVoidReferences>
+    </PropertyGroup>
+    <ItemGroup>
+      <_FlickerVoidContentToBuild Include="@(FlickerVoidContent)" />
+      <_FlickerVoidContentToBuild Include="@(FlickerVoidEngineContent)" Condition="$(_FlickerVoidReferences.Contains(';%(FlickerVoidEngineContent.Assembly);'))" />
+    </ItemGroup>
     <MSBuild Projects="$(MSBuildThisFileDirectory)FlickerVoid.Engine.Builder.csproj"
              Targets="GetTargetPath"
              Properties="Configuration=$(Configuration)"
-             RemoveProperties="TargetFramework">
+             RemoveProperties="TargetFramework"
+             Condition="'@(_FlickerVoidContentToBuild)' != ''">
       <Output TaskParameter="TargetOutputs" PropertyName="_FlickerVoidBuilderPath" />
     </MSBuild>
     <PropertyGroup>
@@ -24,13 +39,14 @@
       <_FlickerVoidDotnet Condition="'$(_FlickerVoidDotnet)' == ''">dotnet</_FlickerVoidDotnet>
       <_FlickerVoidBuiltContent>$([System.IO.Path]::Combine($(MSBuildProjectDirectory), $(IntermediateOutputPath), "Content"))/</_FlickerVoidBuiltContent>
     </PropertyGroup>
-    <Exec Command="&quot;$(_FlickerVoidDotnet)&quot; &quot;$(_FlickerVoidBuilderPath)&quot; &quot;%(FlickerVoidContent.FullPath)&quot; &quot;$(_FlickerVoidBuiltContent)%(FlickerVoidContent.OutputFolder)&quot;" />
+    <Exec Command="&quot;$(_FlickerVoidDotnet)&quot; &quot;$(_FlickerVoidBuilderPath)&quot; &quot;%(_FlickerVoidContentToBuild.FullPath)&quot; &quot;$(_FlickerVoidBuiltContent)%(_FlickerVoidContentToBuild.OutputFolder)&quot;"
+          Condition="'@(_FlickerVoidContentToBuild)' != ''" />
     <ItemGroup>
       <_FlickerVoidBuiltFile Include="$(_FlickerVoidBuiltContent)**" Exclude="$(_FlickerVoidBuiltContent)**/.build-cache.json" />
-      <None Include="@(_FlickerVoidBuiltFile)"
-            Link="Content/%(RecursiveDir)%(Filename)%(Extension)"
-            CopyToOutputDirectory="PreserveNewest"
-            CopyToPublishDirectory="PreserveNewest" />
+      <ContentWithTargetPath Include="@(_FlickerVoidBuiltFile)"
+                             TargetPath="Content/%(RecursiveDir)%(Filename)%(Extension)"
+                             CopyToOutputDirectory="PreserveNewest"
+                             CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>
   </Target>
 </Project>

@@ -16,9 +16,14 @@ public sealed unsafe class DxcShaderCompiler : IShaderCompiler, IDisposable
     /// <summary>CLSID_DxcCompiler from dxcapi.h; Silk.NET doesn't define the class ids.</summary>
     private static readonly Guid CompilerClassId = new("73e22d93-e6ce-47f3-b5bf-f0664f39c1b0");
 
+    /// <summary>CLSID_DxcUtils from dxcapi.h.</summary>
+    private static readonly Guid UtilsClassId = new("6245d6af-66e0-48fd-80b4-4d271796748c");
+
     private readonly nint _library;
     private readonly DXC _dxc;
     private ComPtr<IDxcCompiler3> _compiler;
+    private ComPtr<IDxcUtils> _utils;
+    private ComPtr<IDxcIncludeHandler> _includeHandler;
 
     public DxcShaderCompiler()
     {
@@ -28,6 +33,13 @@ public sealed unsafe class DxcShaderCompiler : IShaderCompiler, IDisposable
         _dxc = new DXC(context);
         Guid classId = CompilerClassId;
         _compiler = _dxc.CreateInstance<IDxcCompiler3>(ref classId);
+        Guid utilsClassId = UtilsClassId;
+        _utils = _dxc.CreateInstance<IDxcUtils>(ref utilsClassId);
+
+        // Reads includes from disk.
+        IDxcIncludeHandler* includeHandler = null;
+        SilkMarshal.ThrowHResult(_utils.Get().CreateDefaultIncludeHandler(&includeHandler));
+        _includeHandler = new ComPtr<IDxcIncludeHandler>(includeHandler);
     }
 
     public ShaderCompileResult Compile(ShaderSource source)
@@ -41,7 +53,7 @@ public sealed unsafe class DxcShaderCompiler : IShaderCompiler, IDisposable
             DxcBuffer buffer = new() { Ptr = codePointer, Size = (nuint)code.Length, Encoding = DXC.CPUtf8 };
             Guid resultId = IDxcResult.Guid;
             IDxcResult* result = null;
-            int hr = _compiler.Get().Compile(&buffer, wideArguments.Pointers, wideArguments.Count, (IDxcIncludeHandler*)null, &resultId, (void**)&result);
+            int hr = _compiler.Get().Compile(&buffer, wideArguments.Pointers, wideArguments.Count, _includeHandler.Handle, &resultId, (void**)&result);
             SilkMarshal.ThrowHResult(hr);
 
             try
@@ -57,6 +69,8 @@ public sealed unsafe class DxcShaderCompiler : IShaderCompiler, IDisposable
 
     public void Dispose()
     {
+        _includeHandler.Dispose();
+        _utils.Dispose();
         _compiler.Dispose();
         _dxc.Dispose();
         NativeLibrary.Free(_library);
@@ -66,6 +80,12 @@ public sealed unsafe class DxcShaderCompiler : IShaderCompiler, IDisposable
     {
         string profile = GetProfile(source.Stage);
         List<string> arguments = [source.Name, "-E", source.EntryPoint, "-T", profile, "-spirv", $"-fspv-target-env={VulkanVersion}"];
+        foreach (string directory in source.IncludeDirectories)
+        {
+            arguments.Add("-I");
+            arguments.Add(directory);
+        }
+
         foreach (string define in source.Defines)
         {
             arguments.Add("-D");

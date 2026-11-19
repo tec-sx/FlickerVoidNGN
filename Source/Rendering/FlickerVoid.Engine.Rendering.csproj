@@ -9,9 +9,5 @@
   <ItemGroup>
     <ProjectReference Include="../Graphics/FlickerVoid.Engine.Graphics.csproj" />
     <ProjectReference Include="../Runtime/FlickerVoid.Engine.Runtime.csproj" />
-    <ProjectReference Include="../Shaders/FlickerVoid.Engine.Shaders.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Shaders/*.hlsl" LogicalName="FlickerVoid.Engine.Rendering.Shaders.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

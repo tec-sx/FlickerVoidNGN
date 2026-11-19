@@ -3,7 +3,6 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Pipeline;
-using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
@@ -12,9 +11,9 @@ internal sealed class DepthPrepass : IRenderPass
 {
     private readonly IPipeline _pipeline;
 
-    public DepthPrepass(IGraphicsDevice device, IShaderCompiler compiler)
+    public DepthPrepass(IGraphicsDevice device, ShaderLibrary shaders)
     {
-        _pipeline = MeshDrawing.CreatePipeline(device, compiler, "DepthMain", [], "Depth prepass");
+        _pipeline = MeshDrawing.CreatePipeline(device, shaders, "DepthMain", [], "Depth prepass");
     }
 
     public void Prepare(RenderContext context)

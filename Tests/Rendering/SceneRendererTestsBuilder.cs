@@ -15,7 +15,6 @@ using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
-using FlickerVoid.Engine.Shaders;
 
 using Microsoft.Extensions.Logging;
 
@@ -32,7 +31,6 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
 
     private readonly RecordingLoggerProvider _logs = new();
     private readonly ILoggerFactory _loggerFactory;
-    private readonly DxcShaderCompiler _compiler = new();
     private readonly string _contentFolder;
     private readonly ContentManager _content;
     private readonly Game _game;
@@ -185,7 +183,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     public uint[] Render()
     {
         IGraphicsDevice device = BuildDevice();
-        _renderer ??= new SceneRenderer(device, _compiler, _content, PixelFormat.Rgba8UNorm);
+        _renderer ??= new SceneRenderer(device, _content, PixelFormat.Rgba8UNorm);
         _renderer.Mood = BuildMood();
         _configure?.Invoke(_renderer);
 
@@ -220,7 +218,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     public IrradianceBaker BuildBaker()
     {
         IGraphicsDevice device = BuildDevice();
-        IrradianceBaker baker = new(device, _compiler, new ContentManager(_contentFolder));
+        IrradianceBaker baker = new(device, new ContentManager(_contentFolder));
         baker.Renderer.Mood = BuildMood();
         return baker;
     }
@@ -237,7 +235,6 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         _renderer?.Dispose();
         _device?.Dispose();
         _game.Dispose();
-        _compiler.Dispose();
         _loggerFactory.Dispose();
         Directory.Delete(_contentFolder, recursive: true);
         _logs.Errors.Should().BeEmpty("the device logged no errors");

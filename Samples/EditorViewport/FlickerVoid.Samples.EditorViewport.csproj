@@ -9,7 +9,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
-    <ProjectReference Include="../../Source/Shaders/FlickerVoid.Engine.Shaders.csproj" />
   </ItemGroup>
   <!-- The cube comes from the textured mesh sample. -->
   <ItemGroup>
