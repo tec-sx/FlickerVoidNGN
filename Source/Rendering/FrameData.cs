@@ -3,7 +3,10 @@ using System.Runtime.InteropServices;
 
 namespace FlickerVoid.Engine.Rendering;
 
-/// <summary>The start of Shaders/Scene.hlsl's frame buffer: the view, the sun and where the lights and clusters follow. 128 bytes.</summary>
+/// <summary>
+/// The start of Shaders/Scene.hlsl's frame buffer: the view, the sun, the shadow atlas, and where the lights, shadows and
+/// clusters follow. 144 bytes.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 internal readonly record struct FrameData(
     Matrix4x4 ViewProjection,
@@ -16,4 +19,8 @@ internal readonly record struct FrameData(
     uint LogarithmicSlices,
     uint LightCount,
     uint ClustersOffset,
-    uint IndicesOffset);
+    uint IndicesOffset,
+    uint ShadowsOffset,
+    uint SunShadow,
+    uint ShadowAtlas,
+    uint ClampSampler);

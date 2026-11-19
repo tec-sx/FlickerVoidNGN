@@ -152,6 +152,57 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void CastsSunShadows()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Blocker", "components": { "transform": { "position": [0.75, 0.25, 1], "scale": [0.25, 0.25, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+
+        uint[] pixels = _builder.Render();
+
+        (byte shadowed, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        (byte lit, _, _) = SceneRendererTestsBuilder.Channels(pixels[9]);
+        shadowed.Should().BeInRange(62, 66, "the blocker hides the sun from that part of the floor, leaving only the ambient light");
+        lit.Should().BeInRange(195, 203, "the sun lights the rest of the floor at 45 degrees");
+    }
+
+    [Theory]
+    [InlineData("pointLight", "")]
+    [InlineData("spotLight", """, "innerConeAngle": 50, "outerConeAngle": 60""")]
+    public void CastsLocalLightShadows(string light, string cone)
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(
+            Camera,
+            Quad,
+            """{ "name": "Blocker", "components": { "transform": { "position": [0.4, 0.4, 1], "scale": [0.2, 0.2, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""",
+            $$"""{ "name": "Light", "components": { "transform": { "position": [0, 0, 2] }, "{{light}}": { "intensity": 4, "range": 5, "castsShadows": true{{cone}} } } }""");
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        pixels[3].Should().Be(BlackPixel, "the blocker hides the light from the floor's top right corner");
+        (byte opposite, _, _) = SceneRendererTestsBuilder.Channels(pixels[12]);
+        opposite.Should().BeGreaterThan(0, "nothing hides the light from the floor's bottom left corner");
+    }
+
+    [Fact]
+    public void ProjectsASpotLightsCookie()
+    {
+        uint white = SceneRendererTestsBuilder.Rgba(255, 255, 255, 255);
+        _builder.WithTexture("Cookie.tga", 4, 1, [white, white, BlackPixel, BlackPixel]);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Light", "components": { "transform": { "position": [0, 0, 2] }, "spotLight": { "intensity": 4, "range": 5, "innerConeAngle": 40, "outerConeAngle": 45, "cookie": "Cookie.tga" } } }""");
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        (byte left, _, _) = SceneRendererTestsBuilder.Channels(pixels[4]);
+        left.Should().BeGreaterThan(0, "the cookie's left half is white");
+        pixels[7].Should().Be(BlackPixel, "the cookie's right half is black");
+    }
+
+    [Fact]
     public void OnlyClearsWithoutACamera()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));

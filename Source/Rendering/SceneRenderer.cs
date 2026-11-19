@@ -1,5 +1,4 @@
 using System.Numerics;
-using System.Reflection;
 using System.Runtime.InteropServices;
 
 using Arch.Core;
@@ -13,7 +12,8 @@ namespace FlickerVoid.Engine.Rendering;
 
 /// <summary>
 /// Draws every entity with a transform and a mesh renderer, seen through the world's camera and lit by a sun, an even ambient
-/// light, and point and spot lights sorted into <see cref="LightClusters"/> (clustered forward shading).
+/// light, and point and spot lights sorted into <see cref="LightClusters"/> (clustered forward shading). The sun and the
+/// lights that cast shadows draw their depth into the <see cref="ShadowAtlas"/> first.
 /// </summary>
 public sealed class SceneRenderer : IDisposable
 {
@@ -26,24 +26,38 @@ public sealed class SceneRenderer : IDisposable
     public const int MaxFramesInFlight = 3;
 
     private const string ShaderName = "Scene.hlsl";
+
+    // How far beyond the view toward the sun shadow casters are still drawn, in world units.
+    private const float SunCasterReach = 50;
+
+    // Texels between a filtered shadow lookup and its tile's edge, so filtering never reads a neighbouring tile.
+    private const float TileInset = 2;
+
     private static readonly Vector4 Background = new(0, 0, 0, 1);
     private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>();
     private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>();
     private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>();
     private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>();
 
+    private readonly IGraphicsDevice _device;
     private readonly IPipeline _pipeline;
     private readonly ITexture _white;
     private readonly ISampler _sampler;
+    private readonly ISampler _clampSampler;
     private readonly MeshLibrary _meshes;
-    private readonly IGraphicsDevice _device;
+    private readonly TextureLibrary _textures;
+    private readonly ShadowRenderer _shadows;
+    private readonly ShadowAtlas _atlas = new();
     private readonly LightClusters _clusters = new();
+    private readonly List<MeshDraw> _draws = [];
     private readonly List<GpuLight> _lights = [];
     private readonly List<LightBounds> _lightBounds = [];
+    private readonly List<GpuShadow> _gpuShadows = [];
+    private readonly List<ShadowView> _shadowViews = [];
     private readonly IBuffer?[] _frames = new IBuffer?[MaxFramesInFlight];
     private int _frameSlot;
+    private uint _sunShadow;
 
-    // TODO(Stage 5): load the scene shader's compiled bytecode from the asset pipeline instead of compiling it at startup.
     public SceneRenderer(IGraphicsDevice device, IShaderCompiler compiler, IContentManager content, PixelFormat colorFormat)
     {
         _device = device;
@@ -52,7 +66,11 @@ public sealed class SceneRenderer : IDisposable
         _white = device.CreateTexture(whiteDescription, [255, 255, 255, 255]);
         SamplerDescription samplerDescription = new(SamplerFilter.Linear, SamplerAddressMode.Wrap);
         _sampler = device.CreateSampler(samplerDescription);
+        SamplerDescription clampDescription = new(SamplerFilter.Linear, SamplerAddressMode.Clamp);
+        _clampSampler = device.CreateSampler(clampDescription);
         _meshes = new MeshLibrary(device, content);
+        _textures = new TextureLibrary(device, content);
+        _shadows = new ShadowRenderer(device, compiler);
     }
 
     /// <summary>The direction the sunlight travels, in world space.</summary>
@@ -61,24 +79,35 @@ public sealed class SceneRenderer : IDisposable
     /// <summary>The share of light that reaches every surface, from 0 to 1; the sun lights the rest.</summary>
     public float Ambient { get; set; } = 0.35f;
 
+    /// <summary>How far from the camera the sun casts shadows, in world units; 0 turns them off.</summary>
+    public float SunShadowDistance { get; set; } = 30;
+
     /// <summary>Clears both targets and draws the world from its first camera, or nothing without one; leaves the color target in the RenderTarget state.</summary>
     public void Render(ICommandList commands, World world, ITexture colorTarget, ITexture depthTarget)
     {
         int width = colorTarget.Description.Width;
         int height = colorTarget.Description.Height;
+        bool hasCamera = TryFindCamera(world, width, height, out Camera camera, out CameraView view);
+        IBuffer? frame = null;
+        if (hasCamera)
+        {
+            CollectDraws(world);
+            GatherLights(world, camera, view);
+            _shadows.Draw(commands, _shadowViews, _draws);
+            frame = WriteFrame(camera, view, width, height);
+        }
+
         commands.Barrier(colorTarget, ResourceState.RenderTarget);
         commands.Barrier(depthTarget, ResourceState.DepthWrite);
         ColorTarget color = new(colorTarget, LoadAction.Clear, Background);
         DepthTarget depth = new(depthTarget, LoadAction.Clear);
         commands.BeginRendering([color], depth);
-
-        if (TryFindCamera(world, width, height, out Camera camera, out CameraView view))
+        if (frame is not null)
         {
-            IBuffer frame = WriteFrame(world, camera, view, width, height);
             commands.SetViewport(new Viewport(0, 0, width, height));
             commands.SetScissor(0, 0, width, height);
             commands.SetPipeline(_pipeline);
-            DrawMeshes(commands, world, frame.BindlessIndex);
+            DrawMeshes(commands, frame.BindlessIndex);
         }
 
         commands.EndRendering();
@@ -91,7 +120,10 @@ public sealed class SceneRenderer : IDisposable
             frame?.Dispose();
         }
 
+        _shadows.Dispose();
+        _textures.Dispose();
         _meshes.Dispose();
+        _clampSampler.Dispose();
         _sampler.Dispose();
         _white.Dispose();
         _pipeline.Dispose();
@@ -117,40 +149,124 @@ public sealed class SceneRenderer : IDisposable
         return found;
     }
 
-    private void GatherLights(World world)
+    private void CollectDraws(World world)
+    {
+        _draws.Clear();
+        world.Query(in Meshes, (ref MeshRenderer renderer, ref Transform transform) =>
+        {
+            Matrix4x4 scale = Matrix4x4.CreateScale(transform.Scale);
+            Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(transform.Rotation);
+            Matrix4x4 translation = Matrix4x4.CreateTranslation(transform.Position);
+            Matrix4x4 meshWorld = scale * rotation * translation;
+            IReadOnlyList<GpuMeshPart> parts = _meshes.Get(renderer.Mesh);
+            foreach (GpuMeshPart part in parts)
+            {
+                _draws.Add(new MeshDraw(meshWorld, part));
+            }
+        });
+    }
+
+    // Gathers the lights and hands out shadow atlas tiles: the sun first, then lights in query order while tiles last.
+    private void GatherLights(World world, in Camera camera, in CameraView view)
     {
         _lights.Clear();
         _lightBounds.Clear();
+        _gpuShadows.Clear();
+        _shadowViews.Clear();
+        _atlas.Reset();
+
+        _sunShadow = GpuLight.None;
+        if (SunShadowDistance > 0)
+        {
+            Matrix4x4 sun = ShadowProjections.FitSun(camera, view, SunDirection, SunShadowDistance, SunCasterReach);
+            _sunShadow = AddShadow(sun, _atlas.Sun, orthographic: true);
+        }
+
         world.Query(in PointLights, (ref PointLight light, ref Transform transform) =>
         {
+            uint shadow = GpuLight.None;
+            if (light.CastsShadows && _atlas.FreeTiles >= ShadowProjections.PointFaces)
+            {
+                shadow = (uint)_gpuShadows.Count;
+                for (int face = 0; face < ShadowProjections.PointFaces; face++)
+                {
+                    _atlas.TryAllocate(out ShadowTile tile);
+                    Matrix4x4 faceView = ShadowProjections.PointFace(transform.Position, face, light.Range);
+                    AddShadow(faceView, tile, orthographic: false);
+                }
+            }
+
             Vector3 color = light.Color * light.Intensity;
-            _lights.Add(new GpuLight(transform.Position, light.Range, color, -3, -Vector3.UnitZ, -2));
+            _lights.Add(new GpuLight(transform.Position, light.Range, color, -3, -Vector3.UnitZ, -2, Vector3.UnitX, GpuLight.None, shadow));
             _lightBounds.Add(new LightBounds(transform.Position, light.Range));
         });
         world.Query(in SpotLights, (ref SpotLight light, ref Transform transform) =>
         {
+            uint shadow = GpuLight.None;
+            if (light.CastsShadows && _atlas.TryAllocate(out ShadowTile tile))
+            {
+                Matrix4x4 spotView = ShadowProjections.Spot(transform.Position, transform.Rotation, light.OuterConeAngle, light.Range);
+                shadow = AddShadow(spotView, tile, orthographic: false);
+            }
+
+            uint cookie = GpuLight.None;
+            if (light.Cookie is not null)
+            {
+                ITexture texture = _textures.Get(light.Cookie);
+                cookie = texture.BindlessIndex;
+            }
+
             Vector3 color = light.Color * light.Intensity;
             Vector3 direction = Vector3.Transform(-Vector3.UnitZ, transform.Rotation);
+            Vector3 right = Vector3.Transform(Vector3.UnitX, transform.Rotation);
             float cosOuter = MathF.Cos(float.DegreesToRadians(light.OuterConeAngle));
             float cosInner = MathF.Cos(float.DegreesToRadians(light.InnerConeAngle));
-            _lights.Add(new GpuLight(transform.Position, light.Range, color, cosOuter, direction, cosInner));
+            _lights.Add(new GpuLight(transform.Position, light.Range, color, cosOuter, direction, cosInner, right, cookie, shadow));
             _lightBounds.Add(new LightBounds(transform.Position, light.Range));
         });
     }
 
-    // Writes this frame's view, sun, lights and clusters into the next buffer of the ring, growing it when they don't fit.
-    private IBuffer WriteFrame(World world, in Camera camera, in CameraView view, int width, int height)
+    private uint AddShadow(Matrix4x4 viewProjection, ShadowTile tile, bool orthographic)
     {
-        GatherLights(world);
+        _shadowViews.Add(new ShadowView(viewProjection, tile));
+        Matrix4x4 toTile = ShadowProjections.ToAtlasTile(tile);
+        Matrix4x4 worldToAtlas = viewProjection * toTile;
+        float inset = TileInset / ShadowAtlas.Size;
+        float start = (float)tile.X / ShadowAtlas.Size;
+        float top = (float)tile.Y / ShadowAtlas.Size;
+        float size = (float)tile.Size / ShadowAtlas.Size;
+        Vector4 rect = new(start + inset, top + inset, start + size - inset, top + size - inset);
+
+        // The projection's x scale is 1 / half the view's width (orthographic) or 1 / tan(half the field of view) (perspective).
+        Vector3 xAxis = new(viewProjection.M11, viewProjection.M21, viewProjection.M31);
+        float texel = 2 / (xAxis.Length() * tile.Size);
+        GpuShadow shadow;
+        if (orthographic)
+        {
+            shadow = new GpuShadow(worldToAtlas, rect, 0, texel);
+        }
+        else
+        {
+            shadow = new GpuShadow(worldToAtlas, rect, texel, 0);
+        }
+
+        _gpuShadows.Add(shadow);
+        return (uint)(_gpuShadows.Count - 1);
+    }
+
+    // Writes this frame's view, sun, lights, shadows and clusters into the next buffer of the ring, growing it when they don't fit.
+    private IBuffer WriteFrame(in Camera camera, in CameraView view, int width, int height)
+    {
         ReadOnlySpan<LightBounds> bounds = CollectionsMarshal.AsSpan(_lightBounds);
         _clusters.Build(camera, view, bounds);
 
-        ReadOnlySpan<GpuLight> lights = CollectionsMarshal.AsSpan(_lights);
-        ReadOnlySpan<byte> lightBytes = MemoryMarshal.AsBytes(lights);
+        ReadOnlySpan<byte> lightBytes = MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(_lights));
+        ReadOnlySpan<byte> shadowBytes = MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(_gpuShadows));
         ReadOnlySpan<byte> rangeBytes = MemoryMarshal.AsBytes(_clusters.Ranges);
         ReadOnlySpan<byte> indexBytes = MemoryMarshal.AsBytes(_clusters.Indices);
         int lightsOffset = Marshal.SizeOf<FrameData>();
-        int clustersOffset = lightsOffset + lightBytes.Length;
+        int shadowsOffset = lightsOffset + lightBytes.Length;
+        int clustersOffset = shadowsOffset + shadowBytes.Length;
         int indicesOffset = clustersOffset + rangeBytes.Length;
         int size = indicesOffset + indexBytes.Length;
 
@@ -172,15 +288,20 @@ public sealed class SceneRenderer : IDisposable
             _clusters.SliceScale,
             _clusters.SliceBias,
             logarithmic,
-            (uint)lights.Length,
+            (uint)_lights.Count,
             (uint)clustersOffset,
-            (uint)indicesOffset);
+            (uint)indicesOffset,
+            (uint)shadowsOffset,
+            _sunShadow,
+            _shadows.Atlas.BindlessIndex,
+            _clampSampler.BindlessIndex);
 
         _frameSlot = (_frameSlot + 1) % MaxFramesInFlight;
         IBuffer frame = GetFrameBuffer(_frameSlot, size);
         ReadOnlySpan<FrameData> header = new(in data);
         frame.Write(MemoryMarshal.AsBytes(header));
         frame.Write(lightBytes, lightsOffset);
+        frame.Write(shadowBytes, shadowsOffset);
         frame.Write(rangeBytes, clustersOffset);
         frame.Write(indexBytes, indicesOffset);
         return frame;
@@ -203,60 +324,30 @@ public sealed class SceneRenderer : IDisposable
         return frame;
     }
 
-    private void DrawMeshes(ICommandList commands, World world, uint frame)
+    private void DrawMeshes(ICommandList commands, uint frame)
     {
-        world.Query(in Meshes, (ref MeshRenderer renderer, ref Transform transform) =>
+        foreach (MeshDraw draw in _draws)
         {
-            Matrix4x4 scale = Matrix4x4.CreateScale(transform.Scale);
-            Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(transform.Rotation);
-            Matrix4x4 translation = Matrix4x4.CreateTranslation(transform.Position);
-            Matrix4x4 meshWorld = scale * rotation * translation;
-
-            IReadOnlyList<GpuMeshPart> parts = _meshes.Get(renderer.Mesh);
-            foreach (GpuMeshPart part in parts)
-            {
-                ITexture texture = part.Texture ?? _white;
-                SceneConstants constants = new(meshWorld, part.BaseColor, frame, part.Vertices.BindlessIndex, texture.BindlessIndex, _sampler.BindlessIndex);
-                commands.SetIndexBuffer(part.Indices, IndexFormat.UInt32);
-                commands.PushConstants(constants);
-                commands.DrawIndexed(part.IndexCount);
-            }
-        });
+            GpuMeshPart part = draw.Part;
+            ITexture texture = part.Texture ?? _white;
+            SceneConstants constants = new(draw.World, part.BaseColor, frame, part.Vertices.BindlessIndex, texture.BindlessIndex, _sampler.BindlessIndex);
+            commands.SetIndexBuffer(part.Indices, IndexFormat.UInt32);
+            commands.PushConstants(constants);
+            commands.DrawIndexed(part.IndexCount);
+        }
     }
 
     private static IPipeline CreatePipeline(IGraphicsDevice device, IShaderCompiler compiler, PixelFormat colorFormat)
     {
-        string source = ReadShader();
         GraphicsPipelineDescription description = new()
         {
-            VertexShader = Compile(compiler, source, "VertexMain", ShaderStage.Vertex),
-            PixelShader = Compile(compiler, source, "PixelMain", ShaderStage.Pixel),
+            VertexShader = EmbeddedShaders.Compile(compiler, ShaderName, "VertexMain", ShaderStage.Vertex),
+            PixelShader = EmbeddedShaders.Compile(compiler, ShaderName, "PixelMain", ShaderStage.Pixel),
             ColorFormats = [colorFormat],
             DepthFormat = DepthFormat,
             Depth = new DepthState(Test: true, Write: true),
             Name = "Scene",
         };
         return device.CreateGraphicsPipeline(description);
-    }
-
-    private static string ReadShader()
-    {
-        Assembly assembly = typeof(SceneRenderer).Assembly;
-        using Stream stream = assembly.GetManifestResourceStream($"FlickerVoid.Engine.Rendering.Shaders.{ShaderName}")
-            ?? throw new InvalidOperationException($"{ShaderName} isn't embedded in {assembly.GetName().Name}.");
-        using StreamReader reader = new(stream);
-        return reader.ReadToEnd();
-    }
-
-    private static ShaderBytecode Compile(IShaderCompiler compiler, string source, string entryPoint, ShaderStage stage)
-    {
-        ShaderSource shader = new(source, entryPoint, stage) { Name = ShaderName };
-        ShaderCompileResult result = compiler.Compile(shader);
-        if (!result.Succeeded)
-        {
-            throw new InvalidOperationException($"{ShaderName} {entryPoint} failed to compile:\n{result.Messages}");
-        }
-
-        return new ShaderBytecode(result.Bytecode, entryPoint);
     }
 }

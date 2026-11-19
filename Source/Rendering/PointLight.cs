@@ -16,4 +16,7 @@ public struct PointLight
 
     /// <summary>How far the light reaches, in world units.</summary>
     public float Range { get; set; } = 5;
+
+    /// <summary>Whether meshes block its light, through six tiles of the <see cref="ShadowAtlas"/> while tiles are free.</summary>
+    public bool CastsShadows { get; set; }
 }
