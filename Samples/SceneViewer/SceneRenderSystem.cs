@@ -4,10 +4,13 @@ using Arch.Core;
 using Arch.System;
 
 using FlickerVoid.Engine.Debug;
-using FlickerVoid.Engine.Graphics;
-using FlickerVoid.Engine.Platform;
+using FlickerVoid.Engine.Graphics.Commands;
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Presentation;
+using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Rendering;
-using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Runtime.Loop;
 
 using Silk.NET.Input;
 using Silk.NET.Maths;

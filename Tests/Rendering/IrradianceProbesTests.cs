@@ -1,5 +1,7 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Rendering.GlobalIllumination;
+
 namespace FlickerVoid.Engine.Rendering.Tests;
 
 public sealed class IrradianceProbesTests

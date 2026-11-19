@@ -1,6 +1,7 @@
 using System.Numerics;
 
 using FlickerVoid.Engine.Rendering;
+using FlickerVoid.Engine.Rendering.Lighting;
 
 using Hexa.NET.ImGui;
 

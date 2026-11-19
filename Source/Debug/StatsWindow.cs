@@ -1,8 +1,8 @@
 using Arch.Core;
 
-using FlickerVoid.Engine.Graphics;
-
 using Hexa.NET.ImGui;
+
+using FlickerVoid.Engine.Graphics.Devices;
 
 namespace FlickerVoid.Engine.Debug;
 

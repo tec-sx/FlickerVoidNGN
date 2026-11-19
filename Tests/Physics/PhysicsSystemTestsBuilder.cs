@@ -1,6 +1,7 @@
-using FlickerVoid.Engine.Runtime;
 
 using Microsoft.Extensions.Logging;
+
+using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Physics.Tests;
 

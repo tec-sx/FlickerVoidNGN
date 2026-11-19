@@ -1,0 +1,87 @@
+using FlickerVoid.Engine.Graphics.Commands;
+using FlickerVoid.Engine.Graphics.Samplers;
+using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Rendering.Materials;
+using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.PostProcessing;
+using FlickerVoid.Engine.Rendering.Shadows;
+
+namespace FlickerVoid.Engine.Rendering.Pipeline;
+
+/// <summary>What the passes of one frame share: the scene, the view, the targets and the data earlier passes worked out.</summary>
+public sealed class RenderContext
+{
+    public RenderContext(RenderScene scene)
+    {
+        Scene = scene;
+    }
+
+    public RenderScene Scene { get; }
+
+    public ICommandList Commands { get; internal set; } = null!;
+
+    public ITexture ColorTarget { get; internal set; } = null!;
+
+    public int Width { get; internal set; }
+
+    public int Height { get; internal set; }
+
+    public Camera Camera { get; internal set; }
+
+    public CameraView View { get; internal set; }
+
+    public LightingMood Mood { get; internal set; } = new();
+
+    /// <summary>Which of the frames in flight this is; per-frame buffers indexed by it are safe to overwrite.</summary>
+    public int FrameSlot { get; internal set; }
+
+    /// <summary>The bindless index of this frame's data buffer, set between Prepare and Execute.</summary>
+    public uint FrameBuffer { get; internal set; }
+
+    public bool LocalLights { get; internal set; } = true;
+
+    public bool Probes { get; internal set; } = true;
+
+    internal ScreenTargets Targets { get; set; } = null!;
+
+    internal TextureLibrary Textures { get; set; } = null!;
+
+    internal ISampler Sampler { get; set; } = null!;
+
+    internal ISampler ClampSampler { get; set; } = null!;
+
+    internal ITexture White { get; set; } = null!;
+
+    internal List<MeshDraw> Draws { get; } = [];
+
+    internal List<GpuLight> Lights { get; } = [];
+
+    internal List<LightBounds> LightBounds { get; } = [];
+
+    internal List<GpuShadow> Shadows { get; } = [];
+
+    internal List<ShadowView> ShadowViews { get; } = [];
+
+    internal uint SunShadow { get; set; } = GpuLight.None;
+
+    internal uint ShadowAtlas { get; set; } = GpuLight.None;
+
+    internal ProbeSource? ProbeSource { get; set; }
+
+    /// <summary>Empties what the last frame's passes worked out.</summary>
+    internal void Reset()
+    {
+        Draws.Clear();
+        Lights.Clear();
+        LightBounds.Clear();
+        Shadows.Clear();
+        ShadowViews.Clear();
+        SunShadow = GpuLight.None;
+        ShadowAtlas = GpuLight.None;
+        ProbeSource = null;
+    }
+}

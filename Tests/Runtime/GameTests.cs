@@ -2,6 +2,7 @@ using Arch.Core;
 using Arch.System;
 
 using FlickerVoid.Engine.Runtime.Debugging;
+using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 

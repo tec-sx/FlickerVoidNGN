@@ -1,6 +1,11 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
-using FlickerVoid.Engine.Graphics.Vulkan;
+using FlickerVoid.Engine.Graphics.Buffers;
+using FlickerVoid.Engine.Graphics.Commands;
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Pipelines;
+using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Shaders;
 using Microsoft.Extensions.Logging;
 

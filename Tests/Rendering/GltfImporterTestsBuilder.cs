@@ -7,6 +7,8 @@ using SharpGLTF.Memory;
 using SharpGLTF.Scenes;
 using SharpGLTF.Schema2;
 
+using FlickerVoid.Engine.Rendering.Meshes;
+
 namespace FlickerVoid.Engine.Rendering.Tests;
 
 /// <summary>

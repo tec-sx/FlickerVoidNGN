@@ -1,9 +1,12 @@
 using Arch.System;
 
 using FlickerVoid.Engine.Debug;
-using FlickerVoid.Engine.Graphics;
-using FlickerVoid.Engine.Platform;
-using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Graphics.Commands;
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Presentation;
+using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Platform.Windowing;
+using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Shaders;
 
 using Silk.NET.Input;

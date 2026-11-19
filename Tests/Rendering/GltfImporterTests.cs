@@ -1,5 +1,8 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Rendering.Materials;
+using FlickerVoid.Engine.Rendering.Meshes;
+
 namespace FlickerVoid.Engine.Rendering.Tests;
 
 public sealed class GltfImporterTests

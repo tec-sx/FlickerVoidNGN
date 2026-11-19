@@ -1,5 +1,7 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Rendering.Tests;

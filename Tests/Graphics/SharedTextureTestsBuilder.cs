@@ -1,4 +1,8 @@
-using FlickerVoid.Engine.Graphics.Vulkan;
+
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Vulkan.Devices;
+using FlickerVoid.Engine.Graphics.Vulkan.Textures;
 
 namespace FlickerVoid.Engine.Graphics.Tests;
 

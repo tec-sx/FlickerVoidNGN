@@ -1,0 +1,37 @@
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Rendering.Pipeline;
+using FlickerVoid.Engine.Shaders;
+
+namespace FlickerVoid.Engine.Rendering.PostProcessing;
+
+/// <summary>Blooms, grades and lays paper over the HDR scene into the output, as the mood says.</summary>
+internal sealed class PostProcessPass : IRenderPass
+{
+    private readonly PostProcessor _post;
+
+    public PostProcessPass(IGraphicsDevice device, IShaderCompiler compiler, PixelFormat outputFormat)
+    {
+        _post = new PostProcessor(device, compiler, outputFormat);
+    }
+
+    public void Prepare(RenderContext context)
+    {
+    }
+
+    public void Execute(RenderContext context)
+    {
+        ITexture? paper = null;
+        if (context.Mood.Paper is not null)
+        {
+            paper = context.Textures.Get(context.Mood.Paper);
+        }
+
+        _post.Run(context.Commands, context.Targets, context.ColorTarget, context.Mood, paper, context.ClampSampler, context.Sampler);
+    }
+
+    public void Dispose()
+    {
+        _post.Dispose();
+    }
+}

@@ -1,5 +1,10 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Graphics.Commands;
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Presentation;
+using FlickerVoid.Engine.Graphics.Textures;
+
 namespace FlickerVoid.Engine.Graphics.Tests;
 
 public sealed class SwapchainTests : IDisposable

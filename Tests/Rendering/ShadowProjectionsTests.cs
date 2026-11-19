@@ -1,5 +1,8 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Shadows;
+
 namespace FlickerVoid.Engine.Rendering.Tests;
 
 public sealed class ShadowProjectionsTests

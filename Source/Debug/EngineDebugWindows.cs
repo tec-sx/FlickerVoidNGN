@@ -1,8 +1,8 @@
 using Arch.Core;
 
-using FlickerVoid.Engine.Graphics;
+using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Rendering;
-using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Debug;
 

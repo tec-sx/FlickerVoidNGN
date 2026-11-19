@@ -1,8 +1,14 @@
 using System.Numerics;
-using FlickerVoid.Engine.Platform;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using Silk.NET.Windowing.Sdl;
+
+using FlickerVoid.Engine.Graphics.Buffers;
+using FlickerVoid.Engine.Graphics.Commands;
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Presentation;
+using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Platform.Native;
 
 namespace FlickerVoid.Engine.Graphics.Tests;
 

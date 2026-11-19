@@ -1,5 +1,7 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Rendering.GlobalIllumination;
+
 namespace FlickerVoid.Engine.Rendering.Tests;
 
 /// <summary>Builds a 16x16 cube capture whose radiance is a function of direction, and projects it.</summary>

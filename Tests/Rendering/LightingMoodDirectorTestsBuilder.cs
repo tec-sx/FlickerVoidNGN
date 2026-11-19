@@ -1,6 +1,7 @@
 using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Tags;
+using FlickerVoid.Engine.Rendering.Lighting;
 
 namespace FlickerVoid.Engine.Rendering.Tests;
 

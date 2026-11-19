@@ -5,6 +5,8 @@ using Arch.Core;
 using FlickerVoid.Engine.Debug;
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Rendering;
+using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 
 using Hexa.NET.ImGui;

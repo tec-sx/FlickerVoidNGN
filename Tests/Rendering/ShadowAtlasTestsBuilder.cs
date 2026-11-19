@@ -1,3 +1,5 @@
+using FlickerVoid.Engine.Rendering.Shadows;
+
 namespace FlickerVoid.Engine.Rendering.Tests;
 
 /// <summary>Builds an empty shadow atlas.</summary>

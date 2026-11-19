@@ -7,8 +7,8 @@ using BepuPhysics.Collidables;
 using BepuUtilities;
 using BepuUtilities.Memory;
 
-using FlickerVoid.Engine.Runtime;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Physics;
 

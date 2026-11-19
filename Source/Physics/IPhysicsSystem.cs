@@ -2,7 +2,7 @@ using Arch.System;
 
 using BepuPhysics;
 
-using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Physics;
 

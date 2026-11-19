@@ -3,11 +3,12 @@ using System.Numerics;
 using Arch.Core;
 using Arch.System;
 
-using FlickerVoid.Engine.Platform;
 using FlickerVoid.Engine.Platform.Input;
+using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Rendering;
-using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Loop;
 
 using Silk.NET.Input;
 
@@ -69,7 +70,6 @@ public sealed class OrbitCameraSystem : ISystem<GameTime>
         {
             _distance *= MathF.Pow(ZoomPerNotch, input.ScrollDelta);
         }
-
 
         Vector3 move = Vector3.Zero;
         if (!keyboardBlocked)

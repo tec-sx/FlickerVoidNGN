@@ -1,6 +1,7 @@
 using Arch.Core;
 
-using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Rendering.Tests;
 

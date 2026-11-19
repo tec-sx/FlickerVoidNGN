@@ -3,8 +3,11 @@ using System.Numerics;
 
 using Arch.Core;
 
-using FlickerVoid.Engine.Graphics;
+using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Rendering;
+using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Shaders;

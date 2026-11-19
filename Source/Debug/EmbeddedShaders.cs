@@ -1,6 +1,6 @@
 using System.Reflection;
 
-using FlickerVoid.Engine.Graphics;
+using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Debug;

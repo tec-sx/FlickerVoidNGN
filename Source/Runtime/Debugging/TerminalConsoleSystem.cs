@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 
 using Arch.System;
 
+using FlickerVoid.Engine.Runtime.Loop;
+
 namespace FlickerVoid.Engine.Runtime.Debugging;
 
 /// <summary>Runs lines typed in a terminal through the debug console once per frame and prints what they show, until the game has its own console screen.</summary>

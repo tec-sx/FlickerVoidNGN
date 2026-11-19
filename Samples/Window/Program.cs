@@ -1,5 +1,7 @@
-using FlickerVoid.Engine.Platform;
-using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Platform.Windowing;
+
+using FlickerVoid.Engine.Runtime.Loop;
+
 using FlickerVoid.Engine.Runtime.Debugging;
 using FlickerVoid.Samples.Window;
 

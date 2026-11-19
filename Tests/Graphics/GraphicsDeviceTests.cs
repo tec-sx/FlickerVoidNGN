@@ -1,5 +1,12 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
+using FlickerVoid.Engine.Graphics.Buffers;
+using FlickerVoid.Engine.Graphics.Commands;
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Pipelines;
+using FlickerVoid.Engine.Graphics.Resources;
+using FlickerVoid.Engine.Graphics.Samplers;
+using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Shaders;
 
 namespace FlickerVoid.Engine.Graphics.Tests;

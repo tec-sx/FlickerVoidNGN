@@ -7,8 +7,8 @@ using Avalonia.Platform;
 using Avalonia.Rendering.Composition;
 using Avalonia.VisualTree;
 
-using FlickerVoid.Engine.Graphics;
-using FlickerVoid.Engine.Graphics.Vulkan;
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Vulkan.Textures;
 
 namespace FlickerVoid.Samples.EditorViewport;
 

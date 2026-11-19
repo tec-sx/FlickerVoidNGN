@@ -1,3 +1,5 @@
+using FlickerVoid.Engine.Runtime.Loop;
+
 namespace FlickerVoid.Engine.Runtime.Tests;
 
 /// <summary>Builds the game loop under test.</summary>

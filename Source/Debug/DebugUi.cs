@@ -1,7 +1,9 @@
 using System.Runtime.InteropServices;
 
-using FlickerVoid.Engine.Graphics;
-using FlickerVoid.Engine.Platform;
+using FlickerVoid.Engine.Graphics.Commands;
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Shaders;
 
 using Hexa.NET.ImGui;

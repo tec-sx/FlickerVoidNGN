@@ -2,9 +2,10 @@ using Arch.System;
 
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Tags;
-using FlickerVoid.Engine.Platform;
+using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Rendering;
-using FlickerVoid.Engine.Runtime;
+using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Runtime.Loop;
 
 using Silk.NET.Input;
 

@@ -1,5 +1,8 @@
 using System.Numerics;
-using FlickerVoid.Engine.Graphics.Vulkan;
+
+using FlickerVoid.Engine.Graphics.Commands;
+using FlickerVoid.Engine.Graphics.Vulkan.Devices;
+using FlickerVoid.Engine.Graphics.Vulkan.Textures;
 
 namespace FlickerVoid.Engine.Graphics.Tests;
 

@@ -1,9 +1,9 @@
 using Arch.System;
 
-using FlickerVoid.Engine.Platform;
-using FlickerVoid.Engine.Runtime;
-
 using Silk.NET.Input;
+
+using FlickerVoid.Engine.Platform.Windowing;
+using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Samples.Window;
 

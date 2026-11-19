@@ -2,6 +2,8 @@ using Arch.System;
 
 using Microsoft.Extensions.Logging;
 
+using FlickerVoid.Engine.Runtime.Loop;
+
 namespace FlickerVoid.Engine.Runtime.Tests;
 
 /// <summary>Builds the game under test with its systems; it logs to a substitute logger factory unless given one.</summary>

@@ -1,3 +1,5 @@
+using FlickerVoid.Engine.Runtime.Loop;
+
 namespace FlickerVoid.Engine.Runtime.Tests;
 
 public class GameLoopTests
