@@ -96,6 +96,74 @@ public sealed class SceneSpawnerTests : IDisposable
         registerAgain.Should().Throw<ArgumentException>();
     }
 
+    [Fact]
+    public void PatchSetsOnlyTheComponentsAFileChanged()
+    {
+        SceneData before = Parse("""
+            { "entities": [
+                { "name": "Lamp", "components": { "transform": { "position": [1, 2, 3] } } },
+                { "name": "Fox", "components": { "transform": { "position": [0, 0, 0] } } } ] }
+            """);
+        SceneData after = Parse("""
+            { "entities": [
+                { "name": "Lamp", "components": { "transform": { "position": [4, 5, 6] } } },
+                { "name": "Fox", "components": { "transform": { "position": [0, 0, 0] } } } ] }
+            """);
+        IReadOnlyList<Entity> entities = _spawner.Spawn(before, _world);
+        Vector3 walked = new(7, 0, 7);
+        _world.Set(entities[1], new Transform { Position = walked });
+
+        IReadOnlyList<Entity> patched = _spawner.Patch(before, after, entities, _world);
+
+        patched.Should().Equal(entities);
+        Transform lamp = _world.Get<Transform>(patched[0]);
+        Transform fox = _world.Get<Transform>(patched[1]);
+        Vector3 moved = new(4, 5, 6);
+        lamp.Position.Should().Be(moved);
+        fox.Position.Should().Be(walked, "the file left the fox's transform as it was, so the game's changes stay");
+    }
+
+    [Fact]
+    public void PatchSpawnsAddedEntitiesAndDestroysRemovedOnes()
+    {
+        SceneData before = Parse("""{ "entities": [ { "name": "Lamp" }, { "name": "Crate" } ] }""");
+        SceneData after = Parse("""{ "entities": [ { "name": "Crate" }, { "name": "Table" } ] }""");
+        IReadOnlyList<Entity> entities = _spawner.Spawn(before, _world);
+
+        IReadOnlyList<Entity> patched = _spawner.Patch(before, after, entities, _world);
+
+        patched.Should().HaveCount(2);
+        patched[0].Should().Be(entities[1], "the crate is kept");
+        _world.IsAlive(entities[0]).Should().BeFalse("the lamp is gone from the file");
+        EntityName table = _world.Get<EntityName>(patched[1]);
+        table.Value.Should().Be("Table");
+    }
+
+    [Fact]
+    public void PatchAddsAndRemovesComponents()
+    {
+        SceneData before = Parse("""{ "entities": [ { "name": "Lamp", "components": { "transform": {} } }, { "name": "Crate" } ] }""");
+        SceneData after = Parse("""{ "entities": [ { "name": "Lamp" }, { "name": "Crate", "components": { "transform": {} } } ] }""");
+        IReadOnlyList<Entity> entities = _spawner.Spawn(before, _world);
+
+        IReadOnlyList<Entity> patched = _spawner.Patch(before, after, entities, _world);
+
+        _world.Has<Transform>(patched[0]).Should().BeFalse();
+        _world.Has<Transform>(patched[1]).Should().BeTrue();
+    }
+
+    [Fact]
+    public void PatchKeepsUnnamedEntitiesWhoseDataIsUnchanged()
+    {
+        SceneData before = Parse("""{ "entities": [ { "components": { "transform": { "position": [1, 0, 0] } } } ] }""");
+        SceneData after = Parse("""{ "entities": [ { "components": { "transform": { "position": [1, 0, 0] } } }, { "name": "Lamp" } ] }""");
+        IReadOnlyList<Entity> entities = _spawner.Spawn(before, _world);
+
+        IReadOnlyList<Entity> patched = _spawner.Patch(before, after, entities, _world);
+
+        patched[0].Should().Be(entities[0]);
+    }
+
     private static SceneData Parse(string json)
     {
         SceneData? scene = JsonSerializer.Deserialize(json, RuntimeJsonContext.Default.SceneData);

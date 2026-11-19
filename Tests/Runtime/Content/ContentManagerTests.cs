@@ -91,4 +91,22 @@ public sealed class ContentManagerTests : IDisposable
 
         load.Should().Throw<InvalidDataException>();
     }
+
+    [Fact]
+    public void ForgetsAChangedFileAndTellsWhoListens()
+    {
+        ContentManager content = _builder.WithFile("Room.scene.json", """{ "entities": [] }""").Build();
+        SceneData before = content.Load("Room.scene.json", RuntimeJsonContext.Default.SceneData);
+        List<string> changed = [];
+        content.Changed += changed.Add;
+
+        _builder.WithFile("Room.scene.json", """{ "entities": [ { "name": "Lamp" } ] }""");
+        content.NotifyChanged("Room.scene.json");
+        SceneData after = content.Load("Room.scene.json", RuntimeJsonContext.Default.SceneData);
+
+        string fullPath = content.GetFullPath("Room.scene.json");
+        changed.Should().Equal(fullPath);
+        after.Should().NotBeSameAs(before);
+        after.Entities.Should().ContainSingle().Which.Name.Should().Be("Lamp");
+    }
 }

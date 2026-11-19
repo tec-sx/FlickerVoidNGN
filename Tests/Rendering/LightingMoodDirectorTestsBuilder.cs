@@ -3,6 +3,8 @@ using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Rendering.Lighting;
 
+using Microsoft.Extensions.Logging;
+
 namespace FlickerVoid.Engine.Rendering.Tests;
 
 /// <summary>
@@ -23,10 +25,12 @@ internal sealed class LightingMoodDirectorTestsBuilder : IDisposable
     private readonly LightingMoodTestsBuilder _files = new();
     private readonly FactDatabase _facts = new(new FactSettings());
     private readonly List<MoodRule> _rules = [];
+    private readonly ILogger<LightingMoodDirector> _logger = Substitute.For<ILogger<LightingMoodDirector>>();
     private LightingMoodDirector? _director;
 
     public LightingMoodDirectorTestsBuilder()
     {
+        _logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         _files.WithFile(Day, $$"""{ "exposure": {{DayExposure}} }""");
         _files.WithFile(Night, $$"""{ "exposure": {{NightExposure}} }""");
         _files.WithFile(Storm, $$"""{ "exposure": {{StormExposure}} }""");
@@ -42,6 +46,19 @@ internal sealed class LightingMoodDirectorTestsBuilder : IDisposable
         return WithRule(Storm, minimumNight);
     }
 
+    /// <summary>The warnings the director logged.</summary>
+    public IEnumerable<object?[]> Warnings => _logger.ReceivedCalls()
+        .Where(static call => call.GetMethodInfo().Name == nameof(ILogger.Log))
+        .Select(static call => call.GetArguments())
+        .Where(static arguments => arguments[0] is LogLevel.Warning);
+
+    /// <summary>Rewrites a mood file and reports it changed, as the content watcher would.</summary>
+    public void EditFile(string path, string json)
+    {
+        _files.WithFile(path, json);
+        _files.Content.NotifyChanged(path);
+    }
+
     public void SetNight(int value)
     {
         _facts.SetFact(NightFact, value);
@@ -49,7 +66,7 @@ internal sealed class LightingMoodDirectorTestsBuilder : IDisposable
 
     public LightingMoodDirector Build()
     {
-        _director = new LightingMoodDirector(_facts, _files.Content, Day, _rules);
+        _director = new LightingMoodDirector(_facts, _files.Content, Day, _rules, _logger);
         return _director;
     }
 

@@ -6,17 +6,21 @@ using StbImageSharp;
 
 namespace FlickerVoid.Engine.Rendering.Materials;
 
-/// <summary>Loads each image file (PNG, JPEG, TGA, BMP...) the first time it is used and keeps it on the GPU as sRGB color.</summary>
+/// <summary>
+/// Loads each image file (PNG, JPEG, TGA, BMP...) the first time it is used and keeps it on the GPU as sRGB color, until the
+/// file changes on disk and the next use loads it again.
+/// </summary>
 internal sealed class TextureLibrary : IDisposable
 {
     private readonly IGraphicsDevice _device;
     private readonly IContentManager _content;
-    private readonly Dictionary<string, ITexture> _textures = [];
+    private readonly Dictionary<string, ITexture> _textures = new(ContentManager.PathComparer);
 
     public TextureLibrary(IGraphicsDevice device, IContentManager content)
     {
         _device = device;
         _content = content;
+        _content.Changed += HandleChanged;
     }
 
     public ITexture Get(string path)
@@ -37,6 +41,7 @@ internal sealed class TextureLibrary : IDisposable
 
     public void Dispose()
     {
+        _content.Changed -= HandleChanged;
         foreach (ITexture texture in _textures.Values)
         {
             texture.Dispose();
@@ -44,5 +49,13 @@ internal sealed class TextureLibrary : IDisposable
 
         _textures.Clear();
     }
-}
 
+    // The device releases the old texture once the GPU is done with it.
+    private void HandleChanged(string fullPath)
+    {
+        if (_textures.Remove(fullPath, out ITexture? texture))
+        {
+            texture.Dispose();
+        }
+    }
+}

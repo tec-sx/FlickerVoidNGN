@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json;
 
 using SharpGLTF.Memory;
 using SharpGLTF.Schema2;
@@ -20,6 +21,28 @@ public static class GltfImporter
     {
         ModelRoot model = ModelRoot.Load(path);
         return Import(model);
+    }
+
+    /// <summary>
+    /// The full paths of the files a model is read from: the model itself and, for a .gltf, the buffers and images its JSON
+    /// names by relative URI (embedded data URIs are skipped).
+    /// </summary>
+    public static IReadOnlyList<string> FindFiles(string path)
+    {
+        string fullPath = Path.GetFullPath(path);
+        List<string> files = [fullPath];
+        string extension = Path.GetExtension(fullPath);
+        if (!extension.Equals(".gltf", StringComparison.OrdinalIgnoreCase))
+        {
+            return files;
+        }
+
+        string folder = Path.GetDirectoryName(fullPath)!;
+        using FileStream stream = File.OpenRead(fullPath);
+        using JsonDocument document = JsonDocument.Parse(stream);
+        AddUris(document.RootElement, "buffers", folder, files);
+        AddUris(document.RootElement, "images", folder, files);
+        return files;
     }
 
     public static ModelData Import(ModelRoot model)
@@ -210,5 +233,31 @@ public static class GltfImporter
         ImageResult decoded = ImageResult.FromMemory(bytes, ColorComponents.RedGreenBlueAlpha);
         return new TextureData(decoded.Width, decoded.Height, decoded.Data);
     }
-}
 
+    private static void AddUris(JsonElement root, string arrayName, string folder, List<string> files)
+    {
+        if (!root.TryGetProperty(arrayName, out JsonElement array))
+        {
+            return;
+        }
+
+        foreach (JsonElement item in array.EnumerateArray())
+        {
+            if (!item.TryGetProperty("uri", out JsonElement uri))
+            {
+                continue;
+            }
+
+            string? value = uri.GetString();
+            if (value is null || value.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string relative = Uri.UnescapeDataString(value);
+            string combined = Path.Combine(folder, relative);
+            string file = Path.GetFullPath(combined);
+            files.Add(file);
+        }
+    }
+}

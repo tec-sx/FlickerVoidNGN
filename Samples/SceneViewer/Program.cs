@@ -42,6 +42,8 @@ using Microsoft.Extensions.Logging;
 // --moods takes lighting mood files in the model's folder (Content/Moods/Day.json, Dusk.json and Night.json beside the
 // default room); N steps a fact through them, which mood rules turn into a blend to the next mood. --sun, --ambient and --fog override the mood.
 // --probes bakes an irradiance volume fitted to the model at startup and saves it beside the model as <model>.probes. Without a model it shows Content/Room.glb.
+// Files in the model's folder reload while the viewer runs: save a model, texture, scene or mood and it shows within a second.
+// To edit the sample's own content, pass the source copy (Samples/SceneViewer/Content/Room.glb), not the one beside the build.
 string model = Path.Combine(AppContext.BaseDirectory, "Content", "Room.glb");
 bool validation = false;
 int frameLimit = 0;
@@ -133,14 +135,15 @@ if (sceneFile is not null)
 using GameWindow window = new(game, $"FlickerVoid  {shown}  (drag to turn, wheel to zoom, WASD to move, P for perspective, N for the next mood)", 1280, 720);
 
 Entity camera = game.World.Create(new Transform(), new Camera());
+ILogger<SceneLoader> sceneLogger = loggerFactory.CreateLogger<SceneLoader>();
+using SceneLoader sceneLoader = new(game.Spawner, content, game.World, sceneLogger);
 if (sceneFile is null)
 {
     game.World.Create(new Transform(), new MeshRenderer { Mesh = fileName });
 }
 else
 {
-    SceneData scene = content.Load(sceneFile, RuntimeJsonContext.Default.SceneData);
-    game.Spawner.Spawn(scene, game.World);
+    sceneLoader.Load(sceneFile);
 }
 
 Vector3[] palette = [new(1, 0.3f, 0.2f), new(1, 0.8f, 0.3f), new(0.3f, 1, 0.4f), new(0.3f, 0.8f, 1), new(0.4f, 0.4f, 1), new(1, 0.4f, 0.9f)];
@@ -184,7 +187,8 @@ LightingMoodDirector? CreateDirector()
         return null;
     }
 
-    return new LightingMoodDirector(facts, content, moodFiles[0], rules);
+    ILogger<LightingMoodDirector> directorLogger = loggerFactory.CreateLogger<LightingMoodDirector>();
+    return new LightingMoodDirector(facts, content, moodFiles[0], rules, directorLogger);
 }
 
 SceneRenderer CreateRenderer(PixelFormat format)
@@ -232,6 +236,7 @@ DebugUi CreateDebugUi(PixelFormat format, SceneRenderer sceneRenderer)
 }
 
 using SceneRenderSystem renderer = new(window, device, game.World, CreateRenderer, frameLimit, CreateDebugUi);
+game.FrameSystems.Add(new ContentWatcher(content));
 game.FrameSystems.Add(orbit);
 game.FrameSystems.Add(walkers);
 if (director is not null)
