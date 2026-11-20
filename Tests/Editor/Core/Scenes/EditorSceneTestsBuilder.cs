@@ -3,6 +3,7 @@ using Arch.Core;
 using FlickerVoid.Editor.Core.Scenes;
 
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,11 +16,16 @@ internal sealed class EditorSceneTestsBuilder : IDisposable
     private readonly string _contentFolder;
 
     public EditorSceneTestsBuilder()
+        : this([])
+    {
+    }
+
+    public EditorSceneTestsBuilder(IReadOnlyList<IGameModule> modules)
     {
         string folderName = Path.GetRandomFileName();
         _contentFolder = Path.Combine(Path.GetTempPath(), folderName);
         Directory.CreateDirectory(_contentFolder);
-        Scene = new EditorScene(NullLoggerFactory.Instance, new ContentManager(_contentFolder));
+        Scene = new EditorScene(NullLoggerFactory.Instance, new ContentManager(_contentFolder), modules);
     }
 
     public EditorScene Scene { get; }

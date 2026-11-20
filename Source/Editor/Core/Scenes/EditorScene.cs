@@ -29,9 +29,20 @@ public sealed class EditorScene : IDisposable
 
     /// <summary>Opens an empty world over the content.</summary>
     public EditorScene(ILoggerFactory loggerFactory, IContentManager content)
+        : this(loggerFactory, content, [])
+    {
+    }
+
+    /// <summary>Opens an empty world over the content, with the project's game modules added (see <see cref="Projects.GameCode"/>).</summary>
+    public EditorScene(ILoggerFactory loggerFactory, IContentManager content, IReadOnlyList<IGameModule> modules)
     {
         Game = new Game(loggerFactory);
         Game.AddRendering();
+        foreach (IGameModule module in modules)
+        {
+            module.Add(Game);
+        }
+
         Content = content;
         ILogger<SceneLoader> logger = loggerFactory.CreateLogger<SceneLoader>();
         _loader = new SceneLoader(Game.Spawner, Content, Game.World, logger);

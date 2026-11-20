@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Editor.Core.Scenes;
+using FlickerVoid.Editor.Core.Tests.Projects;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Entities;
@@ -19,6 +20,18 @@ public sealed class EditorSceneTests : IDisposable
     private readonly EditorSceneTestsBuilder _builder = new();
 
     public void Dispose() => _builder.Dispose();
+
+    [Fact]
+    public void KnowsTheComponentsOfTheProjectsGameModules()
+    {
+        using EditorSceneTestsBuilder builder = new([new SpinModule()]);
+        builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Wheel", "components": { "spin": { "speed": 2 } } } ] }""");
+
+        Entity wheel = builder.Open("Room.fvscene");
+
+        Spin spin = builder.Scene.Game.World.Get<Spin>(wheel);
+        spin.Speed.Should().Be(2);
+    }
 
     [Fact]
     public void SavesTheEditedWorldIntoTheOpenSceneFile()
