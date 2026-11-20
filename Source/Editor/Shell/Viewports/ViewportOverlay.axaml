@@ -21,6 +21,14 @@
     <Style Selector="ToggleButton.viewportIcon:checked /template/ ContentPresenter">
       <Setter Property="Background" Value="#2D7BD6" />
     </Style>
+    <Style Selector="ComboBox.viewportSnap">
+      <Setter Property="MinWidth" Value="58" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="Padding" Value="6,0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="#DDDDDD" />
+    </Style>
     <Style Selector="Button.viewportRound">
       <Setter Property="Width" Value="32" />
       <Setter Property="Height" Value="32" />
@@ -51,6 +59,25 @@
           <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsScaleMode}" ToolTip.Tip="Scale (R)">
             <PathIcon Data="{x:Static shell:MaterialIcons.Scale}" />
           </ToggleButton>
+        </StackPanel>
+      </Border>
+      <Border Classes="viewportBar">
+        <StackPanel Orientation="Horizontal">
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.MoveSnap.IsOn}" ToolTip.Tip="Snap moves to the grid, in world units">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Grid}" />
+          </ToggleButton>
+          <ComboBox Classes="viewportSnap" ItemsSource="{Binding Gizmo.MoveSnap.Steps}" SelectedItem="{Binding Gizmo.MoveSnap.Step}"
+                    ToolTip.Tip="Grid size, in world units" />
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.RotateSnap.IsOn}" ToolTip.Tip="Snap turns to steps, in degrees">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Rotate}" />
+          </ToggleButton>
+          <ComboBox Classes="viewportSnap" ItemsSource="{Binding Gizmo.RotateSnap.Steps}" SelectedItem="{Binding Gizmo.RotateSnap.Step}"
+                    ToolTip.Tip="Turn step, in degrees" />
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.ScaleSnap.IsOn}" ToolTip.Tip="Snap scaling to steps of the starting scale">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Scale}" />
+          </ToggleButton>
+          <ComboBox Classes="viewportSnap" ItemsSource="{Binding Gizmo.ScaleSnap.Steps}" SelectedItem="{Binding Gizmo.ScaleSnap.Step}"
+                    ToolTip.Tip="Scale step, as a share of the starting scale" />
         </StackPanel>
       </Border>
       <Border Classes="viewportBar">

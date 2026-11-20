@@ -121,4 +121,59 @@ public sealed class TransformGizmoTests
 
         Vector3.Distance(back.Position, Vector3.Zero).Should().BeLessThan(Precision);
     }
+
+    [Fact]
+    public void SnapsTheDraggedAxisToTheGridWhileMoveSnappingIsOn()
+    {
+        _builder.Target = new Transform { Position = new Vector3(0.3f, 0.3f, 0) };
+        TransformGizmo gizmo = _builder.Build();
+        gizmo.MoveSnap.IsOn = true;
+        gizmo.MoveSnap.Step = 0.5f;
+        Vector2 start = _builder.PixelAt(gizmo, new Vector3(0.7f, 0, 0));
+        gizmo.BeginDrag(_builder.Camera, _builder.Target, start, Width, Height);
+        float length = gizmo.GetHandleLength(_builder.Camera, _builder.Target.Position, Height);
+        Vector3 end = new(0.3f + (0.7f * length) + 1.1f, 0.3f, 0);
+        Vector2 endPixel = _builder.Camera.Project(end, Width, Height);
+
+        Transform moved = gizmo.Drag(_builder.Camera, endPixel, Width, Height);
+
+        moved.Position.X.Should().Be(1.5f);
+        moved.Position.Y.Should().Be(0.3f);
+    }
+
+    [Fact]
+    public void TurnsInStepsWhileRotateSnappingIsOn()
+    {
+        TransformGizmo gizmo = _builder.InMode(GizmoMode.Rotate).LookingDown().Build();
+        gizmo.RotateSnap.IsOn = true;
+        gizmo.RotateSnap.Step = 45;
+        float diagonal = MathF.Sqrt(0.5f);
+        Vector3 from = new(diagonal, 0, -diagonal);
+        Quaternion eightyDegrees = Quaternion.CreateFromAxisAngle(Vector3.UnitY, float.DegreesToRadians(80));
+        Vector3 to = Vector3.Transform(from, eightyDegrees);
+        Vector2 start = _builder.PixelAt(gizmo, from);
+        Vector2 end = _builder.PixelAt(gizmo, to);
+
+        gizmo.BeginDrag(_builder.Camera, _builder.Target, start, Width, Height);
+        Transform rotated = gizmo.Drag(_builder.Camera, end, Width, Height);
+
+        Vector3 turnedX = Vector3.Transform(Vector3.UnitX, rotated.Rotation);
+        Vector3.Distance(turnedX, -Vector3.UnitZ).Should().BeLessThan(0.0001f, "80 degrees snaps to a quarter turn");
+    }
+
+    [Fact]
+    public void ScalesInStepsOfTheStartingScaleWhileScaleSnappingIsOn()
+    {
+        _builder.Target = new Transform { Scale = new Vector3(2, 1, 1) };
+        TransformGizmo gizmo = _builder.InMode(GizmoMode.Scale).Build();
+        gizmo.ScaleSnap.IsOn = true;
+        gizmo.ScaleSnap.Step = 0.25f;
+        Vector2 start = _builder.PixelAt(gizmo, new Vector3(0.5f, 0, 0));
+        Vector2 end = _builder.PixelAt(gizmo, new Vector3(1.05f, 0, 0));
+
+        gizmo.BeginDrag(_builder.Camera, _builder.Target, start, Width, Height);
+        Transform scaled = gizmo.Drag(_builder.Camera, end, Width, Height);
+
+        scaled.Scale.Should().Be(new Vector3(3, 1, 1), "a drag of 1.55 times snaps to 1.5 times the starting scale");
+    }
 }
