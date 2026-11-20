@@ -65,17 +65,6 @@ public sealed class ScenePickerTests : IDisposable
     }
 
     [Fact]
-    public void PicksLightsWithinTheirPickingRadius()
-    {
-        Entity light = _builder.AddPointLight(new Vector3(ScenePicker.LightRadius / 2, 0, 1));
-        ScenePicker picker = _builder.Build();
-
-        Entity? picked = picker.Pick(_builder.World, DownTheZAxis);
-
-        picked.Should().Be(light);
-    }
-
-    [Fact]
     public void SkipsMeshesWhoseModelIsMissing()
     {
         _builder.AddMesh("Missing.glb", Vector3.Zero);

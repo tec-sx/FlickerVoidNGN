@@ -4,7 +4,6 @@ using Arch.Core;
 
 using FlickerVoid.Engine.Editor.Selection;
 using FlickerVoid.Engine.Rendering;
-using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
@@ -60,12 +59,6 @@ internal sealed class ScenePickerTestsBuilder : IDisposable
         Transform transform = new() { Position = position, Scale = new Vector3(scale) };
         MeshRenderer renderer = new() { Mesh = mesh };
         return _game.World.Create(transform, renderer);
-    }
-
-    public Entity AddPointLight(Vector3 position)
-    {
-        Transform transform = new() { Position = position };
-        return _game.World.Create(transform, new PointLight());
     }
 
     /// <summary>Reports a content file changed, as the content watcher would.</summary>

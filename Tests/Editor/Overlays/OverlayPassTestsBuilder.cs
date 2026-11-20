@@ -113,7 +113,8 @@ internal sealed class OverlayPassTestsBuilder : IDisposable
         LightingMood mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0 };
         SceneRenderer renderer = new(device, content, Format) { Mood = mood };
         ShaderLibrary shaders = ShaderLibrary.ForEngine("Editor");
-        _overlay = new OverlayPass(device, shaders, Format);
+        string icons = Path.Combine(AppContext.BaseDirectory, "Content", "Engine", "EditorIcons");
+        _overlay = new OverlayPass(device, shaders, Format, icons);
         renderer.Pipeline.Add(_overlay);
         return renderer;
     }

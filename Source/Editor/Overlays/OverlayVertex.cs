@@ -7,8 +7,6 @@ namespace FlickerVoid.Engine.Editor.Overlays;
 [StructLayout(LayoutKind.Sequential)]
 public readonly record struct OverlayVertex(Vector3 Position, float Padding, Vector4 Color)
 {
-    public const int Size = 32;
-
     public OverlayVertex(Vector3 position, Vector4 color)
         : this(position, 0, color)
     {

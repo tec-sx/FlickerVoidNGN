@@ -42,7 +42,8 @@ internal sealed class ViewportRenderer : IDisposable
         ShaderLibrary shaders = ShaderLibrary.ForEngine("Editor");
         _grid = new GridPass(_device, shaders, ViewFormat);
         _scene.Pipeline.Add(_grid);
-        _overlay = new OverlayPass(_device, shaders, ViewFormat);
+        string icons = Path.Combine(AppContext.BaseDirectory, "Content", "Engine", "EditorIcons");
+        _overlay = new OverlayPass(_device, shaders, ViewFormat, icons);
         _scene.Pipeline.Add(_overlay);
         _commands = _device.CreateCommandList();
     }
