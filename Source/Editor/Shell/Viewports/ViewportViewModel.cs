@@ -200,6 +200,19 @@ public sealed partial class ViewportViewModel : ObservableObject
         }
     }
 
+    /// <summary>Adds a copy of the selected entity in the same place and selects it, to move it away with the gizmo.</summary>
+    [RelayCommand]
+    public void DuplicateSelected()
+    {
+        if (Scene.ScenePath is null || Scene.Selection.Selected is not { } entity || !Scene.Game.World.IsAlive(entity))
+        {
+            return;
+        }
+
+        Entity copy = Scene.DuplicateEntity(entity);
+        Scene.Selection.Select(copy);
+    }
+
     /// <summary>Destroys the selected entity; the next save leaves it out of the scene file.</summary>
     [RelayCommand]
     public void DeleteSelected()
