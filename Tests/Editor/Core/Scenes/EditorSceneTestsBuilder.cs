@@ -3,6 +3,7 @@ using Arch.Core;
 using FlickerVoid.Editor.Core.Scenes;
 
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Scenes;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -47,6 +48,12 @@ internal sealed class EditorSceneTestsBuilder : IDisposable
             }
         });
         return first;
+    }
+
+    /// <summary>The component scene files add under the name.</summary>
+    public SceneComponent FindComponent(string name)
+    {
+        return Scene.Game.Spawner.Components.Single(component => component.Name == name);
     }
 
     public string ReadScene(string path)

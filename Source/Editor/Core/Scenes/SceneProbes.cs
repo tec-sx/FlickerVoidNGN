@@ -35,8 +35,13 @@ public static class SceneProbes
         List<string> baked = [];
         foreach (Entity entity in volumes)
         {
-            ref IrradianceVolume volume = ref world.Get<IrradianceVolume>(entity);
-            volume.Probes ??= NameProbes(scene, entity);
+            IrradianceVolume volume = world.Get<IrradianceVolume>(entity);
+            if (volume.Probes is null)
+            {
+                volume.Probes = NameProbes(scene, entity);
+                scene.SetComponent(entity, volume);
+            }
+
             Vector3 center = world.Get<Transform>(entity).Position;
             IrradianceProbes probes = baker.Bake(world, volume, center);
             string path = volume.Probes;

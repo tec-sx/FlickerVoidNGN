@@ -42,6 +42,7 @@ public sealed class InspectorViewModelTests : IDisposable
         _builder.World.Has<PointLight>(lamp).Should().BeFalse();
         _builder.ViewModel.AddableComponents.Should().NotContain(spot);
         _builder.Component("Transform").CanRemove.Should().BeFalse();
+        _builder.Scene.IsUnsaved.Should().BeTrue();
     }
 
     [Fact]
@@ -79,6 +80,19 @@ public sealed class InspectorViewModelTests : IDisposable
         light.Intensity.Should().Be(3);
         light.CastsShadows.Should().BeTrue();
         transform.Position.Should().Be(new Vector3(0, 2, 0));
+    }
+
+    [Fact]
+    public void EditsGoThroughTheScene()
+    {
+        _builder.Select("Lamp", new Transform(), new PointLight());
+        int edits = 0;
+        _builder.Scene.Edited += () => edits++;
+
+        _builder.Field<NumberFieldViewModel>("Point Light", "Intensity").Value = 3;
+
+        edits.Should().Be(1);
+        _builder.Scene.IsUnsaved.Should().BeTrue();
     }
 
     [Fact]

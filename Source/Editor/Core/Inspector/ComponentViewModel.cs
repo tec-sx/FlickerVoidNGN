@@ -2,6 +2,7 @@ using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
 
+using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Engine.Runtime.Scenes;
 
 namespace FlickerVoid.Editor.Core.Inspector;
@@ -9,7 +10,7 @@ namespace FlickerVoid.Editor.Core.Inspector;
 /// <summary>One component of the selected entity, with a field for each property its scene file metadata lists.</summary>
 public sealed class ComponentViewModel
 {
-    public ComponentViewModel(World world, Entity entity, SceneComponent component, FindContentFiles files)
+    public ComponentViewModel(EditorScene scene, Entity entity, SceneComponent component, FindContentFiles files)
     {
         Title = DisplayNames.FromIdentifier(component.TypeInfo.Type.Name);
         List<FieldViewModel> fields = [];
@@ -20,7 +21,7 @@ public sealed class ComponentViewModel
                 continue;
             }
 
-            ComponentProperty property = new(world, entity, component, info);
+            ComponentProperty property = new(scene, entity, component, info);
             FieldViewModel field = FieldFactory.Create(property, files);
             fields.Add(field);
         }

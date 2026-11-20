@@ -19,6 +19,7 @@ public sealed class SceneProbesTests : IDisposable
         IReadOnlyList<string> baked = _builder.Bake();
 
         baked.Should().Equal("Hall.fvprobes");
+        _builder.Scene.IsUnsaved.Should().BeFalse("the volumes already name their probes files");
         IrradianceProbes probes = _builder.LoadProbes("Hall.fvprobes");
         probes.CountX.Should().Be(SceneProbesTestsBuilder.ProbesPerAxis);
         IrradianceProbe probe = probes.Probes[0];
@@ -34,6 +35,7 @@ public sealed class SceneProbesTests : IDisposable
 
         baked.Should().Equal("Untitled.Hall.fvprobes");
         _builder.VolumeProbes("Hall").Should().Be("Untitled.Hall.fvprobes");
+        _builder.Scene.IsUnsaved.Should().BeTrue("the scene must be saved to keep the name");
         _builder.LoadProbes("Untitled.Hall.fvprobes").CountY.Should().Be(SceneProbesTestsBuilder.ProbesPerAxis);
     }
 

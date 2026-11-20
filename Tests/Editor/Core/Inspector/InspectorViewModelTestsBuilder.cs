@@ -29,6 +29,8 @@ internal sealed class InspectorViewModelTestsBuilder : IDisposable
 
     public InspectorViewModel ViewModel { get; }
 
+    public EditorScene Scene => _scene;
+
     public World World => _scene.Game.World;
 
     /// <summary>Creates a named entity with the components and selects it.</summary>

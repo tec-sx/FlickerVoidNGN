@@ -36,6 +36,8 @@ internal sealed class SceneProbesTestsBuilder : IDisposable
         _scene = new EditorScene(NullLoggerFactory.Instance, new ContentManager(_contentFolder));
     }
 
+    public EditorScene Scene => _scene;
+
     private World World => _scene.Game.World;
 
     /// <summary>A black cube glowing green in the middle of the volume.</summary>
