@@ -22,7 +22,7 @@ if (options.Project is not null)
         DotnetProjectBuilder builder = new();
         EditorProject project = EditorProject.Open(options.Project, builder);
         string? scene = options.Scene ?? project.StartupScene;
-        options = options with { Content = project.ContentFolder, Scene = scene };
+        options = options with { Content = project.ContentFolder, Scene = scene, Game = project.Program };
     }
     catch (Exception exception) when (exception is InvalidDataException or ProjectBuildException or IOException)
     {

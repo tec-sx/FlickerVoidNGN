@@ -18,6 +18,7 @@ public sealed class EditorProjectTests : IDisposable
         project.Name.Should().Be("Hollow");
         project.Game.Should().Be(Path.Combine(_builder.Folder, "Source", "Launcher", "Hollow.Launcher.csproj"));
         _builder.Built.Should().Equal(project.Game);
+        project.Program.Should().Be(_builder.Program);
         project.ContentFolder.Should().Be(Path.Combine(_builder.OutputFolder, "Content"));
         project.StartupScene.Should().Be("Scenes/Main.fvscene");
     }

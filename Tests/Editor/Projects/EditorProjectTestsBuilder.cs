@@ -14,16 +14,19 @@ internal sealed class EditorProjectTestsBuilder : IDisposable
         Folder = Path.Combine(Path.GetTempPath(), folderName);
         Directory.CreateDirectory(Folder);
         OutputFolder = Path.Combine(Folder, "bin");
+        Program = Path.Combine(OutputFolder, "Hollow.Launcher.dll");
         _builder.Build(Arg.Any<string>()).Returns(call =>
         {
             _built.Add(call.Arg<string>());
-            return OutputFolder;
+            return Program;
         });
     }
 
     public string Folder { get; }
 
     public string OutputFolder { get; }
+
+    public string Program { get; }
 
     public IReadOnlyList<string> Built => _built;
 

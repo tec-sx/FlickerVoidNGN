@@ -146,6 +146,17 @@ public sealed class EditorScene : IDisposable
         return true;
     }
 
+    /// <summary>The open scene file's contents as the world has its entities now, as <see cref="Save"/> would write them; null when the world has no scene file.</summary>
+    public byte[]? Capture()
+    {
+        if (ScenePath is null)
+        {
+            return null;
+        }
+
+        return _loader.Capture(ScenePath);
+    }
+
     public void Dispose()
     {
         _watcher.Dispose();

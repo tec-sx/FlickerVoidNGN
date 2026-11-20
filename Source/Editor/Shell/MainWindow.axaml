@@ -11,6 +11,7 @@
         Width="1280" Height="720">
   <Window.KeyBindings>
     <KeyBinding Gesture="Ctrl+S" Command="{Binding Viewport.SaveCommand}" />
+    <KeyBinding Gesture="F5" Command="{Binding PlayCommand}" />
   </Window.KeyBindings>
   <DockPanel>
     <Border DockPanel.Dock="Top" Padding="8,4" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
@@ -31,6 +32,8 @@
         <Button Content="Delete" Command="{Binding Viewport.DeleteSelectedCommand}" ToolTip.Tip="Delete the selected entity (Delete)." />
         <Separator Width="1" Margin="4,0" />
         <Button Content="Save" Command="{Binding Viewport.SaveCommand}" ToolTip.Tip="Save the scene (Ctrl+S)." />
+        <Button Content="Play" Command="{Binding PlayCommand}"
+                ToolTip.Tip="Play (F5): runs the project's game on the scene as it is now, without saving it. Needs an open project." />
         <Button Content="Bake Probes" Command="{Binding Viewport.BakeProbesCommand}" ToolTip.Tip="Bake the irradiance volumes' probes with the View tab's lighting." />
         <Button Content="Materials" Click="HandleMaterialsClick" ToolTip.Tip="Open the material editor." />
         <ToggleButton Content="Game View" IsChecked="{Binding Viewport.IsGameView}"

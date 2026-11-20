@@ -40,7 +40,7 @@ public sealed partial class App : Application
             }
             else
             {
-                desktop.MainWindow = CreateEditor(Options.Content, Options.Scene);
+                desktop.MainWindow = CreateEditor(Options.Content, Options.Scene, Options.Game);
             }
         }
 
@@ -55,7 +55,7 @@ public sealed partial class App : Application
         ProjectPickerWindow window = new() { DataContext = picker };
         picker.Opened += project =>
         {
-            Window editor = CreateEditor(project.ContentFolder, project.StartupScene);
+            Window editor = CreateEditor(project.ContentFolder, project.StartupScene, project.Program);
             desktop.MainWindow = editor;
             editor.Show();
             window.Close();
@@ -63,7 +63,7 @@ public sealed partial class App : Application
         return window;
     }
 
-    private Window CreateEditor(string content, string? scene)
+    private Window CreateEditor(string content, string? scene, string? game)
     {
         _scene = new EditorScene(_loggerFactory!, content);
         ViewportViewModel viewport = new(_scene, Options.Validation);
@@ -80,7 +80,13 @@ public sealed partial class App : Application
         }
 
         InspectorViewModel inspector = new(_scene);
-        MainWindowViewModel main = new(viewport, inspector);
+        ScenePlayer? player = null;
+        if (game is not null)
+        {
+            player = new ScenePlayer(_scene, game, new ProcessGameLauncher());
+        }
+
+        MainWindowViewModel main = new(viewport, inspector, player);
         _poll = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, HandlePoll);
         _poll.Start();
         return new MainWindow { DataContext = main };

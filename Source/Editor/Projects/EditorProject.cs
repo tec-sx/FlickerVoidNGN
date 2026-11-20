@@ -10,11 +10,13 @@ public sealed class EditorProject
 {
     public const string Extension = ".fvproject";
 
-    private EditorProject(string file, string game, string contentFolder, string? startupScene)
+    private EditorProject(string file, string game, string program, string? startupScene)
     {
         File = file;
         Game = game;
-        ContentFolder = contentFolder;
+        Program = program;
+        string output = Path.GetDirectoryName(program)!;
+        ContentFolder = Path.Combine(output, "Content");
         StartupScene = startupScene;
     }
 
@@ -27,6 +29,9 @@ public sealed class EditorProject
 
     /// <summary>The game's C# project, as a full path.</summary>
     public string Game { get; }
+
+    /// <summary>The built game, which Play runs.</summary>
+    public string Program { get; }
 
     /// <summary>The built content folder in the game's output folder.</summary>
     public string ContentFolder { get; }
@@ -45,9 +50,8 @@ public sealed class EditorProject
 
         string folder = Path.GetDirectoryName(fullPath)!;
         string game = Path.GetFullPath(project.Game, folder);
-        string output = builder.Build(game);
-        string contentFolder = Path.Combine(output, "Content");
-        return new EditorProject(fullPath, game, contentFolder, project.StartupScene);
+        string program = builder.Build(game);
+        return new EditorProject(fullPath, game, program, project.StartupScene);
     }
 
     private static ProjectFile Read(string fullPath)
