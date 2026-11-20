@@ -687,6 +687,9 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             SType = StructureType.PhysicalDeviceVulkan13Features,
             DynamicRendering = true,
             Synchronization2 = true,
+
+            // HLSL's discard and clip() compile to demoting the pixel to a helper; Vulkan 1.3 devices all support it.
+            ShaderDemoteToHelperInvocation = true,
         };
         PhysicalDeviceVulkan12Features features12 = new()
         {

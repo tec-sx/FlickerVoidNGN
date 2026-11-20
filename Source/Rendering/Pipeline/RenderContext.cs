@@ -46,6 +46,9 @@ public sealed class RenderContext
 
     public bool Probes { get; internal set; } = true;
 
+    /// <summary>The scene's depth, which passes after the opaque pass can test against, such as overlays drawn over the output.</summary>
+    public ITexture Depth => Targets.Depth;
+
     internal ScreenTargets Targets { get; set; } = null!;
 
     internal TextureLibrary Textures { get; set; } = null!;

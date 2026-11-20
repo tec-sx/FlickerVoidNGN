@@ -2,6 +2,7 @@
   <Folder Name="/Source/">
     <Project Path="Source/Builder/FlickerVoid.Engine.Builder.csproj" />
     <Project Path="Source/Debug/FlickerVoid.Engine.Debug.csproj" />
+    <Project Path="Source/Editor/FlickerVoid.Engine.Editor.csproj" />
     <Project Path="Source/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
     <Project Path="Source/Graphics/FlickerVoid.Engine.Graphics.csproj" />
     <Project Path="Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
@@ -14,6 +15,7 @@
   <Folder Name="/Tests/">
     <Project Path="Tests/Builder/FlickerVoid.Engine.Builder.Tests.csproj" />
     <Project Path="Tests/Debug/FlickerVoid.Engine.Debug.Tests.csproj" />
+    <Project Path="Tests/Editor/FlickerVoid.Engine.Editor.Tests.csproj" />
     <Project Path="Tests/Gameplay/FlickerVoid.Engine.Gameplay.Tests.csproj" />
     <Project Path="Tests/Graphics/FlickerVoid.Engine.Graphics.Tests.csproj" />
     <Project Path="Tests/Physics/FlickerVoid.Engine.Physics.Tests.csproj" />

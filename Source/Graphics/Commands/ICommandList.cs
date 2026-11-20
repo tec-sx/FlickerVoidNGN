@@ -27,6 +27,12 @@ public interface ICommandList : IDisposable
     /// <summary>Copies a whole mip level of the texture into rows padded to <see cref="PixelFormatExtensions.GetCopyRowPitch"/>.</summary>
     void CopyTextureToBuffer(ITexture source, IBuffer destination, long destinationOffset, int mipLevel = 0);
 
+    /// <summary>
+    /// Copies the top level of a texture into another of the same size whose format has the same bytes per pixel, such as an sRGB
+    /// texture into its UNorm twin; the bytes are copied as they are. The source must be in the CopySource state and the destination in CopyDestination.
+    /// </summary>
+    void CopyTexture(ITexture source, ITexture destination);
+
     void BeginRendering(ReadOnlySpan<ColorTarget> colorTargets, DepthTarget? depthTarget = null);
 
     void EndRendering();
