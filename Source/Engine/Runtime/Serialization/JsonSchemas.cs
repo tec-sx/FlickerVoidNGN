@@ -3,6 +3,8 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
 using System.Text.Json.Serialization.Metadata;
 
+using FlickerVoid.Engine.Gameplay.Tags;
+
 namespace FlickerVoid.Engine.Runtime.Serialization;
 
 /// <summary>
@@ -49,6 +51,11 @@ public static class JsonSchemas
         if (type == typeof(Quaternion))
         {
             return CreateNumberArray(4);
+        }
+
+        if (type == typeof(Tag))
+        {
+            return new JsonObject { ["type"] = "string" };
         }
 
         return schema;

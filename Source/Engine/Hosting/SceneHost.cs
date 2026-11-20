@@ -9,6 +9,7 @@ using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Serialization;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 
@@ -42,6 +43,8 @@ public sealed partial class SceneHost : IDisposable
         ILogger<SceneLoader> sceneLogger = loggerFactory.CreateLogger<SceneLoader>();
         Scenes = new SceneLoader(Game.Spawner, Content, Game.World, sceneLogger);
         Game.Services.AddService(Scenes.Templates);
+        Data = new DataAssets(Content, Game.Data);
+        Game.Services.AddService(Data);
         ContentWatcher watcher = new(Content, Game.Schemas);
         Game.FrameSystems.Add(watcher);
         if (options.Mood is { } mood)
@@ -59,6 +62,9 @@ public sealed partial class SceneHost : IDisposable
     public ContentManager Content { get; }
 
     public SceneLoader Scenes { get; }
+
+    /// <summary>Reads the game's data asset and table files.</summary>
+    public DataAssets Data { get; }
 
     /// <summary>The mood the renderer starts with: the options' mood file, else the one the scene names (<see cref="SceneMood"/>), else the default.</summary>
     public LightingMood Mood { get; set; } = new();
@@ -118,6 +124,7 @@ public sealed partial class SceneHost : IDisposable
         _disposed = true;
         Renderer?.Dispose();
         Scenes.Dispose();
+        Data.Dispose();
         Window.Dispose();
         Game.Dispose();
         Device.Dispose();
