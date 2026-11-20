@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 
 using Arch.Core;
@@ -67,7 +68,7 @@ public sealed partial class SceneLoader : IDisposable
 
     /// <summary>
     /// Writes the loaded scene file at <paramref name="path"/> as the world has its entities now (see
-    /// <see cref="ISceneSpawner.Capture"/>), then reports the file changed so caches of it reload.
+    /// <see cref="ISceneSpawner.Capture"/>), through the content manager, which also writes its source file in a development build and reports it changed.
     /// </summary>
     public void Save(string path)
     {
@@ -78,12 +79,11 @@ public sealed partial class SceneLoader : IDisposable
         }
 
         SceneData scene = _spawner.Capture(loaded.Scene, loaded.Entities, _world);
-        using (StreamWriter writer = File.CreateText(fullPath))
-        {
-            Write(writer, scene);
-        }
-
-        _content.NotifyChanged(path);
+        StringWriter writer = new();
+        Write(writer, scene);
+        string text = writer.ToString();
+        byte[] contents = Encoding.UTF8.GetBytes(text);
+        _content.Write(path, contents);
     }
 
     public void Dispose()
@@ -113,7 +113,7 @@ public sealed partial class SceneLoader : IDisposable
     }
 
     /// <summary>Writes one entity per line, as scene files are written by hand, so a changed entity is a one-line diff.</summary>
-    private static void Write(StreamWriter writer, SceneData scene)
+    private static void Write(StringWriter writer, SceneData scene)
     {
         writer.WriteLine("{");
         if (scene.Schema is not null)

@@ -1,4 +1,5 @@
 using FlickerVoid.Engine.Editor.Materials;
+using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Engine.Editor.Tests.Materials;
 
@@ -23,7 +24,7 @@ internal sealed class MaterialBrowserTestsBuilder : IDisposable
         return this;
     }
 
-    public MaterialBrowser Build() => new(Folder);
+    public MaterialBrowser Build() => new(new ContentManager(Folder));
 
     public void Dispose()
     {

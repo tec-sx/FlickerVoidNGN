@@ -109,4 +109,43 @@ public sealed class ContentManagerTests : IDisposable
         after.Should().NotBeSameAs(before);
         after.Entities.Should().ContainSingle().Which.Name.Should().Be("Lamp");
     }
+
+    [Fact]
+    public void WritesAFileAndTellsWhoListens()
+    {
+        ContentManager content = _builder.Build();
+        List<string> changed = [];
+        content.Changed += changed.Add;
+
+        content.Write("Scenes/Room.scene.json", "{}"u8.ToArray());
+
+        string fullPath = Path.Combine(_builder.RootDirectory, "Scenes", "Room.scene.json");
+        File.ReadAllText(fullPath).Should().Be("{}");
+        changed.Should().Equal(fullPath);
+    }
+
+    [Fact]
+    public void WritesTheSourceFileTooInADevelopmentBuild()
+    {
+        string source = _builder.WithSourceFolder("Game");
+        ContentManager content = _builder.Build();
+
+        content.Write("Game/Scenes/Room.scene.json", "{}"u8.ToArray());
+
+        string sourcePath = Path.Combine(source, "Scenes", "Room.scene.json");
+        File.ReadAllText(sourcePath).Should().Be("{}");
+        string builtPath = Path.Combine(_builder.RootDirectory, "Game", "Scenes", "Room.scene.json");
+        File.ReadAllText(builtPath).Should().Be("{}");
+    }
+
+    [Fact]
+    public void WritesOnlyTheBuiltFileOutsideTheSourceFolders()
+    {
+        string source = _builder.WithSourceFolder("Game");
+        ContentManager content = _builder.Build();
+
+        content.Write("Other/Room.scene.json", "{}"u8.ToArray());
+
+        Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories).Should().BeEmpty();
+    }
 }

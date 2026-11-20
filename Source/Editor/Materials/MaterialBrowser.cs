@@ -1,22 +1,28 @@
+using System.Text;
+
+using FlickerVoid.Engine.Runtime.Content;
+
 namespace FlickerVoid.Engine.Editor.Materials;
 
 /// <summary>Finds and creates material files (<c>Name.material.json</c>) in a content folder, named by their path in it.</summary>
-public sealed class MaterialBrowser(string folder)
+public sealed class MaterialBrowser(IContentManager content)
 {
+    private readonly string _folder = content.RootDirectory;
+
     public const string Extension = ".material.json";
 
     /// <summary>The materials whose path holds the text, ignoring case, sorted, with forward slashes.</summary>
     public IReadOnlyList<string> Find(string text)
     {
-        if (!Directory.Exists(folder))
+        if (!Directory.Exists(_folder))
         {
             return [];
         }
 
         List<string> found = [];
-        foreach (string fullPath in Directory.EnumerateFiles(folder, "*" + Extension, SearchOption.AllDirectories))
+        foreach (string fullPath in Directory.EnumerateFiles(_folder, "*" + Extension, SearchOption.AllDirectories))
         {
-            string relative = Path.GetRelativePath(folder, fullPath);
+            string relative = Path.GetRelativePath(_folder, fullPath);
             string path = relative.Replace(Path.DirectorySeparatorChar, '/');
             if (path.Contains(text, StringComparison.OrdinalIgnoreCase))
             {
@@ -33,14 +39,14 @@ public sealed class MaterialBrowser(string folder)
     {
         string path = name + Extension;
         int number = 2;
-        while (File.Exists(Path.Combine(folder, path)))
+        while (File.Exists(Path.Combine(_folder, path)))
         {
             path = $"{name} {number}{Extension}";
             number++;
         }
 
-        string fullPath = Path.Combine(folder, path);
-        File.WriteAllText(fullPath, """{ "parameters": {} }""");
+        byte[] contents = Encoding.UTF8.GetBytes("""{ "parameters": {} }""");
+        content.Write(path, contents);
         return path;
     }
 }
