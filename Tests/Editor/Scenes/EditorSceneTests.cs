@@ -33,4 +33,22 @@ public sealed class EditorSceneTests : IDisposable
 
         saved.Should().BeFalse();
     }
+
+    [Fact]
+    public void OpeningAnotherSceneReplacesTheWorldAndClearsTheSelection()
+    {
+        Entity lamp = _builder
+            .WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""")
+            .WithScene("Hall.scene.json", """{ "entities": [ { "name": "Door", "components": { "transform": {} } } ] }""")
+            .Open("Room.scene.json");
+        _builder.Scene.Selection.Select(lamp);
+
+        _builder.Scene.Open("Hall.scene.json");
+
+        World world = _builder.Scene.Game.World;
+        world.IsAlive(lamp).Should().BeFalse();
+        world.CountEntities(new QueryDescription()).Should().Be(1);
+        _builder.Scene.Selection.Selected.Should().BeNull();
+        _builder.Scene.ScenePath.Should().Be("Hall.scene.json");
+    }
 }

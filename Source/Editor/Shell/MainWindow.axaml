@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="using:FlickerVoid.Engine.Editor.Shell"
         xmlns:inspector="using:FlickerVoid.Engine.Editor.Inspector"
+        xmlns:assets="using:FlickerVoid.Engine.Editor.Assets"
         xmlns:viewports="using:FlickerVoid.Engine.Editor.Viewports"
         x:Class="FlickerVoid.Engine.Editor.Shell.MainWindow"
         x:DataType="shell:MainWindowViewModel"
@@ -58,6 +59,10 @@
         </TabItem>
       </TabControl>
     </Border>
-    <viewports:ViewportControl DataContext="{Binding Viewport}" />
+    <Grid RowDefinitions="*,4,240">
+      <viewports:ViewportControl DataContext="{Binding Viewport}" />
+      <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+      <assets:AssetBrowserView Grid.Row="2" DataContext="{Binding Assets}" />
+    </Grid>
   </DockPanel>
 </Window>

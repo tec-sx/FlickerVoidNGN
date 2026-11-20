@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:assets="using:FlickerVoid.Engine.Editor.Assets"
+             x:Class="FlickerVoid.Engine.Editor.Assets.AssetBrowserView"
+             x:DataType="assets:AssetBrowserViewModel">
+  <Grid ColumnDefinitions="220,4,*">
+    <TreeView ItemsSource="{Binding Folders}" SelectedItem="{Binding SelectedFolder}">
+      <TreeView.ItemTemplate>
+        <TreeDataTemplate DataType="assets:AssetFolder" ItemsSource="{Binding Children}">
+          <TextBlock Text="{Binding Name}" />
+        </TreeDataTemplate>
+      </TreeView.ItemTemplate>
+    </TreeView>
+    <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+    <DockPanel Grid.Column="2">
+      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="4">
+        <ComboBox ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Width="120">
+          <ComboBox.ItemTemplate>
+            <DataTemplate DataType="assets:AssetFilter">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <TextBox Text="{Binding SearchText}" PlaceholderText="Search" Width="220" />
+        <Button Content="Refresh" Command="{Binding RefreshCommand}" />
+      </StackPanel>
+      <ListBox x:Name="AssetList" ItemsSource="{Binding Assets}" DoubleTapped="HandleDoubleTapped" KeyDown="HandleKeyDown">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="assets:AssetEntry">
+            <Grid ColumnDefinitions="200,90,*" ToolTip.Tip="{Binding Path}">
+              <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="1" Text="{Binding Kind}" Opacity="0.6" />
+              <TextBlock Grid.Column="2" Text="{Binding Path}" Opacity="0.6" TextTrimming="CharacterEllipsis" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+  </Grid>
+</UserControl>

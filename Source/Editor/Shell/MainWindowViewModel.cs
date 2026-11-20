@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
+using FlickerVoid.Engine.Editor.Assets;
 using FlickerVoid.Engine.Editor.Inspector;
 using FlickerVoid.Engine.Editor.Materials;
 using FlickerVoid.Engine.Editor.Scenes;
@@ -8,15 +9,32 @@ using FlickerVoid.Engine.Editor.Viewports;
 
 namespace FlickerVoid.Engine.Editor.Shell;
 
-/// <summary>The editor's main window: its title, the scene view, the inspector and the view settings.</summary>
-public sealed class MainWindowViewModel(ViewportViewModel viewport, InspectorViewModel inspector) : ObservableObject
+/// <summary>The editor's main window: its title, the scene view, the asset browser, the inspector and the view settings.</summary>
+public sealed class MainWindowViewModel : ObservableObject
 {
+    public MainWindowViewModel(ViewportViewModel viewport, InspectorViewModel inspector)
+    {
+        Viewport = viewport;
+        Inspector = inspector;
+        ViewSettings = new ViewSettingsViewModel(viewport.Mood);
+        AssetCatalog catalog = new(viewport.Scene.Content.RootDirectory);
+        Assets = new AssetBrowserViewModel(catalog);
+        Assets.Opened += OpenAsset;
+        viewport.Scene.Opened += HandleSceneOpened;
+    }
+
+    /// <summary>Raised to show a material in the material editor, by its path in the content folder.</summary>
+    public event Action<string>? MaterialRequested;
+
     /// <summary>The viewport's lighting and post-processing, tweaked beside the inspector.</summary>
-    public ViewSettingsViewModel ViewSettings { get; } = new(viewport.Mood);
+    public ViewSettingsViewModel ViewSettings { get; }
 
-    public ViewportViewModel Viewport { get; } = viewport;
+    public ViewportViewModel Viewport { get; }
 
-    public InspectorViewModel Inspector { get; } = inspector;
+    public InspectorViewModel Inspector { get; }
+
+    /// <summary>The content folder's files; opening a scene shows it, opening a material shows it in the material editor.</summary>
+    public AssetBrowserViewModel Assets { get; }
 
     /// <summary>A material editor over the scene's content, previewing on the GPU when there is one.</summary>
     public MaterialEditorViewModel CreateMaterialEditor()
@@ -54,5 +72,36 @@ public sealed class MainWindowViewModel(ViewportViewModel viewport, InspectorVie
 
             return $"{scene} - FlickerVoid Editor";
         }
+    }
+
+    private void OpenAsset(AssetEntry asset)
+    {
+        switch (asset.Kind)
+        {
+            case AssetKind.Scene:
+                OpenScene(asset.Path);
+                break;
+            case AssetKind.Material:
+                MaterialRequested?.Invoke(asset.Path);
+                break;
+        }
+    }
+
+    private void OpenScene(string path)
+    {
+        try
+        {
+            Viewport.Scene.Open(path);
+            Viewport.Status = $"Opened {path}.";
+        }
+        catch (InvalidDataException exception)
+        {
+            Viewport.Status = $"Can't open {path}: {exception.Message}";
+        }
+    }
+
+    private void HandleSceneOpened()
+    {
+        OnPropertyChanged(nameof(Title));
     }
 }

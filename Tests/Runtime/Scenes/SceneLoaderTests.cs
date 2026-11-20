@@ -115,4 +115,19 @@ public sealed class SceneLoaderTests : IDisposable
 
         save.Should().Throw<InvalidOperationException>();
     }
+
+    [Fact]
+    public void UnloadingDestroysTheScenesEntitiesAndStopsFollowingTheFile()
+    {
+        SceneLoader loader = _builder.WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp" } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.scene.json");
+
+        loader.Unload("Room.scene.json");
+        _builder.ChangeScene("Room.scene.json", """{ "entities": [ { "name": "Lamp" }, { "name": "Box" } ] }""");
+
+        _builder.World.IsAlive(entities[0]).Should().BeFalse();
+        _builder.World.CountEntities(new QueryDescription()).Should().Be(0);
+        IReadOnlyList<Entity> reloaded = loader.Load("Room.scene.json");
+        reloaded.Should().HaveCount(2);
+    }
 }
