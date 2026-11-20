@@ -3,8 +3,11 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace FlickerVoid.Editor.Core.Inspector;
 
-/// <summary>One property of a settings object, such as a lighting mood, read and written in place through its source-generated metadata.</summary>
-public sealed class ObjectProperty(object target, JsonPropertyInfo property) : IEditableValue
+/// <summary>
+/// One property of a settings object, such as a lighting mood, read and written in place through its source-generated metadata;
+/// <paramref name="changed"/> runs after each write.
+/// </summary>
+public sealed class ObjectProperty(object target, JsonPropertyInfo property, Action changed) : IEditableValue
 {
     public string Label { get; } = DisplayNames.FromIdentifier(property.Name);
 
@@ -22,7 +25,11 @@ public sealed class ObjectProperty(object target, JsonPropertyInfo property) : I
 
     public object? Get() => property.Get!(target);
 
-    public void Set(object? value) => property.Set!(target, value);
+    public void Set(object? value)
+    {
+        property.Set!(target, value);
+        changed();
+    }
 
     public string ToJson(object? value)
     {

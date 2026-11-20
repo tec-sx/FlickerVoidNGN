@@ -14,13 +14,14 @@ namespace FlickerVoid.Editor.Tests;
 
 /// <summary>
 /// Builds the main window's view model over a temporary content folder holding Room.fvscene and Hall.fvscene, each with a Lamp,
-/// and Paper.fvmat; the user's answer to the unsaved files prompt is <see cref="Answer"/>.
+/// Paper.fvmat and Night.fvmood, whose exposure is 0.5; the user's answer to the unsaved files prompt is <see cref="Answer"/>.
 /// </summary>
 internal sealed class MainWindowViewModelTestsBuilder : IDisposable
 {
     public const string Room = "Room.fvscene";
     public const string Hall = "Hall.fvscene";
     public const string Paper = "Paper.fvmat";
+    public const string Night = "Night.fvmood";
 
     private const string LampScene = """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""";
 
@@ -36,6 +37,7 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         WriteFile(Room, LampScene);
         WriteFile(Hall, LampScene);
         WriteFile(Paper, "{}");
+        WriteFile(Night, """{ "exposure": 0.5 }""");
         _content = new UnsavedContent(new ContentManager(_contentFolder));
         _scene = new EditorScene(NullLoggerFactory.Instance, _content);
         _scene.Open(Room);
@@ -70,10 +72,23 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         _content.Edit(Paper, contents);
     }
 
-    public void OpenInBrowser(string path)
+    public void OpenInBrowser(string path, AssetKind kind = AssetKind.Scene)
     {
-        AssetEntry entry = new(path, Path.GetFileNameWithoutExtension(path), AssetKind.Scene);
+        AssetEntry entry = new(path, Path.GetFileNameWithoutExtension(path), kind);
         ViewModel.Assets.Open(entry);
+    }
+
+    /// <summary>The View tab's exposure field, of the mood it shows now.</summary>
+    public NumberFieldViewModel Exposure()
+    {
+        return ViewModel.ViewSettings.Fields.OfType<NumberFieldViewModel>().Single(field => field.Label == "Exposure");
+    }
+
+    /// <summary>Changes the file as another program would, then reports it as the content watcher does.</summary>
+    public void ChangeOnDisk(string path, string text)
+    {
+        WriteFile(path, text);
+        _content.NotifyChanged(path);
     }
 
     public string ReadFile(string path)
@@ -94,7 +109,7 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         return Task.FromResult(Answer);
     }
 
-    private void WriteFile(string path, string contents)
+    public void WriteFile(string path, string contents)
     {
         string fullPath = Path.Combine(_contentFolder, path);
         File.WriteAllText(fullPath, contents);
