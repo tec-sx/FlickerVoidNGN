@@ -11,6 +11,7 @@
   </Folder>
   <Folder Name="/Source/Engine/">
     <Project Path="Source/Engine/Debug/FlickerVoid.Engine.Debug.csproj" />
+    <Project Path="Source/Engine/Flow/FlickerVoid.Engine.Flow.csproj" />
     <Project Path="Source/Engine/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
     <Project Path="Source/Engine/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
     <Project Path="Source/Engine/Graphics/FlickerVoid.Engine.Graphics.csproj" />
@@ -33,6 +34,7 @@
   </Folder>
   <Folder Name="/Tests/Engine/">
     <Project Path="Tests/Engine/Debug/FlickerVoid.Engine.Debug.Tests.csproj" />
+    <Project Path="Tests/Engine/Flow/FlickerVoid.Engine.Flow.Tests.csproj" />
     <Project Path="Tests/Engine/Gameplay/FlickerVoid.Engine.Gameplay.Tests.csproj" />
     <Project Path="Tests/Engine/Graphics/FlickerVoid.Engine.Graphics.Tests.csproj" />
     <Project Path="Tests/Engine/Hosting/FlickerVoid.Engine.Hosting.Tests.csproj" />

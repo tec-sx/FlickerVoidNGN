@@ -6,6 +6,7 @@
     <Project Path="ENGINE_FOLDER_PATH/Source/Editor/Core/FlickerVoid.Editor.Core.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Editor/Persistence/FlickerVoid.Editor.Persistence.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Editor/Shell/FlickerVoid.Editor.csproj" />
+    <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Flow/FlickerVoid.Engine.Flow.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Graphics/FlickerVoid.Engine.Graphics.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />

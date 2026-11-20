@@ -3,7 +3,7 @@ namespace FlickerVoid.Engine.Gameplay.Conditions;
 /// <summary>Effects applied in order.</summary>
 public sealed class EffectList
 {
-    public List<Effect> Effects { get; init; } = [];
+    public List<Effect> Effects { get; set; } = [];
 
     public bool IsEmpty => Effects.Count == 0;
 

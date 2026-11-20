@@ -3,7 +3,7 @@ namespace FlickerVoid.Engine.Gameplay.Conditions;
 /// <summary>A rule checked against a context; shared by everything that uses its asset, so it reads only its properties and the context.</summary>
 public abstract class Condition
 {
-    public bool Invert { get; init; }
+    public bool Invert { get; set; }
 
     /// <summary>Evaluate's result, flipped when Invert is set.</summary>
     public bool Check(ConditionContext context) => Evaluate(context) != Invert;
