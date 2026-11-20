@@ -1,19 +1,27 @@
+using System.ComponentModel;
+
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Engine.Editor.Assets;
 using FlickerVoid.Engine.Editor.Inspector;
 using FlickerVoid.Engine.Editor.Materials;
+using FlickerVoid.Engine.Editor.Projects;
 using FlickerVoid.Engine.Editor.Scenes;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Editor.Viewports;
 
 namespace FlickerVoid.Engine.Editor.Shell;
 
-/// <summary>The editor's main window: its title, the scene view, the asset browser, the inspector and the view settings.</summary>
-public sealed class MainWindowViewModel : ObservableObject
+/// <summary>The editor's main window: its title, the scene view, the asset browser, the inspector, the view settings and Play.</summary>
+public sealed partial class MainWindowViewModel : ObservableObject
 {
-    public MainWindowViewModel(ViewportViewModel viewport, InspectorViewModel inspector)
+    private readonly ScenePlayer? _player;
+
+    /// <summary>Shows the scene; <paramref name="player"/> plays it in the project's game, when a project is open.</summary>
+    public MainWindowViewModel(ViewportViewModel viewport, InspectorViewModel inspector, ScenePlayer? player = null)
     {
+        _player = player;
         Viewport = viewport;
         Inspector = inspector;
         ViewSettings = new ViewSettingsViewModel(viewport.Mood);
@@ -59,6 +67,26 @@ public sealed class MainWindowViewModel : ObservableObject
         return editor;
     }
 
+    /// <summary>Runs the project's game on the open scene as it is now, without saving it.</summary>
+    [RelayCommand(CanExecute = nameof(CanPlay))]
+    public void Play()
+    {
+        try
+        {
+            if (_player!.Play())
+            {
+                Viewport.Status = $"Playing {Viewport.Scene.ScenePath} in the game.";
+                return;
+            }
+
+            Viewport.Status = "Open a scene file to play it.";
+        }
+        catch (Exception exception) when (exception is IOException or Win32Exception or InvalidOperationException)
+        {
+            Viewport.Status = $"Can't play: {exception.Message}";
+        }
+    }
+
     public string Title
     {
         get
@@ -72,6 +100,8 @@ public sealed class MainWindowViewModel : ObservableObject
             return $"{scene} - FlickerVoid Editor";
         }
     }
+
+    private bool CanPlay() => _player is not null;
 
     private void OpenAsset(AssetEntry asset)
     {

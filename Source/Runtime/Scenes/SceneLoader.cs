@@ -72,6 +72,13 @@ public sealed partial class SceneLoader : IDisposable
     /// </summary>
     public void Save(string path)
     {
+        byte[] contents = Capture(path);
+        _content.Write(path, contents);
+    }
+
+    /// <summary>The loaded scene file at <paramref name="path"/> as <see cref="Save"/> would write it, without writing it.</summary>
+    public byte[] Capture(string path)
+    {
         string fullPath = _content.GetFullPath(path);
         if (!_loaded.TryGetValue(fullPath, out LoadedScene? loaded))
         {
@@ -82,8 +89,7 @@ public sealed partial class SceneLoader : IDisposable
         StringWriter writer = new();
         Write(writer, scene);
         string text = writer.ToString();
-        byte[] contents = Encoding.UTF8.GetBytes(text);
-        _content.Write(path, contents);
+        return Encoding.UTF8.GetBytes(text);
     }
 
     public void Dispose()

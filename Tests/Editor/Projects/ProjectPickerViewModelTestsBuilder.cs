@@ -14,7 +14,7 @@ internal sealed class ProjectPickerViewModelTestsBuilder : IDisposable
         string folderName = Path.GetRandomFileName();
         Folder = Path.Combine(Path.GetTempPath(), folderName);
         Directory.CreateDirectory(Folder);
-        _builder.Build(Arg.Any<string>()).Returns(call => Path.GetDirectoryName(call.Arg<string>())!);
+        _builder.Build(Arg.Any<string>()).Returns(call => Path.ChangeExtension(call.Arg<string>(), ".dll"));
         _creator.When(creator => creator.Create(Arg.Any<string>(), Arg.Any<string>())).Do(call =>
         {
             string name = call.ArgAt<string>(0);

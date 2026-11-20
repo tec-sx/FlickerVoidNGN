@@ -36,6 +36,13 @@ if (watch)
         parent = Process.GetProcessById(parentId);
     }
 
+    using ContentWatchLock? watchLock = ContentWatchLock.TryTake(args[1]);
+    if (watchLock is null)
+    {
+        Console.WriteLine("Another builder already watches these content folders.");
+        return 0;
+    }
+
     ContentBuildManifest manifest = ContentBuildManifest.Read(args[1]);
     using ContentWatchBuilder watcher = new(builder, manifest.Folders);
     Console.WriteLine($"Watching {manifest.Folders.Count} content folders.");
