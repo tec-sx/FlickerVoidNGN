@@ -17,12 +17,12 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     private const string SchemaFolder = ".schemas/";
 
     private readonly IContentManager _content;
-    private readonly AssetCatalog _catalog;
+    private readonly List<AssetCatalog> _catalogs;
 
     public AssetBrowserViewModel(IContentManager content)
     {
         _content = content;
-        _catalog = new AssetCatalog(content.RootDirectory);
+        _catalogs = CreateCatalogs(content);
         List<AssetFilter> filters = [new AssetFilter("All", null)];
         foreach (AssetKind kind in Enum.GetValues<AssetKind>())
         {
@@ -39,7 +39,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
     public IReadOnlyList<AssetFilter> Filters { get; }
 
-    /// <summary>The content folder, as the one root of the tree.</summary>
+    /// <summary>The roots of the tree: the game's source folders in a development build, else the content folder.</summary>
     [ObservableProperty]
     public partial IReadOnlyList<AssetFolder> Folders { get; set; } = [];
 
@@ -68,17 +68,15 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     public void Refresh()
     {
         string? selected = SelectedFolder?.Path;
-        AssetFolder root = _catalog.GetFolders();
-        AssetFolder named = root with { Name = "Content" };
-        Folders = [named];
-        AssetFolder? found = null;
-        if (selected is not null)
+        List<AssetFolder> roots = [];
+        foreach (AssetCatalog catalog in _catalogs)
         {
-            found = FindFolder(named, selected);
+            AssetFolder root = catalog.GetFolders();
+            roots.Add(root);
         }
 
-        SelectedFolder = found ?? named;
-        FindAssets();
+        Folders = roots;
+        SelectFolder(selected ?? roots[0].Path);
     }
 
     [RelayCommand]
@@ -182,18 +180,26 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
     private void FindAssets()
     {
-        string folder = SelectedFolder?.Path ?? "";
+        if (Folders.Count == 0)
+        {
+            return;
+        }
+
+        string folder = SelectedFolder?.Path ?? Folders[0].Path;
         AssetKind? kind = SelectedFilter?.Kind;
         string text = SearchText ?? "";
         bool recursive = kind is not null || text.Length > 0;
-        Assets = _catalog.Find(folder, recursive, kind, text);
+        AssetCatalog catalog = FindCatalog(folder);
+        Assets = catalog.Find(folder, recursive, kind, text);
     }
 
     private void CreateFile(string name, string extension, string schema, string? body)
     {
         string folder = SelectedFolder?.Path ?? "";
         string path = FindFreePath(name, extension);
-        string schemaPath = GetSchemaPath(folder, schema);
+        AssetCatalog catalog = FindCatalog(folder);
+        string local = folder[catalog.Prefix.Length..].TrimStart('/');
+        string schemaPath = GetSchemaPath(local, schema);
         StringBuilder text = new();
         text.Append("{\n");
         text.Append($"  \"$schema\": \"{schemaPath}\"");
@@ -246,11 +252,65 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
     private void SelectFolder(string path)
     {
-        AssetFolder? found = FindFolder(Folders[0], path);
+        AssetFolder? found = null;
+        foreach (AssetFolder root in Folders)
+        {
+            found ??= FindFolder(root, path);
+        }
+
         SelectedFolder = found ?? Folders[0];
+        FindAssets();
     }
 
-    /// <summary>The schema a new file in the folder names: the content folder's .schemas, which development runs write.</summary>
+    /// <summary>The catalog whose root holds the content path, the one with the longest prefix when roots nest.</summary>
+    private AssetCatalog FindCatalog(string path)
+    {
+        AssetCatalog found = _catalogs[0];
+        foreach (AssetCatalog catalog in _catalogs)
+        {
+            if (catalog.Holds(path) && (!found.Holds(path) || catalog.Prefix.Length > found.Prefix.Length))
+            {
+                found = catalog;
+            }
+        }
+
+        return found;
+    }
+
+    /// <summary>One catalog per game source folder the build manifest names, else one over the content folder.</summary>
+    private static List<AssetCatalog> CreateCatalogs(IContentManager content)
+    {
+        List<AssetCatalog> catalogs = [];
+        ContentBuildManifest? manifest = ContentBuildManifest.Find(content.RootDirectory);
+        if (manifest is not null)
+        {
+            foreach (ContentBuildFolder folder in manifest.Folders)
+            {
+                if (folder.Engine)
+                {
+                    continue;
+                }
+
+                string relative = Path.GetRelativePath(content.RootDirectory, folder.Output);
+                string prefix = relative.Replace(Path.DirectorySeparatorChar, '/');
+                if (prefix == ".")
+                {
+                    prefix = "";
+                }
+
+                catalogs.Add(new AssetCatalog(folder.Source, prefix));
+            }
+        }
+
+        if (catalogs.Count == 0)
+        {
+            catalogs.Add(new AssetCatalog(content.RootDirectory));
+        }
+
+        return catalogs;
+    }
+
+    /// <summary>The schema a new file in the folder (a path in its source folder) names: that source folder's .schemas, which development runs write.</summary>
     private static string GetSchemaPath(string folder, string schema)
     {
         StringBuilder path = new();
