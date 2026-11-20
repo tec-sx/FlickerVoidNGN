@@ -12,7 +12,8 @@ namespace FlickerVoid.Engine.Runtime.Scenes;
 
 /// <summary>
 /// Spawns scene files into a world and keeps them in step with the files: when the content manager reports a loaded scene
-/// changed, the spawner patches its entities. A change that can't be read is logged, and the world keeps the last good version.
+/// changed, the spawner patches its entities, and likewise when an entity template they use changes. A change that can't be read is
+/// logged, and the world keeps the last good version.
 /// </summary>
 public sealed partial class SceneLoader : IDisposable
 {
@@ -28,8 +29,12 @@ public sealed partial class SceneLoader : IDisposable
         _content = content;
         _world = world;
         _logger = logger;
+        Templates = new EntityTemplates(content, spawner);
         _content.Changed += HandleChanged;
     }
+
+    /// <summary>The entity templates the scenes start their entities from, which game code spawns too.</summary>
+    public EntityTemplates Templates { get; }
 
     /// <summary>Spawns the scene file at <paramref name="path"/> and returns its entities as spawned.</summary>
     public IReadOnlyList<Entity> Load(string path)
@@ -40,7 +45,7 @@ public sealed partial class SceneLoader : IDisposable
             throw new InvalidOperationException($"{path} is already loaded.");
         }
 
-        SceneData scene = _content.Load(path, RuntimeJsonContext.Default.SceneData);
+        SceneData scene = Read(path);
         IReadOnlyList<Entity> entities = _spawner.Spawn(scene, _world);
         _loaded.Add(fullPath, new LoadedScene(path, scene, entities));
         return entities;
@@ -53,8 +58,9 @@ public sealed partial class SceneLoader : IDisposable
     public Entity Add(string path, EntityData data)
     {
         LoadedScene loaded = GetLoaded(path, out string fullPath);
-        Entity entity = _spawner.Create(data, _world);
-        SceneData scene = new() { Schema = loaded.Scene.Schema, Entities = [.. loaded.Scene.Entities, data] };
+        EntityData expanded = Templates.Expand(data);
+        Entity entity = _spawner.Create(expanded, _world);
+        SceneData scene = new() { Schema = loaded.Scene.Schema, Entities = [.. loaded.Scene.Entities, expanded] };
         List<Entity> entities = [.. loaded.Entities, entity];
         _loaded[fullPath] = loaded with { Scene = scene, Entities = entities };
         return entity;
@@ -105,7 +111,8 @@ public sealed partial class SceneLoader : IDisposable
             throw new InvalidOperationException($"{path} is not loaded.");
         }
 
-        SceneData scene = _spawner.Capture(loaded.Scene, loaded.Entities, _world);
+        SceneData captured = _spawner.Capture(loaded.Scene, loaded.Entities, _world);
+        SceneData scene = new() { Schema = captured.Schema, Entities = [.. captured.Entities.Select(Templates.Reduce)] };
         StringWriter writer = new();
         Write(writer, scene);
         string text = writer.ToString();
@@ -130,14 +137,51 @@ public sealed partial class SceneLoader : IDisposable
 
     private void HandleChanged(string fullPath)
     {
-        if (!_loaded.TryGetValue(fullPath, out LoadedScene? loaded))
+        if (_loaded.TryGetValue(fullPath, out LoadedScene? loaded))
+        {
+            Reload(fullPath, loaded);
+            return;
+        }
+
+        if (!fullPath.EndsWith(EntityTemplates.Extension, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
 
+        foreach ((string scenePath, LoadedScene scene) in _loaded.ToList())
+        {
+            if (UsesTemplate(scene, fullPath))
+            {
+                Reload(scenePath, scene);
+            }
+        }
+    }
+
+    private bool UsesTemplate(LoadedScene loaded, string fullPath)
+    {
         try
         {
-            SceneData scene = _content.Load(loaded.Path, RuntimeJsonContext.Default.SceneData);
+            return loaded.Scene.Entities.Any(entity => Templates.Uses(entity, fullPath));
+        }
+        catch (Exception exception) when (exception is InvalidDataException or FileNotFoundException or DirectoryNotFoundException)
+        {
+            LogInvalid(loaded.Path, exception.Message);
+            return false;
+        }
+    }
+
+    /// <summary>The scene file with each entity's template expanded under its own values.</summary>
+    private SceneData Read(string path)
+    {
+        SceneData file = _content.Load(path, RuntimeJsonContext.Default.SceneData);
+        return new SceneData { Schema = file.Schema, Entities = [.. file.Entities.Select(Templates.Expand)] };
+    }
+
+    private void Reload(string fullPath, LoadedScene loaded)
+    {
+        try
+        {
+            SceneData scene = Read(loaded.Path);
             IReadOnlyList<Entity> entities = _spawner.Patch(loaded.Scene, scene, loaded.Entities, _world);
             _loaded[fullPath] = loaded with { Scene = scene, Entities = entities };
             LogReloaded(loaded.Path);

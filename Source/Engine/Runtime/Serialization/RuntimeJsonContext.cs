@@ -15,5 +15,6 @@ namespace FlickerVoid.Engine.Runtime.Serialization;
     RespectNullableAnnotations = true,
     Converters = [typeof(Vector3JsonConverter), typeof(QuaternionJsonConverter)])]
 [JsonSerializable(typeof(SceneData))]
+[JsonSerializable(typeof(EntityTemplateFile))]
 [JsonSerializable(typeof(Transform))]
 public sealed partial class RuntimeJsonContext : JsonSerializerContext;

@@ -73,6 +73,12 @@ internal sealed class SceneLoaderTestsBuilder : IDisposable
         }
     }
 
+    public string ReadFile(string path)
+    {
+        string fullPath = Path.Combine(_files.RootDirectory, path);
+        return File.ReadAllText(fullPath);
+    }
+
     /// <summary>A component of an entity in the scene file as compact JSON.</summary>
     public string ReadComponent(string path, int entity, string component)
     {

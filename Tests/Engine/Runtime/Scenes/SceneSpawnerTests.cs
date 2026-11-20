@@ -139,6 +139,19 @@ public sealed class SceneSpawnerTests : IDisposable
     }
 
     [Fact]
+    public void DescribesEntityTemplatesWithTheSameComponents()
+    {
+        JsonObject scene = _spawner.GetSchema();
+        JsonObject template = _spawner.GetTemplateSchema();
+
+        JsonNode entityProperties = scene["properties"]!["entities"]!["items"]!["properties"]!;
+        entityProperties["template"]!["type"]!.GetValue<string>().Should().Be("string");
+        template["properties"]!["base"]!["type"]!.GetValue<string>().Should().Be("string");
+        JsonNode position = template["properties"]!["components"]!["properties"]!["transform"]!["properties"]!["position"]!;
+        position["minItems"]!.GetValue<int>().Should().Be(3);
+    }
+
+    [Fact]
     public void ListsTheRegisteredComponentsWithTheirMetadata()
     {
         IReadOnlyList<SceneComponent> components = _spawner.Components;

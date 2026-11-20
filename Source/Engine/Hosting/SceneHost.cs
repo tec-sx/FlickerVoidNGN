@@ -41,6 +41,7 @@ public sealed partial class SceneHost : IDisposable
         Window = new GameWindow(Game, title, 1280, 720);
         ILogger<SceneLoader> sceneLogger = loggerFactory.CreateLogger<SceneLoader>();
         Scenes = new SceneLoader(Game.Spawner, Content, Game.World, sceneLogger);
+        Game.Services.AddService(Scenes.Templates);
         ContentWatcher watcher = new(Content, Game.Schemas);
         Game.FrameSystems.Add(watcher);
         if (options.Mood is { } mood)
