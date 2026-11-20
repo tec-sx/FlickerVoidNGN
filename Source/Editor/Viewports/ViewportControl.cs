@@ -94,6 +94,16 @@ public sealed partial class ViewportControl : Control
         Focus();
         e.Pointer.Capture(this);
         TrackPointer(e);
+        PointerPoint point = e.GetCurrentPoint(this);
+        bool leftClick = point.Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed;
+        if (leftClick && !_alt)
+        {
+            ViewportViewModel? viewModel = ViewModel;
+            PixelSize size = GetPixelSize();
+            Vector2 pixel = ToPixels(point.Position);
+            viewModel?.PointerPressed(pixel, size.Width, size.Height);
+        }
+
         e.Handled = true;
     }
 
@@ -101,6 +111,11 @@ public sealed partial class ViewportControl : Control
     {
         base.OnPointerReleased(e);
         TrackPointer(e);
+        if (e.InitialPressMouseButton == MouseButton.Left)
+        {
+            ViewModel?.PointerReleased();
+        }
+
         if (_buttons == ViewportButtons.None)
         {
             e.Pointer.Capture(null);
@@ -113,6 +128,10 @@ public sealed partial class ViewportControl : Control
     {
         base.OnPointerMoved(e);
         TrackPointer(e);
+        PointerPoint point = e.GetCurrentPoint(this);
+        PixelSize size = GetPixelSize();
+        Vector2 pixel = ToPixels(point.Position);
+        ViewModel?.PointerMoved(pixel, size.Width, size.Height);
     }
 
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
@@ -120,6 +139,7 @@ public sealed partial class ViewportControl : Control
         base.OnPointerCaptureLost(e);
         _buttons = ViewportButtons.None;
         _lastPointer = null;
+        ViewModel?.PointerReleased();
     }
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
@@ -135,6 +155,7 @@ public sealed partial class ViewportControl : Control
         base.OnKeyDown(e);
         _keys.Add(e.Key);
         _alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+        ViewModel?.KeyPressed(e.Key, _buttons);
 
         // Alt alone would otherwise move focus to the window's access keys.
         e.Handled = true;
@@ -153,6 +174,20 @@ public sealed partial class ViewportControl : Control
         base.OnLostFocus(e);
         _keys.Clear();
         _alt = false;
+    }
+
+    private double GetScaling() => this.GetPresentationSource()?.RenderScaling ?? 1;
+
+    private PixelSize GetPixelSize()
+    {
+        double scaling = GetScaling();
+        return PixelSize.FromSize(Bounds.Size, scaling);
+    }
+
+    private Vector2 ToPixels(Point position)
+    {
+        float scaling = (float)GetScaling();
+        return new Vector2((float)position.X, (float)position.Y) * scaling;
     }
 
     private void TrackPointer(PointerEventArgs e)
@@ -264,8 +299,8 @@ public sealed partial class ViewportControl : Control
         }
 
         _visual!.Size = new Avalonia.Vector(Bounds.Width, Bounds.Height);
-        double scaling = this.GetPresentationSource()?.RenderScaling ?? 1;
-        PixelSize size = PixelSize.FromSize(Bounds.Size, scaling);
+        double scaling = GetScaling();
+        PixelSize size = GetPixelSize();
         if (size.Width > 0 && size.Height > 0)
         {
             float seconds = (float)_clock.Elapsed.TotalSeconds;
@@ -308,6 +343,7 @@ public sealed partial class ViewportControl : Control
         }
 
         renderer.ShowGrid = viewModel.ShowGrid;
+        viewModel.BuildOverlay(renderer.Overlay, size.Height);
         Camera camera = viewModel.Camera.ToCamera();
         Transform transform = viewModel.Camera.ToTransform();
         renderer.Render(viewModel.Scene.Game.World, camera, transform);

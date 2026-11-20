@@ -29,12 +29,12 @@ public sealed class WorldExtractor : IRenderExtractor
         });
         world.Query(in Meshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform) =>
         {
-            Matrix4x4 meshWorld = GetWorldMatrix(transform);
+            Matrix4x4 meshWorld = transform.ToMatrix();
             scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, null));
         });
         world.Query(in AnimatedMeshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform, ref MeshAnimator animator) =>
         {
-            Matrix4x4 meshWorld = GetWorldMatrix(transform);
+            Matrix4x4 meshWorld = transform.ToMatrix();
             scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, animator));
         });
         world.Query(in PointLights, (ref PointLight light, ref Transform transform) =>
@@ -49,13 +49,5 @@ public sealed class WorldExtractor : IRenderExtractor
         {
             scene.ProbeVolumes.Add(new RenderProbeVolume(volume, transform.Position));
         });
-    }
-
-    private static Matrix4x4 GetWorldMatrix(in Transform transform)
-    {
-        Matrix4x4 scale = Matrix4x4.CreateScale(transform.Scale);
-        Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(transform.Rotation);
-        Matrix4x4 translation = Matrix4x4.CreateTranslation(transform.Position);
-        return scale * rotation * translation;
     }
 }

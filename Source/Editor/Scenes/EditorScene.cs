@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Editor.Selection;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -24,11 +25,15 @@ public sealed class EditorScene : IDisposable
         Content = new ContentManager(folder);
         ILogger<SceneLoader> logger = loggerFactory.CreateLogger<SceneLoader>();
         _loader = new SceneLoader(Game.Spawner, Content, Game.World, logger);
+        Picker = new ScenePicker(Content);
     }
 
     public Game Game { get; }
 
     public IContentManager Content { get; }
+
+    /// <summary>Finds the entity under a ray through the viewport.</summary>
+    public ScenePicker Picker { get; }
 
     /// <summary>The open scene file, relative to the content folder, or null for an unsaved world.</summary>
     public string? ScenePath { get; private set; }
@@ -42,6 +47,7 @@ public sealed class EditorScene : IDisposable
 
     public void Dispose()
     {
+        Picker.Dispose();
         _loader.Dispose();
         Game.Dispose();
     }
