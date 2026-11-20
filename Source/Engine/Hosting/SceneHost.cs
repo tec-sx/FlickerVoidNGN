@@ -5,6 +5,7 @@ using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
+using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Cameras;
@@ -42,6 +43,8 @@ public sealed partial class SceneHost : IDisposable
         Game = new Game(loggerFactory);
         Game.AddRendering();
         Window = new GameWindow(Game, title, 1280, 720);
+        Game.AddInput();
+        Input = Game.AddInputActions(Window.Input);
         ILogger<SceneLoader> sceneLogger = loggerFactory.CreateLogger<SceneLoader>();
         Scenes = new SceneLoader(Game.Spawner, Content, Game.World, sceneLogger);
         Game.Services.AddService(Scenes.Templates);
@@ -70,6 +73,9 @@ public sealed partial class SceneHost : IDisposable
 
     /// <summary>Reads the game's data asset and table files.</summary>
     public DataAssets Data { get; }
+
+    /// <summary>The input actions systems read, from the map the game sets.</summary>
+    public InputActions Input { get; }
 
     /// <summary>Reads the game's flow graphs and starts runs of them.</summary>
     public FlowGraphs Flows { get; }

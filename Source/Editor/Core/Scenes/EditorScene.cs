@@ -5,6 +5,7 @@ using Arch.Core;
 
 using FlickerVoid.Editor.Core.Selection;
 using FlickerVoid.Engine.Flow;
+using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Entities;
@@ -40,6 +41,7 @@ public sealed class EditorScene : IDisposable
         Game = new Game(loggerFactory);
         Game.AddRendering();
         Game.AddFlow();
+        Game.AddInput();
         foreach (IGameModule module in modules)
         {
             module.Add(Game);

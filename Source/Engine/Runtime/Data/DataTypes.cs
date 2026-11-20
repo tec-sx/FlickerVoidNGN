@@ -266,7 +266,7 @@ public sealed class DataTypes
             AllowTrailingCommas = true,
             UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
             RespectNullableAnnotations = true,
-            Converters = { new Vector3JsonConverter(), new QuaternionJsonConverter(), new TagJsonConverter() },
+            Converters = { new Vector2JsonConverter(), new Vector3JsonConverter(), new QuaternionJsonConverter(), new TagJsonConverter() },
         };
         options.MakeReadOnly();
         return options;
