@@ -21,6 +21,9 @@ public interface ISceneSpawner
     /// <summary>Creates the scene's entities in order; if one fails, destroys those already created and throws.</summary>
     IReadOnlyList<Entity> Spawn(SceneData scene, World world);
 
+    /// <summary>Creates one entity from its scene data; if a component fails, destroys the entity and throws.</summary>
+    Entity Create(EntityData data, World world);
+
     /// <summary>
     /// Brings entities spawned from <paramref name="previous"/> in line with <paramref name="current"/>, a newer version of the
     /// same file: entities match by name (unnamed ones by identical data), only components whose data changed are set, and

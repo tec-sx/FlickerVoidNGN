@@ -27,7 +27,13 @@ public sealed class ComponentViewModel
         }
 
         Fields = fields;
+        Component = component;
     }
+
+    public SceneComponent Component { get; }
+
+    /// <summary>The transform stays: the viewport, picking and the gizmo need it.</summary>
+    public bool CanRemove => Component.Name != "transform";
 
     public string Title { get; }
 

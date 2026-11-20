@@ -5,6 +5,8 @@ using Arch.Core;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Scenes;
 
+using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
+
 namespace FlickerVoid.Engine.Runtime.Tests.Scenes;
 
 public sealed class SceneLoaderTests : IDisposable
@@ -63,6 +65,21 @@ public sealed class SceneLoaderTests : IDisposable
 
         _builder.World.IsAlive(entities[0]).Should().BeTrue();
         _builder.Warnings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SavesAnAddedEntityWithTheScene()
+    {
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Build();
+        IReadOnlyList<Entity> loaded = loader.Load("Room.fvscene");
+        EntityData data = new() { Name = "Box" };
+        data.Components.Add("transform", System.Text.Json.JsonDocument.Parse("""{ "position": [2, 0, 0] }""").RootElement);
+
+        Entity added = loader.Add("Room.fvscene", data);
+        loader.Save("Room.fvscene");
+
+        loader.GetEntities("Room.fvscene").Should().Equal(loaded[0], added);
+        _builder.ReadComponent("Room.fvscene", 1, "transform").Should().Contain("[2,0,0]");
     }
 
     [Fact]
