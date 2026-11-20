@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The editor's models and view models: no Avalonia, so they test and run headless. -->
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="FlickerVoid.Editor" />
+    <InternalsVisibleTo Include="FlickerVoid.Editor.Core.Tests" />
+    <InternalsVisibleTo Include="FlickerVoid.Editor.Tests" />
+  </ItemGroup>
+</Project>

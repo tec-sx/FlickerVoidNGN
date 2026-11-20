@@ -1,7 +1,8 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="FlickerVoid.Engine.Editor.Shell.App"
-             xmlns:inspector="using:FlickerVoid.Engine.Editor.Inspector"
+             x:Class="FlickerVoid.Editor.App"
+             xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
+             xmlns:shellInspector="using:FlickerVoid.Editor.Inspector"
              RequestedThemeVariant="Dark">
   <!-- One template per kind of field, picked by the field's type, for the inspector and the material editor alike:
        components and materials need no editor code of their own. -->
@@ -62,7 +63,7 @@
       </Grid>
     </DataTemplate>
     <DataTemplate DataType="inspector:ColorFieldViewModel">
-      <ColorPicker Color="{Binding Color}" IsAlphaEnabled="False" HorizontalAlignment="Left" />
+      <ColorPicker Color="{Binding Color, Converter={x:Static shellInspector:SrgbColorConverter.Instance}}" IsAlphaEnabled="False" HorizontalAlignment="Left" />
     </DataTemplate>
     <DataTemplate DataType="inspector:ReadOnlyFieldViewModel">
       <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Opacity="0.7" VerticalAlignment="Center" />

@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="../../Source/Hosting/FlickerVoid.Engine.Hosting.csproj" />
-    <ProjectReference Include="../../Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
-    <ProjectReference Include="../../Source/Debug/FlickerVoid.Engine.Debug.csproj" />
-    <ProjectReference Include="../../Source/Rendering/FlickerVoid.Engine.Rendering.csproj" />
+    <ProjectReference Include="../../Source/Engine/Hosting/FlickerVoid.Engine.Hosting.csproj" />
+    <ProjectReference Include="../../Source/Engine/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
+    <ProjectReference Include="../../Source/Engine/Debug/FlickerVoid.Engine.Debug.csproj" />
+    <ProjectReference Include="../../Source/Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
   </ItemGroup>
   <ItemGroup>
     <FlickerVoidContent Include="Content" />

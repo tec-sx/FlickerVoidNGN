@@ -1,6 +1,6 @@
 using Avalonia.Media;
 
-namespace FlickerVoid.Engine.Editor.Shell;
+namespace FlickerVoid.Editor;
 
 /// <summary>
 /// Path data of the editor's toolbar icons on a 24 by 24 grid, from Google's Material Icons and, for the cube and the cursor,

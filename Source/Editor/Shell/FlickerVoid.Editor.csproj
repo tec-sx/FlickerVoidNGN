@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The editor program: Avalonia views, the viewport's GPU interop and the composition of the editor's libraries. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Controls.ColorPicker" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Engine/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
+    <ProjectReference Include="../Core/FlickerVoid.Editor.Core.csproj" />
+    <ProjectReference Include="../Assets/FlickerVoid.Editor.Assets.csproj" />
+    <ProjectReference Include="../Persistence/FlickerVoid.Editor.Persistence.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="FlickerVoid.Editor.Tests" />
+  </ItemGroup>
+  <!-- The editor's own shaders and icons (Material Symbols, Apache-2.0), kept in Core, go beside the engine modules' shaders in Content/Engine. -->
+  <ItemGroup>
+    <FlickerVoidContent Include="../Core/Shaders" OutputFolder="Engine/Editor" />
+    <FlickerVoidContent Include="../Core/Icons" OutputFolder="Engine/EditorIcons" />
+  </ItemGroup>
+  <Import Project="../../Tools/Builder/FlickerVoid.Tools.Builder.targets" />
+</Project>

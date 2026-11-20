@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:persistence="using:FlickerVoid.Editor.Persistence.Projects"
+xmlns:projects="using:FlickerVoid.Editor.Projects"
+        x:Class="FlickerVoid.Editor.Projects.ProjectPickerWindow"
+        x:DataType="projects:ProjectPickerViewModel"
+        Title="FlickerVoid Projects"
+        Width="640" Height="440" WindowStartupLocation="CenterScreen">
+  <DockPanel Margin="16">
+    <TextBlock DockPanel.Dock="Top" Text="{Binding ProjectsFolder, StringFormat='Projects in {0}'}" Margin="0,0,0,8" Opacity="0.7" />
+    <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,12,0,0" IsEnabled="{Binding !IsBusy}">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="Open" Command="{Binding OpenCommand}" CommandParameter="{Binding SelectedProject}" />
+        <Button Content="Browse..." Click="HandleBrowseClick" />
+        <TextBox Text="{Binding NewName}" PlaceholderText="New project name" Width="200" />
+        <Button Content="Create" Command="{Binding CreateCommand}" />
+      </StackPanel>
+      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxHeight="120" />
+    </StackPanel>
+    <ListBox ItemsSource="{Binding Projects}" SelectedItem="{Binding SelectedProject}" DoubleTapped="HandleDoubleTapped"
+             IsEnabled="{Binding !IsBusy}">
+      <ListBox.ItemTemplate>
+        <DataTemplate DataType="persistence:ProjectEntry">
+          <StackPanel>
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding File}" Opacity="0.6" FontSize="12" />
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</Window>

@@ -1,6 +1,6 @@
 using FlickerVoid.Engine.Runtime.Content;
 
-namespace FlickerVoid.Engine.Editor.Assets;
+namespace FlickerVoid.Editor.Assets;
 
 /// <summary>
 /// Lists the files and folders of a content folder for the asset browser, skipping hidden ones (a leading dot, such as the

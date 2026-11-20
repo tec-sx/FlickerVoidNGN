@@ -5,27 +5,39 @@ using Arch.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-using FlickerVoid.Engine.Editor.Assets;
-using FlickerVoid.Engine.Editor.Inspector;
-using FlickerVoid.Engine.Editor.Materials;
-using FlickerVoid.Engine.Editor.Projects;
-using FlickerVoid.Engine.Editor.Scenes;
+using FlickerVoid.Editor.Assets;
+using FlickerVoid.Editor.Assets.Materials;
+using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Scenes;
+using FlickerVoid.Editor.Core.Viewports;
+using FlickerVoid.Editor.Inspector;
+using FlickerVoid.Editor.Materials;
+using FlickerVoid.Editor.Persistence.Projects;
+using FlickerVoid.Editor.Projects;
+using FlickerVoid.Editor.Scenes;
+using FlickerVoid.Editor.Viewports;
 using FlickerVoid.Engine.Graphics.Devices;
-using FlickerVoid.Engine.Editor.Viewports;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
 
-namespace FlickerVoid.Engine.Editor.Shell;
+namespace FlickerVoid.Editor;
 
 /// <summary>The editor's main window: its title, the scene view, the asset browser, the inspector, the view settings and Play.</summary>
 public sealed partial class MainWindowViewModel : ObservableObject
 {
     private readonly ScenePlayer? _player;
+    private readonly UnsavedContent _content;
 
-    /// <summary>Shows the scene; <paramref name="player"/> plays it in the project's game, when a project is open.</summary>
-    public MainWindowViewModel(ViewportViewModel viewport, InspectorViewModel inspector, ScenePlayer? player = null)
+    /// <summary>
+    /// Shows the scene over <paramref name="content"/>, the scene's content with its unsaved edits; <paramref name="player"/>
+    /// plays it in the project's game, when a project is open.
+    /// </summary>
+    public MainWindowViewModel(ViewportViewModel viewport, InspectorViewModel inspector, UnsavedContent content, ScenePlayer? player = null)
     {
         _player = player;
+        _content = content;
+        _content.UnsavedChanged += HandleUnsavedChanged;
+        _content.ChangedOnDisk += HandleChangedOnDisk;
         Viewport = viewport;
         Inspector = inspector;
         SceneTree = new SceneTreeViewModel(viewport.Scene);
@@ -66,7 +78,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             status = exception.Message;
         }
 
-        MaterialEditorViewModel editor = new(scene, preview);
+        MaterialEditorViewModel editor = new(_content, preview);
         if (status.Length > 0)
         {
             editor.Status = status;
@@ -100,16 +112,61 @@ public sealed partial class MainWindowViewModel : ObservableObject
         get
         {
             string? scene = Viewport.Scene.ScenePath;
-            if (scene is null)
+            string title = "FlickerVoid Editor";
+            if (scene is not null)
             {
-                return "FlickerVoid Editor";
+                title = $"{scene} - {title}";
             }
 
-            return $"{scene} - FlickerVoid Editor";
+            if (_content.HasUnsaved)
+            {
+                title = $"* {title}";
+            }
+
+            return title;
         }
     }
 
+    /// <summary>Whether materials or moods hold edits that are not saved.</summary>
+    public bool HasUnsaved => _content.HasUnsaved;
+
+    /// <summary>The files with unsaved edits, for the prompt shown before the editor closes.</summary>
+    public IReadOnlyList<string> UnsavedPaths => _content.UnsavedPaths;
+
+    /// <summary>Saves every material and mood with unsaved edits.</summary>
+    [RelayCommand(CanExecute = nameof(HasUnsaved))]
+    public void SaveAssets()
+    {
+        int count = _content.UnsavedPaths.Count;
+        _content.SaveAll();
+        Viewport.Status = $"Saved {count} asset(s).";
+    }
+
+    /// <summary>Forgets every unsaved material and mood edit, going back to the files on disk.</summary>
+    [RelayCommand(CanExecute = nameof(HasUnsaved))]
+    public void DiscardAssets()
+    {
+        int count = _content.UnsavedPaths.Count;
+        _content.DiscardAll();
+        Viewport.Status = $"Discarded the edits of {count} asset(s).";
+    }
+
     private bool CanPlay() => _player is not null;
+
+    private void HandleUnsavedChanged()
+    {
+        OnPropertyChanged(nameof(HasUnsaved));
+        OnPropertyChanged(nameof(Title));
+        SaveAssetsCommand.NotifyCanExecuteChanged();
+        DiscardAssetsCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Keeps the unsaved edits of a file changed on disk and says so: saving overwrites the change, discarding takes it.</summary>
+    private void HandleChangedOnDisk(string fullPath)
+    {
+        string path = Path.GetRelativePath(_content.RootDirectory, fullPath);
+        Viewport.Status = $"{path} changed on disk; its unsaved edits are kept. Save to overwrite it or discard to take the change.";
+    }
 
     private void OpenAsset(AssetEntry asset)
     {

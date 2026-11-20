@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
+             xmlns:scenes="using:FlickerVoid.Engine.Runtime.Scenes"
+             x:Class="FlickerVoid.Editor.Inspector.InspectorView"
+             x:DataType="inspector:InspectorViewModel">
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontWeight="SemiBold" FontSize="15" Margin="12,8" />
+    <DropDownButton DockPanel.Dock="Bottom" Content="Add Component" HorizontalAlignment="Stretch" Margin="8"
+                    IsEnabled="{Binding !!AddableComponents.Count}">
+      <DropDownButton.Flyout>
+        <MenuFlyout ItemsSource="{Binding AddableComponents}">
+          <MenuFlyout.ItemContainerTheme>
+            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="scenes:SceneComponent">
+              <Setter Property="Header" Value="{Binding Name}" />
+              <Setter Property="Command" Value="{Binding $parent[UserControl].((inspector:InspectorViewModel)DataContext).AddComponentCommand}" />
+              <Setter Property="CommandParameter" Value="{Binding}" />
+            </ControlTheme>
+          </MenuFlyout.ItemContainerTheme>
+        </MenuFlyout>
+      </DropDownButton.Flyout>
+    </DropDownButton>
+    <ScrollViewer>
+      <ItemsControl ItemsSource="{Binding Components}" Margin="4,0,4,8">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="inspector:ComponentViewModel">
+            <Expander IsExpanded="True" HorizontalAlignment="Stretch" Margin="0,2">
+              <Expander.Header>
+                <DockPanel>
+                  <Button DockPanel.Dock="Right" Content="Remove" Padding="6,0" IsVisible="{Binding CanRemove}"
+                          Command="{Binding $parent[UserControl].((inspector:InspectorViewModel)DataContext).RemoveComponentCommand}"
+                          CommandParameter="{Binding}" />
+                  <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                </DockPanel>
+              </Expander.Header>
+              <ItemsControl ItemsSource="{Binding Fields}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="inspector:FieldViewModel">
+                    <Grid ColumnDefinitions="96,*" Margin="0,2">
+                      <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <ContentControl Grid.Column="1" Content="{Binding}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Expander>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

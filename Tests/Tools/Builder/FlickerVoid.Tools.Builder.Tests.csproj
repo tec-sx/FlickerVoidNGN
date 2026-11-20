@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="SharpGLTF.Toolkit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../Source/Tools/Builder/FlickerVoid.Tools.Builder.csproj" />
+  </ItemGroup>
+</Project>

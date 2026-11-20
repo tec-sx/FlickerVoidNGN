@@ -10,6 +10,6 @@
     <PackageReference Include="BenchmarkDotNet" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../Source/Rendering/FlickerVoid.Engine.Rendering.csproj" />
+    <ProjectReference Include="../Source/Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
   </ItemGroup>
 </Project>

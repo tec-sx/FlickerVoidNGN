@@ -2,31 +2,47 @@
   <Folder Name="/Benchmarks/">
     <Project Path="Benchmarks/FlickerVoid.Engine.Benchmarks.csproj" />
   </Folder>
-  <Folder Name="/Source/">
-    <Project Path="Source/Builder/FlickerVoid.Engine.Builder.csproj" />
-    <Project Path="Source/Debug/FlickerVoid.Engine.Debug.csproj" />
-    <Project Path="Source/Editor/FlickerVoid.Engine.Editor.csproj" />
-    <Project Path="Source/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
-    <Project Path="Source/Graphics/FlickerVoid.Engine.Graphics.csproj" />
-    <Project Path="Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
-    <Project Path="Source/Hosting/FlickerVoid.Engine.Hosting.csproj" />
-    <Project Path="Source/Physics/FlickerVoid.Engine.Physics.csproj" />
-    <Project Path="Source/Platform/FlickerVoid.Engine.Platform.csproj" />
-    <Project Path="Source/Rendering/FlickerVoid.Engine.Rendering.csproj" />
-    <Project Path="Source/Runtime/FlickerVoid.Engine.Runtime.csproj" />
-    <Project Path="Source/Shaders/FlickerVoid.Engine.Shaders.csproj" />
+  <Folder Name="/Source/" />
+  <Folder Name="/Source/Editor/">
+    <Project Path="Source/Editor/Assets/FlickerVoid.Editor.Assets.csproj" />
+    <Project Path="Source/Editor/Core/FlickerVoid.Editor.Core.csproj" />
+    <Project Path="Source/Editor/Persistence/FlickerVoid.Editor.Persistence.csproj" />
+    <Project Path="Source/Editor/Shell/FlickerVoid.Editor.csproj" />
   </Folder>
-  <Folder Name="/Tests/">
-    <Project Path="Tests/Builder/FlickerVoid.Engine.Builder.Tests.csproj" />
-    <Project Path="Tests/Debug/FlickerVoid.Engine.Debug.Tests.csproj" />
-    <Project Path="Tests/Editor/FlickerVoid.Engine.Editor.Tests.csproj" />
-    <Project Path="Tests/Gameplay/FlickerVoid.Engine.Gameplay.Tests.csproj" />
-    <Project Path="Tests/Graphics/FlickerVoid.Engine.Graphics.Tests.csproj" />
-    <Project Path="Tests/Hosting/FlickerVoid.Engine.Hosting.Tests.csproj" />
-    <Project Path="Tests/Physics/FlickerVoid.Engine.Physics.Tests.csproj" />
-    <Project Path="Tests/Platform/FlickerVoid.Engine.Platform.Tests.csproj" />
-    <Project Path="Tests/Rendering/FlickerVoid.Engine.Rendering.Tests.csproj" />
-    <Project Path="Tests/Runtime/FlickerVoid.Engine.Runtime.Tests.csproj" />
-    <Project Path="Tests/Shaders/FlickerVoid.Engine.Shaders.Tests.csproj" />
+  <Folder Name="/Source/Engine/">
+    <Project Path="Source/Engine/Debug/FlickerVoid.Engine.Debug.csproj" />
+    <Project Path="Source/Engine/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
+    <Project Path="Source/Engine/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
+    <Project Path="Source/Engine/Graphics/FlickerVoid.Engine.Graphics.csproj" />
+    <Project Path="Source/Engine/Hosting/FlickerVoid.Engine.Hosting.csproj" />
+    <Project Path="Source/Engine/Physics/FlickerVoid.Engine.Physics.csproj" />
+    <Project Path="Source/Engine/Platform/FlickerVoid.Engine.Platform.csproj" />
+    <Project Path="Source/Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
+    <Project Path="Source/Engine/Runtime/FlickerVoid.Engine.Runtime.csproj" />
+  </Folder>
+  <Folder Name="/Source/Tools/">
+    <Project Path="Source/Tools/Builder/FlickerVoid.Tools.Builder.csproj" />
+    <Project Path="Source/Tools/ShaderCompiler/FlickerVoid.Tools.ShaderCompiler.csproj" />
+  </Folder>
+  <Folder Name="/Tests/" />
+  <Folder Name="/Tests/Editor/">
+    <Project Path="Tests/Editor/Assets/FlickerVoid.Editor.Assets.Tests.csproj" />
+    <Project Path="Tests/Editor/Core/FlickerVoid.Editor.Core.Tests.csproj" />
+    <Project Path="Tests/Editor/Persistence/FlickerVoid.Editor.Persistence.Tests.csproj" />
+    <Project Path="Tests/Editor/Shell/FlickerVoid.Editor.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tests/Engine/">
+    <Project Path="Tests/Engine/Debug/FlickerVoid.Engine.Debug.Tests.csproj" />
+    <Project Path="Tests/Engine/Gameplay/FlickerVoid.Engine.Gameplay.Tests.csproj" />
+    <Project Path="Tests/Engine/Graphics/FlickerVoid.Engine.Graphics.Tests.csproj" />
+    <Project Path="Tests/Engine/Hosting/FlickerVoid.Engine.Hosting.Tests.csproj" />
+    <Project Path="Tests/Engine/Physics/FlickerVoid.Engine.Physics.Tests.csproj" />
+    <Project Path="Tests/Engine/Platform/FlickerVoid.Engine.Platform.Tests.csproj" />
+    <Project Path="Tests/Engine/Rendering/FlickerVoid.Engine.Rendering.Tests.csproj" />
+    <Project Path="Tests/Engine/Runtime/FlickerVoid.Engine.Runtime.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tests/Tools/">
+    <Project Path="Tests/Tools/Builder/FlickerVoid.Tools.Builder.Tests.csproj" />
+    <Project Path="Tests/Tools/ShaderCompiler/FlickerVoid.Tools.ShaderCompiler.Tests.csproj" />
   </Folder>
 </Solution>

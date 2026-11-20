@@ -4,14 +4,21 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 
-using FlickerVoid.Engine.Editor.Inspector;
-using FlickerVoid.Engine.Editor.Projects;
-using FlickerVoid.Engine.Editor.Scenes;
-using FlickerVoid.Engine.Editor.Viewports;
+using FlickerVoid.Editor.Assets;
+using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Scenes;
+using FlickerVoid.Editor.Core.Viewports;
+using FlickerVoid.Editor.Inspector;
+using FlickerVoid.Editor.Persistence.Projects;
+using FlickerVoid.Editor.Projects;
+using FlickerVoid.Editor.Scenes;
+using FlickerVoid.Editor.Viewports;
+
+using FlickerVoid.Engine.Runtime.Content;
 
 using Microsoft.Extensions.Logging;
 
-namespace FlickerVoid.Engine.Editor.Shell;
+namespace FlickerVoid.Editor;
 
 /// <summary>Shows the project picker, or, given a project or content folder, the edited scene and its view models in the main window.</summary>
 public sealed partial class App : Application
@@ -65,7 +72,8 @@ public sealed partial class App : Application
 
     private Window CreateEditor(string content, string? scene, string? game)
     {
-        _scene = new EditorScene(_loggerFactory!, content);
+        UnsavedContent unsaved = new(new ContentManager(content));
+        _scene = new EditorScene(_loggerFactory!, unsaved);
         ViewportViewModel viewport = new(_scene, Options.Validation);
         if (scene is not null)
         {
@@ -79,14 +87,15 @@ public sealed partial class App : Application
             }
         }
 
-        InspectorViewModel inspector = new(_scene);
+        ContentFileFinder files = new(_scene.Content);
+        InspectorViewModel inspector = new(_scene, files.Find);
         ScenePlayer? player = null;
         if (game is not null)
         {
             player = new ScenePlayer(_scene, game, new ProcessGameLauncher());
         }
 
-        MainWindowViewModel main = new(viewport, inspector, player);
+        MainWindowViewModel main = new(viewport, inspector, unsaved, player);
         _poll = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, HandlePoll);
         _poll.Start();
         return new MainWindow { DataContext = main };

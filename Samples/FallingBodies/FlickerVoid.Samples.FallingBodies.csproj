@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="../../Source/Physics/FlickerVoid.Engine.Physics.csproj" />
+    <ProjectReference Include="../../Source/Engine/Physics/FlickerVoid.Engine.Physics.csproj" />
   </ItemGroup>
   <ItemGroup>
     <FlickerVoidContent Include="Content" />

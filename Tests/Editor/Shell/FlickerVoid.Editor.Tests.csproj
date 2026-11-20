@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../Source/Editor/Shell/FlickerVoid.Editor.csproj" />
+  </ItemGroup>
+  <!-- Core's test helpers for an edited scene and recorded logs, shared rather than duplicated. -->
+  <ItemGroup>
+    <Compile Include="../Core/RecordingLoggerProvider.cs" Link="Shared/RecordingLoggerProvider.cs" />
+    <Compile Include="../Core/Scenes/EditorSceneTestsBuilder.cs" Link="Shared/EditorSceneTestsBuilder.cs" />
+    <Compile Include="../Assets/Materials/MaterialBrowserTestsBuilder.cs" Link="Shared/MaterialBrowserTestsBuilder.cs" />
+  </ItemGroup>
+  <!-- Builds the engine's and the editor's shaders and icons into Content/Engine, where the renderer and the editor's passes load them. -->
+  <ItemGroup>
+    <FlickerVoidContent Include="../../../Source/Editor/Core/Shaders" OutputFolder="Engine/Editor" />
+    <FlickerVoidContent Include="../../../Source/Editor/Core/Icons" OutputFolder="Engine/EditorIcons" />
+  </ItemGroup>
+  <Import Project="../../../Source/Tools/Builder/FlickerVoid.Tools.Builder.targets" />
+</Project>

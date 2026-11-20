@@ -1,14 +1,14 @@
 <Solution>
   <Folder Name="/Engine/">
-    <Project Path="../Source/Debug/FlickerVoid.Engine.Debug.csproj" />
-    <Project Path="../Source/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
-    <Project Path="../Source/Graphics/FlickerVoid.Engine.Graphics.csproj" />
-    <Project Path="../Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
-    <Project Path="../Source/Physics/FlickerVoid.Engine.Physics.csproj" />
-    <Project Path="../Source/Platform/FlickerVoid.Engine.Platform.csproj" />
-    <Project Path="../Source/Rendering/FlickerVoid.Engine.Rendering.csproj" />
-    <Project Path="../Source/Runtime/FlickerVoid.Engine.Runtime.csproj" />
-    <Project Path="../Source/Shaders/FlickerVoid.Engine.Shaders.csproj" />
+    <Project Path="../Source/Engine/Debug/FlickerVoid.Engine.Debug.csproj" />
+    <Project Path="../Source/Engine/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
+    <Project Path="../Source/Engine/Graphics/FlickerVoid.Engine.Graphics.csproj" />
+    <Project Path="../Source/Engine/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
+    <Project Path="../Source/Engine/Physics/FlickerVoid.Engine.Physics.csproj" />
+    <Project Path="../Source/Engine/Platform/FlickerVoid.Engine.Platform.csproj" />
+    <Project Path="../Source/Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
+    <Project Path="../Source/Engine/Runtime/FlickerVoid.Engine.Runtime.csproj" />
+    <Project Path="../Source/Tools/ShaderCompiler/FlickerVoid.Tools.ShaderCompiler.csproj" />
   </Folder>
   <Project Path="FallingBodies/FlickerVoid.Samples.FallingBodies.csproj" />
   <Project Path="SceneViewer/FlickerVoid.Samples.SceneViewer.csproj" />

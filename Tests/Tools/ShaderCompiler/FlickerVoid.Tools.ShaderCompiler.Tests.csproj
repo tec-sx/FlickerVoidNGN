@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../../Source/Tools/ShaderCompiler/FlickerVoid.Tools.ShaderCompiler.csproj" />
+  </ItemGroup>
+</Project>
