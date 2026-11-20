@@ -2,12 +2,13 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <PublishAot>true</PublishAot>
+    <RuntimeFrameworkVersion>10.0.15</RuntimeFrameworkVersion>
     <!-- Third-party libraries' trim and AOT warnings stay warnings when publishing: Collections.Pooled (used by Arch) has a reflection-based
          JSON converter nothing here uses, and Silk.NET's native library loader probes paths that single-file apps don't have. -->
     <WarningsNotAsErrors>$(WarningsNotAsErrors);IL2104;IL3053;IL3000;IL3002</WarningsNotAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="$(FlickerVoidEngine)Source/Hosting/FlickerVoid.Engine.Hosting.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Hosting/FlickerVoid.Engine.Hosting.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
@@ -17,5 +18,5 @@
     <FlickerVoidContent Include="../../Content" />
   </ItemGroup>
   <!-- Builds content: the shaders of the engine modules referenced here, and any FlickerVoidContent folders listed above. -->
-  <Import Project="$(FlickerVoidEngine)Source/Builder/FlickerVoid.Engine.Builder.targets" />
+  <Import Project="$(FlickerVoidEngine)Source/Tools/Builder/FlickerVoid.Tools.Builder.targets" />
 </Project>

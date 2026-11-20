@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="BCnEncoder.Net" />
+    <PackageReference Include="SharpGLTF.Core" />
+    <PackageReference Include="StbImageSharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
+    <ProjectReference Include="../ShaderCompiler/FlickerVoid.Tools.ShaderCompiler.csproj" />
+  </ItemGroup>
+</Project>

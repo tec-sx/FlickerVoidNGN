@@ -1,6 +1,6 @@
 <Project InitialTargets="CheckFlickerVoidEngine">
   <!-- The engine this project builds against, from the FLICKERVOID_ENGINE environment variable.
-       Engine modules are referenced as $(FlickerVoidEngine)Source/<Module>/... -->
+       Engine modules are referenced as $(FlickerVoidEngine)Source/Engine/<Module>/... -->
   <PropertyGroup>
     <FlickerVoidEngine>$(FLICKERVOID_ENGINE)</FlickerVoidEngine>
     <FlickerVoidEngine>$([MSBuild]::EnsureTrailingSlash('$(FlickerVoidEngine)'))</FlickerVoidEngine>

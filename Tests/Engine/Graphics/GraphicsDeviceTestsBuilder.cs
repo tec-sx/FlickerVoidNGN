@@ -1,0 +1,134 @@
+using System.Numerics;
+using System.Runtime.InteropServices;
+using FlickerVoid.Engine.Graphics.Buffers;
+using FlickerVoid.Engine.Graphics.Commands;
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Pipelines;
+using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Vulkan.Devices;
+using FlickerVoid.Tools.ShaderCompiler;
+using Microsoft.Extensions.Logging;
+
+namespace FlickerVoid.Engine.Graphics.Tests;
+
+/// <summary>
+/// Creates the Vulkan device under test with validation on, skipping the test when the machine can't run Vulkan 1.3, and
+/// compiles shaders and reads textures back for it. Disposing it fails the test on any error the device logged.
+/// </summary>
+internal sealed class GraphicsDeviceTestsBuilder : IDisposable
+{
+    public const int TargetSize = 4;
+
+    private readonly RecordingLoggerProvider _logs = new();
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly DxcShaderCompiler _compiler = new();
+
+    public GraphicsDeviceTestsBuilder()
+    {
+        _loggerFactory = LoggerFactory.Create(logging => logging.AddProvider(_logs));
+    }
+
+    public IGraphicsDevice Build()
+    {
+        GraphicsDeviceOptions options = new() { Validation = true };
+        try
+        {
+            return new VulkanGraphicsDevice(options, _loggerFactory);
+        }
+        catch (GraphicsUnavailableException exception)
+        {
+            Assert.Skip(exception.Message);
+            throw;
+        }
+    }
+
+    public ShaderBytecode Compile(string source, ShaderStage stage)
+    {
+        ShaderSource shader = new(source, "main", stage);
+        ShaderCompileResult result = _compiler.Compile(shader);
+        result.Succeeded.Should().BeTrue(result.Messages);
+        return new ShaderBytecode(result.Bytecode);
+    }
+
+    public static ITexture CreateTarget(IGraphicsDevice device)
+    {
+        TextureDescription description = new(TargetSize, TargetSize, PixelFormat.Rgba8UNorm, TextureUsage.RenderTarget | TextureUsage.CopySource);
+        return device.CreateTexture(description);
+    }
+
+    public IPipeline CreatePipeline(IGraphicsDevice device, string vertexSource, string pixelSource)
+    {
+        ShaderBytecode vertex = Compile(vertexSource, ShaderStage.Vertex);
+        ShaderBytecode pixel = Compile(pixelSource, ShaderStage.Pixel);
+        GraphicsPipelineDescription description = new()
+        {
+            VertexShader = vertex,
+            PixelShader = pixel,
+            ColorFormats = [PixelFormat.Rgba8UNorm],
+            CullMode = CullMode.None,
+        };
+        return device.CreateGraphicsPipeline(description);
+    }
+
+    public IPipeline CreateComputePipeline(IGraphicsDevice device, string source)
+    {
+        ShaderBytecode compute = Compile(source, ShaderStage.Compute);
+        ComputePipelineDescription description = new() { ComputeShader = compute };
+        return device.CreateComputePipeline(description);
+    }
+
+    /// <summary>Starts rendering to the target, cleared to the color, with the viewport and scissor covering it.</summary>
+    public static void BeginRendering(ICommandList commands, ITexture target, Vector4 clearColor)
+    {
+        commands.Barrier(target, ResourceState.RenderTarget);
+        ColorTarget color = new(target, LoadAction.Clear, clearColor);
+        commands.BeginRendering([color]);
+        commands.SetViewport(new Viewport(0, 0, TargetSize, TargetSize));
+        commands.SetScissor(0, 0, TargetSize, TargetSize);
+    }
+
+    /// <summary>Copies a mip level of the texture to the CPU as tightly packed rows of 4-byte pixels.</summary>
+    public static uint[] ReadPixels(IGraphicsDevice device, ITexture texture, int mipLevel = 0)
+    {
+        TextureDescription description = texture.Description.GetMipDescription(mipLevel);
+        int pitch = description.Format.GetCopyRowPitch(description.Width);
+        BufferDescription readbackDescription = new((long)pitch * description.Height, BufferUsage.CopyDestination, MemoryLocation.Readback);
+        using IBuffer readback = device.CreateBuffer(readbackDescription);
+        using ICommandList commands = device.CreateCommandList();
+
+        commands.Begin();
+        commands.Barrier(texture, ResourceState.CopySource);
+        commands.CopyTextureToBuffer(texture, readback, 0, mipLevel);
+        commands.End();
+        device.Submit(commands);
+        device.WaitIdle();
+
+        return ReadRows(readback, description);
+    }
+
+    /// <summary>Reads a texture copied into the buffer, with rows at the copy row pitch, as tightly packed rows of 4-byte pixels.</summary>
+    public static uint[] ReadRows(IBuffer readback, TextureDescription description)
+    {
+        int pitch = description.Format.GetCopyRowPitch(description.Width);
+        uint[] pixels = new uint[description.Width * description.Height];
+        byte[] row = new byte[description.Width * 4];
+        for (int y = 0; y < description.Height; y++)
+        {
+            readback.Read(row, (long)y * pitch);
+            Span<uint> destination = pixels.AsSpan(y * description.Width, description.Width);
+            MemoryMarshal.Cast<byte, uint>(row).CopyTo(destination);
+        }
+
+        return pixels;
+    }
+
+    /// <summary>A pixel as Rgba8UNorm bytes read back little-endian.</summary>
+    public static uint Rgba(byte r, byte g, byte b, byte a) => (uint)(r | g << 8 | b << 16 | a << 24);
+
+    public void Dispose()
+    {
+        _compiler.Dispose();
+        _loggerFactory.Dispose();
+        _logs.Errors.Should().BeEmpty("the device logged no errors");
+    }
+}

@@ -1,6 +1,4 @@
-using FlickerVoid.Engine.Editor.Assets;
-
-namespace FlickerVoid.Engine.Editor.Tests.Assets;
+namespace FlickerVoid.Editor.Assets.Tests;
 
 public sealed class AssetCatalogTests : IDisposable
 {

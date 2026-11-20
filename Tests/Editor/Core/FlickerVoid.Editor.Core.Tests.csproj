@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../Source/Editor/Core/FlickerVoid.Editor.Core.csproj" />
+    <!-- The editor's render passes are tested on a real device. -->
+    <ProjectReference Include="../../../Source/Engine/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
+    <!-- The inspector's tests suggest content files through the asset library's finder, as the editor does. -->
+    <ProjectReference Include="../../../Source/Editor/Assets/FlickerVoid.Editor.Assets.csproj" />
+  </ItemGroup>
+  <!-- Builds the engine's and the editor's shaders and icons into Content/Engine, where the renderer and the editor's passes load them. -->
+  <ItemGroup>
+    <FlickerVoidContent Include="../../../Source/Editor/Core/Shaders" OutputFolder="Engine/Editor" />
+    <FlickerVoidContent Include="../../../Source/Editor/Core/Icons" OutputFolder="Engine/EditorIcons" />
+  </ItemGroup>
+  <Import Project="../../../Source/Tools/Builder/FlickerVoid.Tools.Builder.targets" />
+</Project>

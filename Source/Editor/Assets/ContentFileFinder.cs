@@ -1,6 +1,6 @@
 using FlickerVoid.Engine.Runtime.Content;
 
-namespace FlickerVoid.Engine.Editor.Assets;
+namespace FlickerVoid.Editor.Assets;
 
 /// <summary>Finds the content files with given extensions, by content path, for fields that name a file.</summary>
 public sealed class ContentFileFinder(IContentManager content)

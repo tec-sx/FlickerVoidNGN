@@ -1,0 +1,19 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FlickerVoid.Editor.UnsavedAssetsDialog"
+        Title="Unsaved assets"
+        Width="460" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="16" Spacing="12">
+    <TextBlock Text="These assets have edits that are not saved:" TextWrapping="Wrap" />
+    <ScrollViewer MaxHeight="200">
+      <ItemsControl x:Name="Paths" />
+    </ScrollViewer>
+    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+      <Button Content="Save" Click="HandleSaveClick" IsDefault="True" />
+      <Button Content="Discard" Click="HandleDiscardClick" />
+      <Button Content="Cancel" Click="HandleCancelClick" IsCancel="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

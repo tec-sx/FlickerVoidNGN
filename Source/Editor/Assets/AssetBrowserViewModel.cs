@@ -5,7 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Engine.Runtime.Content;
 
-namespace FlickerVoid.Engine.Editor.Assets;
+namespace FlickerVoid.Editor.Assets;
 
 /// <summary>
 /// The asset browser: the content folder's tree, the files of the selected folder, and a kind filter and search that look

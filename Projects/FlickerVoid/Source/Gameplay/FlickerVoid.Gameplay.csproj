@@ -3,6 +3,6 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="$(FlickerVoidEngine)Source/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
   </ItemGroup>
 </Project>

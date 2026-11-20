@@ -1,7 +1,6 @@
-using FlickerVoid.Engine.Editor.Assets;
 using FlickerVoid.Engine.Runtime.Content;
 
-namespace FlickerVoid.Engine.Editor.Tests.Assets;
+namespace FlickerVoid.Editor.Assets.Tests;
 
 /// <summary>Builds the asset browser over a temporary content folder.</summary>
 internal sealed class AssetBrowserViewModelTestsBuilder : IDisposable

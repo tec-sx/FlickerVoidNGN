@@ -2,18 +2,48 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 
-using FlickerVoid.Engine.Editor.Materials;
+using FlickerVoid.Editor.Assets.Materials;
+using FlickerVoid.Editor.Materials;
 
-namespace FlickerVoid.Engine.Editor.Shell;
+namespace FlickerVoid.Editor;
 
 /// <summary>The editor's main window: a toolbar, the scene view, the asset browser, the inspector and a status bar; opens the material editor.</summary>
 public sealed partial class MainWindow : Window
 {
     private MaterialEditorWindow? _materials;
+    private bool _closingDecided;
 
     public MainWindow()
     {
         AvaloniaXamlLoader.Load(this);
+    }
+
+    /// <summary>Asks whether to save or discard unsaved assets before closing, and keeps the window open on cancel.</summary>
+    protected override async void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+        if (_closingDecided || DataContext is not MainWindowViewModel main || !main.HasUnsaved)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        UnsavedAssetsDialog dialog = new(main.UnsavedPaths);
+        UnsavedAssetsChoice? choice = await dialog.ShowDialog<UnsavedAssetsChoice?>(this);
+        switch (choice)
+        {
+            case UnsavedAssetsChoice.Save:
+                main.SaveAssets();
+                break;
+            case UnsavedAssetsChoice.Discard:
+                main.DiscardAssets();
+                break;
+            default:
+                return;
+        }
+
+        _closingDecided = true;
+        Close();
     }
 
     protected override void OnDataContextChanged(EventArgs e)

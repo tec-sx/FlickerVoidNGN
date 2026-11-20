@@ -1,5 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup>
-    <ProjectReference Include="../../Source/Hosting/FlickerVoid.Engine.Hosting.csproj" />
-  </ItemGroup>
-</Project>

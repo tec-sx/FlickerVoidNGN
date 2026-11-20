@@ -1,6 +1,4 @@
-using FlickerVoid.Engine.Editor.Assets;
-
-namespace FlickerVoid.Engine.Editor.Tests.Assets;
+namespace FlickerVoid.Editor.Assets.Tests;
 
 /// <summary>Builds the asset catalog over a temporary content folder.</summary>
 internal sealed class AssetCatalogTestsBuilder : IDisposable

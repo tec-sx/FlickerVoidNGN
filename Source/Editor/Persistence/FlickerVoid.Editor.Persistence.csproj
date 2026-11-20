@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Projects on disk: .fvproject files, building and creating them with dotnet, and launching the game. No Avalonia. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FlickerVoid.Editor.Persistence.Tests" />
+  </ItemGroup>
+</Project>

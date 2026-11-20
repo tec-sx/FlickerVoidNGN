@@ -1,0 +1,78 @@
+using System.Diagnostics;
+using System.Text;
+
+namespace FlickerVoid.Editor.Persistence.Projects;
+
+/// <summary>Runs <c>dotnet</c> commands with <c>FLICKERVOID_ENGINE</c> set to the engine folder, so builds find the engine.</summary>
+internal static class DotnetCli
+{
+    public const string EngineVariable = "FLICKERVOID_ENGINE";
+
+    public static readonly string TemplateFolder = Path.Combine("Templates", "Project");
+
+    private static readonly Lazy<string> _engine = new(ResolveEngine);
+
+    public static string Engine => _engine.Value;
+
+    public static string? FindEngine(string? variable, string start)
+    {
+        if (!string.IsNullOrEmpty(variable))
+        {
+            return variable;
+        }
+
+        for (DirectoryInfo? dir = new(start); dir != null; dir = dir.Parent)
+        {
+            string template = Path.Combine(dir.FullName, TemplateFolder);
+            if (Directory.Exists(template))
+            {
+                return dir.FullName;
+            }
+        }
+
+        return null;
+    }
+
+    public static string Run(params string[] arguments)
+    {
+        ProcessStartInfo start = new("dotnet")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (string argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+        start.Environment[EngineVariable] = Engine;
+
+        using Process process = Process.Start(start) ?? throw new ProjectBuildException("dotnet could not be started.");
+        StringBuilder output = new();
+        process.OutputDataReceived += (_, e) => output.AppendLine(e.Data);
+        process.ErrorDataReceived += (_, e) => output.AppendLine(e.Data);
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        process.WaitForExit();
+        string text = output.ToString();
+        if (process.ExitCode != 0)
+        {
+            string command = string.Join(' ', arguments);
+            throw new ProjectBuildException($"dotnet {command} failed:\n{text}");
+        }
+
+        return text;
+    }
+
+    private static string ResolveEngine()
+    {
+        string? variable = Environment.GetEnvironmentVariable(EngineVariable);
+        string? engine = FindEngine(variable, AppContext.BaseDirectory);
+        if (string.IsNullOrEmpty(engine))
+        {
+            throw new ProjectBuildException($"Set {EngineVariable} to the engine's folder: new projects build against it.");
+        }
+
+        return engine;
+    }
+}

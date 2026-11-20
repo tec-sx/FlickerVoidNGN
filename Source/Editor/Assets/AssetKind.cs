@@ -1,4 +1,4 @@
-namespace FlickerVoid.Engine.Editor.Assets;
+namespace FlickerVoid.Editor.Assets;
 
 /// <summary>What a content file is, as the asset browser shows and filters it.</summary>
 public enum AssetKind
