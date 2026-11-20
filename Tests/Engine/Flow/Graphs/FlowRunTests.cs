@@ -132,10 +132,34 @@ public sealed class FlowRunTests : IDisposable
     [Fact]
     public void ALinkToAMissingNodeThrows()
     {
-        FlowRun run = _builder.Build("""{ "nodes": [ { "$type": "start", "id": "start" } ], "links": [ { "from": "start", "to": "gone" } ] }""");
+        Action build = () => _builder.Build("""{ "nodes": [ { "$type": "start", "id": "start" } ], "links": [ { "from": "start", "to": "gone" } ] }""");
 
-        Action start = run.Start;
+        build.Should().Throw<InvalidDataException>().WithMessage("*gone*");
+    }
 
-        start.Should().Throw<InvalidDataException>().WithMessage("*gone*");
+    [Fact]
+    public void ALinkFromAMissingPinThrows()
+    {
+        Action build = () => _builder.Build("""
+            {
+              "nodes": [ { "$type": "branch", "id": "branch" }, { "$type": "finish", "id": "end" } ],
+              "links": [ { "from": "branch", "output": "Maybe", "to": "end" } ]
+            }
+            """);
+
+        build.Should().Throw<InvalidDataException>().WithMessage("*branch*output Maybe*");
+    }
+
+    [Fact]
+    public void NamesPinsAfterTheNodesEnums()
+    {
+        BranchNode branch = new();
+        StartNode start = new();
+        FinishNode finish = new();
+
+        branch.Inputs.Should().Equal("In");
+        branch.Outputs.Should().Equal("True", "False");
+        start.Inputs.Should().BeEmpty();
+        finish.Outputs.Should().BeEmpty();
     }
 }

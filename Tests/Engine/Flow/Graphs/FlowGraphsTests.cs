@@ -39,7 +39,7 @@ public sealed class FlowGraphsTests : IDisposable
         wait.X.Should().Be(200);
         FactCondition condition = wait.Conditions.Conditions.Single().Should().BeOfType<FactCondition>().Subject;
         condition.Fact.Should().Be(new Tag("Item.Key.Cellar"));
-        graph.Links[1].Output.Should().Be(FlowNode.DefaultOutput);
+        graph.Links[1].Output.Should().Be(nameof(FlowOutput.Out));
     }
 
     [Fact]

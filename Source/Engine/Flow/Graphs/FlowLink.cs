@@ -5,9 +5,9 @@ public sealed class FlowLink
 {
     public string From { get; set; } = "";
 
-    public string Output { get; set; } = FlowNode.DefaultOutput;
+    public string Output { get; set; } = nameof(FlowOutput.Out);
 
     public string To { get; set; } = "";
 
-    public string Input { get; set; } = FlowNode.DefaultInput;
+    public string Input { get; set; } = nameof(FlowInput.In);
 }
