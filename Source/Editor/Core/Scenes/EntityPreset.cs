@@ -28,11 +28,23 @@ public sealed record EntityPreset(string Name, IReadOnlyList<string> Components,
         new("Camera", ["transform", "camera"], "Camera"),
     ];
 
+    /// <summary>The starting JSON of this preset's components, over <see cref="Defaults"/>.</summary>
+    public IReadOnlyDictionary<string, string> Values { get; init; } = new Dictionary<string, string>();
+
     /// <summary>The starting JSON of components with required properties; the rest start as <c>{}</c>.</summary>
     private static readonly Dictionary<string, string> Defaults = new()
     {
         ["meshRenderer"] = """{ "mesh": "" }""",
     };
+
+    /// <summary>A mesh entity named after a model file in the content folder, which it draws.</summary>
+    public static EntityPreset ForModel(string path)
+    {
+        string name = Path.GetFileNameWithoutExtension(path);
+        JsonEncodedText mesh = JsonEncodedText.Encode(path);
+        Dictionary<string, string> values = new() { ["meshRenderer"] = $$"""{ "mesh": "{{mesh}}" }""" };
+        return new EntityPreset(name, ["transform", "meshRenderer"], "Model") { Values = values };
+    }
 
     /// <summary>The scene data of a new entity at <paramref name="position"/>, named apart from the entities in <paramref name="world"/>.</summary>
     public EntityData Create(World world, IEnumerable<Entity> entities, Vector3 position)
@@ -55,7 +67,7 @@ public sealed record EntityPreset(string Name, IReadOnlyList<string> Components,
         EntityData data = new() { Name = unique };
         foreach (string component in Components)
         {
-            string json = Defaults.GetValueOrDefault(component, "{}");
+            string? json = Values.GetValueOrDefault(component) ?? Defaults.GetValueOrDefault(component, "{}");
             if (component == "transform")
             {
                 json = string.Create(CultureInfo.InvariantCulture, $$"""{ "position": [{{position.X}}, {{position.Y}}, {{position.Z}}] }""");
