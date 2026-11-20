@@ -43,4 +43,24 @@ public sealed class DotnetCliTests : IDisposable
 
         found.Should().BeNull();
     }
+
+    [Theory]
+    [InlineData("MSBuildSDKsPath")]
+    [InlineData("MSBuildExtensionsPath")]
+    [InlineData("MSBUILD_EXE_PATH")]
+    public void StartsDotnetWithoutTheMSBuildPathsOfTheEditorsOwnEnvironment(string variable)
+    {
+        Environment.SetEnvironmentVariable(variable, @"C:\Program Files\dotnet\sdk.0.300\Sdks");
+        try
+        {
+            System.Diagnostics.ProcessStartInfo start = DotnetCli.CreateStartInfo(["build"]);
+
+            start.Environment.Should().NotContainKey(variable);
+            start.Environment[DotnetCli.EngineVariable].Should().Be(DotnetCli.Engine);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+    }
 }
