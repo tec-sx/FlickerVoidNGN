@@ -11,7 +11,7 @@ namespace FlickerVoid.Engine.Rendering;
 /// <summary>Adds rendering to a game.</summary>
 public static class RenderingGameExtensions
 {
-    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight" and "irradianceVolume" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, and the schemas of lighting mood and material files.</summary>
+    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume" and "sceneMood" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, and the schemas of lighting mood and material files.</summary>
     public static void AddRendering(this Game game)
     {
         game.Spawner.Register("camera", RenderingJsonContext.Default.Camera);
@@ -20,6 +20,7 @@ public static class RenderingGameExtensions
         game.Spawner.Register("pointLight", RenderingJsonContext.Default.PointLight);
         game.Spawner.Register("spotLight", RenderingJsonContext.Default.SpotLight);
         game.Spawner.Register("irradianceVolume", RenderingJsonContext.Default.IrradianceVolume);
+        game.Spawner.Register("sceneMood", RenderingJsonContext.Default.SceneMood);
         game.Schemas.Add("mood", CreateMoodSchema);
         game.Schemas.Add("material", CreateMaterialSchema);
         MeshAnimationSystem animation = new(game.World);

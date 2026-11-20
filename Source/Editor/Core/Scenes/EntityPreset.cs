@@ -24,6 +24,7 @@ public sealed record EntityPreset(string Name, IReadOnlyList<string> Components)
         new("Spot Light", ["transform", "spotLight"]),
         new("Camera", ["transform", "camera"]),
         new("Irradiance Volume", ["transform", "irradianceVolume"]),
+        new("Scene Mood", ["transform", "sceneMood"]),
     ];
 
     /// <summary>The starting JSON of components with required properties; the rest start as <c>{}</c>.</summary>

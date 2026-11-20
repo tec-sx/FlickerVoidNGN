@@ -27,8 +27,8 @@ namespace FlickerVoid.Editor;
 
 /// <summary>
 /// The editor's main window: its title, the scene view, the asset browser, the inspector, the view settings and Play. The
-/// viewport draws with the default lighting mood until a mood file is opened; the View tab then edits that file, holding the
-/// edits unsaved with the materials'.
+/// viewport draws with the mood file the scene names (<see cref="SceneMood"/>) or the one opened last, else the default
+/// mood; the View tab edits that file, holding the edits unsaved with the materials'.
 /// </summary>
 public sealed partial class MainWindowViewModel : ObservableObject
 {
@@ -37,6 +37,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly ScenePlayer? _player;
     private readonly UnsavedContent _content;
     private MoodDocument? _mood;
+    private string? _sceneMood;
 
     /// <summary>
     /// Shows the scene over <paramref name="content"/>, the scene's content with its unsaved edits; <paramref name="player"/>
@@ -57,6 +58,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Assets.Opened += OpenAsset;
         viewport.Scene.Opened += HandleSceneOpened;
         viewport.Scene.UnsavedChanged += HandleUnsavedChanged;
+        viewport.Scene.Edited += HandleSceneEdited;
+        ShowSceneMood();
     }
 
     /// <summary>Raised to show a material in the material editor, by its path in the content folder.</summary>
@@ -326,6 +329,39 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void HandleSceneOpened()
     {
         OnPropertyChanged(nameof(Title));
+        ShowSceneMood();
+    }
+
+    /// <summary>Draws with the mood the open scene names, or the default mood when it names none.</summary>
+    private void ShowSceneMood()
+    {
+        _sceneMood = SceneMood.Find(Viewport.Scene.Game.World);
+        if (_sceneMood is not null)
+        {
+            OpenMood(_sceneMood);
+            return;
+        }
+
+        _mood = null;
+        Viewport.Mood = new LightingMood();
+        ViewSettings = new ViewSettingsViewModel(Viewport.Mood);
+        OnPropertyChanged(nameof(MoodHeading));
+    }
+
+    /// <summary>Draws with the mood the scene is given in the inspector, once the name changes.</summary>
+    private void HandleSceneEdited()
+    {
+        string? named = SceneMood.Find(Viewport.Scene.Game.World);
+        if (named == _sceneMood)
+        {
+            return;
+        }
+
+        _sceneMood = named;
+        if (named is not null)
+        {
+            OpenMood(named);
+        }
     }
 
     /// <summary>The kinds of entity the Add menu offers.</summary>
