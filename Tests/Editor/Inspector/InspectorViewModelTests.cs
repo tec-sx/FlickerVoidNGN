@@ -31,6 +31,21 @@ public sealed class InspectorViewModelTests : IDisposable
     }
 
     [Fact]
+    public void AddsAndRemovesComponents()
+    {
+        Entity lamp = _builder.Select("Lamp", new Transform(), new PointLight());
+        Runtime.Scenes.SceneComponent spot = _builder.ViewModel.AddableComponents.Single(component => component.Name == "spotLight");
+
+        _builder.ViewModel.AddComponentCommand.Execute(spot);
+        _builder.ViewModel.RemoveComponentCommand.Execute(_builder.Component("Point Light"));
+
+        _builder.World.Has<SpotLight>(lamp).Should().BeTrue();
+        _builder.World.Has<PointLight>(lamp).Should().BeFalse();
+        _builder.ViewModel.AddableComponents.Should().NotContain(spot);
+        _builder.Component("Transform").CanRemove.Should().BeFalse();
+    }
+
+    [Fact]
     public void ShowsNothingWhenNothingIsSelected()
     {
         _builder.Select("Lamp", new Transform(), new PointLight());
