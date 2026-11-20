@@ -1,9 +1,11 @@
+using System.Globalization;
 using System.Text.Json;
 
 using Arch.Core;
 
 using FlickerVoid.Editor.Core.Selection;
 using FlickerVoid.Engine.Rendering;
+using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
@@ -89,6 +91,32 @@ public sealed class EditorScene : IDisposable
         EntitiesChanged?.Invoke();
         MarkEdited();
         return entity;
+    }
+
+    /// <summary>
+    /// Adds a copy of the entity with every component it has, named after it with the next free number ("Lamp" and "Lamp 2"
+    /// become "Lamp 3"), because changes to the scene file match entities by name.
+    /// </summary>
+    public Entity DuplicateEntity(Entity entity)
+    {
+        World world = Game.World;
+        string name = "Entity";
+        if (world.TryGet(entity, out EntityName entityName))
+        {
+            name = entityName.Value;
+        }
+
+        EntityData data = new() { Name = GetFreeName(name) };
+        foreach (SceneComponent component in Game.Spawner.Components)
+        {
+            if (component.Has(world, entity))
+            {
+                JsonElement json = component.Write(world, entity);
+                data.Components.Add(component.Name, json);
+            }
+        }
+
+        return AddEntity(data);
     }
 
     /// <summary>Destroys an entity; the next save leaves it out of the scene file.</summary>
@@ -248,5 +276,36 @@ public sealed class EditorScene : IDisposable
 
         IsUnsaved = unsaved;
         UnsavedChanged?.Invoke();
+    }
+
+    /// <summary>The name without a trailing number, numbered from 2 up until no entity of the scene has it.</summary>
+    private string GetFreeName(string name)
+    {
+        World world = Game.World;
+        HashSet<string> taken = [];
+        foreach (Entity entity in Entities)
+        {
+            if (world.TryGet(entity, out EntityName entityName))
+            {
+                taken.Add(entityName.Value);
+            }
+        }
+
+        string baseName = name;
+        int space = name.LastIndexOf(' ');
+        if (space > 0 && int.TryParse(name.AsSpan(space + 1), NumberStyles.None, CultureInfo.InvariantCulture, out _))
+        {
+            baseName = name[..space];
+        }
+
+        int number = 2;
+        string free = $"{baseName} {number}";
+        while (taken.Contains(free))
+        {
+            number++;
+            free = $"{baseName} {number}";
+        }
+
+        return free;
     }
 }

@@ -47,6 +47,20 @@ public sealed class ViewportViewModelTests : IDisposable
     }
 
     [Fact]
+    public void DuplicatesTheSelectionAndSelectsTheCopy()
+    {
+        Entity lamp = _builder.OpenLampScene();
+        _builder.ViewModel.Selection.Select(lamp);
+
+        _builder.ViewModel.DuplicateSelected();
+
+        Entity copy = _builder.ViewModel.Selection.Selected!.Value;
+        copy.Should().NotBe(lamp);
+        _builder.World.Get<EntityName>(copy).Value.Should().Be("Lamp 2");
+        _builder.ViewModel.Scene.Entities.Should().HaveCount(2);
+    }
+
+    [Fact]
     public void SelectsWhatIsClicked()
     {
         Entity light = _builder.AddPointLight(new Vector3(1, 0.5f, 0));
