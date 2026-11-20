@@ -5,7 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace FlickerVoid.Engine.Editor.Inspector;
 
 /// <summary>A <see cref="Vector3"/> property, such as a position or a size, edited as X, Y and Z.</summary>
-public sealed partial class VectorFieldViewModel(ComponentProperty property) : FieldViewModel(property)
+public sealed partial class VectorFieldViewModel(IEditableValue property) : FieldViewModel(property)
 {
     [ObservableProperty]
     public partial double X { get; set; }

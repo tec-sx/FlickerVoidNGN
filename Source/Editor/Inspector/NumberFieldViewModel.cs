@@ -5,10 +5,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace FlickerVoid.Engine.Editor.Inspector;
 
-/// <summary>A float or integer property, kept within the <see cref="RangeAttribute"/> the component gives it.</summary>
-public sealed partial class NumberFieldViewModel : FieldViewModel
+/// <summary>A float or integer value, kept within the <see cref="RangeAttribute"/> that refines it, if any.</summary>
+public partial class NumberFieldViewModel : FieldViewModel
 {
-    public NumberFieldViewModel(ComponentProperty property)
+    public NumberFieldViewModel(IEditableValue property)
         : base(property)
     {
         RangeAttribute? range = property.GetAttribute<RangeAttribute>();

@@ -9,7 +9,7 @@ using FlickerVoid.Engine.Runtime.Scenes;
 namespace FlickerVoid.Engine.Editor.Inspector;
 
 /// <summary>One property of a component on an entity, read and written through the component's source-generated metadata.</summary>
-public sealed class ComponentProperty
+public sealed class ComponentProperty : IEditableValue
 {
     private readonly World _world;
     private readonly Entity _entity;

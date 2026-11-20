@@ -143,7 +143,7 @@ public sealed class InspectorViewModelTests : IDisposable
     {
         _builder.Select("Spot", new Transform(), new SpotLight());
 
-        NumberFieldViewModel outer = _builder.Field<NumberFieldViewModel>("Spot Light", "Outer Cone Angle");
+        RangedNumberFieldViewModel outer = _builder.Field<RangedNumberFieldViewModel>("Spot Light", "Outer Cone Angle");
 
         outer.Minimum.Should().Be(0);
         outer.Maximum.Should().Be(90);

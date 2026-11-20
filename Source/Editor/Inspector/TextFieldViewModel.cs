@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace FlickerVoid.Engine.Editor.Inspector;
 
 /// <summary>A string property, such as a file in the content folder; clearing an optional one sets it to null.</summary>
-public sealed partial class TextFieldViewModel(ComponentProperty property) : FieldViewModel(property)
+public sealed partial class TextFieldViewModel(IEditableValue property) : FieldViewModel(property)
 {
     [ObservableProperty]
     public partial string Value { get; set; } = "";

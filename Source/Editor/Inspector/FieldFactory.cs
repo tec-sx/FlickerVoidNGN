@@ -1,20 +1,21 @@
+using System.ComponentModel.DataAnnotations;
 using System.Numerics;
 
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Editor.Inspector;
 
-/// <summary>Picks the field for a property from its type and the attributes the component gives it.</summary>
+/// <summary>Picks the field for a value from its type and the attributes that refine it.</summary>
 public static class FieldFactory
 {
-    public static FieldViewModel Create(ComponentProperty property)
+    public static FieldViewModel Create(IEditableValue property)
     {
         FieldViewModel field = CreateEmpty(property);
         field.Refresh();
         return field;
     }
 
-    private static FieldViewModel CreateEmpty(ComponentProperty property)
+    private static FieldViewModel CreateEmpty(IEditableValue property)
     {
         Type type = property.Type;
         if (type == typeof(Vector3))
@@ -45,6 +46,12 @@ public static class FieldFactory
 
         if (type == typeof(float) || type == typeof(double) || type == typeof(int))
         {
+            RangeAttribute? range = property.GetAttribute<RangeAttribute>();
+            if (range is not null)
+            {
+                return new RangedNumberFieldViewModel(property);
+            }
+
             return new NumberFieldViewModel(property);
         }
 

@@ -1,7 +1,54 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="FlickerVoid.Engine.Editor.Shell.App"
+             xmlns:inspector="using:FlickerVoid.Engine.Editor.Inspector"
              RequestedThemeVariant="Dark">
+  <!-- One template per kind of field, picked by the field's type, for the inspector and the material editor alike:
+       components and materials need no editor code of their own. -->
+  <Application.DataTemplates>
+    <!-- Ranged numbers first: a template matches subclasses too, and the first match wins. A slider only where there are
+         limits, as an unbound slider would clamp the value to its own default range. -->
+    <DataTemplate DataType="inspector:RangedNumberFieldViewModel">
+      <Grid ColumnDefinitions="*,72" ColumnSpacing="6">
+        <Slider Minimum="{Binding SliderMinimum}" Maximum="{Binding SliderMaximum}" Value="{Binding Value}"
+                IsEnabled="{Binding !IsReadOnly}" VerticalAlignment="Center" />
+        <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}" VerticalAlignment="Center" />
+      </Grid>
+    </DataTemplate>
+    <DataTemplate DataType="inspector:NumberFieldViewModel">
+      <TextBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:BoolFieldViewModel">
+      <CheckBox IsChecked="{Binding Value}" IsEnabled="{Binding !IsReadOnly}" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:TextFieldViewModel">
+      <TextBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:EnumFieldViewModel">
+      <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Value}" IsEnabled="{Binding !IsReadOnly}"
+                HorizontalAlignment="Stretch" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:VectorFieldViewModel">
+      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+        <TextBox Grid.Column="0" Text="{Binding X, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="X" />
+        <TextBox Grid.Column="1" Text="{Binding Y, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Y" />
+        <TextBox Grid.Column="2" Text="{Binding Z, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Z" />
+      </Grid>
+    </DataTemplate>
+    <DataTemplate DataType="inspector:RotationFieldViewModel">
+      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+        <TextBox Grid.Column="0" Text="{Binding X, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Pitch about X, in degrees" />
+        <TextBox Grid.Column="1" Text="{Binding Y, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Yaw about Y, in degrees" />
+        <TextBox Grid.Column="2" Text="{Binding Z, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Roll about Z, in degrees" />
+      </Grid>
+    </DataTemplate>
+    <DataTemplate DataType="inspector:ColorFieldViewModel">
+      <ColorPicker Color="{Binding Color}" IsAlphaEnabled="False" HorizontalAlignment="Left" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:ReadOnlyFieldViewModel">
+      <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Opacity="0.7" VerticalAlignment="Center" />
+    </DataTemplate>
+  </Application.DataTemplates>
   <Application.Styles>
     <FluentTheme />
     <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />

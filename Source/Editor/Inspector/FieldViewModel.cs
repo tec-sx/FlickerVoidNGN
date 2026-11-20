@@ -2,8 +2,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace FlickerVoid.Engine.Editor.Inspector;
 
-/// <summary>Edits one property of a component; the inspector's view picks the control by the field's type.</summary>
-public abstract class FieldViewModel(ComponentProperty property) : ObservableObject
+/// <summary>Edits one value, such as a property of a component; the inspector's view picks the control by the field's type.</summary>
+public abstract class FieldViewModel(IEditableValue property) : ObservableObject
 {
     private bool _refreshing;
 
@@ -11,7 +11,7 @@ public abstract class FieldViewModel(ComponentProperty property) : ObservableObj
 
     public bool IsReadOnly => !Property.CanWrite;
 
-    protected ComponentProperty Property { get; } = property;
+    protected IEditableValue Property { get; } = property;
 
     /// <summary>Shows the property's value in the world, without writing it back.</summary>
     public void Refresh()

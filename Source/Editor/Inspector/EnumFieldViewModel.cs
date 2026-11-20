@@ -5,7 +5,7 @@ namespace FlickerVoid.Engine.Editor.Inspector;
 /// <summary>An enum property, chosen from its values.</summary>
 public sealed partial class EnumFieldViewModel : FieldViewModel
 {
-    public EnumFieldViewModel(ComponentProperty property)
+    public EnumFieldViewModel(IEditableValue property)
         : base(property)
     {
         Array values = Enum.GetValuesAsUnderlyingType(property.Type);
