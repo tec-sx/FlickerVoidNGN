@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 
@@ -196,6 +197,12 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     public void CreateMood()
     {
         CreateFile("New Mood", ".fvmood", "mood", null);
+    }
+
+    [RelayCommand]
+    public void CreateFlow()
+    {
+        CreateFile("New Flow", FlowGraph.Extension, "flow", "\"nodes\": [ { \"$type\": \"start\", \"id\": \"start\" } ],\n  \"links\": []");
     }
 
     /// <summary>Creates a data asset of the type registered under <paramref name="type"/>, with its default values.</summary>

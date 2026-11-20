@@ -17,6 +17,7 @@ public sealed class AssetCatalog(string root, string prefix = "")
         (".fvmood", AssetKind.Mood),
         (".fvdata", AssetKind.Data),
         (".fvtable", AssetKind.Table),
+        (".fvflow", AssetKind.Flow),
         (".glb", AssetKind.Model),
         (".gltf", AssetKind.Model),
         (".fvmodel", AssetKind.Model),

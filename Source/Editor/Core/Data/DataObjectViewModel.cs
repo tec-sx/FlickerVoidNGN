@@ -9,10 +9,11 @@ namespace FlickerVoid.Editor.Core.Data;
 /// <summary>
 /// The form of one object in a data asset, generated from its source-generated metadata and edited in place: a field per value,
 /// a section per nested object and a list per collection of objects, such as fragments; <paramref name="edited"/> follows each edit.
+/// Properties named in <paramref name="hidden"/> (by their JSON names) get no field, such as what another editor sets.
 /// </summary>
 public sealed class DataObjectViewModel
 {
-    public DataObjectViewModel(string title, object target, JsonTypeInfo typeInfo, Action edited, FindContentFiles? files = null)
+    public DataObjectViewModel(string title, object target, JsonTypeInfo typeInfo, Action edited, FindContentFiles? files = null, IReadOnlyCollection<string>? hidden = null)
     {
         Title = title;
         Target = target;
@@ -21,7 +22,7 @@ public sealed class DataObjectViewModel
         List<DataListViewModel> lists = [];
         foreach (JsonPropertyInfo info in typeInfo.Properties)
         {
-            if (info.Get is null)
+            if (info.Get is null || hidden?.Contains(info.Name) == true)
             {
                 continue;
             }

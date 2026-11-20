@@ -68,6 +68,24 @@ public sealed class FlowGraphsTests : IDisposable
     }
 
     [Fact]
+    public void WritesAGraphThatReadsBackTheSame()
+    {
+        FlowGraphs graphs = _builder.WithFile("Quests/Cellar.fvflow", Cellar).Build();
+        FlowGraph graph = graphs.Load("Quests/Cellar.fvflow");
+
+        byte[] written = FlowGraphs.Write(graph, _builder.Game.Data);
+        _builder.WithFile("Quests/Copy.fvflow", System.Text.Encoding.UTF8.GetString(written));
+        FlowGraph copy = graphs.Load("Quests/Copy.fvflow");
+
+        copy.Schema.Should().Be("../.schemas/flow.schema.json");
+        copy.Nodes.Select(node => node.GetType()).Should().Equal(graph.Nodes.Select(node => node.GetType()));
+        copy.Nodes[1].Should().BeOfType<WaitForConditionsNode>().Which.Conditions.Conditions.Should().ContainSingle();
+        copy.Links.Should().HaveCount(2);
+        string text = System.Text.Encoding.UTF8.GetString(written);
+        text.Should().NotContain("inputs").And.NotContain("isEmpty", "only what the file sets is written");
+    }
+
+    [Fact]
     public void RefusesAnUnknownNodeType()
     {
         FlowGraphs graphs = _builder.WithFile("Quests/Bad.fvflow", """{ "nodes": [ { "$type": "teleport", "id": "a" } ] }""").Build();

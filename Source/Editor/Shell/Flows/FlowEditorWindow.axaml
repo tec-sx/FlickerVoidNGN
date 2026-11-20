@@ -1,0 +1,89 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:flows="using:FlickerVoid.Editor.Core.Flows"
+        xmlns:shellflows="using:FlickerVoid.Editor.Flows"
+        xmlns:data="using:FlickerVoid.Editor.Data"
+        x:Class="FlickerVoid.Editor.Flows.FlowEditorWindow"
+        x:DataType="flows:FlowGraphViewModel"
+        Title="{Binding Title, StringFormat='{}{0} - Flow'}"
+        Width="1280" Height="760">
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedCommand}" />
+  </Window.KeyBindings>
+  <Grid ColumnDefinitions="*,4,300">
+    <!-- The canvas: right-click to add nodes, drag a node to move it, drag from a pin to wire it, right-click a pin to unwire it. -->
+    <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#1A1918">
+      <Panel x:Name="Canvas" Width="4000" Height="3000" Background="Transparent">
+        <shellflows:FlowWires x:Name="Wires" Graph="{Binding}" IsHitTestVisible="False" />
+        <ItemsControl ItemsSource="{Binding Nodes}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <Canvas />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemContainerTheme>
+            <ControlTheme TargetType="ContentPresenter" x:DataType="flows:FlowNodeViewModel">
+              <Setter Property="Canvas.Left" Value="{Binding X}" />
+              <Setter Property="Canvas.Top" Value="{Binding Y}" />
+            </ControlTheme>
+          </ItemsControl.ItemContainerTheme>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="flows:FlowNodeViewModel">
+              <Border Width="180" Height="{Binding Height}" CornerRadius="4" Background="#2B2926"
+                      BorderThickness="1" Classes="node" Classes.selected="{Binding IsSelected}">
+                <Border.Styles>
+                  <Style Selector="Border.node">
+                    <Setter Property="BorderBrush" Value="#45413B" />
+                  </Style>
+                  <Style Selector="Border.node.selected">
+                    <Setter Property="BorderBrush" Value="#E0AC2C" />
+                  </Style>
+                </Border.Styles>
+                <StackPanel>
+                  <StackPanel Height="39" Margin="8,3,8,0">
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding Description}" />
+                  </StackPanel>
+                  <Grid ColumnDefinitions="*,*">
+                    <ItemsControl ItemsSource="{Binding Inputs}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="flows:FlowPinViewModel">
+                          <StackPanel Orientation="Horizontal" Height="22" Spacing="4" Margin="-6,0,0,0" Background="Transparent">
+                            <Ellipse Classes="pin" Width="11" Height="11" Fill="#C8C2B0" Cursor="Hand"
+                                     ToolTip.Tip="Drag to wire, right-click to unwire" />
+                            <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ItemsControl Grid.Column="1" ItemsSource="{Binding Outputs}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="flows:FlowPinViewModel">
+                          <StackPanel Orientation="Horizontal" Height="22" Spacing="4" Margin="0,0,-6,0"
+                                      HorizontalAlignment="Right" Background="Transparent">
+                            <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center" />
+                            <Ellipse Classes="pin" Width="11" Height="11" Fill="#E0AC2C" Cursor="Hand"
+                                     ToolTip.Tip="Drag to wire, right-click to unwire" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Grid>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Panel>
+    </ScrollViewer>
+    <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+    <!-- The selected node's values. -->
+    <ScrollViewer Grid.Column="2" Padding="8">
+      <StackPanel>
+        <TextBlock Text="{Binding Selected.Title, FallbackValue='Select a node'}" Classes="heading" Margin="0,0,0,6" />
+        <data:DataView DataContext="{Binding SelectedForm}" />
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Window>
