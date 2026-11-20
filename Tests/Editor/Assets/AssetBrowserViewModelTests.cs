@@ -26,6 +26,92 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     }
 
     [Fact]
+    public void ListsTheSubfoldersBeforeTheFilesOfTheSelectedFolder()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.fvscene").WithFile("Moods/Night.fvmood").Build();
+
+        browser.Items.Select(static item => item.Path).Should().Equal("Moods", "Scenes", "Room.glb");
+        browser.Items[0].Kind.Should().Be(AssetKind.Folder);
+    }
+
+    [Fact]
+    public void ListsNoFoldersWhileSearching()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.fvscene").Build();
+
+        browser.SearchText = "room";
+
+        browser.Items.Select(static item => item.Path).Should().Equal("Room.glb", "Scenes/Room.fvscene");
+    }
+
+    [Fact]
+    public void OpeningAFolderItemShowsItsContents()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Scenes/Room.fvscene").Build();
+        AssetEntry? opened = null;
+        browser.Opened += asset => opened = asset;
+
+        browser.OpenCommand.Execute(browser.Items[0]);
+
+        opened.Should().BeNull();
+        browser.SelectedFolder!.Path.Should().Be("Scenes");
+        browser.Items.Select(static item => item.Path).Should().Equal("Scenes/Room.fvscene");
+    }
+
+    [Fact]
+    public void GoesUpToTheParentFolder()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Scenes/Old/Room.fvscene").Build();
+        browser.SelectedFolder = browser.Folders[0].Children[0].Children[0];
+
+        browser.UpCommand.Execute(null);
+
+        browser.SelectedFolder!.Path.Should().Be("Scenes");
+    }
+
+    [Fact]
+    public void MovesAFileIntoAFolder()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Room.fvscene").WithFile("Scenes/Hall.fvscene").Build();
+        AssetEntry room = browser.Assets[0];
+
+        browser.MoveTo(room, "Scenes");
+
+        browser.Items.Select(static item => item.Path).Should().Equal("Scenes");
+        _builder.Exists("Scenes/Room.fvscene").Should().BeTrue();
+    }
+
+    [Fact]
+    public void MovesAFolderIntoAnotherButNeverIntoItself()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Moods/Night.fvmood").WithFile("Scenes/Hall.fvscene").Build();
+        AssetEntry moods = browser.Items[0];
+
+        browser.MoveTo(moods, "Moods");
+        browser.Status.Should().NotBeEmpty();
+        browser.MoveTo(moods, "Scenes");
+
+        _builder.Exists("Scenes/Moods/Night.fvmood").Should().BeTrue();
+        browser.Folders[0].Children.Should().ContainSingle().Which.Children.Should().ContainSingle().Which.Path.Should().Be("Scenes/Moods");
+    }
+
+    [Fact]
+    public void RenamesAndDeletesASelectedFolderItem()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Old/Room.fvscene").Build();
+        browser.SelectedAsset = browser.Items[0];
+
+        browser.RenameCommand.Execute("New");
+
+        browser.Items.Select(static item => item.Path).Should().Equal("New");
+        browser.Folders[0].Children.Should().ContainSingle().Which.Path.Should().Be("New");
+        browser.SelectedAsset = browser.Items[0];
+        browser.DeleteCommand.Execute(null);
+        browser.Items.Should().BeEmpty();
+        browser.Folders[0].Children.Should().BeEmpty();
+    }
+
+    [Fact]
     public void SearchesAndFiltersEverythingBelowTheSelectedFolder()
     {
         AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.fvscene").WithFile("Scenes/Hall.fvscene").Build();

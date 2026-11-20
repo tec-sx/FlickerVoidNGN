@@ -2,7 +2,7 @@ using Avalonia.Input;
 
 namespace FlickerVoid.Editor.Assets;
 
-/// <summary>Content files dragged out of the asset browser, within the editor: the browser starts the drag and the viewport takes models.</summary>
+/// <summary>Content files and folders dragged out of the asset browser, within the editor: the viewport takes models, and the browser's folders take anything to move it.</summary>
 public static class AssetDrag
 {
     private static readonly DataFormat<AssetEntry> Format = DataFormat.CreateInProcessFormat<AssetEntry>("FlickerVoid.Asset");
@@ -13,6 +13,12 @@ public static class AssetDrag
         DataTransferItem item = DataTransferItem.Create(Format, asset);
         transfer.Add(item);
         return DragDrop.DoDragDropAsync(pressed, transfer, DragDropEffects.Copy);
+    }
+
+    /// <summary>The file or folder being dragged, or null when the drag holds none.</summary>
+    public static AssetEntry? GetEntry(IDataTransfer transfer)
+    {
+        return transfer.TryGetValue(Format);
     }
 
     /// <summary>The content path of the model being dragged, or null when the drag holds no model.</summary>
