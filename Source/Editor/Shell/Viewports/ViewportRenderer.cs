@@ -31,6 +31,7 @@ internal sealed class ViewportRenderer : IDisposable
 
     private readonly VulkanGraphicsDevice _device;
     private readonly SceneRenderer _scene;
+    private readonly SkyPass _sky;
     private readonly GridPass _grid;
     private readonly OverlayPass _overlay;
     private readonly ICommandList _commands;
@@ -42,6 +43,8 @@ internal sealed class ViewportRenderer : IDisposable
         _device = new VulkanGraphicsDevice(options, loggerFactory);
         _scene = new SceneRenderer(_device, content, ViewFormat);
         ShaderLibrary shaders = ShaderLibrary.ForEngine("Editor");
+        _sky = new SkyPass(_device, shaders, ViewFormat);
+        _scene.Pipeline.Add(_sky);
         _grid = new GridPass(_device, shaders, ViewFormat);
         _scene.Pipeline.Add(_grid);
         string icons = Path.Combine(AppContext.BaseDirectory, "Content", "Engine", "EditorIcons");
@@ -62,6 +65,13 @@ internal sealed class ViewportRenderer : IDisposable
     {
         get => _scene.Mood;
         set => _scene.Mood = value;
+    }
+
+    /// <summary>Whether the sky gradient fills what the scene leaves empty; the game view shows the game's own background instead.</summary>
+    public bool ShowSky
+    {
+        get => _sky.Visible;
+        set => _sky.Visible = value;
     }
 
     public bool ShowGrid

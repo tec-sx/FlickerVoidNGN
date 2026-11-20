@@ -31,20 +31,41 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
   </Window.Resources>
   <DockPanel>
     <Border DockPanel.Dock="Top" Classes="toolbar">
-      <StackPanel Orientation="Horizontal">
-        <Button Content="Duplicate" Command="{Binding Viewport.DuplicateSelectedCommand}" ToolTip.Tip="Duplicate the selected entity (Ctrl+D)." />
-        <Button Content="Delete" Command="{Binding Viewport.DeleteSelectedCommand}" ToolTip.Tip="Delete the selected entity (Delete)." />
-        <Separator />
-        <Button Content="Save" Command="{Binding Viewport.SaveCommand}" ToolTip.Tip="Save the scene (Ctrl+S)." />
-        <Button Content="Save Assets" Command="{Binding SaveAssetsCommand}" ToolTip.Tip="Save the edited materials and moods (Ctrl+Shift+S)." />
-        <Button Content="Discard Assets" Command="{Binding DiscardAssetsCommand}" ToolTip.Tip="Forget the unsaved material and mood edits." />
-        <Button Content="Play" Command="{Binding PlayCommand}"
-                ToolTip.Tip="Play (F5): runs the project's game on the scene as it is now, without saving it. Needs an open project." />
-        <Button Content="Bake Probes" Command="{Binding Viewport.BakeProbesCommand}" ToolTip.Tip="Bake the irradiance volumes' probes with the View tab's lighting." />
-        <Button Content="Materials" Click="HandleMaterialsClick" ToolTip.Tip="Open the material editor." />
-        <ToggleButton Content="Game View" IsChecked="{Binding Viewport.IsGameView}"
-                      ToolTip.Tip="Game View (G): hides the grid, icons, selection and gizmo to show the world as the game will." />
-      </StackPanel>
+      <Grid ColumnDefinitions="*,Auto,*">
+        <StackPanel Orientation="Horizontal">
+          <Button Classes="icon save" Command="{Binding Viewport.SaveCommand}" ToolTip.Tip="Save the scene (Ctrl+S).">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Save}" />
+          </Button>
+          <Button Classes="icon save" Command="{Binding SaveAssetsCommand}" ToolTip.Tip="Save the edited materials and moods (Ctrl+Shift+S).">
+            <PathIcon Data="{x:Static shell:MaterialIcons.SaveAssets}" />
+          </Button>
+          <Button Classes="icon" Command="{Binding DiscardAssetsCommand}" ToolTip.Tip="Forget the unsaved material and mood edits.">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Discard}" />
+          </Button>
+          <Separator />
+          <Button Classes="icon" Command="{Binding Viewport.DuplicateSelectedCommand}" ToolTip.Tip="Duplicate the selected entity (Ctrl+D).">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Duplicate}" />
+          </Button>
+          <Button Classes="icon delete" Command="{Binding Viewport.DeleteSelectedCommand}" ToolTip.Tip="Delete the selected entity (Delete).">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Delete}" />
+          </Button>
+          <Separator />
+          <Button Classes="icon" Click="HandleMaterialsClick" ToolTip.Tip="Open the material editor.">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Materials}" />
+          </Button>
+          <Button Classes="icon bake" Command="{Binding Viewport.BakeProbesCommand}" ToolTip.Tip="Bake the irradiance volumes' probes with the View tab's lighting.">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Bake}" />
+          </Button>
+          <ToggleButton Classes="icon" IsChecked="{Binding Viewport.IsGameView}"
+                        ToolTip.Tip="Game View (G): hides the grid, sky, icons, selection and gizmo to show the world as the game will.">
+            <PathIcon Data="{x:Static shell:MaterialIcons.GameView}" />
+          </ToggleButton>
+        </StackPanel>
+        <Button Grid.Column="1" Classes="icon play" Command="{Binding PlayCommand}"
+                ToolTip.Tip="Play (F5): runs the project's game on the scene as it is now, without saving it. Needs an open project.">
+          <PathIcon Data="{x:Static shell:MaterialIcons.Play}" />
+        </Button>
+      </Grid>
     </Border>
     <Border DockPanel.Dock="Bottom" Classes="statusbar">
       <DockPanel>
@@ -53,8 +74,7 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
                    ToolTip.Tip="Shift+A over the viewport adds an entity at the camera's pivot. Alt+left drag orbits, Alt+middle drag pans, Alt+right drag or the wheel zooms; hold the right button to look round and fly with WASD, Q and E." />
       </DockPanel>
     </Border>
-    <Border DockPanel.Dock="Right" Width="300" BorderThickness="1,0,0,0"
-            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+    <Border DockPanel.Dock="Right" Width="300" BorderThickness="1,0,0,0" BorderBrush="{StaticResource EditorLineBrush}">
       <TabControl Padding="0">
         <TabItem Header="Scene">
           <scenes:SceneTreeView DataContext="{Binding SceneTree}" />
@@ -64,13 +84,13 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
         </TabItem>
         <TabItem Header="View">
           <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="{Binding MoodHeading}" FontWeight="SemiBold" Margin="6,4,6,2"
+            <TextBlock DockPanel.Dock="Top" Text="{Binding MoodHeading}" Classes="heading"
                        TextTrimming="CharacterEllipsis" ToolTip.Tip="The lighting mood the viewport draws with. Open a mood file in the content browser to edit it." />
             <ScrollViewer>
-              <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" Margin="6,2,6,6">
+              <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" Margin="4,2">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate DataType="inspectorCore:FieldViewModel">
-                    <Grid ColumnDefinitions="110,*" Margin="0,1">
+                    <Grid ColumnDefinitions="104,*" Margin="0,1">
                       <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                       <ContentControl Grid.Column="1" Content="{Binding}" />
                     </Grid>
@@ -82,7 +102,7 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
         </TabItem>
       </TabControl>
     </Border>
-    <Grid RowDefinitions="*,2,180">
+    <Grid RowDefinitions="*,2,160">
       <Panel>
         <viewports:ViewportControl DataContext="{Binding Viewport}">
           <FlyoutBase.AttachedFlyout>

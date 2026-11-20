@@ -2,11 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
              xmlns:scenes="using:FlickerVoid.Engine.Runtime.Scenes"
+             xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Inspector.InspectorView"
              x:DataType="inspector:InspectorViewModel">
   <DockPanel>
     <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" Classes="heading" />
-    <DropDownButton DockPanel.Dock="Bottom" Content="Add Component" HorizontalAlignment="Stretch" Margin="4"
+    <DropDownButton DockPanel.Dock="Bottom" Content="Add Component" HorizontalAlignment="Stretch" Margin="2"
                     IsEnabled="{Binding !!AddableComponents.Count}">
       <DropDownButton.Flyout>
         <MenuFlyout ItemsSource="{Binding AddableComponents}">
@@ -24,19 +25,28 @@
       <ItemsControl ItemsSource="{Binding Components}" Margin="2,0,2,4">
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="inspector:ComponentViewModel">
-            <Expander IsExpanded="True" HorizontalAlignment="Stretch" Margin="0,1">
+            <Border Classes="category">
+            <Expander Classes="ownChevron" IsExpanded="True" HorizontalAlignment="Stretch" Margin="0,1">
               <Expander.Header>
                 <DockPanel>
-                  <Button DockPanel.Dock="Right" Content="Remove" IsVisible="{Binding CanRemove}"
-                          Command="{Binding $parent[UserControl].((inspector:InspectorViewModel)DataContext).RemoveComponentCommand}"
-                          CommandParameter="{Binding}" />
-                  <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                  <Panel DockPanel.Dock="Right" Width="16">
+                    <Button Classes="icon small" IsVisible="{Binding CanRemove}" ToolTip.Tip="Remove the component"
+                            Command="{Binding $parent[UserControl].((inspector:InspectorViewModel)DataContext).RemoveComponentCommand}"
+                            CommandParameter="{Binding}">
+                      <PathIcon Data="{x:Static shell:MaterialIcons.Close}" />
+                    </Button>
+                  </Panel>
+                  <Panel DockPanel.Dock="Right" Width="16" Margin="0,0,2,0">
+                    <PathIcon Classes="small" Data="{x:Static shell:MaterialIcons.Collapse}" IsVisible="{Binding $parent[Expander].IsExpanded}" />
+                    <PathIcon Classes="small" Data="{x:Static shell:MaterialIcons.Expand}" IsVisible="{Binding !$parent[Expander].IsExpanded}" />
+                  </Panel>
+                  <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontWeight="SemiBold" />
                 </DockPanel>
               </Expander.Header>
               <ItemsControl ItemsSource="{Binding Fields}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate DataType="inspector:FieldViewModel">
-                    <Grid ColumnDefinitions="96,*" Margin="0,1">
+                    <Grid ColumnDefinitions="88,*" Margin="0,1">
                       <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                       <ContentControl Grid.Column="1" Content="{Binding}" />
                     </Grid>
@@ -44,6 +54,7 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </Expander>
+            </Border>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

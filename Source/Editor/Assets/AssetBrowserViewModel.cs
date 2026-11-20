@@ -26,6 +26,11 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         List<AssetFilter> filters = [new AssetFilter("All", null)];
         foreach (AssetKind kind in Enum.GetValues<AssetKind>())
         {
+            if (kind == AssetKind.Folder)
+            {
+                continue;
+            }
+
             filters.Add(new AssetFilter(kind.ToString(), kind));
         }
 
@@ -55,7 +60,11 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     [ObservableProperty]
     public partial IReadOnlyList<AssetEntry> Assets { get; set; } = [];
 
-    /// <summary>The file renaming and deleting work on; with none, renaming works on the selected folder.</summary>
+    /// <summary>What the browser shows: the selected folder's subfolders, then <see cref="Assets"/>; only the files while searching or filtering.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<AssetEntry> Items { get; set; } = [];
+
+    /// <summary>The file or folder item renaming, deleting and moving work on; with none, renaming works on the selected folder.</summary>
     [ObservableProperty]
     public partial AssetEntry? SelectedAsset { get; set; }
 
@@ -82,9 +91,55 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     [RelayCommand]
     public void Open(AssetEntry? asset)
     {
-        if (asset is not null)
+        if (asset is null)
         {
-            Opened?.Invoke(asset);
+            return;
+        }
+
+        if (asset.Kind == AssetKind.Folder)
+        {
+            SelectFolder(asset.Path);
+            return;
+        }
+
+        Opened?.Invoke(asset);
+    }
+
+    /// <summary>Shows the selected folder's parent; the roots stay where they are.</summary>
+    [RelayCommand]
+    public void Up()
+    {
+        if (SelectedFolder is not { } folder || Folders.Contains(folder))
+        {
+            return;
+        }
+
+        string parent = GetFolder(folder.Path);
+        SelectFolder(parent);
+    }
+
+    /// <summary>Moves a file or folder into a folder, keeping its name; a folder never goes into itself or below it.</summary>
+    public void MoveTo(AssetEntry item, string folder)
+    {
+        Status = "";
+        bool intoItself = folder == item.Path || folder.StartsWith(item.Path + "/", StringComparison.Ordinal);
+        if (item.Kind == AssetKind.Folder && intoItself)
+        {
+            Status = $"{item.Name} can't go into itself.";
+            return;
+        }
+
+        string name = item.Path[(item.Path.LastIndexOf('/') + 1)..];
+        string newPath = Combine(folder, name);
+        if (newPath == item.Path)
+        {
+            return;
+        }
+
+        if (Move(item.Path, newPath))
+        {
+            SelectedAsset = null;
+            Refresh();
         }
     }
 
@@ -132,8 +187,13 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
             string newPath = Combine(GetFolder(asset.Path), name + extension);
             if (Move(asset.Path, newPath))
             {
+                if (asset.Kind == AssetKind.Folder)
+                {
+                    Refresh();
+                }
+
                 FindAssets();
-                SelectedAsset = Assets.FirstOrDefault(entry => entry.Path == newPath);
+                SelectedAsset = Items.FirstOrDefault(entry => entry.Path == newPath);
             }
 
             return;
@@ -159,6 +219,11 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         {
             _content.Delete(asset.Path);
             SelectedAsset = null;
+            if (asset.Kind == AssetKind.Folder)
+            {
+                Refresh();
+            }
+
             FindAssets();
             return;
         }
@@ -191,6 +256,20 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         bool recursive = kind is not null || text.Length > 0;
         AssetCatalog catalog = FindCatalog(folder);
         Assets = catalog.Find(folder, recursive, kind, text);
+        if (recursive || SelectedFolder is null)
+        {
+            Items = Assets;
+            return;
+        }
+
+        List<AssetEntry> items = [];
+        foreach (AssetFolder child in SelectedFolder.Children)
+        {
+            items.Add(new AssetEntry(child.Path, child.Name, AssetKind.Folder));
+        }
+
+        items.AddRange(Assets);
+        Items = items;
     }
 
     private void CreateFile(string name, string extension, string schema, string? body)
