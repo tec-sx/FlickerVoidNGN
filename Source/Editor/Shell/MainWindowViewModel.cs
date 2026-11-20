@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Assets.Materials;
+using FlickerVoid.Editor.Assets.Moods;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Viewports;
@@ -17,16 +18,26 @@ using FlickerVoid.Editor.Projects;
 using FlickerVoid.Editor.Scenes;
 using FlickerVoid.Editor.Viewports;
 using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Runtime.Content;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
 
 namespace FlickerVoid.Editor;
 
-/// <summary>The editor's main window: its title, the scene view, the asset browser, the inspector, the view settings and Play.</summary>
+/// <summary>
+/// The editor's main window: its title, the scene view, the asset browser, the inspector, the view settings and Play. The
+/// viewport draws with the mood file the scene names (<see cref="SceneMood"/>) or the one opened last, else the default
+/// mood; the View tab edits that file, holding the edits unsaved with the materials'.
+/// </summary>
 public sealed partial class MainWindowViewModel : ObservableObject
 {
+    public const string DefaultMoodHeading = "Default mood (not saved)";
+
     private readonly ScenePlayer? _player;
     private readonly UnsavedContent _content;
+    private MoodDocument? _mood;
+    private string? _sceneMood;
 
     /// <summary>
     /// Shows the scene over <paramref name="content"/>, the scene's content with its unsaved edits; <paramref name="player"/>
@@ -38,6 +49,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _content = content;
         _content.UnsavedChanged += HandleUnsavedChanged;
         _content.ChangedOnDisk += HandleChangedOnDisk;
+        _content.Changed += HandleContentChanged;
         Viewport = viewport;
         Inspector = inspector;
         SceneTree = new SceneTreeViewModel(viewport.Scene);
@@ -46,6 +58,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Assets.Opened += OpenAsset;
         viewport.Scene.Opened += HandleSceneOpened;
         viewport.Scene.UnsavedChanged += HandleUnsavedChanged;
+        viewport.Scene.Edited += HandleSceneEdited;
+        ShowSceneMood();
     }
 
     /// <summary>Raised to show a material in the material editor, by its path in the content folder.</summary>
@@ -58,7 +72,27 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public Func<IReadOnlyList<string>, Task<UnsavedAssetsChoice?>>? AskUnsaved { get; set; }
 
     /// <summary>The viewport's lighting and post-processing, tweaked beside the inspector.</summary>
-    public ViewSettingsViewModel ViewSettings { get; }
+    [ObservableProperty]
+    public partial ViewSettingsViewModel ViewSettings { get; private set; }
+
+    /// <summary>The path of the mood file the viewport draws with, marked with an asterisk when it has unsaved edits.</summary>
+    public string MoodHeading
+    {
+        get
+        {
+            if (_mood is null)
+            {
+                return DefaultMoodHeading;
+            }
+
+            if (_content.IsUnsaved(_mood.Path))
+            {
+                return $"{_mood.Path} *";
+            }
+
+            return _mood.Path;
+        }
+    }
 
     public ViewportViewModel Viewport { get; }
 
@@ -100,7 +134,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         try
         {
-            if (_player!.Play())
+            if (_player!.Play(Viewport.Mood))
             {
                 Viewport.Status = $"Playing {Viewport.Scene.ScenePath} in the game.";
                 return;
@@ -196,6 +230,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(HasUnsaved));
         OnPropertyChanged(nameof(HasUnsavedChanges));
         OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(MoodHeading));
         SaveAssetsCommand.NotifyCanExecuteChanged();
         DiscardAssetsCommand.NotifyCanExecuteChanged();
     }
@@ -217,6 +252,45 @@ public sealed partial class MainWindowViewModel : ObservableObject
             case AssetKind.Material:
                 MaterialRequested?.Invoke(asset.Path);
                 break;
+            case AssetKind.Mood:
+                OpenMood(asset.Path);
+                break;
+        }
+    }
+
+    /// <summary>Draws the viewport with the mood file and edits it in the View tab; a file that can't be read leaves the view as it is.</summary>
+    private void OpenMood(string path)
+    {
+        try
+        {
+            _mood = new MoodDocument(_content, path);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            Viewport.Status = $"Can't open {path}: {exception.Message}";
+            return;
+        }
+
+        ViewSettingsViewModel settings = new(_mood.Mood);
+        settings.Edited += _mood.Hold;
+        Viewport.Mood = _mood.Mood;
+        ViewSettings = settings;
+        OnPropertyChanged(nameof(MoodHeading));
+        Viewport.Status = $"Lighting the viewport with {path}.";
+    }
+
+    /// <summary>Shows the open mood again when its file changed other than by an edit here: discarded or changed on disk.</summary>
+    private void HandleContentChanged(string fullPath)
+    {
+        if (_mood is null || _content.IsUnsaved(_mood.Path))
+        {
+            return;
+        }
+
+        string open = _content.GetFullPath(_mood.Path);
+        if (ContentManager.PathComparer.Equals(open, fullPath))
+        {
+            OpenMood(_mood.Path);
         }
     }
 
@@ -255,6 +329,39 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void HandleSceneOpened()
     {
         OnPropertyChanged(nameof(Title));
+        ShowSceneMood();
+    }
+
+    /// <summary>Draws with the mood the open scene names, or the default mood when it names none.</summary>
+    private void ShowSceneMood()
+    {
+        _sceneMood = SceneMood.Find(Viewport.Scene.Game.World);
+        if (_sceneMood is not null)
+        {
+            OpenMood(_sceneMood);
+            return;
+        }
+
+        _mood = null;
+        Viewport.Mood = new LightingMood();
+        ViewSettings = new ViewSettingsViewModel(Viewport.Mood);
+        OnPropertyChanged(nameof(MoodHeading));
+    }
+
+    /// <summary>Draws with the mood the scene is given in the inspector, once the name changes.</summary>
+    private void HandleSceneEdited()
+    {
+        string? named = SceneMood.Find(Viewport.Scene.Game.World);
+        if (named == _sceneMood)
+        {
+            return;
+        }
+
+        _sceneMood = named;
+        if (named is not null)
+        {
+            OpenMood(named);
+        }
     }
 
     /// <summary>The kinds of entity the viewport's Add menu (Shift+A) offers, by group.</summary>

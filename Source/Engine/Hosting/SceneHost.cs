@@ -59,7 +59,7 @@ public sealed partial class SceneHost : IDisposable
 
     public SceneLoader Scenes { get; }
 
-    /// <summary>The mood the renderer starts with: the options' mood file, or the default.</summary>
+    /// <summary>The mood the renderer starts with: the options' mood file, else the one the scene names (<see cref="SceneMood"/>), else the default.</summary>
     public LightingMood Mood { get; set; } = new();
 
     /// <summary>The render system, once <see cref="Start"/> has created it.</summary>
@@ -79,6 +79,11 @@ public sealed partial class SceneHost : IDisposable
         if (_options.Scene is { } scene)
         {
             Scenes.Load(scene);
+        }
+
+        if (_options.Mood is null && SceneMood.Find(Game.World) is { } sceneMood)
+        {
+            Mood = Content.Load(sceneMood, RenderingJsonContext.Default.LightingMood);
         }
 
         int cameras = Game.World.CountEntities(in Cameras);

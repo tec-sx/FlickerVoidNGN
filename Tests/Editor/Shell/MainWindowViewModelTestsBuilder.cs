@@ -7,6 +7,7 @@ using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Viewports;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Scenes;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -14,13 +15,15 @@ namespace FlickerVoid.Editor.Tests;
 
 /// <summary>
 /// Builds the main window's view model over a temporary content folder holding Room.fvscene and Hall.fvscene, each with a Lamp,
-/// and Paper.fvmat; the user's answer to the unsaved files prompt is <see cref="Answer"/>.
+/// Paper.fvmat, Night.fvmood, whose exposure is 0.5, and Lit.fvscene, which names Night.fvmood as its mood; the user's answer to the unsaved files prompt is <see cref="Answer"/>.
 /// </summary>
 internal sealed class MainWindowViewModelTestsBuilder : IDisposable
 {
     public const string Room = "Room.fvscene";
     public const string Hall = "Hall.fvscene";
     public const string Paper = "Paper.fvmat";
+    public const string Night = "Night.fvmood";
+    public const string Lit = "Lit.fvscene";
 
     private const string LampScene = """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""";
 
@@ -36,6 +39,8 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         WriteFile(Room, LampScene);
         WriteFile(Hall, LampScene);
         WriteFile(Paper, "{}");
+        WriteFile(Night, """{ "exposure": 0.5 }""");
+        WriteFile(Lit, """{ "entities": [ { "name": "Lighting", "components": { "transform": {}, "sceneMood": { "mood": "Night.fvmood" } } } ] }""");
         _content = new UnsavedContent(new ContentManager(_contentFolder));
         _scene = new EditorScene(NullLoggerFactory.Instance, _content);
         _scene.Open(Room);
@@ -64,16 +69,37 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         _scene.SetComponent(lamp, moved);
     }
 
+    /// <summary>Gives the open scene's lamp a scene mood naming the mood file, as the inspector does.</summary>
+    public void NameSceneMood(string mood)
+    {
+        Entity lamp = _scene.Entities[0];
+        SceneComponent component = _scene.Game.Spawner.Components.Single(candidate => candidate.Name == "sceneMood");
+        _scene.SetComponent(lamp, component, new Engine.Rendering.Lighting.SceneMood { Mood = mood });
+    }
+
     public void EditMaterial()
     {
         byte[] contents = Encoding.UTF8.GetBytes("""{ "edited": true }""");
         _content.Edit(Paper, contents);
     }
 
-    public void OpenInBrowser(string path)
+    public void OpenInBrowser(string path, AssetKind kind = AssetKind.Scene)
     {
-        AssetEntry entry = new(path, Path.GetFileNameWithoutExtension(path), AssetKind.Scene);
+        AssetEntry entry = new(path, Path.GetFileNameWithoutExtension(path), kind);
         ViewModel.Assets.Open(entry);
+    }
+
+    /// <summary>The View tab's exposure field, of the mood it shows now.</summary>
+    public NumberFieldViewModel Exposure()
+    {
+        return ViewModel.ViewSettings.Fields.OfType<NumberFieldViewModel>().Single(field => field.Label == "Exposure");
+    }
+
+    /// <summary>Changes the file as another program would, then reports it as the content watcher does.</summary>
+    public void ChangeOnDisk(string path, string text)
+    {
+        WriteFile(path, text);
+        _content.NotifyChanged(path);
     }
 
     public string ReadFile(string path)
@@ -94,7 +120,7 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         return Task.FromResult(Answer);
     }
 
-    private void WriteFile(string path, string contents)
+    public void WriteFile(string path, string contents)
     {
         string fullPath = Path.Combine(_contentFolder, path);
         File.WriteAllText(fullPath, contents);

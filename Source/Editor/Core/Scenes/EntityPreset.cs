@@ -24,6 +24,7 @@ public sealed record EntityPreset(string Name, IReadOnlyList<string> Components,
         new("Point Light", ["transform", "pointLight"], "Light"),
         new("Spot Light", ["transform", "spotLight"], "Light"),
         new("Irradiance Volume", ["transform", "irradianceVolume"], "Light"),
+        new("Scene Mood", ["transform", "sceneMood"], "Light"),
         new("Camera", ["transform", "camera"], "Camera"),
     ];
 

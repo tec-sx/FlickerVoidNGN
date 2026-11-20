@@ -42,6 +42,20 @@ public sealed class ViewSettingsViewModelTests
     }
 
     [Fact]
+    public void RaisesEditedAfterEachChangeToTheMood()
+    {
+        ViewSettingsViewModel settings = _builder.Build();
+        List<float> exposures = [];
+        settings.Edited += () => exposures.Add(_builder.Mood.Exposure);
+
+        NumberFieldViewModel exposure = settings.Fields.OfType<NumberFieldViewModel>().Single(field => field.Label == "Exposure");
+        exposure.Value = 2;
+        exposure.Value = 3;
+
+        exposures.Should().Equal(2, 3);
+    }
+
+    [Fact]
     public void PicksColoursAndLimitsFromTheMoodsAttributes()
     {
         ViewSettingsViewModel settings = _builder.Build();

@@ -1,3 +1,6 @@
+using FlickerVoid.Editor.Assets;
+using FlickerVoid.Engine.Rendering.Lighting;
+
 namespace FlickerVoid.Editor.Tests;
 
 public sealed class MainWindowViewModelTests : IDisposable
@@ -89,5 +92,101 @@ public sealed class MainWindowViewModelTests : IDisposable
 
         _builder.Scene.ScenePath.Should().Be(MainWindowViewModelTestsBuilder.Room);
         _builder.Scene.IsUnsaved.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShowsTheDefaultMoodUntilAMoodFileIsOpened()
+    {
+        _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModel.DefaultMoodHeading);
+    }
+
+    [Fact]
+    public void OpeningAMoodShowsItInTheViewportAndTheViewTab()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetKind.Mood);
+
+        _builder.ViewModel.Viewport.Mood.Exposure.Should().Be(0.5f);
+        _builder.Exposure().Value.Should().Be(0.5);
+        _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModelTestsBuilder.Night);
+    }
+
+    [Fact]
+    public void HoldsTheViewTabsEditsOfAMoodUntilTheyAreSaved()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetKind.Mood);
+
+        _builder.Exposure().Value = 2;
+
+        _builder.ViewModel.Viewport.Mood.Exposure.Should().Be(2);
+        _builder.ViewModel.UnsavedPaths.Should().Equal(MainWindowViewModelTestsBuilder.Night);
+        _builder.ViewModel.MoodHeading.Should().Be("Night.fvmood *");
+        _builder.ViewModel.SaveAssets();
+        _builder.ReadFile(MainWindowViewModelTestsBuilder.Night).Should().Contain("\"exposure\": 2");
+        _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModelTestsBuilder.Night);
+    }
+
+    [Fact]
+    public void ShowsTheSavedMoodAgainWhenItsEditsAreDiscarded()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetKind.Mood);
+        _builder.Exposure().Value = 2;
+
+        _builder.ViewModel.DiscardAssets();
+
+        _builder.ViewModel.Viewport.Mood.Exposure.Should().Be(0.5f);
+        _builder.Exposure().Value.Should().Be(0.5);
+    }
+
+    [Fact]
+    public void ShowsTheOpenMoodAgainWhenItChangesOnDisk()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetKind.Mood);
+
+        _builder.ChangeOnDisk(MainWindowViewModelTestsBuilder.Night, """{ "exposure": 4 }""");
+
+        _builder.ViewModel.Viewport.Mood.Exposure.Should().Be(4);
+        _builder.Exposure().Value.Should().Be(4);
+    }
+
+    [Fact]
+    public void KeepsTheViewportsMoodWhenAMoodFileCannotBeRead()
+    {
+        _builder.WriteFile("Broken.fvmood", "{ not json");
+        LightingMood shown = _builder.ViewModel.Viewport.Mood;
+
+        _builder.OpenInBrowser("Broken.fvmood", AssetKind.Mood);
+
+        _builder.ViewModel.Viewport.Mood.Should().BeSameAs(shown);
+        _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModel.DefaultMoodHeading);
+        _builder.ViewModel.Viewport.Status.Should().StartWith("Can't open Broken.fvmood");
+    }
+
+    [Fact]
+    public void LightsTheViewportWithTheMoodAnOpenedSceneNames()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lit);
+
+        _builder.ViewModel.Viewport.Mood.Exposure.Should().Be(0.5f);
+        _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModelTestsBuilder.Night);
+    }
+
+    [Fact]
+    public void ShowsTheMoodTheSceneIsGiven()
+    {
+        _builder.NameSceneMood(MainWindowViewModelTestsBuilder.Night);
+
+        _builder.ViewModel.Viewport.Mood.Exposure.Should().Be(0.5f);
+        _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModelTestsBuilder.Night);
+    }
+
+    [Fact]
+    public void GoesBackToTheDefaultMoodForASceneThatNamesNone()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lit);
+
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Hall);
+
+        _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModel.DefaultMoodHeading);
+        _builder.ViewModel.Viewport.Mood.Should().Be(new LightingMood());
     }
 }

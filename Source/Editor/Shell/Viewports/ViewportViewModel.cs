@@ -54,8 +54,9 @@ public sealed partial class ViewportViewModel : ObservableObject
 
     public EditorCamera Camera { get; } = new();
 
-    /// <summary>The light and grade the viewport draws the scene with.</summary>
-    public LightingMood Mood { get; } = new();
+    /// <summary>The light and grade the viewport draws the scene with: the default mood, or the mood file opened last.</summary>
+    [ObservableProperty]
+    public partial LightingMood Mood { get; set; } = new();
 
     public EditorSelection Selection => Scene.Selection;
 
