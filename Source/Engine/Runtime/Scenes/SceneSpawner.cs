@@ -5,20 +5,29 @@ using System.Text.Json.Serialization.Metadata;
 using Arch.Core;
 
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Engine.Runtime.Scenes;
 
-/// <summary>Spawns scenes with a JSON reader per registered component name.</summary>
+/// <summary>Spawns scenes with a JSON reader per registered component name, starting what it creates and stopping what it removes through its lifecycle.</summary>
 public sealed class SceneSpawner : ISceneSpawner
 {
     private readonly Dictionary<string, SceneComponent> _components = [];
     private readonly List<SceneComponent> _componentList = [];
 
     public SceneSpawner()
+        : this(new EntityLifecycle())
     {
+    }
+
+    public SceneSpawner(EntityLifecycle lifecycle)
+    {
+        Lifecycle = lifecycle;
         ArrayRegistry.Add<EntityName>();
     }
+
+    public EntityLifecycle Lifecycle { get; }
 
     public IReadOnlyList<SceneComponent> Components => _componentList;
 
@@ -64,12 +73,17 @@ public sealed class SceneSpawner : ISceneSpawner
                 Entity entity = Create(world, data);
                 spawned.Add(entity);
             }
+
+            foreach (Entity entity in spawned)
+            {
+                Lifecycle.Start(world, entity);
+            }
         }
         catch
         {
             foreach (Entity entity in spawned)
             {
-                world.Destroy(entity);
+                Lifecycle.Destroy(world, entity);
             }
 
             throw;
@@ -96,6 +110,7 @@ public sealed class SceneSpawner : ISceneSpawner
             else
             {
                 Entity entity = Create(world, data);
+                Lifecycle.Start(world, entity);
                 patched.Add(entity);
             }
         }
@@ -104,7 +119,7 @@ public sealed class SceneSpawner : ISceneSpawner
         {
             if (!kept[index] && world.IsAlive(entities[index]))
             {
-                world.Destroy(entities[index]);
+                Lifecycle.Destroy(world, entities[index]);
             }
         }
 
@@ -213,7 +228,9 @@ public sealed class SceneSpawner : ISceneSpawner
 
     public Entity Create(EntityData data, World world)
     {
-        return Create(world, data);
+        Entity entity = Create(world, data);
+        Lifecycle.Start(world, entity);
+        return entity;
     }
 
     private Entity Create(World world, EntityData data)
@@ -248,7 +265,7 @@ public sealed class SceneSpawner : ISceneSpawner
             bool unchanged = previous.Components.TryGetValue(key, out JsonElement old) && old.GetRawText() == value.GetRawText();
             if (!unchanged)
             {
-                Write(world, entity, current, key, value);
+                Rewrite(world, entity, current, key, value);
             }
         }
 
@@ -256,6 +273,7 @@ public sealed class SceneSpawner : ISceneSpawner
         {
             if (!current.Components.ContainsKey(key) && _components.TryGetValue(key, out SceneComponent? component))
             {
+                Lifecycle.StopComponent(world, entity, component.TypeInfo.Type);
                 component.Remove(world, entity);
             }
         }
@@ -274,6 +292,15 @@ public sealed class SceneSpawner : ISceneSpawner
                 }
             }
         }
+    }
+
+    /// <summary>Writes a component of a started entity between its stop and start hooks, so they see the old and the new values.</summary>
+    private void Rewrite(World world, Entity entity, EntityData data, string key, JsonElement value)
+    {
+        Type type = _components[key].TypeInfo.Type;
+        Lifecycle.StopComponent(world, entity, type);
+        Write(world, entity, data, key, value);
+        Lifecycle.StartComponent(world, entity, type);
     }
 
     private void Write(World world, Entity entity, EntityData data, string key, JsonElement value)

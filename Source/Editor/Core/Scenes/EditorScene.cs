@@ -6,6 +6,7 @@ using Arch.Core;
 using FlickerVoid.Editor.Core.Selection;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
@@ -133,7 +134,7 @@ public sealed class EditorScene : IDisposable
             Selection.Select(null);
         }
 
-        world.Destroy(entity);
+        Game.Spawner.Lifecycle.Destroy(world, entity);
         EntitiesChanged?.Invoke();
         MarkEdited();
     }
@@ -148,7 +149,10 @@ public sealed class EditorScene : IDisposable
             return;
         }
 
+        EntityLifecycle lifecycle = Game.Spawner.Lifecycle;
+        lifecycle.StopComponent(world, entity, typeof(T));
         world.Set(entity, component);
+        lifecycle.StartComponent(world, entity, typeof(T));
         MarkEdited();
     }
 
@@ -161,7 +165,11 @@ public sealed class EditorScene : IDisposable
             return;
         }
 
+        EntityLifecycle lifecycle = Game.Spawner.Lifecycle;
+        Type type = component.TypeInfo.Type;
+        lifecycle.StopComponent(world, entity, type);
         component.Set(world, entity, value);
+        lifecycle.StartComponent(world, entity, type);
         MarkEdited();
     }
 
@@ -176,6 +184,8 @@ public sealed class EditorScene : IDisposable
 
         using JsonDocument defaults = JsonDocument.Parse("{}");
         component.Read(world, entity, defaults.RootElement);
+        Type type = component.TypeInfo.Type;
+        Game.Spawner.Lifecycle.StartComponent(world, entity, type);
         MarkEdited();
     }
 
@@ -187,6 +197,8 @@ public sealed class EditorScene : IDisposable
             return;
         }
 
+        Type type = component.TypeInfo.Type;
+        Game.Spawner.Lifecycle.StopComponent(world, entity, type);
         component.Remove(world, entity);
         MarkEdited();
     }

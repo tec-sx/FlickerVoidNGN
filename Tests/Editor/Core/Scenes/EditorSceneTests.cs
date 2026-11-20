@@ -5,6 +5,7 @@ using Arch.Core;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Scenes;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
@@ -31,6 +32,23 @@ public sealed class EditorSceneTests : IDisposable
         saved.Should().BeTrue();
         _builder.ReadScene("Scenes/Room.fvscene").Should().Contain("\"position\":[2,1,0]");
         _builder.Scene.Game.World.Get<Transform>(lamp).Position.Should().Be(moved);
+    }
+
+    [Fact]
+    public void AttachesButNeverActivatesEntitiesAndRestartsComponentsItChanges()
+    {
+        List<string> calls = [];
+        EntityLifecycle lifecycle = _builder.Scene.Game.Lifecycle;
+        lifecycle.OnAttach((Entity _, ref Transform transform) => calls.Add($"attach {transform.Position.X}"));
+        lifecycle.OnActivate((Entity _, ref Transform _) => calls.Add("activate"));
+        lifecycle.OnDetach((Entity _, ref Transform transform) => calls.Add($"detach {transform.Position.X}"));
+        Entity lamp = _builder.WithScene("Scenes/Room.fvscene", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Open("Scenes/Room.fvscene");
+        Transform moved = new() { Position = new Vector3(2, 0, 0) };
+
+        _builder.Scene.SetComponent(lamp, moved);
+        _builder.Scene.DestroyEntity(lamp);
+
+        calls.Should().Equal("attach 0", "detach 0", "attach 2", "detach 2");
     }
 
     [Fact]

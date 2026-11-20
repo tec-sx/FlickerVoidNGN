@@ -3,6 +3,8 @@ using Arch.System;
 
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Debugging;
+using FlickerVoid.Engine.Runtime.Entities;
+using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 using FlickerVoid.Engine.Runtime.Services;
@@ -31,6 +33,7 @@ public sealed partial class Game : IDisposable
         Services.AddService(Spawner);
         Schemas.Add("scene", Spawner.GetSchema);
         Services.AddService(DebugConsole);
+        Services.AddService(Events);
 
         Loop.FixedUpdate += HandleFixedUpdate;
         Loop.Update += HandleUpdate;
@@ -47,6 +50,12 @@ public sealed partial class Game : IDisposable
 
     /// <summary>Spawns scene files into the world; modules register their components on it.</summary>
     public ISceneSpawner Spawner { get; } = new SceneSpawner();
+
+    /// <summary>Starts and stops entities; systems add their components' hooks to it. It is the spawner's, so scenes start what they spawn.</summary>
+    public EntityLifecycle Lifecycle => Spawner.Lifecycle;
+
+    /// <summary>Events systems send and handle, dispatched after each group of systems runs.</summary>
+    public EventBus Events { get; } = new();
 
     /// <summary>Debugging commands and variables; modules add theirs to it.</summary>
     public IDebugConsole DebugConsole { get; } = new DebugConsole();
@@ -81,16 +90,18 @@ public sealed partial class Game : IDisposable
     {
         Loop.FixedUpdate -= HandleFixedUpdate;
         Loop.Update -= HandleUpdate;
+        Lifecycle.StopAll(World);
         FrameSystems.Dispose();
         FixedSystems.Dispose();
         World.Destroy(World);
     }
 
-    private static void Run(Group<GameTime> systems, GameTime time)
+    private void Run(Group<GameTime> systems, GameTime time)
     {
         systems.BeforeUpdate(in time);
         systems.Update(in time);
         systems.AfterUpdate(in time);
+        Events.Dispatch();
     }
 
     private void HandleFixedUpdate(GameTime time)

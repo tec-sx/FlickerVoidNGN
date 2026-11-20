@@ -79,7 +79,7 @@ public sealed partial class SceneLoader : IDisposable
         {
             if (_world.IsAlive(entity))
             {
-                _world.Destroy(entity);
+                _spawner.Lifecycle.Destroy(_world, entity);
             }
         }
 

@@ -46,7 +46,7 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 ## Conventions
 
 - Idiomatic C#: file-scoped namespaces, one main type per file named after it.
-- Components talk through C# events on components found on the entity.  no string-addressed messages except across worlds or for deferred calls.
+- Entities are Arch-first (owner, 2026-11-20): components are plain data structs, behaviour lives in systems, one per feature. Systems add lifecycle hooks for their components to `EntityLifecycle` (`Game.Lifecycle`: attach runs in the editor and the game, for looks from data; activate only while playing; deactivate and detach in reverse), and talk through events, plain structs sent to and handled on `Game.Events` (`EventBus`, dispatched after each group of systems). No string-addressed messages except across worlds or for deferred calls.
 - Data-driven, composition over inheritance, SOLID/KISS/YAGNI, open/closed.
 - Interface what is worth interfacing: services and the dependencies tests substitute (`IFactDatabase`).
 - Don't nest calls: store a call's result in a variable before passing it to another call. Only simple getters and properties may be passed inline.

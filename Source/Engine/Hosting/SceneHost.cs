@@ -66,7 +66,7 @@ public sealed partial class SceneHost : IDisposable
     public SceneRenderSystem? Renderer { get; private set; }
 
     /// <summary>
-    /// Spawns the options' scene and creates the renderer, with an overlay when <paramref name="createOverlay"/> makes one;
+    /// Spawns the options' scene, starts play (activating its entities) and creates the renderer, with an overlay when <paramref name="createOverlay"/> makes one;
     /// <see cref="Run"/> calls it when nothing has.
     /// </summary>
     public SceneRenderSystem Start(Func<PixelFormat, SceneRenderer, IFrameOverlay?>? createOverlay = null)
@@ -80,6 +80,8 @@ public sealed partial class SceneHost : IDisposable
         {
             Scenes.Load(scene);
         }
+
+        Game.Lifecycle.Play(Game.World);
 
         if (_options.Mood is null && SceneMood.Find(Game.World) is { } sceneMood)
         {
