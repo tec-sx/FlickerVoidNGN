@@ -20,6 +20,12 @@
           <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsScaleMode}" ToolTip.Tip="Scale (R)">
             <PathIcon Data="{x:Static shell:MaterialIcons.Scale}" />
           </ToggleButton>
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsLocalSpace}" ToolTip.Tip="World or local axes">
+            <Panel>
+              <PathIcon Data="{x:Static shell:MaterialIcons.WorldSpace}" IsVisible="{Binding !IsLocalSpace}" />
+              <PathIcon Data="{x:Static shell:MaterialIcons.LocalSpace}" IsVisible="{Binding IsLocalSpace}" />
+            </Panel>
+          </ToggleButton>
         </StackPanel>
       </Border>
       <Border Classes="viewportBar">

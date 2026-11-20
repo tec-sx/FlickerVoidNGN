@@ -43,6 +43,15 @@ internal sealed class ViewportViewModelTestsBuilder : IDisposable
         return World.Create(transform, new PointLight());
     }
 
+    /// <summary>Opens a scene file holding one entity, Lamp, and returns it.</summary>
+    public Entity OpenLampScene()
+    {
+        string fullPath = Path.Combine(_contentFolder, "Room.fvscene");
+        File.WriteAllText(fullPath, """{ "entities": [ { "name": "Lamp", "components": { "transform": {}, "pointLight": {} } } ] }""");
+        _scene.Open("Room.fvscene");
+        return _scene.Entities[0];
+    }
+
     /// <summary>The pixel a world point shows at.</summary>
     public Vector2 PixelOf(Vector3 point)
     {
