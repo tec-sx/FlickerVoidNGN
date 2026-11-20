@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Benchmarks/">
+    <Project Path="Benchmarks/FlickerVoid.Engine.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/Source/" />
   <Folder Name="/Source/Editor/">
     <Project Path="Source/Editor/Assets/FlickerVoid.Editor.Assets.csproj" />

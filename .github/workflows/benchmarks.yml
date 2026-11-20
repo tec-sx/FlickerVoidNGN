@@ -1,0 +1,66 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Commit comments when a benchmark gets slower than the alert threshold.
+permissions:
+  contents: write
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+      RESULTS: ${{ github.workspace }}/artifacts/benchmarks
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Run the benchmarks, with a CPU trace of each
+        run: dotnet run --project Benchmarks -c Release -- --filter '*' --join --exporters json --memory --profiler EP --artifacts "$RESULTS"
+      - name: Add the results table to the run's summary
+        run: |
+          cat "$RESULTS"/results/*-report-github.md >> "$GITHUB_STEP_SUMMARY"
+          # The joined report's name carries the run's time.
+          report=$(ls "$RESULTS"/results/*-report-full-compressed.json)
+          echo "REPORT=$report" >> "$GITHUB_ENV"
+      - name: Upload the results and the CPU traces (open the .speedscope.json files in speedscope.app)
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmarks
+          path: |
+            ${{ env.RESULTS }}
+            !${{ env.RESULTS }}/*.nettrace
+          retention-days: 14
+      # The history of main's results lives in the cache; pull requests compare against it without changing it.
+      - name: Restore main's benchmark history
+        uses: actions/cache/restore@v4
+        with:
+          path: benchmark-history
+          key: benchmarks-${{ github.run_id }}
+          restore-keys: benchmarks-
+      - name: Compare with main and add the comparison to the summary
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Engine benchmarks
+          tool: benchmarkdotnet
+          output-file-path: ${{ env.REPORT }}
+          external-data-json-path: benchmark-history/benchmarks.json
+          save-data-file: ${{ github.event_name == 'push' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          alert-threshold: 150%
+          comment-on-alert: true
+          summary-always: true
+      - name: Add charts of this run and of main's history to the summary
+        run: dotnet run .github/scripts/BenchmarkCharts.cs -- "$REPORT" benchmark-history/benchmarks.json "${{ github.event.pull_request.head.sha || github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Save main's benchmark history
+        if: github.event_name == 'push'
+        uses: actions/cache/save@v4
+        with:
+          path: benchmark-history
+          key: benchmarks-${{ github.run_id }}
