@@ -10,7 +10,7 @@ namespace FlickerVoid.Engine.Rendering.Meshes;
 
 /// <summary>
 /// Loads each model the first time it is drawn and keeps it on the GPU until its file changes on disk and the next draw loads
-/// it again. A model is named by its source (Room.glb); the game loads what the content build baked of it (Room.model).
+/// it again. A model is named by its source (Room.glb); the game loads what the content build baked of it (Room.fvmodel).
 /// </summary>
 internal sealed class MeshLibrary : IDisposable
 {
@@ -27,7 +27,7 @@ internal sealed class MeshLibrary : IDisposable
 
     public GpuModel Get(string path)
     {
-        string builtPath = Path.ChangeExtension(path, ".model");
+        string builtPath = Path.ChangeExtension(path, ".fvmodel");
         string fullPath = _content.GetFullPath(builtPath);
         if (_models.TryGetValue(fullPath, out GpuModel? loaded))
         {

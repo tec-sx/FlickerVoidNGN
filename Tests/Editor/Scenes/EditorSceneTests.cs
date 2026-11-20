@@ -15,14 +15,14 @@ public sealed class EditorSceneTests : IDisposable
     [Fact]
     public void SavesTheEditedWorldIntoTheOpenSceneFile()
     {
-        Entity lamp = _builder.WithScene("Scenes/Room.scene.json", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Open("Scenes/Room.scene.json");
+        Entity lamp = _builder.WithScene("Scenes/Room.fvscene", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Open("Scenes/Room.fvscene");
         Vector3 moved = new(2, 1, 0);
         _builder.Scene.Game.World.Get<Transform>(lamp).Position = moved;
 
         bool saved = _builder.Scene.Save();
 
         saved.Should().BeTrue();
-        _builder.ReadScene("Scenes/Room.scene.json").Should().Contain("\"position\":[2,1,0]");
+        _builder.ReadScene("Scenes/Room.fvscene").Should().Contain("\"position\":[2,1,0]");
         _builder.Scene.Game.World.Get<Transform>(lamp).Position.Should().Be(moved);
     }
 
@@ -38,17 +38,17 @@ public sealed class EditorSceneTests : IDisposable
     public void OpeningAnotherSceneReplacesTheWorldAndClearsTheSelection()
     {
         Entity lamp = _builder
-            .WithScene("Room.scene.json", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""")
-            .WithScene("Hall.scene.json", """{ "entities": [ { "name": "Door", "components": { "transform": {} } } ] }""")
-            .Open("Room.scene.json");
+            .WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""")
+            .WithScene("Hall.fvscene", """{ "entities": [ { "name": "Door", "components": { "transform": {} } } ] }""")
+            .Open("Room.fvscene");
         _builder.Scene.Selection.Select(lamp);
 
-        _builder.Scene.Open("Hall.scene.json");
+        _builder.Scene.Open("Hall.fvscene");
 
         World world = _builder.Scene.Game.World;
         world.IsAlive(lamp).Should().BeFalse();
         world.CountEntities(new QueryDescription()).Should().Be(1);
         _builder.Scene.Selection.Selected.Should().BeNull();
-        _builder.Scene.ScenePath.Should().Be("Hall.scene.json");
+        _builder.Scene.ScenePath.Should().Be("Hall.fvscene");
     }
 }

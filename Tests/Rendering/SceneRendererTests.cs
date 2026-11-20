@@ -257,9 +257,9 @@ public sealed class SceneRendererTests : IDisposable
     public void LightsMeshesInsideAnIrradianceVolumeByItsProbes()
     {
         IrradianceProbes probes = new IrradianceProbesTestsBuilder().WithEvenIrradiance(new Vector3(0.5f, 0.5f, 0.5f)).Build();
-        _builder.WithProbes("Room.probes", probes);
+        _builder.WithProbes("Room.fvprobes", probes);
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
-        _builder.WithScene(Camera, Quad, """{ "name": "Volume", "components": { "transform": {}, "irradianceVolume": { "size": [4, 4, 4], "probesX": 2, "probesY": 2, "probesZ": 2, "probes": "Room.probes" } } }""");
+        _builder.WithScene(Camera, Quad, """{ "name": "Volume", "components": { "transform": {}, "irradianceVolume": { "size": [4, 4, 4], "probesX": 2, "probesY": 2, "probesZ": 2, "probes": "Room.fvprobes" } } }""");
         _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
 
         uint[] pixels = _builder.Render();
@@ -272,9 +272,9 @@ public sealed class SceneRendererTests : IDisposable
     public void LeavesProbesOutWhileTheyAreSwitchedOff()
     {
         IrradianceProbes probes = new IrradianceProbesTestsBuilder().WithEvenIrradiance(new Vector3(0.5f, 0.5f, 0.5f)).Build();
-        _builder.WithProbes("Room.probes", probes);
+        _builder.WithProbes("Room.fvprobes", probes);
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
-        _builder.WithScene(Camera, Quad, """{ "name": "Volume", "components": { "transform": {}, "irradianceVolume": { "size": [4, 4, 4], "probesX": 2, "probesY": 2, "probesZ": 2, "probes": "Room.probes" } } }""");
+        _builder.WithScene(Camera, Quad, """{ "name": "Volume", "components": { "transform": {}, "irradianceVolume": { "size": [4, 4, 4], "probesX": 2, "probesY": 2, "probesZ": 2, "probes": "Room.fvprobes" } } }""");
         _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
         _builder.WithRenderer(static renderer => renderer.Probes = false);
 
@@ -287,9 +287,9 @@ public sealed class SceneRendererTests : IDisposable
     public void LeavesMeshesOutsideTheIrradianceVolumeToTheOtherLights()
     {
         IrradianceProbes probes = new IrradianceProbesTestsBuilder().WithEvenIrradiance(new Vector3(0.5f, 0.5f, 0.5f)).Build();
-        _builder.WithProbes("Room.probes", probes);
+        _builder.WithProbes("Room.fvprobes", probes);
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
-        _builder.WithScene(Camera, Quad, """{ "name": "Volume", "components": { "transform": { "position": [10, 0, 0] }, "irradianceVolume": { "size": [4, 4, 4], "probesX": 2, "probesY": 2, "probesZ": 2, "probes": "Room.probes" } } }""");
+        _builder.WithScene(Camera, Quad, """{ "name": "Volume", "components": { "transform": { "position": [10, 0, 0] }, "irradianceVolume": { "size": [4, 4, 4], "probesX": 2, "probesY": 2, "probesZ": 2, "probes": "Room.fvprobes" } } }""");
         _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
 
         uint[] pixels = _builder.Render();
@@ -475,7 +475,7 @@ public sealed class SceneRendererTests : IDisposable
         _builder.Render();
 
         _builder.WithModel("Quad.glb", model => model.WithQuad(1).WithBaseColor(blue));
-        _builder.NotifyChanged("Quad.model");
+        _builder.NotifyChanged("Quad.fvmodel");
         uint[] pixels = _builder.Render();
 
         uint bluePixel = SceneRendererTestsBuilder.Rgba(0, 0, 255, 255);
@@ -505,8 +505,8 @@ public sealed class SceneRendererTests : IDisposable
     public void DrawsMeshPartsWithTheMaterialsTheirRendererNames()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
-        _builder.WithFile("Glow.material.json", """{ "parameters": { "tint": [0, 0, 0], "emissive": [0, 1, 0] } }""");
-        _builder.WithScene(Camera, MaterialQuad("Glow.material.json"));
+        _builder.WithFile("Glow.fvmat", """{ "parameters": { "tint": [0, 0, 0], "emissive": [0, 1, 0] } }""");
+        _builder.WithScene(Camera, MaterialQuad("Glow.fvmat"));
         _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
 
         uint[] pixels = _builder.Render();
@@ -519,8 +519,8 @@ public sealed class SceneRendererTests : IDisposable
     public void WrapsDiffuseLightRoundToSurfacesTheLightGrazes()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
-        _builder.WithFile("Wrapped.material.json", """{ "parameters": { "wrap": 1 } }""");
-        _builder.WithScene(Camera, MaterialQuad("Wrapped.material.json"));
+        _builder.WithFile("Wrapped.fvmat", """{ "parameters": { "wrap": 1 } }""");
+        _builder.WithScene(Camera, MaterialQuad("Wrapped.fvmat"));
         _builder.WithLight(sunDirection: -Vector3.UnitX, ambient: 0);
 
         uint[] pixels = _builder.Render();
@@ -533,8 +533,8 @@ public sealed class SceneRendererTests : IDisposable
     public void TintsTheSidesTurnedFromTheLight()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Vector4.One));
-        _builder.WithFile("Cool.material.json", """{ "parameters": { "shadowTint": [0, 0, 0.5] } }""");
-        _builder.WithScene(Camera, MaterialQuad("Cool.material.json"));
+        _builder.WithFile("Cool.fvmat", """{ "parameters": { "shadowTint": [0, 0, 0.5] } }""");
+        _builder.WithScene(Camera, MaterialQuad("Cool.fvmat"));
         _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
 
         uint[] pixels = _builder.Render();
@@ -548,8 +548,8 @@ public sealed class SceneRendererTests : IDisposable
     public void AddsASpecularHighlightWhereTheLightReflectsTowardTheCamera()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
-        _builder.WithFile("Shiny.material.json", """{ "parameters": { "specular": 0.5 } }""");
-        _builder.WithScene(Camera, MaterialQuad("Shiny.material.json"));
+        _builder.WithFile("Shiny.fvmat", """{ "parameters": { "specular": 0.5 } }""");
+        _builder.WithScene(Camera, MaterialQuad("Shiny.fvmat"));
         _builder.WithLight(sunDirection: -Vector3.UnitZ, ambient: 0);
 
         uint[] pixels = _builder.Render();
@@ -562,8 +562,8 @@ public sealed class SceneRendererTests : IDisposable
     public void KeepsTheModelsLookWithoutAMaterial()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
-        _builder.WithFile("Plain.material.json", """{ "parameters": {} }""");
-        _builder.WithScene(Camera, MaterialQuad("Plain.material.json"));
+        _builder.WithFile("Plain.fvmat", """{ "parameters": {} }""");
+        _builder.WithScene(Camera, MaterialQuad("Plain.fvmat"));
 
         uint[] pixels = _builder.Render();
 
@@ -574,13 +574,13 @@ public sealed class SceneRendererTests : IDisposable
     public void RedrawsAMaterialChangedOnDisk()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
-        _builder.WithFile("Glow.material.json", """{ "parameters": { "emissive": [0, 0, 0] } }""");
-        _builder.WithScene(Camera, MaterialQuad("Glow.material.json"));
+        _builder.WithFile("Glow.fvmat", """{ "parameters": { "emissive": [0, 0, 0] } }""");
+        _builder.WithScene(Camera, MaterialQuad("Glow.fvmat"));
         _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
         _builder.Render();
 
-        _builder.WithFile("Glow.material.json", """{ "parameters": { "emissive": [0, 0, 1] } }""");
-        _builder.NotifyChanged("Glow.material.json");
+        _builder.WithFile("Glow.fvmat", """{ "parameters": { "emissive": [0, 0, 1] } }""");
+        _builder.NotifyChanged("Glow.fvmat");
         uint[] pixels = _builder.Render();
 
         uint blue = SceneRendererTestsBuilder.Rgba(0, 0, 255, 255);

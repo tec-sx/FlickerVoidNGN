@@ -23,7 +23,7 @@ public sealed class ModelImporterTests : IDisposable
         BuildReport report = _files.BuildAll(builder);
 
         report.Failed.Should().BeEmpty();
-        ModelData model = _files.ReadOutput("Props/Crate.model");
+        ModelData model = _files.ReadOutput("Props/Crate.fvmodel");
         MeshPart part = model.Parts.Should().ContainSingle().Subject;
         part.Indices.Should().HaveCount(6);
         part.Skin.Should().HaveCount(part.Vertices.Length);

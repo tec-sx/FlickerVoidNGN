@@ -138,13 +138,18 @@ public sealed class AssetBuilder(IReadOnlyList<IAssetImporter> importers)
     {
         HashSet<string> present = new(sourcePaths, StringComparer.Ordinal);
         List<string> removed = [.. cache.Entries.Keys.Where(path => !present.Contains(path)).Order(StringComparer.Ordinal)];
+        List<string> orphans = [];
         foreach (string path in removed)
         {
             BuildCacheEntry entry = cache.Entries[path];
-            DeleteOutputs(output, entry.Outputs);
+            orphans.AddRange(entry.Outputs);
             cache.Remove(path);
         }
 
+        // A renamed source may make the outputs its old name made, so only outputs no current source makes go.
+        HashSet<string> current = [.. cache.Entries.Values.SelectMany(static entry => entry.Outputs)];
+        IEnumerable<string> stale = orphans.Where(outputPath => !current.Contains(outputPath));
+        DeleteOutputs(output, stale);
         return removed;
     }
 

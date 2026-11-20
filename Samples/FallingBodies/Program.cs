@@ -24,7 +24,7 @@ using Game game = new(loggerFactory);
 game.Services.AddService(content);
 game.AddPhysics();
 
-SceneData scene = content.Load("Scenes/FallingBodies.scene.json", RuntimeJsonContext.Default.SceneData);
+SceneData scene = content.Load("Scenes/FallingBodies.fvscene", RuntimeJsonContext.Default.SceneData);
 IReadOnlyList<Entity> entities = game.Spawner.Spawn(scene, game.World);
 List<Entity> bodies = [.. entities.Where(entity => game.World.Has<RigidBody>(entity))];
 List<float> startHeights = [.. bodies.Select(body => game.World.Get<Transform>(body).Position.Y)];

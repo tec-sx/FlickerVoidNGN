@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace FlickerVoid.Engine.Rendering.Materials;
 
 /// <summary>
-/// A value a shader lets materials set, declared in its <c>Name.shader.json</c>: a float is written as a number, a colour as
+/// A value a shader lets materials set, declared in its <c>Name.fvshader</c>: a float is written as a number, a colour as
 /// an array of three; the optional limits are for editors.
 /// </summary>
 public sealed record ShaderParameter(string Name, ShaderParameterType Type, JsonElement Default)

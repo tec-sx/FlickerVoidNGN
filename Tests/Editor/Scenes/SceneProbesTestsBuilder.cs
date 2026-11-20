@@ -36,16 +36,16 @@ internal sealed class SceneProbesTestsBuilder : IDisposable
     /// <summary>A black cube glowing green in the middle of the volume.</summary>
     public SceneProbesTestsBuilder WithGreenGlowingCube()
     {
-        string modelPath = Path.Combine(_contentFolder, "Cube.model");
+        string modelPath = Path.Combine(_contentFolder, "Cube.fvmodel");
         ModelData cube = PreviewMeshes.CreateCube(size: 1);
         using (FileStream stream = File.Create(modelPath))
         {
             ModelFile.Write(cube, stream);
         }
 
-        string materialPath = Path.Combine(_contentFolder, "Glow.material.json");
+        string materialPath = Path.Combine(_contentFolder, "Glow.fvmat");
         File.WriteAllText(materialPath, """{ "parameters": { "tint": [0, 0, 0], "emissive": [0, 1, 0], "emissiveIntensity": 4 } }""");
-        MeshRenderer renderer = new() { Mesh = "Cube.glb", Materials = ["Glow.material.json"] };
+        MeshRenderer renderer = new() { Mesh = "Cube.glb", Materials = ["Glow.fvmat"] };
         World.Create(new Transform(), renderer);
         return this;
     }

@@ -14,12 +14,12 @@ public sealed class ContentWatcherTests : IDisposable
     [Fact]
     public void ReportsAnEditedFileWithinASecond()
     {
-        _builder.WithFile("Moods/Day.json", "{}").Build();
+        _builder.WithFile("Moods/Day.fvmood", "{}").Build();
 
-        _builder.WriteFile("Moods/Day.json", """{ "ambient": 0.5 }""");
+        _builder.WriteFile("Moods/Day.fvmood", """{ "ambient": 0.5 }""");
         IReadOnlyList<string> changed = _builder.UpdateUntilChanged(TimeSpan.FromSeconds(1));
 
-        string fullPath = _builder.FullPath("Moods/Day.json");
+        string fullPath = _builder.FullPath("Moods/Day.fvmood");
         changed.Should().Equal(fullPath);
     }
 
@@ -40,13 +40,13 @@ public sealed class ContentWatcherTests : IDisposable
     [Fact]
     public void ReportsAFileSavedThroughARename()
     {
-        _builder.WithFile("Room.scene.json", "{}").Build();
+        _builder.WithFile("Room.fvscene", "{}").Build();
 
-        _builder.WriteFile("Room.scene.json.tmp", """{ "entities": [] }""");
-        _builder.ReplaceFile("Room.scene.json.tmp", "Room.scene.json");
+        _builder.WriteFile("Room.fvscene.tmp", """{ "entities": [] }""");
+        _builder.ReplaceFile("Room.fvscene.tmp", "Room.fvscene");
         _builder.UpdateUntilChanged(TimeSpan.FromSeconds(1));
 
-        string fullPath = _builder.FullPath("Room.scene.json");
+        string fullPath = _builder.FullPath("Room.fvscene");
         _builder.Changed.Should().Contain(fullPath);
     }
 }

@@ -1,6 +1,6 @@
 {
   "entryPoints": { "VertexMain": "Vertex", "DepthMain": "Pixel", "PixelMain": "Pixel" },
-  // The shading controls materials set (Name.material.json), packed in this order into the buffer LoadMaterial reads.
+  // The shading controls materials set (Name.fvmat), packed in this order into the buffer LoadMaterial reads.
   // Every default keeps the plain look: the base color lit by plain diffuse light.
   "parameters": [
     { "name": "tint", "type": "color", "default": [1, 1, 1] },

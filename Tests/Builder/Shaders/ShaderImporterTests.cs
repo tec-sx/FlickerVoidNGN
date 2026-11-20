@@ -44,7 +44,7 @@ public sealed class ShaderImporterTests : IDisposable
     [Fact]
     public void CompilesEachEntryPointToSpirvAndLeavesTheHlslOut()
     {
-        _files.WithSource("Shaders/Simple.shader.json", SimpleManifest)
+        _files.WithSource("Shaders/Simple.fvshader", SimpleManifest)
             .WithSource("Shaders/Simple.hlsl", Simple)
             .WithSource("Shaders/Common/Colors.hlsli", Colors);
         AssetBuilder builder = _files.Build();
@@ -63,7 +63,7 @@ public sealed class ShaderImporterTests : IDisposable
     [Fact]
     public void RebuildsWhenAnIncludedFileChanges()
     {
-        _files.WithSource("Shaders/Simple.shader.json", SimpleManifest)
+        _files.WithSource("Shaders/Simple.fvshader", SimpleManifest)
             .WithSource("Shaders/Simple.hlsl", Simple)
             .WithSource("Shaders/Common/Colors.hlsli", Colors);
         AssetBuilder builder = _files.Build();
@@ -72,13 +72,13 @@ public sealed class ShaderImporterTests : IDisposable
 
         BuildReport report = _files.BuildAll(builder);
 
-        report.Built.Should().Contain("Shaders/Simple.shader.json");
+        report.Built.Should().Contain("Shaders/Simple.fvshader");
     }
 
     [Fact]
     public void ACompileErrorFailsWithTheCompilerMessage()
     {
-        _files.WithSource("Broken.shader.json", """{ "entryPoints": { "PixelMain": "Pixel" } }""")
+        _files.WithSource("Broken.fvshader", """{ "entryPoints": { "PixelMain": "Pixel" } }""")
             .WithSource("Broken.hlsl", "float4 PixelMain() : SV_Target { return undefinedValue; }");
         AssetBuilder builder = _files.Build();
 
@@ -90,7 +90,7 @@ public sealed class ShaderImporterTests : IDisposable
     [Fact]
     public void WritesTheMaterialParametersAShaderDeclaresBesideIt()
     {
-        _files.WithSource("Shaders/Lit.shader.json", """
+        _files.WithSource("Shaders/Lit.fvshader", """
                 {
                   "entryPoints": { "PixelMain": "Pixel" },
                   "parameters": [
@@ -105,7 +105,7 @@ public sealed class ShaderImporterTests : IDisposable
         BuildReport report = _files.BuildAll(builder);
 
         report.Failed.Should().BeEmpty();
-        byte[] json = _files.ReadOutput("Shaders/Lit.parameters.json");
+        byte[] json = _files.ReadOutput("Shaders/Lit.fvparams");
         ShaderParameters? parameters = JsonSerializer.Deserialize(json, RenderingJsonContext.Default.ShaderParameters);
         string[] names = [.. parameters!.Parameters.Select(parameter => parameter.Name)];
         names.Should().Equal("wrap", "emissive");
@@ -116,13 +116,13 @@ public sealed class ShaderImporterTests : IDisposable
     [Fact]
     public void WritesNoParametersForAShaderThatDeclaresNone()
     {
-        _files.WithSource("Shaders/Simple.shader.json", SimpleManifest)
+        _files.WithSource("Shaders/Simple.fvshader", SimpleManifest)
             .WithSource("Shaders/Simple.hlsl", Simple)
             .WithSource("Shaders/Common/Colors.hlsli", Colors);
         AssetBuilder builder = _files.Build();
 
         _files.BuildAll(builder);
 
-        _files.OutputExists("Shaders/Simple.parameters.json").Should().BeFalse();
+        _files.OutputExists("Shaders/Simple.fvparams").Should().BeFalse();
     }
 }

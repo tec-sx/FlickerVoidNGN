@@ -84,7 +84,7 @@ public sealed class ScenePickerTests : IDisposable
         Entity? before = picker.Pick(_builder.World, DownTheZAxis);
 
         _builder.WithSquare("Square.glb", 1);
-        _builder.NotifyChanged("Square.model");
+        _builder.NotifyChanged("Square.fvmodel");
         Entity? after = picker.Pick(_builder.World, DownTheZAxis);
 
         before.Should().BeNull();

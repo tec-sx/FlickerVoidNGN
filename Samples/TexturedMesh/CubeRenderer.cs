@@ -101,7 +101,7 @@ public sealed class CubeRenderer : IDisposable
 
     private IPipeline CreatePipeline(PixelFormat colorFormat)
     {
-        // The content build compiles Content/Mesh.hlsl, as Mesh.shader.json lists its entry points.
+        // The content build compiles Content/Mesh.hlsl, as Mesh.fvshader lists its entry points.
         string folder = Path.Combine(AppContext.BaseDirectory, "Content");
         ShaderLibrary shaders = new(folder);
         GraphicsPipelineDescription description = new()

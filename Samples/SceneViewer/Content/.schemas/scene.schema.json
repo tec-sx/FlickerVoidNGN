@@ -74,6 +74,15 @@
                 "properties": {
                   "mesh": {
                     "type": "string"
+                  },
+                  "materials": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 },
                 "required": [

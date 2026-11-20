@@ -11,7 +11,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     [Fact]
     public void ShowsTheContentFolderAndItsOwnFilesAtFirst()
     {
-        AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.scene.json").Build();
+        AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.fvscene").Build();
 
         browser.Folders.Should().ContainSingle().Which.Children.Should().ContainSingle().Which.Name.Should().Be("Scenes");
         browser.Assets.Select(static asset => asset.Path).Should().Equal("Room.glb");
@@ -20,23 +20,23 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     [Fact]
     public void ShowsTheFilesOfTheSelectedFolder()
     {
-        AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.scene.json").Build();
+        AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.fvscene").Build();
 
         browser.SelectedFolder = browser.Folders[0].Children[0];
 
-        browser.Assets.Select(static asset => asset.Path).Should().Equal("Scenes/Room.scene.json");
+        browser.Assets.Select(static asset => asset.Path).Should().Equal("Scenes/Room.fvscene");
     }
 
     [Fact]
     public void SearchesAndFiltersEverythingBelowTheSelectedFolder()
     {
-        AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.scene.json").WithFile("Scenes/Hall.scene.json").Build();
+        AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.fvscene").WithFile("Scenes/Hall.fvscene").Build();
 
         browser.SelectedFilter = browser.Filters.Single(static filter => filter.Kind == AssetKind.Scene);
         browser.Assets.Should().HaveCount(2);
         browser.SearchText = "room";
 
-        browser.Assets.Select(static asset => asset.Path).Should().Equal("Scenes/Room.scene.json");
+        browser.Assets.Select(static asset => asset.Path).Should().Equal("Scenes/Room.fvscene");
     }
 
     [Fact]

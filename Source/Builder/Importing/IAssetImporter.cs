@@ -9,7 +9,7 @@ public interface IAssetImporter
     /// <summary>Raise it when the importer's output changes, so files built by an older version are built again.</summary>
     int Version { get; }
 
-    /// <summary>The endings of the file names this importer takes, such as ".png" or ".shader.json".</summary>
+    /// <summary>The endings of the file names this importer takes, such as ".png" or ".fvshader".</summary>
     IReadOnlyList<string> Extensions { get; }
 
     /// <summary>Writes the outputs of <see cref="AssetImportContext.SourcePath"/>; throws when the file can't be imported.</summary>

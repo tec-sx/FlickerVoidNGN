@@ -9,7 +9,7 @@ using FlickerVoid.Engine.Runtime.Serialization;
 namespace FlickerVoid.Engine.Rendering.Materials;
 
 /// <summary>
-/// The parameters a shader declares, which the content build writes to <c>Name.parameters.json</c> beside its compiled
+/// The parameters a shader declares, which the content build writes to <c>Name.fvparams</c> beside its compiled
 /// stages; materials pack their values in this order (see <see cref="MaterialLayout"/>).
 /// </summary>
 public sealed record ShaderParameters
@@ -22,7 +22,7 @@ public sealed record ShaderParameters
     /// <summary>The parameters the content build wrote for the shader, or none when it declares none.</summary>
     public static ShaderParameters Load(ShaderLibrary shaders, string shader)
     {
-        string path = Path.Combine(shaders.Directory, $"{shader}.parameters.json");
+        string path = Path.Combine(shaders.Directory, $"{shader}.fvparams");
         if (!File.Exists(path))
         {
             return new ShaderParameters();
