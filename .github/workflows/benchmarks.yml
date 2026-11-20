@@ -5,9 +5,10 @@ on:
     branches: [main]
   pull_request:
 
-# Commit comments when a benchmark gets slower than the alert threshold.
+# Comments when a benchmark gets slower than the alert threshold: on the commit on main, on the pull request otherwise.
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   benchmarks:

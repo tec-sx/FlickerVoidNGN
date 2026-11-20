@@ -10,7 +10,9 @@ namespace FlickerVoid.Editor.Core.Gizmos;
 /// <summary>
 /// The handles that move, rotate and scale a transform along the world axes or the transform's own (<see cref="Space"/>; scale
 /// handles always follow the transform's own, as its scale is along them): arrows, rings or cube-tipped lines that keep their
-/// size on screen. Finds the handle under the mouse, works out the transform as a handle is dragged, and draws itself.
+/// size on screen. Finds the handle under the mouse, works out the transform as a handle is dragged, and draws itself. While
+/// snapping is on, a move puts the dragged world axis on the grid (or moves in grid steps along a local one), a turn goes in
+/// steps of degrees, and a scale in steps of the scale the drag started from.
 /// </summary>
 public sealed class TransformGizmo
 {
@@ -47,6 +49,15 @@ public sealed class TransformGizmo
     public GizmoMode Mode { get; set; } = GizmoMode.Move;
 
     public GizmoSpace Space { get; set; } = GizmoSpace.World;
+
+    /// <summary>The grid moves snap to, in world units.</summary>
+    public GizmoSnap MoveSnap { get; } = new([0.1f, 0.25f, 0.5f, 1, 2, 5], 0.5f);
+
+    /// <summary>The steps turns snap to, in degrees.</summary>
+    public GizmoSnap RotateSnap { get; } = new([5, 10, 15, 30, 45, 90], 15);
+
+    /// <summary>The steps scaling snaps to, as shares of the starting scale.</summary>
+    public GizmoSnap ScaleSnap { get; } = new([0.1f, 0.25f, 0.5f, 1], 0.25f);
 
     /// <summary>The handle under the mouse, or being dragged.</summary>
     public GizmoAxis Hovered { get; private set; }
@@ -318,7 +329,18 @@ public sealed class TransformGizmo
         }
 
         Transform moved = _start;
-        moved.Position = _start.Position + (direction * (along - _startAlong));
+        float distance = along - _startAlong;
+        if (Space == GizmoSpace.Local)
+        {
+            float steps = MoveSnap.Apply(distance);
+            moved.Position = _start.Position + (direction * steps);
+            return moved;
+        }
+
+        Vector3 position = _start.Position + (direction * distance);
+        float onAxis = Vector3.Dot(position, direction);
+        float snapped = MoveSnap.Apply(onAxis);
+        moved.Position = position + (direction * (snapped - onAxis));
         return moved;
     }
 
@@ -335,7 +357,9 @@ public sealed class TransformGizmo
         Vector3 turn = Vector3.Cross(_startOffset, offset);
         float sine = Vector3.Dot(turn, axis);
         float cosine = Vector3.Dot(_startOffset, offset);
-        float angle = MathF.Atan2(sine, cosine);
+        float degrees = float.RadiansToDegrees(MathF.Atan2(sine, cosine));
+        float snapped = RotateSnap.Apply(degrees);
+        float angle = float.DegreesToRadians(snapped);
         Quaternion delta = Quaternion.CreateFromAxisAngle(axis, angle);
         Transform rotated = _start;
         rotated.Rotation = Quaternion.Normalize(Quaternion.Concatenate(_start.Rotation, delta));
@@ -348,7 +372,8 @@ public sealed class TransformGizmo
         if (Hovered == GizmoAxis.All)
         {
             Vector2 moved = pixel - _startPixel;
-            float factor = 1 + ((moved.X - moved.Y) / PixelsPerUniformScale);
+            float dragged = 1 + ((moved.X - moved.Y) / PixelsPerUniformScale);
+            float factor = ScaleSnap.Apply(dragged);
             Vector3 uniform = _start.Scale * factor;
             scaled.Scale = Vector3.Max(uniform, new Vector3(MinScale));
             return scaled;
@@ -360,7 +385,8 @@ public sealed class TransformGizmo
             return _start;
         }
 
-        float axisFactor = 1 + ((along - _startAlong) / _handleLength);
+        float axisDragged = 1 + ((along - _startAlong) / _handleLength);
+        float axisFactor = ScaleSnap.Apply(axisDragged);
         Vector3 unit = GetUnit(Hovered);
         Vector3 factors = Vector3.One + (unit * (axisFactor - 1));
         Vector3 result = _start.Scale * factors;
