@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Arch.Core;
 
 using FlickerVoid.Engine.Runtime.Content;
@@ -43,6 +45,27 @@ public sealed partial class SceneLoader : IDisposable
         return entities;
     }
 
+    /// <summary>
+    /// Writes the loaded scene file at <paramref name="path"/> as the world has its entities now (see
+    /// <see cref="ISceneSpawner.Capture"/>), then reports the file changed so caches of it reload.
+    /// </summary>
+    public void Save(string path)
+    {
+        string fullPath = _content.GetFullPath(path);
+        if (!_loaded.TryGetValue(fullPath, out LoadedScene? loaded))
+        {
+            throw new InvalidOperationException($"{path} is not loaded.");
+        }
+
+        SceneData scene = _spawner.Capture(loaded.Scene, loaded.Entities, _world);
+        using (StreamWriter writer = File.CreateText(fullPath))
+        {
+            Write(writer, scene);
+        }
+
+        _content.NotifyChanged(path);
+    }
+
     public void Dispose()
     {
         _content.Changed -= HandleChanged;
@@ -67,6 +90,33 @@ public sealed partial class SceneLoader : IDisposable
             _content.Unload(loaded.Path);
             LogInvalid(loaded.Path, exception.Message);
         }
+    }
+
+    /// <summary>Writes one entity per line, as scene files are written by hand, so a changed entity is a one-line diff.</summary>
+    private static void Write(StreamWriter writer, SceneData scene)
+    {
+        writer.WriteLine("{");
+        if (scene.Schema is not null)
+        {
+            string schema = JsonSerializer.Serialize(scene.Schema, RuntimeJsonContext.Default.String);
+            writer.WriteLine($"  \"{JsonSchemas.SchemaProperty}\": {schema},");
+        }
+
+        writer.WriteLine("  \"entities\": [");
+        for (int index = 0; index < scene.Entities.Count; index++)
+        {
+            string entity = JsonSerializer.Serialize(scene.Entities[index], RuntimeJsonContext.Default.EntityData);
+            string separator = ",";
+            if (index == scene.Entities.Count - 1)
+            {
+                separator = "";
+            }
+
+            writer.WriteLine($"    {entity}{separator}");
+        }
+
+        writer.WriteLine("  ]");
+        writer.WriteLine("}");
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Reloaded {Path}.")]

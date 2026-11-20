@@ -1,5 +1,8 @@
+using System.Text.Json;
+
 using Arch.Core;
 
+using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
@@ -37,10 +40,8 @@ internal sealed class SceneLoaderTestsBuilder : IDisposable
 
     public SceneLoader Build()
     {
-        SceneSpawner spawner = new();
-        spawner.Register("transform", RuntimeJsonContext.Default.Transform);
         _content = new ContentManager(_files.RootDirectory);
-        return new SceneLoader(spawner, _content, World, _logger);
+        return new SceneLoader(CreateSpawner(), _content, World, _logger);
     }
 
     /// <summary>Rewrites the file and reports it changed, as the content watcher would.</summary>
@@ -50,9 +51,42 @@ internal sealed class SceneLoaderTestsBuilder : IDisposable
         _content!.NotifyChanged(path);
     }
 
+    /// <summary>The transform of the first entity of the scene file, spawned into a world of its own.</summary>
+    public Transform LoadInNewWorld(string path)
+    {
+        World world = World.Create();
+        try
+        {
+            SceneLoader loader = new(CreateSpawner(), new ContentManager(_files.RootDirectory), world, _logger);
+            IReadOnlyList<Entity> entities = loader.Load(path);
+            return world.Get<Transform>(entities[0]);
+        }
+        finally
+        {
+            World.Destroy(world);
+        }
+    }
+
+    /// <summary>A component of an entity in the scene file as compact JSON.</summary>
+    public string ReadComponent(string path, int entity, string component)
+    {
+        string fullPath = Path.Combine(_files.RootDirectory, path);
+        string json = File.ReadAllText(fullPath);
+        SceneData scene = JsonSerializer.Deserialize(json, RuntimeJsonContext.Default.SceneData)!;
+        JsonElement data = scene.Entities[entity].Components[component];
+        return JsonSerializer.Serialize(data, RuntimeJsonContext.Default.JsonElement);
+    }
+
     public void Dispose()
     {
         World.Destroy(World);
         _files.Dispose();
+    }
+
+    private static SceneSpawner CreateSpawner()
+    {
+        SceneSpawner spawner = new();
+        spawner.Register("transform", RuntimeJsonContext.Default.Transform);
+        return spawner;
     }
 }

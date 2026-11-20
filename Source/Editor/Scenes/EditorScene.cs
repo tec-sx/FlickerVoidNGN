@@ -48,6 +48,18 @@ public sealed class EditorScene : IDisposable
         ScenePath = path;
     }
 
+    /// <summary>Writes the world into the open scene file; false when the world has no scene file yet.</summary>
+    public bool Save()
+    {
+        if (ScenePath is null)
+        {
+            return false;
+        }
+
+        _loader.Save(ScenePath);
+        return true;
+    }
+
     public void Dispose()
     {
         Picker.Dispose();

@@ -27,4 +27,11 @@ public interface ISceneSpawner
     /// entities the file added or removed are created or destroyed. Returns the entities in the order of <paramref name="current"/>.
     /// </summary>
     IReadOnlyList<Entity> Patch(SceneData previous, SceneData current, IReadOnlyList<Entity> entities, World world);
+
+    /// <summary>
+    /// The scene file for entities spawned from <paramref name="previous"/> as the world has them now, entity by entity in the
+    /// same order: components whose values the world kept stay as the file wrote them, changed or added ones are written in full,
+    /// removed ones are left out, and destroyed entities are dropped.
+    /// </summary>
+    SceneData Capture(SceneData previous, IReadOnlyList<Entity> entities, World world);
 }

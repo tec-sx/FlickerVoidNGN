@@ -335,6 +335,19 @@ public sealed partial class ViewportViewModel : ObservableObject
         }
     }
 
+    /// <summary>Saves the world into its scene file.</summary>
+    [RelayCommand]
+    public void Save()
+    {
+        if (!Scene.Save())
+        {
+            Status = "The world has no scene file to save into; open one with --scene.";
+            return;
+        }
+
+        Status = $"Saved {Scene.ScenePath}.";
+    }
+
     /// <summary>Bakes every irradiance volume's probes with the viewport's mood, on a device of its own; the viewport reloads them.</summary>
     [RelayCommand]
     public void BakeProbes()
