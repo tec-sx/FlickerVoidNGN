@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
 
@@ -134,6 +135,36 @@ public sealed class SceneSpawnerTests : IDisposable
         position["type"]!.GetValue<string>().Should().Be("array");
         position["minItems"]!.GetValue<int>().Should().Be(3);
         components["additionalProperties"]!.GetValue<bool>().Should().BeFalse("a misspelt component should be flagged");
+    }
+
+    [Fact]
+    public void ListsTheRegisteredComponentsWithTheirMetadata()
+    {
+        IReadOnlyList<SceneComponent> components = _spawner.Components;
+
+        components.Should().ContainSingle();
+        components[0].Name.Should().Be("transform");
+        components[0].TypeInfo.Type.Should().Be<Transform>();
+    }
+
+    [Fact]
+    public void GetsAndSetsAComponentOfAnEntityAsABoxedValue()
+    {
+        SceneData scene = Parse("""{ "entities": [ { "components": { "transform": { "position": [1, 2, 3] } } }, {} ] }""");
+        IReadOnlyList<Entity> entities = _spawner.Spawn(scene, _world);
+        SceneComponent transform = _spawner.Components[0];
+        Vector3 moved = new(4, 5, 6);
+
+        JsonPropertyInfo position = transform.TypeInfo.Properties.Single(property => property.Name == "position");
+
+        object component = transform.Get(_world, entities[0]);
+        position.Set!(component, moved);
+        transform.Set(_world, entities[0], component);
+
+        Transform stored = _world.Get<Transform>(entities[0]);
+        stored.Position.Should().Be(moved);
+        transform.Has(_world, entities[0]).Should().BeTrue();
+        transform.Has(_world, entities[1]).Should().BeFalse();
     }
 
     [Fact]

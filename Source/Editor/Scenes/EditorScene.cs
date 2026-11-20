@@ -35,6 +35,9 @@ public sealed class EditorScene : IDisposable
     /// <summary>Finds the entity under a ray through the viewport.</summary>
     public ScenePicker Picker { get; }
 
+    /// <summary>The entity the viewport and the inspector work on.</summary>
+    public EditorSelection Selection { get; } = new();
+
     /// <summary>The open scene file, relative to the content folder, or null for an unsaved world.</summary>
     public string? ScenePath { get; private set; }
 

@@ -8,6 +8,9 @@ namespace FlickerVoid.Engine.Runtime.Scenes;
 /// <summary>Spawns a scene's entities into a world, reading each component from JSON by the name its type is registered under.</summary>
 public interface ISceneSpawner
 {
+    /// <summary>The components scene files may add, in the order they were registered.</summary>
+    IReadOnlyList<SceneComponent> Components { get; }
+
     /// <summary>Lets scene files add components of type <typeparamref name="T"/> under <paramref name="name"/>, and registers the type with Arch.</summary>
     void Register<T>(string name, JsonTypeInfo<T> typeInfo)
         where T : struct;

@@ -12,50 +12,26 @@ namespace FlickerVoid.Engine.Runtime.Scenes;
 /// <summary>Spawns scenes with a JSON reader per registered component name.</summary>
 public sealed class SceneSpawner : ISceneSpawner
 {
-    private readonly Dictionary<string, ComponentAccess> _components = [];
-    private readonly Dictionary<string, JsonTypeInfo> _componentTypes = [];
+    private readonly Dictionary<string, SceneComponent> _components = [];
+    private readonly List<SceneComponent> _componentList = [];
 
     public SceneSpawner()
     {
         ArrayRegistry.Add<EntityName>();
     }
 
-    /// <summary>Reads a component from JSON and adds it to the entity, replacing the one it has.</summary>
-    private delegate void ComponentWriter(World world, Entity entity, JsonElement data);
-
-    private delegate void ComponentRemover(World world, Entity entity);
+    public IReadOnlyList<SceneComponent> Components => _componentList;
 
     public void Register<T>(string name, JsonTypeInfo<T> typeInfo)
         where T : struct
     {
-        void Write(World world, Entity entity, JsonElement data)
-        {
-            T component = data.Deserialize(typeInfo);
-            if (world.Has<T>(entity))
-            {
-                world.Set(entity, in component);
-            }
-            else
-            {
-                world.Add(entity, in component);
-            }
-        }
-
-        void Remove(World world, Entity entity)
-        {
-            if (world.Has<T>(entity))
-            {
-                world.Remove<T>(entity);
-            }
-        }
-
-        ComponentAccess access = new(Write, Remove);
-        if (!_components.TryAdd(name, access))
+        SceneComponentOf<T> component = new(name, typeInfo);
+        if (!_components.TryAdd(name, component))
         {
             throw new ArgumentException($"A component named '{name}' is already registered.", nameof(name));
         }
 
-        _componentTypes.Add(name, typeInfo);
+        _componentList.Add(component);
 
         // NativeAOT can't create Arch's component arrays through reflection, so every component type is registered up front.
         ArrayRegistry.Add<T>();
@@ -65,9 +41,9 @@ public sealed class SceneSpawner : ISceneSpawner
     public JsonObject GetSchema()
     {
         JsonObject components = [];
-        foreach ((string name, JsonTypeInfo typeInfo) in _componentTypes)
+        foreach (SceneComponent component in _componentList)
         {
-            components[name] = JsonSchemas.Create(typeInfo);
+            components[component.Name] = JsonSchemas.Create(component.TypeInfo);
         }
 
         JsonObject componentsSchema = new() { ["type"] = "object", ["properties"] = components, ["additionalProperties"] = false };
@@ -215,9 +191,9 @@ public sealed class SceneSpawner : ISceneSpawner
 
         foreach (string key in previous.Components.Keys)
         {
-            if (!current.Components.ContainsKey(key) && _components.TryGetValue(key, out ComponentAccess? access))
+            if (!current.Components.ContainsKey(key) && _components.TryGetValue(key, out SceneComponent? component))
             {
-                access.Remove(world, entity);
+                component.Remove(world, entity);
             }
         }
     }
@@ -239,20 +215,18 @@ public sealed class SceneSpawner : ISceneSpawner
 
     private void Write(World world, Entity entity, EntityData data, string key, JsonElement value)
     {
-        if (!_components.TryGetValue(key, out ComponentAccess? access))
+        if (!_components.TryGetValue(key, out SceneComponent? component))
         {
             throw new InvalidDataException($"Entity '{data.Name}' has an unknown component '{key}'.");
         }
 
         try
         {
-            access.Write(world, entity, value);
+            component.Read(world, entity, value);
         }
         catch (Exception exception) when (exception is JsonException or NotSupportedException)
         {
             throw new InvalidDataException($"Entity '{data.Name}' has an invalid '{key}' component: {exception.Message}", exception);
         }
     }
-
-    private sealed record ComponentAccess(ComponentWriter Write, ComponentRemover Remove);
 }
