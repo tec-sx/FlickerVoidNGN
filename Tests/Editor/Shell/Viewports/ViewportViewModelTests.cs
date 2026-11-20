@@ -5,6 +5,8 @@ using Arch.Core;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Gizmos;
 using FlickerVoid.Editor.Core.Overlays;
+using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 
@@ -113,6 +115,44 @@ public sealed class ViewportViewModelTests : IDisposable
 
         _builder.ViewModel.Scene.Entities.Should().BeEmpty();
         _builder.ViewModel.Status.Should().Contain("Open a scene");
+    }
+
+    [Fact]
+    public void PreviewsTheSelectedCamerasView()
+    {
+        Transform transform = new() { Position = new Vector3(2, 3, 4) };
+        Camera camera = new() { FieldOfView = 40 };
+        Entity entity = _builder.World.Create(transform, camera);
+        _builder.ViewModel.Selection.Select(entity);
+
+        RenderCamera? preview = _builder.ViewModel.GetPreviewCamera();
+
+        preview.Should().NotBeNull();
+        preview!.Value.Camera.FieldOfView.Should().Be(40);
+        preview.Value.Transform.Position.Should().Be(new Vector3(2, 3, 4));
+    }
+
+    [Fact]
+    public void PreviewsNothingWhenTheSelectionIsNoCamera()
+    {
+        Entity light = _builder.AddPointLight(Vector3.Zero);
+        _builder.ViewModel.Selection.Select(light);
+
+        RenderCamera? preview = _builder.ViewModel.GetPreviewCamera();
+
+        preview.Should().BeNull();
+    }
+
+    [Fact]
+    public void PreviewsNothingInTheGameView()
+    {
+        Entity entity = _builder.World.Create(new Transform(), new Camera());
+        _builder.ViewModel.Selection.Select(entity);
+        _builder.ViewModel.IsGameView = true;
+
+        RenderCamera? preview = _builder.ViewModel.GetPreviewCamera();
+
+        preview.Should().BeNull("the game view shows no selection");
     }
 
     [Fact]

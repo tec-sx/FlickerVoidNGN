@@ -9,8 +9,10 @@ xmlns:inspectorCore="using:FlickerVoid.Editor.Core.Inspector"
 xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
         x:Class="FlickerVoid.Editor.MainWindow"
         x:DataType="shell:MainWindowViewModel"
+        xmlns:chrome="using:Avalonia.Controls.Chrome"
         Title="{Binding Title}"
-        Width="1280" Height="720">
+        Width="1280" Height="720"
+        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="30">
   <Window.KeyBindings>
     <KeyBinding Gesture="Ctrl+S" Command="{Binding Viewport.SaveCommand}" />
     <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveAssetsCommand}" />
@@ -30,9 +32,15 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
     </ControlTheme>
   </Window.Resources>
   <DockPanel>
-    <Border DockPanel.Dock="Top" Classes="toolbar">
+    <!-- The title bar: the window's own buttons stay on the right, the editor's tools fill the rest, and the empty bar behind
+         them drags the window. -->
+    <Border DockPanel.Dock="Top" Classes="toolbar titleBar">
       <Grid ColumnDefinitions="*,Auto,*">
+        <Border Grid.ColumnSpan="3" Background="Transparent" chrome:WindowDecorationProperties.ElementRole="TitleBar" />
         <StackPanel Orientation="Horizontal">
+          <PathIcon Classes="logo" Data="{x:Static shell:MaterialIcons.Logo}" />
+          <TextBlock Text="{Binding Title}" Classes="windowTitle" IsHitTestVisible="False" />
+          <Separator />
           <Button Classes="icon save" Command="{Binding Viewport.SaveCommand}" ToolTip.Tip="Save the scene (Ctrl+S).">
             <PathIcon Data="{x:Static shell:MaterialIcons.Save}" />
           </Button>
@@ -61,7 +69,7 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
             <PathIcon Data="{x:Static shell:MaterialIcons.GameView}" />
           </ToggleButton>
         </StackPanel>
-        <Button Grid.Column="1" Classes="icon play" Command="{Binding PlayCommand}"
+        <Button Grid.Column="1" Classes="icon play" Command="{Binding PlayCommand}" VerticalAlignment="Center"
                 ToolTip.Tip="Play (F5): runs the project's game on the scene as it is now, without saving it. Needs an open project.">
           <PathIcon Data="{x:Static shell:MaterialIcons.Play}" />
         </Button>
