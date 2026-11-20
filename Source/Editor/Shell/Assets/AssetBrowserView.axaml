@@ -3,7 +3,7 @@
              xmlns:assets="using:FlickerVoid.Editor.Assets"
              x:Class="FlickerVoid.Editor.Assets.AssetBrowserView"
              x:DataType="assets:AssetBrowserViewModel">
-  <Grid ColumnDefinitions="220,4,*">
+  <Grid ColumnDefinitions="180,2,*">
     <TreeView ItemsSource="{Binding Folders}" SelectedItem="{Binding SelectedFolder}">
       <TreeView.ItemTemplate>
         <TreeDataTemplate DataType="assets:AssetFolder" ItemsSource="{Binding Children}">
@@ -13,7 +13,7 @@
     </TreeView>
     <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
     <DockPanel Grid.Column="2">
-      <WrapPanel DockPanel.Dock="Top" Margin="4" ItemSpacing="6" LineSpacing="4">
+      <WrapPanel DockPanel.Dock="Top" Margin="2" ItemSpacing="4" LineSpacing="2">
         <ComboBox ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Width="120">
           <ComboBox.ItemTemplate>
             <DataTemplate DataType="assets:AssetFilter">
@@ -39,7 +39,7 @@
         <Button Content="Delete" ToolTip.Tip="Deletes the selected file, or the selected folder with everything in it.">
           <Button.Flyout>
             <Flyout>
-              <StackPanel Spacing="8">
+              <StackPanel Spacing="4">
                 <TextBlock Text="Delete it, with its source file?" />
                 <Button Content="Delete" Command="{Binding DeleteCommand}" />
               </StackPanel>

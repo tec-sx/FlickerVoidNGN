@@ -16,24 +16,23 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
     <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveAssetsCommand}" />
     <KeyBinding Gesture="F5" Command="{Binding PlayCommand}" />
   </Window.KeyBindings>
+  <Window.Resources>
+    <ControlTheme x:Key="PresetMenuItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="scenesCore:EntityPreset">
+      <Setter Property="Header" Value="{Binding Name}" />
+      <Setter Property="Command" Value="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddEntityCommand}" />
+      <Setter Property="CommandParameter" Value="{Binding}" />
+    </ControlTheme>
+    <ControlTheme x:Key="PresetGroupMenuItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="scenesCore:EntityPresetGroup">
+      <Setter Property="Header" Value="{Binding Name}" />
+      <Setter Property="ItemsSource" Value="{Binding Presets}" />
+      <Setter Property="ItemContainerTheme" Value="{StaticResource PresetMenuItem}" />
+    </ControlTheme>
+  </Window.Resources>
   <DockPanel>
-    <Border DockPanel.Dock="Top" Padding="8,4" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <DropDownButton Content="Add" ToolTip.Tip="Add an entity to the open scene at the camera's pivot.">
-          <DropDownButton.Flyout>
-            <MenuFlyout ItemsSource="{Binding Presets}">
-              <MenuFlyout.ItemContainerTheme>
-                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="scenesCore:EntityPreset">
-                  <Setter Property="Header" Value="{Binding Name}" />
-                  <Setter Property="Command" Value="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddEntityCommand}" />
-                  <Setter Property="CommandParameter" Value="{Binding}" />
-                </ControlTheme>
-              </MenuFlyout.ItemContainerTheme>
-            </MenuFlyout>
-          </DropDownButton.Flyout>
-        </DropDownButton>
+    <Border DockPanel.Dock="Top" Classes="toolbar">
+      <StackPanel Orientation="Horizontal">
         <Button Content="Delete" Command="{Binding Viewport.DeleteSelectedCommand}" ToolTip.Tip="Delete the selected entity (Delete)." />
-        <Separator Width="1" Margin="4,0" />
+        <Separator />
         <Button Content="Save" Command="{Binding Viewport.SaveCommand}" ToolTip.Tip="Save the scene (Ctrl+S)." />
         <Button Content="Save Assets" Command="{Binding SaveAssetsCommand}" ToolTip.Tip="Save the edited materials and moods (Ctrl+Shift+S)." />
         <Button Content="Discard Assets" Command="{Binding DiscardAssetsCommand}" ToolTip.Tip="Forget the unsaved material and mood edits." />
@@ -45,14 +44,14 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
                       ToolTip.Tip="Game View (G): hides the grid, icons, selection and gizmo to show the world as the game will." />
       </StackPanel>
     </Border>
-    <Border DockPanel.Dock="Bottom" Padding="8,2" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+    <Border DockPanel.Dock="Bottom" Classes="statusbar">
       <DockPanel>
-        <TextBlock DockPanel.Dock="Right" Text="{Binding Viewport.SelectionText}" Margin="16,0,0,0" />
+        <TextBlock DockPanel.Dock="Right" Text="{Binding Viewport.SelectionText}" Margin="12,0,0,0" />
         <TextBlock Text="{Binding Viewport.Status}" TextTrimming="CharacterEllipsis"
-                   ToolTip.Tip="Alt+left drag orbits, Alt+middle drag pans, Alt+right drag or the wheel zooms; hold the right button to look round and fly with WASD, Q and E." />
+                   ToolTip.Tip="Shift+A over the viewport adds an entity at the camera's pivot. Alt+left drag orbits, Alt+middle drag pans, Alt+right drag or the wheel zooms; hold the right button to look round and fly with WASD, Q and E." />
       </DockPanel>
     </Border>
-    <Border DockPanel.Dock="Right" Width="380" BorderThickness="1,0,0,0"
+    <Border DockPanel.Dock="Right" Width="300" BorderThickness="1,0,0,0"
             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
       <TabControl Padding="0">
         <TabItem Header="Scene">
@@ -63,10 +62,10 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
         </TabItem>
         <TabItem Header="View">
           <ScrollViewer>
-            <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" Margin="12,4,12,12">
+            <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" Margin="6,2,6,6">
               <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="inspectorCore:FieldViewModel">
-                  <Grid ColumnDefinitions="130,*" Margin="0,2">
+                  <Grid ColumnDefinitions="110,*" Margin="0,1">
                     <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     <ContentControl Grid.Column="1" Content="{Binding}" />
                   </Grid>
@@ -77,9 +76,14 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
         </TabItem>
       </TabControl>
     </Border>
-    <Grid RowDefinitions="*,4,240">
+    <Grid RowDefinitions="*,2,180">
       <Panel>
-        <viewports:ViewportControl DataContext="{Binding Viewport}" />
+        <viewports:ViewportControl DataContext="{Binding Viewport}">
+          <FlyoutBase.AttachedFlyout>
+            <MenuFlyout ItemsSource="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).PresetGroups}"
+                        ItemContainerTheme="{StaticResource PresetGroupMenuItem}" />
+          </FlyoutBase.AttachedFlyout>
+        </viewports:ViewportControl>
         <viewports:ViewportOverlay DataContext="{Binding Viewport}" />
       </Panel>
       <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
