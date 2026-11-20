@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
 
@@ -6,8 +7,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Assets;
+using FlickerVoid.Editor.Assets.Data;
 using FlickerVoid.Editor.Assets.Materials;
 using FlickerVoid.Editor.Assets.Moods;
+using FlickerVoid.Editor.Core.Data;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Viewports;
@@ -20,6 +23,7 @@ using FlickerVoid.Editor.Viewports;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Data;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
 
@@ -37,6 +41,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly ScenePlayer? _player;
     private readonly UnsavedContent _content;
     private MoodDocument? _mood;
+    private DataDocument? _data;
     private string? _sceneMood;
 
     /// <summary>
@@ -54,7 +59,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Inspector = inspector;
         SceneTree = new SceneTreeViewModel(viewport.Scene);
         ViewSettings = new ViewSettingsViewModel(viewport.Mood);
-        Assets = new AssetBrowserViewModel(viewport.Scene.Content);
+        Assets = new AssetBrowserViewModel(viewport.Scene.Content, viewport.Scene.Game.Data);
         Assets.Opened += OpenAsset;
         viewport.Scene.Opened += HandleSceneOpened;
         viewport.Scene.UnsavedChanged += HandleUnsavedChanged;
@@ -93,6 +98,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return _mood.Path;
         }
     }
+
+    /// <summary>The form of the data asset opened in the content browser, edited in the Data tab; null before one opens.</summary>
+    [ObservableProperty]
+    public partial DataObjectViewModel? DataForm { get; private set; }
+
+    /// <summary>The open data asset's path, marked with an asterisk when it has unsaved edits.</summary>
+    public string DataHeading
+    {
+        get
+        {
+            if (_data is null)
+            {
+                return "Open a data asset in the content browser to edit it.";
+            }
+
+            if (_content.IsUnsaved(_data.Path))
+            {
+                return $"{_data.Path} *";
+            }
+
+            return _data.Path;
+        }
+    }
+
+    /// <summary>The side panel's open tab: 0 scene, 1 inspector, 2 view, 3 data.</summary>
+    [ObservableProperty]
+    public partial int SideTab { get; set; }
 
     public ViewportViewModel Viewport { get; }
 
@@ -231,6 +263,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(HasUnsavedChanges));
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(MoodHeading));
+        OnPropertyChanged(nameof(DataHeading));
         SaveAssetsCommand.NotifyCanExecuteChanged();
         DiscardAssetsCommand.NotifyCanExecuteChanged();
     }
@@ -255,7 +288,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
             case AssetKind.Mood:
                 OpenMood(asset.Path);
                 break;
+            case AssetKind.Data:
+                OpenData(asset.Path);
+                break;
         }
+    }
+
+    /// <summary>Edits the data asset in the Data tab, its edits held unsaved like a material's; a file that can't be read is reported.</summary>
+    private void OpenData(string path)
+    {
+        EditorScene scene = Viewport.Scene;
+        DataTypes types = scene.Game.Data;
+        try
+        {
+            _data = new DataDocument(_content, types, path);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            Viewport.Status = $"Can't open {path}: {exception.Message}";
+            return;
+        }
+
+        JsonTypeInfo typeInfo = types.Options.GetTypeInfo(_data.Asset.GetType());
+        ContentFileFinder files = new(_content);
+        string title = Path.GetFileNameWithoutExtension(path);
+        DataForm = new DataObjectViewModel(title, _data.Asset, typeInfo, _data.Hold, files.Find);
+        OnPropertyChanged(nameof(DataHeading));
+        SideTab = 3;
     }
 
     /// <summary>Draws the viewport with the mood file and edits it in the View tab; a file that can't be read leaves the view as it is.</summary>

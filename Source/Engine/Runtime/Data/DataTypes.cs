@@ -74,6 +74,79 @@ public sealed class DataTypes
         derived.Add(new JsonDerivedType(typeof(TDerived), name));
     }
 
+    /// <summary>The data asset a <c>.fvdata</c> file holds, as the type its <c>type</c> names; <paramref name="path"/> names the file in errors.</summary>
+    public object ReadAsset(string path, JsonObject file)
+    {
+        Type type = GetType(path, file, _assets);
+        JsonObject body = new();
+        foreach ((string name, JsonNode? value) in file)
+        {
+            if (name is not TypeProperty and not JsonSchemas.SchemaProperty)
+            {
+                body[name] = value?.DeepClone();
+            }
+        }
+
+        JsonTypeInfo typeInfo = Options.GetTypeInfo(type);
+        try
+        {
+            return body.Deserialize(typeInfo) ?? throw new InvalidDataException($"{path} holds no data.");
+        }
+        catch (Exception exception) when (exception is JsonException or NotSupportedException)
+        {
+            throw new InvalidDataException($"{path} can't be read: {exception.Message}", exception);
+        }
+    }
+
+    /// <summary>A data asset as a <c>.fvdata</c> file: its schema, the name its type is registered under, then its values.</summary>
+    public byte[] WriteAsset(object asset, string? schema)
+    {
+        Type type = asset.GetType();
+        string name = _assets.First(pair => pair.Value == type).Key;
+        JsonTypeInfo typeInfo = Options.GetTypeInfo(type);
+        JsonNode? values = JsonSerializer.SerializeToNode(asset, typeInfo);
+        JsonObject file = [];
+        if (schema is not null)
+        {
+            file[JsonSchemas.SchemaProperty] = schema;
+        }
+
+        file[TypeProperty] = name;
+        if (values is JsonObject properties)
+        {
+            foreach ((string property, JsonNode? value) in properties)
+            {
+                file[property] = value?.DeepClone();
+            }
+        }
+
+        using MemoryStream stream = new();
+        using (Utf8JsonWriter writer = new(stream, new JsonWriterOptions { Indented = true }))
+        {
+            file.WriteTo(writer);
+        }
+
+        stream.WriteByte((byte)'\n');
+        return stream.ToArray();
+    }
+
+    /// <summary>The registered type a file names in <c>type</c>.</summary>
+    internal static Type GetType(string path, JsonObject file, IReadOnlyDictionary<string, Type> types)
+    {
+        string? name = file[TypeProperty]?.GetValue<string>();
+        if (name is null)
+        {
+            throw new InvalidDataException($"{path} names no \"{TypeProperty}\".");
+        }
+
+        if (!types.TryGetValue(name, out Type? type))
+        {
+            throw new InvalidDataException($"{path} has the unknown type {name}.");
+        }
+
+        return type;
+    }
+
     /// <summary>The JSON Schema of data asset files: one of the registered types, named by <c>type</c>.</summary>
     public JsonObject GetAssetSchema()
     {

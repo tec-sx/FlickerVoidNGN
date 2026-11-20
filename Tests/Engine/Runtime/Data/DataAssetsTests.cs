@@ -126,6 +126,23 @@ public sealed class DataAssetsTests : IDisposable
     }
 
     [Fact]
+    public void WritesAnAssetAsAFileThatReadsBack()
+    {
+        DataAssets data = _builder.WithFile("Items/Key.fvdata", Key).Build();
+        TestItem key = data.Load<TestItem>("Items/Key.fvdata");
+
+        byte[] written = _builder.Types.WriteAsset(key, "../.schemas/data.schema.json");
+
+        JsonObject file = JsonNode.Parse(written)!.AsObject();
+        file["$schema"]!.GetValue<string>().Should().Be("../.schemas/data.schema.json");
+        file["type"]!.GetValue<string>().Should().Be("item");
+        file["fragments"]![1]!["$type"]!.GetValue<string>().Should().Be("usable");
+        TestItem read = (TestItem)_builder.Types.ReadAsset("Items/Key.fvdata", file);
+        read.Id.Should().Be(key.Id);
+        read.Fragments[1].Should().BeOfType<UsableFragment>().Which.Uses.Should().Be(3);
+    }
+
+    [Fact]
     public void DescribesEveryAssetTypeWithItsFragmentsInTheSchema()
     {
         JsonObject schema = _builder.Types.GetAssetSchema();

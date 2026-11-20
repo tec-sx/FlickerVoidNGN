@@ -172,6 +172,20 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     }
 
     [Fact]
+    public void CreatesDataAssetsAndTablesOfTheRegisteredTypes()
+    {
+        AssetBrowserViewModel browser = _builder.BuildWithData();
+
+        browser.DataChoices.Select(static choice => choice.Name).Should().Equal("barrel");
+        browser.TableChoices.Select(static choice => choice.Name).Should().Equal("wine");
+        browser.DataChoices[0].Command.Execute(null);
+        browser.TableChoices[0].Command.Execute(null);
+
+        _builder.ReadFile("New Barrel.fvdata").Should().Contain("\"$schema\": \".schemas/data.schema.json\"").And.Contain("\"type\": \"barrel\"");
+        _builder.ReadFile("New Wine Table.fvtable").Should().Contain("\"type\": \"wine\"").And.Contain("\"rows\": {}");
+    }
+
+    [Fact]
     public void CreatesMoodsAndFolders()
     {
         AssetBrowserViewModel browser = _builder.Build();

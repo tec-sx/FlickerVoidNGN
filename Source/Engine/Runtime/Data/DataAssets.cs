@@ -84,24 +84,13 @@ public sealed class DataAssets : IDisposable
 
     private object ReadAsset(string path, JsonObject file)
     {
-        Type type = GetType(path, file, _types.AssetTypes);
-        JsonObject body = new();
-        foreach ((string name, JsonNode? value) in file)
-        {
-            if (name is not DataTypes.TypeProperty and not JsonSchemas.SchemaProperty)
-            {
-                body[name] = value?.DeepClone();
-            }
-        }
-
-        JsonTypeInfo typeInfo = _types.Options.GetTypeInfo(type);
-        return body.Deserialize(typeInfo) ?? throw new InvalidDataException($"{path} holds no data.");
+        return _types.ReadAsset(path, file);
     }
 
     private object ReadTable<TRow>(string path, JsonObject file)
         where TRow : class
     {
-        Type type = GetType(path, file, _types.RowTypes);
+        Type type = DataTypes.GetType(path, file, _types.RowTypes);
         if (type != typeof(TRow))
         {
             throw new InvalidDataException($"{path} holds rows of {type.Name}, not {typeof(TRow).Name}.");
@@ -119,22 +108,6 @@ public sealed class DataAssets : IDisposable
         }
 
         return new DataTable<TRow>(rows);
-    }
-
-    private static Type GetType(string path, JsonObject file, IReadOnlyDictionary<string, Type> types)
-    {
-        string? name = file[DataTypes.TypeProperty]?.GetValue<string>();
-        if (name is null)
-        {
-            throw new InvalidDataException($"{path} names no \"{DataTypes.TypeProperty}\".");
-        }
-
-        if (!types.TryGetValue(name, out Type? type))
-        {
-            throw new InvalidDataException($"{path} has the unknown type {name}.");
-        }
-
-        return type;
     }
 
     private void HandleChanged(string fullPath)
