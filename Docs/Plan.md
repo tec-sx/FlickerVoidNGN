@@ -23,6 +23,22 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 ## Architecture
 
 - Runtime, builder and editor are separate programs that share asset schemas. The runtime never references the editor.
+- The source is split three ways (owner, 2026-11-20): `Source/Engine` holds the modules games ship with, `Source/Tools` the content tools (Builder and ShaderCompiler), and `Source/Editor` the editor, itself four projects so that only its shell uses Avalonia. Engine sources never reference Tools or Editor; engine tests may use Tools to compile shaders.
+
+```mermaid
+graph TD
+    Shell["Editor (shell, Avalonia)"] --> Assets["Editor.Assets"]
+    Shell --> Persistence["Editor.Persistence"]
+    Shell --> Core["Editor.Core"]
+    Shell --> Vulkan["Engine.Graphics.Vulkan"]
+    Assets --> Core
+    Core --> Rendering["Engine.Rendering"]
+    Rendering --> Runtime["Engine.Runtime"]
+    Builder["Tools.Builder"] --> ShaderCompiler["Tools.ShaderCompiler"]
+    Builder --> Rendering
+```
+
+- The editor changes its world only through `EditorScene`, one edit at a time, each raising `Edited`, so undo and redo can later record the same edits. Unsaved material and mood edits live in `UnsavedContent` until they are saved or discarded.
 - Assets are text on disk (diffable) and binary when built. The builder caches by content hash and runs the same in the editor and in CI.
 - Entities and components on Arch; systems update one component type at a time.
 - Scenes and spawning go through scene files and factories; scene proxies load and unload whole worlds.
@@ -55,6 +71,8 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 6. **Editor.** Avalonia: project browser for `Documents/FlickerVoid`, scene view, inspector generated from schemas, light editing and probe baking, the per-material shading controls, layered painted textures (an idea to explore), Play in a separate process. Gate: build and light a room without touching a text file.
 7. **FlickerVoid systems and the demo project.** Interaction, inventory and outfits, dialogue and story graphs, navigation and map, UI, saves. Gate: the basic story loop from the Unreal milestone (inventory, dialogue, a quest, map, interaction) plays in NGN.
 
-A development-only debug UI (Dear ImGui through Hexa.NET.ImGui, in `Source/Debug`) arrived after stage 4 (owner, 2026-11-19): engine panels for frame, CPU, memory and GPU statistics, the console, the renderer's switches and moods, plus a public `DebugWindow` API for per-project panels (the samples have theirs). The editor will use its own Avalonia UI instead.
+A development-only debug UI (Dear ImGui through Hexa.NET.ImGui, in `Source/Engine/Debug`) arrived after stage 4 (owner, 2026-11-19): engine panels for frame, CPU, memory and GPU statistics, the console, the renderer's switches and moods, plus a public `DebugWindow` API for per-project panels (the samples have theirs). The editor will use its own Avalonia UI instead.
 
 Stage 1 runs in parallel with stages 2 and 3.
+
+Later (owner, 2026-11-20): an engine asset registry, with synchronous and asynchronous runtime loading and unloading of packed data and its own runtime persistence.

@@ -45,10 +45,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Assets = new AssetBrowserViewModel(viewport.Scene.Content);
         Assets.Opened += OpenAsset;
         viewport.Scene.Opened += HandleSceneOpened;
+        viewport.Scene.UnsavedChanged += HandleUnsavedChanged;
     }
 
     /// <summary>Raised to show a material in the material editor, by its path in the content folder.</summary>
     public event Action<string>? MaterialRequested;
+
+    /// <summary>
+    /// Asks what to do with the listed unsaved files before an action would lose their edits: save them, discard them, or
+    /// cancel the action with null. Without it, the edits are dropped.
+    /// </summary>
+    public Func<IReadOnlyList<string>, Task<UnsavedAssetsChoice?>>? AskUnsaved { get; set; }
 
     /// <summary>The viewport's lighting and post-processing, tweaked beside the inspector.</summary>
     public ViewSettingsViewModel ViewSettings { get; }
@@ -118,7 +125,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 title = $"{scene} - {title}";
             }
 
-            if (_content.HasUnsaved)
+            if (HasUnsavedChanges)
             {
                 title = $"* {title}";
             }
@@ -130,8 +137,39 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// <summary>Whether materials or moods hold edits that are not saved.</summary>
     public bool HasUnsaved => _content.HasUnsaved;
 
-    /// <summary>The files with unsaved edits, for the prompt shown before the editor closes.</summary>
-    public IReadOnlyList<string> UnsavedPaths => _content.UnsavedPaths;
+    /// <summary>Whether the scene, materials or moods hold edits that are not saved.</summary>
+    public bool HasUnsavedChanges => _content.HasUnsaved || Viewport.Scene.IsUnsaved;
+
+    /// <summary>The files with unsaved edits, the open scene first, for the prompt shown before the editor closes.</summary>
+    public IReadOnlyList<string> UnsavedPaths
+    {
+        get
+        {
+            List<string> paths = [];
+            EditorScene scene = Viewport.Scene;
+            if (scene.IsUnsaved && scene.ScenePath is not null)
+            {
+                paths.Add(scene.ScenePath);
+            }
+
+            paths.AddRange(_content.UnsavedPaths);
+            return paths;
+        }
+    }
+
+    /// <summary>Saves the open scene and every material and mood with unsaved edits.</summary>
+    public void SaveAll()
+    {
+        if (Viewport.Scene.IsUnsaved)
+        {
+            Viewport.Save();
+        }
+
+        if (_content.HasUnsaved)
+        {
+            SaveAssets();
+        }
+    }
 
     /// <summary>Saves every material and mood with unsaved edits.</summary>
     [RelayCommand(CanExecute = nameof(HasUnsaved))]
@@ -156,6 +194,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void HandleUnsavedChanged()
     {
         OnPropertyChanged(nameof(HasUnsaved));
+        OnPropertyChanged(nameof(HasUnsavedChanges));
         OnPropertyChanged(nameof(Title));
         SaveAssetsCommand.NotifyCanExecuteChanged();
         DiscardAssetsCommand.NotifyCanExecuteChanged();
@@ -168,12 +207,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Viewport.Status = $"{path} changed on disk; its unsaved edits are kept. Save to overwrite it or discard to take the change.";
     }
 
-    private void OpenAsset(AssetEntry asset)
+    private async void OpenAsset(AssetEntry asset)
     {
         switch (asset.Kind)
         {
             case AssetKind.Scene:
-                OpenScene(asset.Path);
+                await OpenScene(asset.Path);
                 break;
             case AssetKind.Material:
                 MaterialRequested?.Invoke(asset.Path);
@@ -181,8 +220,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private void OpenScene(string path)
+    /// <summary>Opens a scene in place of the open one, first asking what to do with the open scene's unsaved edits.</summary>
+    private async Task OpenScene(string path)
     {
+        EditorScene scene = Viewport.Scene;
+        if (scene.IsUnsaved && scene.ScenePath is not null && AskUnsaved is not null)
+        {
+            string[] unsaved = [scene.ScenePath];
+            UnsavedAssetsChoice? choice = await AskUnsaved(unsaved);
+            switch (choice)
+            {
+                case UnsavedAssetsChoice.Save:
+                    Viewport.Save();
+                    break;
+                case UnsavedAssetsChoice.Discard:
+                    break;
+                default:
+                    return;
+            }
+        }
+
         try
         {
             Viewport.Scene.Open(path);

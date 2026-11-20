@@ -87,6 +87,7 @@ public sealed class ViewportViewModelTests : IDisposable
         Transform transform = _builder.World.Get<Transform>(light);
         Vector3.Distance(transform.Position, new Vector3(0, 2, 0)).Should().BeLessThan(0.02f);
         _builder.ViewModel.Selection.Selected.Should().Be(light);
+        _builder.ViewModel.Scene.IsUnsaved.Should().BeTrue();
     }
 
     [Fact]

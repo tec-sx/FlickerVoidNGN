@@ -3,21 +3,25 @@ using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
 
+using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Engine.Runtime.Scenes;
 
 namespace FlickerVoid.Editor.Core.Inspector;
 
-/// <summary>One property of a component on an entity, read and written through the component's source-generated metadata.</summary>
+/// <summary>
+/// One property of a component on an entity, read and written through the component's source-generated metadata; writes go
+/// through the edited scene.
+/// </summary>
 public sealed class ComponentProperty : IEditableValue
 {
-    private readonly World _world;
+    private readonly EditorScene _scene;
     private readonly Entity _entity;
     private readonly SceneComponent _component;
     private readonly JsonPropertyInfo _property;
 
-    public ComponentProperty(World world, Entity entity, SceneComponent component, JsonPropertyInfo property)
+    public ComponentProperty(EditorScene scene, Entity entity, SceneComponent component, JsonPropertyInfo property)
     {
-        _world = world;
+        _scene = scene;
         _entity = entity;
         _component = component;
         _property = property;
@@ -42,16 +46,18 @@ public sealed class ComponentProperty : IEditableValue
 
     public object? Get()
     {
-        object component = _component.Get(_world, _entity);
+        World world = _scene.Game.World;
+        object component = _component.Get(world, _entity);
         return _property.Get!(component);
     }
 
     /// <summary>Sets the property on a copy of the component and gives the copy back to the entity.</summary>
     public void Set(object? value)
     {
-        object component = _component.Get(_world, _entity);
+        World world = _scene.Game.World;
+        object component = _component.Get(world, _entity);
         _property.Set!(component, value);
-        _component.Set(_world, _entity, component);
+        _scene.SetComponent(_entity, _component, component);
     }
 
     /// <summary>The value as it would be written in a scene file.</summary>

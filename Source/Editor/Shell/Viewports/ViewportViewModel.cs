@@ -254,10 +254,10 @@ public sealed partial class ViewportViewModel : ObservableObject
             return;
         }
 
-        ref Transform transform = ref world.Get<Transform>(selected);
         if (Gizmo.IsDragging)
         {
-            transform = Gizmo.Drag(Camera, pixel, width, height);
+            Transform dragged = Gizmo.Drag(Camera, pixel, width, height);
+            Scene.SetComponent(selected, dragged);
             return;
         }
 
@@ -266,6 +266,7 @@ public sealed partial class ViewportViewModel : ObservableObject
             return;
         }
 
+        Transform transform = world.Get<Transform>(selected);
         Gizmo.Hover(Camera, transform, pixel, width, height);
     }
 

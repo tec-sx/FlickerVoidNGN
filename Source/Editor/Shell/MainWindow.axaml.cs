@@ -18,22 +18,21 @@ public sealed partial class MainWindow : Window
         AvaloniaXamlLoader.Load(this);
     }
 
-    /// <summary>Asks whether to save or discard unsaved assets before closing, and keeps the window open on cancel.</summary>
+    /// <summary>Asks whether to save or discard the unsaved scene and assets before closing, and keeps the window open on cancel.</summary>
     protected override async void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
-        if (_closingDecided || DataContext is not MainWindowViewModel main || !main.HasUnsaved)
+        if (_closingDecided || DataContext is not MainWindowViewModel main || !main.HasUnsavedChanges)
         {
             return;
         }
 
         e.Cancel = true;
-        UnsavedAssetsDialog dialog = new(main.UnsavedPaths);
-        UnsavedAssetsChoice? choice = await dialog.ShowDialog<UnsavedAssetsChoice?>(this);
+        UnsavedAssetsChoice? choice = await AskUnsaved(main.UnsavedPaths);
         switch (choice)
         {
             case UnsavedAssetsChoice.Save:
-                main.SaveAssets();
+                main.SaveAll();
                 break;
             case UnsavedAssetsChoice.Discard:
                 main.DiscardAssets();
@@ -52,7 +51,14 @@ public sealed partial class MainWindow : Window
         if (DataContext is MainWindowViewModel main)
         {
             main.MaterialRequested += ShowMaterial;
+            main.AskUnsaved = AskUnsaved;
         }
+    }
+
+    private Task<UnsavedAssetsChoice?> AskUnsaved(IReadOnlyList<string> paths)
+    {
+        UnsavedAssetsDialog dialog = new(paths);
+        return dialog.ShowDialog<UnsavedAssetsChoice?>(this);
     }
 
     private void HandleMaterialsClick(object? sender, RoutedEventArgs e)

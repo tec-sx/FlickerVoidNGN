@@ -1,4 +1,3 @@
-using System.Text.Json;
 
 using Arch.Core;
 
@@ -47,27 +46,24 @@ public sealed partial class InspectorViewModel : ObservableObject
     [RelayCommand]
     private void AddComponent(SceneComponent component)
     {
-        World world = _scene.Game.World;
-        if (_scene.Selection.Selected is not { } entity || !world.IsAlive(entity) || component.Has(world, entity))
+        if (_scene.Selection.Selected is not { } entity)
         {
             return;
         }
 
-        using JsonDocument defaults = JsonDocument.Parse("{}");
-        component.Read(world, entity, defaults.RootElement);
+        _scene.AddComponent(entity, component);
         Rebuild();
     }
 
     [RelayCommand]
     private void RemoveComponent(ComponentViewModel shown)
     {
-        World world = _scene.Game.World;
-        if (!shown.CanRemove || _scene.Selection.Selected is not { } entity || !world.IsAlive(entity))
+        if (!shown.CanRemove || _scene.Selection.Selected is not { } entity)
         {
             return;
         }
 
-        shown.Component.Remove(world, entity);
+        _scene.RemoveComponent(entity, shown.Component);
         Rebuild();
     }
 
@@ -117,7 +113,7 @@ public sealed partial class InspectorViewModel : ObservableObject
         {
             if (component.Has(world, entity))
             {
-                ComponentViewModel shown = new(world, entity, component, _files);
+                ComponentViewModel shown = new(_scene, entity, component, _files);
                 components.Add(shown);
             }
             else

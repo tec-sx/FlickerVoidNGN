@@ -3,7 +3,9 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Editor.Core.Scenes;
+using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Scenes;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
 
@@ -11,6 +13,8 @@ namespace FlickerVoid.Editor.Core.Tests.Scenes;
 
 public sealed class EditorSceneTests : IDisposable
 {
+    private const string Room = """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""";
+
     private readonly EditorSceneTestsBuilder _builder = new();
 
     public void Dispose() => _builder.Dispose();
@@ -118,5 +122,143 @@ public sealed class EditorSceneTests : IDisposable
 
         _builder.Scene.Entities.Should().BeEmpty();
         _builder.ReadScene("Room.fvscene").Should().NotContain("Lamp");
+    }
+
+    [Fact]
+    public void AnOpenedSceneHasNoUnsavedEdits()
+    {
+        _builder.WithScene("Room.fvscene", Room).Open("Room.fvscene");
+
+        _builder.Scene.IsUnsaved.Should().BeFalse();
+    }
+
+    [Fact]
+    public void SettingAComponentChangesTheEntityAndLeavesTheSceneUnsaved()
+    {
+        Entity lamp = _builder.WithScene("Room.fvscene", Room).Open("Room.fvscene");
+        EditorScene scene = _builder.Scene;
+        int edits = 0;
+        scene.Edited += () => edits++;
+        Transform moved = new() { Position = new Vector3(2, 1, 0) };
+
+        scene.SetComponent(lamp, moved);
+
+        scene.Game.World.Get<Transform>(lamp).Position.Should().Be(moved.Position);
+        scene.IsUnsaved.Should().BeTrue();
+        edits.Should().Be(1);
+    }
+
+    [Fact]
+    public void SettingAComponentByItsSceneNameChangesTheEntity()
+    {
+        Entity lamp = _builder.WithScene("Room.fvscene", Room).Open("Room.fvscene");
+        EditorScene scene = _builder.Scene;
+        SceneComponent transform = _builder.FindComponent("transform");
+        object moved = new Transform { Position = new Vector3(0, 3, 0) };
+
+        scene.SetComponent(lamp, transform, moved);
+
+        scene.Game.World.Get<Transform>(lamp).Position.Should().Be(new Vector3(0, 3, 0));
+        scene.IsUnsaved.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AddingAComponentGivesItItsDefaultsAndRemovingItTakesItAway()
+    {
+        Entity lamp = _builder.WithScene("Room.fvscene", Room).Open("Room.fvscene");
+        EditorScene scene = _builder.Scene;
+        SceneComponent light = _builder.FindComponent("pointLight");
+        int edits = 0;
+        scene.Edited += () => edits++;
+
+        scene.AddComponent(lamp, light);
+        bool added = scene.Game.World.Has<PointLight>(lamp);
+        float range = scene.Game.World.Get<PointLight>(lamp).Range;
+        scene.RemoveComponent(lamp, light);
+
+        added.Should().BeTrue();
+        range.Should().Be(new PointLight().Range);
+        scene.Game.World.Has<PointLight>(lamp).Should().BeFalse();
+        scene.IsUnsaved.Should().BeTrue();
+        edits.Should().Be(2);
+    }
+
+    [Fact]
+    public void AddingAComponentTheEntityHasChangesNothing()
+    {
+        Entity lamp = _builder.WithScene("Room.fvscene", Room).Open("Room.fvscene");
+        EditorScene scene = _builder.Scene;
+        SceneComponent transform = _builder.FindComponent("transform");
+        Transform moved = new() { Position = new Vector3(5, 0, 0) };
+        scene.Game.World.Set(lamp, moved);
+
+        scene.AddComponent(lamp, transform);
+
+        scene.Game.World.Get<Transform>(lamp).Position.Should().Be(moved.Position);
+        scene.IsUnsaved.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AddingAndDestroyingEntitiesLeaveTheSceneUnsaved()
+    {
+        Entity lamp = _builder.WithScene("Room.fvscene", Room).Open("Room.fvscene");
+        EditorScene scene = _builder.Scene;
+        int edits = 0;
+        scene.Edited += () => edits++;
+
+        scene.AddEntity(new EntityData { Name = "Box" });
+        scene.DestroyEntity(lamp);
+
+        scene.IsUnsaved.Should().BeTrue();
+        edits.Should().Be(2);
+    }
+
+    [Fact]
+    public void SavingAndOpeningClearTheUnsavedEdits()
+    {
+        Entity lamp = _builder.WithScene("Room.fvscene", Room).WithScene("Hall.fvscene", Room).Open("Room.fvscene");
+        EditorScene scene = _builder.Scene;
+        Transform moved = new() { Position = Vector3.One };
+        scene.SetComponent(lamp, moved);
+        scene.Save();
+        bool afterSave = scene.IsUnsaved;
+        Entity first = scene.Entities[0];
+        scene.SetComponent(first, moved);
+
+        scene.Open("Hall.fvscene");
+
+        afterSave.Should().BeFalse();
+        scene.IsUnsaved.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ReportsOnlyWhenTheSceneBecomesUnsavedOrSaved()
+    {
+        Entity lamp = _builder.WithScene("Room.fvscene", Room).Open("Room.fvscene");
+        EditorScene scene = _builder.Scene;
+        List<bool> reported = [];
+        scene.UnsavedChanged += () => reported.Add(scene.IsUnsaved);
+        Transform moved = new() { Position = Vector3.One };
+
+        scene.SetComponent(lamp, moved);
+        scene.SetComponent(lamp, moved);
+        scene.Save();
+
+        reported.Should().Equal(true, false);
+    }
+
+    [Fact]
+    public void EditingADestroyedEntityChangesNothing()
+    {
+        Entity lamp = _builder.WithScene("Room.fvscene", Room).Open("Room.fvscene");
+        EditorScene scene = _builder.Scene;
+        scene.Game.World.Destroy(lamp);
+        SceneComponent light = _builder.FindComponent("pointLight");
+
+        scene.SetComponent(lamp, new Transform());
+        scene.AddComponent(lamp, light);
+        scene.RemoveComponent(lamp, light);
+
+        scene.IsUnsaved.Should().BeFalse();
     }
 }

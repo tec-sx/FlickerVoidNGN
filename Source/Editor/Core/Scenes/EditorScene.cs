@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Arch.Core;
 
 using FlickerVoid.Editor.Core.Selection;
@@ -14,7 +16,8 @@ namespace FlickerVoid.Editor.Core.Scenes;
 
 /// <summary>
 /// The world being edited and the content it is built from. The game in it never ticks: the editor shows and changes the world
-/// as the scene file describes it, and Play runs the game in its own process.
+/// as the scene file describes it, and Play runs the game in its own process. Every edit goes through its methods, which raise
+/// <see cref="Edited"/> and leave the scene unsaved until it is saved or another scene opens.
 /// </summary>
 public sealed class EditorScene : IDisposable
 {
@@ -50,6 +53,15 @@ public sealed class EditorScene : IDisposable
     /// <summary>Raised after the editor added or destroyed an entity, or opened a scene.</summary>
     public event Action? EntitiesChanged;
 
+    /// <summary>Raised after each edit of the world: a component set, added or removed, an entity added or destroyed.</summary>
+    public event Action? Edited;
+
+    /// <summary>Raised when the scene gets edits that are not saved, and when it loses them by saving or opening a scene.</summary>
+    public event Action? UnsavedChanged;
+
+    /// <summary>Whether the world holds edits that the open scene file doesn't have yet.</summary>
+    public bool IsUnsaved { get; private set; }
+
     /// <summary>The live entities of the open scene, in the file's order; empty without one.</summary>
     public IReadOnlyList<Entity> Entities
     {
@@ -75,6 +87,7 @@ public sealed class EditorScene : IDisposable
 
         Entity entity = _loader.Add(ScenePath, data);
         EntitiesChanged?.Invoke();
+        MarkEdited();
         return entity;
     }
 
@@ -94,6 +107,60 @@ public sealed class EditorScene : IDisposable
 
         world.Destroy(entity);
         EntitiesChanged?.Invoke();
+        MarkEdited();
+    }
+
+    /// <summary>Gives the entity the component, replacing the one it has.</summary>
+    public void SetComponent<T>(Entity entity, in T component)
+        where T : struct
+    {
+        World world = Game.World;
+        if (!world.IsAlive(entity))
+        {
+            return;
+        }
+
+        world.Set(entity, component);
+        MarkEdited();
+    }
+
+    /// <summary>Gives the entity the component registered for scene files, from a boxed value of its type.</summary>
+    public void SetComponent(Entity entity, SceneComponent component, object value)
+    {
+        World world = Game.World;
+        if (!world.IsAlive(entity))
+        {
+            return;
+        }
+
+        component.Set(world, entity, value);
+        MarkEdited();
+    }
+
+    /// <summary>Gives the entity the component with its defaults, unless it has it already.</summary>
+    public void AddComponent(Entity entity, SceneComponent component)
+    {
+        World world = Game.World;
+        if (!world.IsAlive(entity) || component.Has(world, entity))
+        {
+            return;
+        }
+
+        using JsonDocument defaults = JsonDocument.Parse("{}");
+        component.Read(world, entity, defaults.RootElement);
+        MarkEdited();
+    }
+
+    public void RemoveComponent(Entity entity, SceneComponent component)
+    {
+        World world = Game.World;
+        if (!world.IsAlive(entity) || !component.Has(world, entity))
+        {
+            return;
+        }
+
+        component.Remove(world, entity);
+        MarkEdited();
     }
 
     /// <summary>The open scene file, relative to the content folder, or null for an unsaved world.</summary>
@@ -119,6 +186,7 @@ public sealed class EditorScene : IDisposable
         }
 
         ScenePath = path;
+        SetUnsaved(false);
         Opened?.Invoke();
         EntitiesChanged?.Invoke();
     }
@@ -142,6 +210,7 @@ public sealed class EditorScene : IDisposable
         }
 
         _loader.Save(ScenePath);
+        SetUnsaved(false);
         return true;
     }
 
@@ -162,5 +231,22 @@ public sealed class EditorScene : IDisposable
         Picker.Dispose();
         _loader.Dispose();
         Game.Dispose();
+    }
+
+    private void MarkEdited()
+    {
+        Edited?.Invoke();
+        SetUnsaved(true);
+    }
+
+    private void SetUnsaved(bool unsaved)
+    {
+        if (IsUnsaved == unsaved)
+        {
+            return;
+        }
+
+        IsUnsaved = unsaved;
+        UnsavedChanged?.Invoke();
     }
 }
