@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace FlickerVoid.Engine.Flow.Graphs;
 
 /// <summary>A flow node whose input pins are the values of <typeparamref name="TIn"/> and output pins those of <typeparamref name="TOut"/>.</summary>
@@ -5,8 +7,10 @@ public abstract class FlowNode<TIn, TOut> : FlowNode
     where TIn : struct, Enum
     where TOut : struct, Enum
 {
+    [JsonIgnore]
     public sealed override IReadOnlyList<string> Inputs => FlowPins<TIn>.Names;
 
+    [JsonIgnore]
     public sealed override IReadOnlyList<string> Outputs => FlowPins<TOut>.Names;
 
     /// <summary>Runs the node for a signal at <paramref name="input"/>; it triggers outputs, stays active or finishes the run.</summary>

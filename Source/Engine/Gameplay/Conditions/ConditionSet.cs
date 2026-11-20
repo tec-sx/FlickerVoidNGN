@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace FlickerVoid.Engine.Gameplay.Conditions;
 
 /// <summary>Conditions that must all hold, or any one of them, with how the player sees what they guard while they fail.</summary>
@@ -12,6 +14,7 @@ public sealed class ConditionSet
     /// <summary>Shown with ShowLockedWithReason.</summary>
     public string FailureReason { get; set; } = string.Empty;
 
+    [JsonIgnore]
     public bool IsEmpty => Conditions.Count == 0;
 
     /// <summary>Indices of the sets that hold, hardest first: highest at-least threshold, then furthest past it. Unscored sets come last; ties keep the given order.</summary>
