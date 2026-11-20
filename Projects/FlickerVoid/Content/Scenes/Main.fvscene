@@ -1,0 +1,16 @@
+// The first scene of FlickerVoid: the painted room at dusk, a fox walking round it and six lamps.
+{
+  "$schema": "../.schemas/scene.schema.json",
+  "entities": [
+    {"name": "Camera", "components": {"transform": {"position": [0, 6, 9], "rotation": [-0.2588, 0, 0, 0.9659]}, "camera": {}}},
+    {"name": "Mood", "components": {"transform": {}, "sceneMood": {"mood": "Moods/Dusk.fvmood"}}},
+    {"name": "Room", "components": {"transform": {}, "meshRenderer": {"mesh": "Room.glb"}}},
+    {"name": "Fox", "components": {"transform": {"position": [3, 0, 0], "scale": [0.012, 0.012, 0.012]}, "meshRenderer": {"mesh": "Fox.glb"}, "meshAnimator": {"animation": "Walk"}}},
+    {"name": "Lamp 1", "components": {"transform": {"position": [-3.3, 0.9, -3.3]}, "pointLight": {"color": [1, 0.45, 0.45], "intensity": 1.6, "range": 1.8, "castsShadows": true}}},
+    {"name": "Lamp 2", "components": {"transform": {"position": [-1.98, 0.9, -3.3]}, "pointLight": {"color": [1.0, 1, 0.45], "intensity": 1.6, "range": 1.8}}},
+    {"name": "Lamp 3", "components": {"transform": {"position": [-0.66, 0.9, -3.3]}, "pointLight": {"color": [0.45, 1, 0.45], "intensity": 1.6, "range": 1.8}}},
+    {"name": "Lamp 4", "components": {"transform": {"position": [0.66, 0.9, -3.3]}, "pointLight": {"color": [0.45, 1.0, 1], "intensity": 1.6, "range": 1.8}}},
+    {"name": "Lamp 5", "components": {"transform": {"position": [1.98, 0.9, -3.3]}, "pointLight": {"color": [0.45, 0.45, 1], "intensity": 1.6, "range": 1.8}}},
+    {"name": "Lamp 6", "components": {"transform": {"position": [3.3, 0.9, -3.3]}, "pointLight": {"color": [1, 0.45, 1.0], "intensity": 1.6, "range": 1.8, "castsShadows": true}}}
+  ]
+}
