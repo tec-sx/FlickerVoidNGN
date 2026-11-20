@@ -1,9 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:assets="using:FlickerVoid.Editor.Assets"
+             xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Assets.AssetBrowserView"
              x:DataType="assets:AssetBrowserViewModel">
-  <Grid ColumnDefinitions="180,2,*">
+  <Grid ColumnDefinitions="160,2,*">
     <TreeView ItemsSource="{Binding Folders}" SelectedItem="{Binding SelectedFolder}">
       <TreeView.ItemTemplate>
         <TreeDataTemplate DataType="assets:AssetFolder" ItemsSource="{Binding Children}">
@@ -13,7 +14,7 @@
     </TreeView>
     <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
     <DockPanel Grid.Column="2">
-      <WrapPanel DockPanel.Dock="Top" Margin="2" ItemSpacing="4" LineSpacing="2">
+      <WrapPanel DockPanel.Dock="Top" Margin="2,1" ItemSpacing="2" LineSpacing="2">
         <ComboBox ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Width="120">
           <ComboBox.ItemTemplate>
             <DataTemplate DataType="assets:AssetFilter">
@@ -22,8 +23,11 @@
           </ComboBox.ItemTemplate>
         </ComboBox>
         <TextBox Text="{Binding SearchText}" PlaceholderText="Search" Width="160" />
-        <Button Content="Refresh" Command="{Binding RefreshCommand}" />
-        <Button Content="New">
+        <Button Classes="icon" Command="{Binding RefreshCommand}" ToolTip.Tip="Refresh">
+          <PathIcon Data="{x:Static shell:MaterialIcons.Refresh}" />
+        </Button>
+        <Button Classes="icon" ToolTip.Tip="New folder, scene, material or mood">
+          <PathIcon Data="{x:Static shell:MaterialIcons.New}" />
           <Button.Flyout>
             <MenuFlyout>
               <MenuItem Header="Folder" Command="{Binding CreateFolderCommand}" />
@@ -35,8 +39,11 @@
         </Button>
         <TextBox x:Name="RenameBox" Text="{Binding SelectedAsset.Name, Mode=OneWay}" PlaceholderText="New name" Width="140"
                  ToolTip.Tip="The selected file's new name, or the selected folder's when no file is selected." />
-        <Button Content="Rename" Command="{Binding RenameCommand}" CommandParameter="{Binding #RenameBox.Text}" />
-        <Button Content="Delete" ToolTip.Tip="Deletes the selected file, or the selected folder with everything in it.">
+        <Button Classes="icon" Command="{Binding RenameCommand}" CommandParameter="{Binding #RenameBox.Text}" ToolTip.Tip="Rename">
+          <PathIcon Data="{x:Static shell:MaterialIcons.Rename}" />
+        </Button>
+        <Button Classes="icon delete" ToolTip.Tip="Deletes the selected file, or the selected folder with everything in it.">
+          <PathIcon Data="{x:Static shell:MaterialIcons.Delete}" />
           <Button.Flyout>
             <Flyout>
               <StackPanel Spacing="4">
@@ -46,7 +53,7 @@
             </Flyout>
           </Button.Flyout>
         </Button>
-        <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Foreground="OrangeRed" />
+        <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Foreground="{StaticResource EditorDeleteBrush}" />
       </WrapPanel>
       <ListBox x:Name="AssetList" ItemsSource="{Binding Assets}" SelectedItem="{Binding SelectedAsset}" DoubleTapped="HandleDoubleTapped" KeyDown="HandleKeyDown">
         <ListBox.ItemTemplate>

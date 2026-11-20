@@ -3,21 +3,19 @@
              x:Class="FlickerVoid.Editor.App"
              xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
              xmlns:shellInspector="using:FlickerVoid.Editor.Inspector"
+             xmlns:shell="using:FlickerVoid.Editor"
              RequestedThemeVariant="Dark">
   <!-- One template per kind of field, picked by the field's type, for the inspector and the material editor alike:
        components and materials need no editor code of their own. -->
   <Application.DataTemplates>
-    <!-- Ranged numbers first: a template matches subclasses too, and the first match wins. A slider only where there are
-         limits, as an unbound slider would clamp the value to its own default range. -->
+    <!-- Ranged numbers first: a template matches subclasses too, and the first match wins. Numbers are dragged sideways or typed
+         after a click; X, Y and Z carry the axes' colours. -->
     <DataTemplate DataType="inspector:RangedNumberFieldViewModel">
-      <Grid ColumnDefinitions="*,72" ColumnSpacing="6">
-        <Slider Minimum="{Binding SliderMinimum}" Maximum="{Binding SliderMaximum}" Value="{Binding Value}"
-                IsEnabled="{Binding !IsReadOnly}" VerticalAlignment="Center" />
-        <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}" VerticalAlignment="Center" />
-      </Grid>
+      <shellInspector:DragNumberBox Value="{Binding Value}" Minimum="{Binding Lowest}" Maximum="{Binding Highest}"
+                                    Step="{Binding DragStep}" IsReadOnly="{Binding IsReadOnly}" />
     </DataTemplate>
     <DataTemplate DataType="inspector:NumberFieldViewModel">
-      <TextBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}" />
+      <shellInspector:DragNumberBox Value="{Binding Value}" IsReadOnly="{Binding IsReadOnly}" />
     </DataTemplate>
     <DataTemplate DataType="inspector:BoolFieldViewModel">
       <CheckBox IsChecked="{Binding Value}" IsEnabled="{Binding !IsReadOnly}" />
@@ -34,14 +32,18 @@
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4" Margin="0,1">
                 <AutoCompleteBox Text="{Binding Text, UpdateSourceTrigger=LostFocus}" ItemsSource="{Binding Suggestions}"
                                  FilterMode="Contains" MinimumPrefixLength="0" />
-                <Button Grid.Column="1" Content="-" ToolTip.Tip="Remove"
+                <Button Grid.Column="1" Classes="icon" ToolTip.Tip="Remove"
                         Command="{Binding $parent[ItemsControl].((inspector:ListFieldViewModel)DataContext).RemoveCommand}"
-                        CommandParameter="{Binding}" />
+                        CommandParameter="{Binding}">
+                  <PathIcon Data="{x:Static shell:MaterialIcons.Remove}" />
+                </Button>
               </Grid>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <Button Content="+" ToolTip.Tip="Add" Command="{Binding AddCommand}" IsEnabled="{Binding !IsReadOnly}" />
+        <Button Classes="icon" ToolTip.Tip="Add" Command="{Binding AddCommand}" IsEnabled="{Binding !IsReadOnly}">
+          <PathIcon Data="{x:Static shell:MaterialIcons.Add}" />
+        </Button>
       </StackPanel>
     </DataTemplate>
     <DataTemplate DataType="inspector:EnumFieldViewModel">
@@ -49,17 +51,20 @@
                 HorizontalAlignment="Stretch" />
     </DataTemplate>
     <DataTemplate DataType="inspector:VectorFieldViewModel">
-      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
-        <TextBox Grid.Column="0" Text="{Binding X, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="X" />
-        <TextBox Grid.Column="1" Text="{Binding Y, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Y" />
-        <TextBox Grid.Column="2" Text="{Binding Z, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Z" />
+      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="2">
+        <shellInspector:DragNumberBox Grid.Column="0" Value="{Binding X}" AxisBrush="{StaticResource EditorAxisXBrush}" ToolTip.Tip="X" />
+        <shellInspector:DragNumberBox Grid.Column="1" Value="{Binding Y}" AxisBrush="{StaticResource EditorAxisYBrush}" ToolTip.Tip="Y" />
+        <shellInspector:DragNumberBox Grid.Column="2" Value="{Binding Z}" AxisBrush="{StaticResource EditorAxisZBrush}" ToolTip.Tip="Z" />
       </Grid>
     </DataTemplate>
     <DataTemplate DataType="inspector:RotationFieldViewModel">
-      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
-        <TextBox Grid.Column="0" Text="{Binding X, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Pitch about X, in degrees" />
-        <TextBox Grid.Column="1" Text="{Binding Y, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Yaw about Y, in degrees" />
-        <TextBox Grid.Column="2" Text="{Binding Z, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="Roll about Z, in degrees" />
+      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="2">
+        <shellInspector:DragNumberBox Grid.Column="0" Value="{Binding X}" Step="0.5" AxisBrush="{StaticResource EditorAxisXBrush}"
+                                      ToolTip.Tip="Pitch about X, in degrees" />
+        <shellInspector:DragNumberBox Grid.Column="1" Value="{Binding Y}" Step="0.5" AxisBrush="{StaticResource EditorAxisYBrush}"
+                                      ToolTip.Tip="Yaw about Y, in degrees" />
+        <shellInspector:DragNumberBox Grid.Column="2" Value="{Binding Z}" Step="0.5" AxisBrush="{StaticResource EditorAxisZBrush}"
+                                      ToolTip.Tip="Roll about Z, in degrees" />
       </Grid>
     </DataTemplate>
     <DataTemplate DataType="inspector:ColorFieldViewModel">
@@ -70,8 +75,6 @@
     </DataTemplate>
   </Application.DataTemplates>
   <Application.Styles>
-    <FluentTheme />
-    <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
     <StyleInclude Source="/Themes/EditorTheme.axaml" />
   </Application.Styles>
 </Application>

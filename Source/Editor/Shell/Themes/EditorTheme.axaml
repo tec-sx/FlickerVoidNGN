@@ -1,22 +1,60 @@
-<!-- The editor's one theme: compact sizes over Fluent (smaller fonts, square corners, tight padding) and the shared classes
-     of the shell's bars, headings and viewport overlay, so the viewport gets as much of the window as it can. Views use these
-     classes and resources instead of their own sizes. -->
+<!-- The editor's one theme: Fluent recoloured with a warm dark palette (deep browns and greens, never grey or black), compact
+     sizes (smaller fonts, square corners, tight padding) and the shared classes of the shell's bars, icon buttons, headings and
+     viewport overlay, so the viewport gets as much of the window as it can. Views use these classes and resources instead of
+     their own colours and sizes. -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <FluentTheme>
+    <FluentTheme.Palettes>
+      <ColorPaletteResources x:Key="Dark"
+                             RegionColor="#1F1D16" Accent="#D8955A" ErrorText="#E0664A"
+                             AltHigh="#17150F" AltLow="#17150F" AltMedium="#17150F" AltMediumHigh="#17150F" AltMediumLow="#17150F"
+                             BaseHigh="#E8E5DD" BaseLow="#3A372B" BaseMedium="#9C9A88" BaseMediumHigh="#B9BBA8" BaseMediumLow="#6E6C5C"
+                             ChromeAltLow="#B9BBA8" ChromeBlackHigh="#0C0A08" ChromeBlackLow="#B9BBA8" ChromeBlackMedium="#17150F"
+                             ChromeBlackMediumLow="#2A2820" ChromeDisabledHigh="#3A372B" ChromeDisabledLow="#6E6C5C" ChromeGray="#8A8775"
+                             ChromeHigh="#4A4636" ChromeLow="#1A1812" ChromeMedium="#24221A" ChromeMediumLow="#2B291F" ChromeWhite="#E8E5DD"
+                             ListLow="#2E3226" ListMedium="#394030" />
+    </FluentTheme.Palettes>
+  </FluentTheme>
+  <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
+
   <Styles.Resources>
+    <!-- The editor's palette, from deepest to lightest, then the colours of actions and axes. -->
+    <SolidColorBrush x:Key="EditorDeepBrush" Color="#17150F" />
+    <SolidColorBrush x:Key="EditorPanelBrush" Color="#1F1D16" />
+    <SolidColorBrush x:Key="EditorBarBrush" Color="#2A2E22" />
+    <SolidColorBrush x:Key="EditorControlBrush" Color="#2E3226" />
+    <SolidColorBrush x:Key="EditorLineBrush" Color="#3A372B" />
+    <SolidColorBrush x:Key="EditorTextBrush" Color="#E8E5DD" />
+    <SolidColorBrush x:Key="EditorMutedTextBrush" Color="#B9BBA8" />
+    <SolidColorBrush x:Key="EditorAccentBrush" Color="#D8955A" />
+    <SolidColorBrush x:Key="EditorOverlayBrush" Color="#D91F1D16" />
+    <SolidColorBrush x:Key="EditorPlayBrush" Color="#8DA33A" />
+    <SolidColorBrush x:Key="EditorSaveBrush" Color="#4A9BBF" />
+    <SolidColorBrush x:Key="EditorDeleteBrush" Color="#C8553D" />
+    <SolidColorBrush x:Key="EditorBakeBrush" Color="#E0AC2C" />
+    <SolidColorBrush x:Key="EditorAxisXBrush" Color="#C8553D" />
+    <SolidColorBrush x:Key="EditorAxisYBrush" Color="#8DA33A" />
+    <SolidColorBrush x:Key="EditorAxisZBrush" Color="#4A8FBF" />
+
     <!-- Fluent's own tokens, read by its control themes. -->
     <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
     <CornerRadius x:Key="ControlCornerRadius">2</CornerRadius>
     <CornerRadius x:Key="OverlayCornerRadius">2</CornerRadius>
-    <Thickness x:Key="ButtonPadding">8,2</Thickness>
-    <x:Double x:Key="TextControlThemeMinHeight">22</x:Double>
-    <Thickness x:Key="TextControlThemePadding">4,2</Thickness>
+    <Thickness x:Key="ButtonPadding">6,1</Thickness>
+    <x:Double x:Key="TextControlThemeMinHeight">20</x:Double>
+    <x:Double x:Key="ExpanderMinHeight">24</x:Double>
+    <StaticResource x:Key="TextControlBorderBrush" ResourceKey="EditorLineBrush" />
+    <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="EditorMutedTextBrush" />
+    <StaticResource x:Key="TextControlBackground" ResourceKey="EditorControlBrush" />
+    <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="EditorControlBrush" />
+    <Thickness x:Key="TextControlThemePadding">4,1</Thickness>
 
     <!-- The editor's own sizes. -->
     <x:Double x:Key="EditorFontSize">12</x:Double>
-    <x:Double x:Key="EditorHeadingFontSize">13</x:Double>
+    <x:Double x:Key="EditorHeadingFontSize">12</x:Double>
     <x:Double x:Key="EditorSmallFontSize">11</x:Double>
-    <x:Double x:Key="EditorSpacing">4</x:Double>
+    <x:Double x:Key="EditorSpacing">2</x:Double>
   </Styles.Resources>
 
   <!-- Text: every control inherits the window's size. -->
@@ -34,19 +72,19 @@
 
   <!-- Buttons and inputs: square and tight. -->
   <Style Selector="Button, ToggleButton, DropDownButton, SplitButton, RepeatButton">
-    <Setter Property="Padding" Value="8,2" />
-    <Setter Property="MinHeight" Value="22" />
+    <Setter Property="Padding" Value="6,1" />
+    <Setter Property="MinHeight" Value="20" />
     <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
   <Style Selector="TextBox, AutoCompleteBox">
-    <Setter Property="MinHeight" Value="22" />
-    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Padding" Value="4,1" />
     <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
   </Style>
   <Style Selector="ComboBox">
-    <Setter Property="MinHeight" Value="22" />
-    <Setter Property="Padding" Value="6,2,0,2" />
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Padding" Value="6,1,0,1" />
     <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
   </Style>
   <Style Selector="CheckBox">
@@ -67,8 +105,8 @@
   </Style>
   <Style Selector="TabItem">
     <Setter Property="FontSize" Value="{StaticResource EditorHeadingFontSize}" />
-    <Setter Property="MinHeight" Value="26" />
-    <Setter Property="Padding" Value="8,2" />
+    <Setter Property="MinHeight" Value="22" />
+    <Setter Property="Padding" Value="8,1" />
   </Style>
   <Style Selector="Expander">
     <Setter Property="Padding" Value="6,2" />
@@ -81,17 +119,19 @@
 
   <!-- The shell's bars: the toolbar above the viewport and the status bar below it. -->
   <Style Selector="Border.toolbar, Border.statusbar">
-    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" />
+    <Setter Property="Background" Value="{StaticResource EditorBarBrush}" />
   </Style>
   <Style Selector="Border.toolbar">
-    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="Padding" Value="2,1" />
   </Style>
   <Style Selector="Border.toolbar StackPanel">
     <Setter Property="Spacing" Value="{StaticResource EditorSpacing}" />
   </Style>
   <Style Selector="Border.toolbar Separator">
     <Setter Property="Width" Value="1" />
-    <Setter Property="Margin" Value="2,0" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="Margin" Value="4,0" />
+    <Setter Property="Background" Value="{StaticResource EditorLineBrush}" />
   </Style>
   <Style Selector="Border.statusbar">
     <Setter Property="Padding" Value="6,1" />
@@ -102,7 +142,7 @@
 
   <!-- The viewport's floating tool bars and camera buttons. -->
   <Style Selector="Border.viewportBar">
-    <Setter Property="Background" Value="#CC1E1E1E" />
+    <Setter Property="Background" Value="{StaticResource EditorOverlayBrush}" />
     <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
     <Setter Property="Padding" Value="1" />
   </Style>
@@ -112,7 +152,7 @@
     <Setter Property="MinHeight" Value="0" />
     <Setter Property="Padding" Value="4" />
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="#DDDDDD" />
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
   </Style>
   <Style Selector="ComboBox.viewportSnap">
     <Setter Property="MinWidth" Value="52" />
@@ -121,10 +161,10 @@
     <Setter Property="Padding" Value="4,0" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Foreground" Value="#DDDDDD" />
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
   </Style>
   <Style Selector="ToggleButton.viewportIcon:checked /template/ ContentPresenter">
-    <Setter Property="Background" Value="#2D7BD6" />
+    <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
   </Style>
   <Style Selector="Button.viewportRound">
     <Setter Property="Width" Value="26" />
@@ -133,11 +173,75 @@
     <Setter Property="Padding" Value="5" />
     <Setter Property="CornerRadius" Value="13" />
     <Setter Property="HorizontalAlignment" Value="Center" />
-    <Setter Property="Background" Value="#CC1E1E1E" />
-    <Setter Property="Foreground" Value="#DDDDDD" />
+    <Setter Property="Background" Value="{StaticResource EditorOverlayBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
   </Style>
   <Style Selector="Button.viewportRound PathIcon, ToggleButton.viewportIcon PathIcon">
     <Setter Property="Width" Value="16" />
     <Setter Property="Height" Value="16" />
+  </Style>
+  <!-- Icon buttons in the shell's bars; a colour class marks what an action does: play, save, delete or bake. -->
+  <Style Selector="Button.icon, ToggleButton.icon, DropDownButton.icon">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="3" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="DropDownButton.icon">
+    <Setter Property="Width" Value="32" />
+  </Style>
+  <Style Selector=":is(Button).icon PathIcon">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+  </Style>
+  <Style Selector="ToggleButton.icon:checked /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.icon:checked">
+    <Setter Property="Foreground" Value="{StaticResource EditorDeepBrush}" />
+  </Style>
+  <Style Selector="Button.icon.save">
+    <Setter Property="Foreground" Value="{StaticResource EditorSaveBrush}" />
+  </Style>
+  <Style Selector="Button.icon.delete">
+    <Setter Property="Foreground" Value="{StaticResource EditorDeleteBrush}" />
+  </Style>
+  <Style Selector="Button.icon.bake">
+    <Setter Property="Foreground" Value="{StaticResource EditorBakeBrush}" />
+  </Style>
+  <Style Selector="Button.icon.play">
+    <Setter Property="Width" Value="36" />
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="Background" Value="{StaticResource EditorPlayBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorDeepBrush}" />
+  </Style>
+  <Style Selector="Button.icon.play:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorPlayBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorDeepBrush}" />
+  </Style>
+  <Style Selector="Button.icon.play:disabled">
+    <Setter Property="Opacity" Value="0.35" />
+  </Style>
+  <Style Selector="Button.icon.play:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#A3BA4E" />
+  </Style>
+
+  <!-- The inspector: a line under each component's header and number boxes that fit three to a row. -->
+  <Style Selector="Border.category">
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="0,0,0,2" />
+  </Style>
+  <Style Selector="TextBox.drag">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Padding" Value="2,1" />
+    <Setter Property="Cursor" Value="SizeWestEast" />
+  </Style>
+  <Style Selector="TextBox.drag.typing">
+    <Setter Property="Cursor" Value="Ibeam" />
   </Style>
 </Styles>
