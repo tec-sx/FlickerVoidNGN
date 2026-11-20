@@ -328,8 +328,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(Title));
     }
 
-    /// <summary>The kinds of entity the Add menu offers.</summary>
-    public IReadOnlyList<EntityPreset> Presets => EntityPreset.All;
+    /// <summary>The kinds of entity the viewport's Add menu (Shift+A) offers, by group.</summary>
+    public IReadOnlyList<EntityPresetGroup> PresetGroups { get; } = EntityPresetGroup.From(EntityPreset.All);
 
     /// <summary>Adds an entity of the preset at the camera's pivot to the open scene and selects it.</summary>
     [RelayCommand]

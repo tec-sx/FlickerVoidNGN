@@ -37,7 +37,7 @@
             <Button Content="Save" Command="{Binding SaveCommand}" ToolTip.Tip="Save the material (Ctrl+S)." />
             <Button Content="Discard" Command="{Binding DiscardCommand}" ToolTip.Tip="Forget the unsaved edits." />
           </StackPanel>
-          <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding Heading}" Classes="heading" Margin="0" VerticalAlignment="Center" />
         </DockPanel>
         <ScrollViewer>
           <ItemsControl ItemsSource="{Binding Parameters}" Margin="12,0,12,12">

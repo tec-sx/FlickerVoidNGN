@@ -4,39 +4,8 @@
              xmlns:viewports="using:FlickerVoid.Editor.Viewports"
              x:Class="FlickerVoid.Editor.Viewports.ViewportOverlay"
              x:DataType="viewports:ViewportViewModel">
-  <UserControl.Styles>
-    <Style Selector="Border.viewportBar">
-      <Setter Property="Background" Value="#CC1E1E1E" />
-      <Setter Property="CornerRadius" Value="6" />
-      <Setter Property="Padding" Value="2" />
-    </Style>
-    <Style Selector="ToggleButton.viewportIcon">
-      <Setter Property="Width" Value="30" />
-      <Setter Property="Height" Value="30" />
-      <Setter Property="Padding" Value="6" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="CornerRadius" Value="4" />
-      <Setter Property="Foreground" Value="#DDDDDD" />
-    </Style>
-    <Style Selector="ToggleButton.viewportIcon:checked /template/ ContentPresenter">
-      <Setter Property="Background" Value="#2D7BD6" />
-    </Style>
-    <Style Selector="Button.viewportRound">
-      <Setter Property="Width" Value="32" />
-      <Setter Property="Height" Value="32" />
-      <Setter Property="Padding" Value="7" />
-      <Setter Property="CornerRadius" Value="16" />
-      <Setter Property="HorizontalAlignment" Value="Center" />
-      <Setter Property="Background" Value="#CC1E1E1E" />
-      <Setter Property="Foreground" Value="#DDDDDD" />
-    </Style>
-    <Style Selector="PathIcon">
-      <Setter Property="Width" Value="18" />
-      <Setter Property="Height" Value="18" />
-    </Style>
-  </UserControl.Styles>
   <Panel>
-    <StackPanel Orientation="Horizontal" Spacing="6" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top">
+    <StackPanel Orientation="Horizontal" Spacing="4" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Top">
       <Border Classes="viewportBar">
         <StackPanel Orientation="Horizontal">
           <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsSelectMode}" ToolTip.Tip="Select (Q)">
@@ -64,8 +33,8 @@
         </StackPanel>
       </Border>
     </StackPanel>
-    <StackPanel Margin="8" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Top">
-      <viewports:NavigationGizmo Width="96" Height="96" Camera="{Binding Camera}" />
+    <StackPanel Margin="4" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Top">
+      <viewports:NavigationGizmo Width="80" Height="80" Camera="{Binding Camera}" />
       <viewports:CameraDragButton Classes="viewportRound" Drag="Pan" Camera="{Binding Camera}"
                                   ViewportHeight="{Binding $parent[UserControl].Bounds.Height}" ToolTip.Tip="Drag to pan the view.">
         <PathIcon Data="{x:Static shell:MaterialIcons.Pan}" />
