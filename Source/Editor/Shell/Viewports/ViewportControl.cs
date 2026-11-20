@@ -17,6 +17,7 @@ using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Textures;
 using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Editor.Viewports;
@@ -408,7 +409,8 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         viewModel.BuildOverlay(renderer.Overlay, size.Height);
         Camera camera = viewModel.Camera.ToCamera();
         Transform transform = viewModel.Camera.ToTransform();
-        renderer.Render(viewModel.Scene.Game.World, camera, transform);
+        RenderCamera? preview = viewModel.GetPreviewCamera();
+        renderer.Render(viewModel.Scene.Game.World, camera, transform, preview);
         _lastUpdate = _surface!.UpdateWithSemaphoresAsync(_image!, _ready!, _released!);
     }
 
