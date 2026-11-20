@@ -26,6 +26,15 @@ public interface IContentManager
     /// </summary>
     void Write(string path, byte[] contents);
 
+    /// <summary>Creates a folder, and its source folder in a development build.</summary>
+    void CreateFolder(string path);
+
+    /// <summary>Deletes a file or a folder, with its source in a development build, and reports each deleted file changed.</summary>
+    void Delete(string path);
+
+    /// <summary>Moves or renames a file or a folder, with its source in a development build, and reports the old and new files changed.</summary>
+    void Move(string path, string newPath);
+
     /// <summary>Resolves a content path against the root; paths that lead outside the root throw.</summary>
     string GetFullPath(string path);
 }

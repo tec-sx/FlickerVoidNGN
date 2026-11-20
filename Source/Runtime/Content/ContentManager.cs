@@ -72,6 +72,50 @@ public sealed class ContentManager : IContentManager
         NotifyChanged(path);
     }
 
+    public void CreateFolder(string path)
+    {
+        string fullPath = GetFullPath(path);
+        string? sourcePath = FindSourcePath(fullPath);
+        if (sourcePath is not null)
+        {
+            Directory.CreateDirectory(sourcePath);
+        }
+
+        Directory.CreateDirectory(fullPath);
+    }
+
+    public void Delete(string path)
+    {
+        string fullPath = GetFullPath(path);
+        string? sourcePath = FindSourcePath(fullPath);
+        List<string> files = ListFiles(fullPath);
+        if (sourcePath is not null)
+        {
+            DeleteEntry(sourcePath);
+        }
+
+        DeleteEntry(fullPath);
+        ReportChanged(files);
+    }
+
+    public void Move(string path, string newPath)
+    {
+        string fullPath = GetFullPath(path);
+        string newFullPath = GetFullPath(newPath);
+        string? sourcePath = FindSourcePath(fullPath);
+        string? newSourcePath = FindSourcePath(newFullPath);
+        List<string> files = ListFiles(fullPath);
+        if (sourcePath is not null && newSourcePath is not null)
+        {
+            MoveEntry(sourcePath, newSourcePath);
+        }
+
+        MoveEntry(fullPath, newFullPath);
+        List<string> moved = ListFiles(newFullPath);
+        ReportChanged(files);
+        ReportChanged(moved);
+    }
+
     public string GetFullPath(string path)
     {
         string combined = Path.Combine(RootDirectory, path);
@@ -84,6 +128,61 @@ public sealed class ContentManager : IContentManager
         }
 
         return fullPath;
+    }
+
+    /// <summary>The file, or every file in the folder, at the full path; none when nothing is there.</summary>
+    private static List<string> ListFiles(string fullPath)
+    {
+        if (File.Exists(fullPath))
+        {
+            return [fullPath];
+        }
+
+        if (Directory.Exists(fullPath))
+        {
+            return [.. Directory.EnumerateFiles(fullPath, "*", SearchOption.AllDirectories)];
+        }
+
+        return [];
+    }
+
+    private void ReportChanged(List<string> fullPaths)
+    {
+        foreach (string fullPath in fullPaths)
+        {
+            _loaded.Remove(fullPath);
+            Changed?.Invoke(fullPath);
+        }
+    }
+
+    private static void DeleteEntry(string fullPath)
+    {
+        if (File.Exists(fullPath))
+        {
+            File.Delete(fullPath);
+        }
+        else if (Directory.Exists(fullPath))
+        {
+            Directory.Delete(fullPath, recursive: true);
+        }
+    }
+
+    private static void MoveEntry(string fullPath, string newFullPath)
+    {
+        string? folder = Path.GetDirectoryName(newFullPath);
+        if (folder is not null)
+        {
+            Directory.CreateDirectory(folder);
+        }
+
+        if (File.Exists(fullPath))
+        {
+            File.Move(fullPath, newFullPath);
+        }
+        else if (Directory.Exists(fullPath))
+        {
+            Directory.Move(fullPath, newFullPath);
+        }
     }
 
     private static void WriteFile(string fullPath, byte[] contents)

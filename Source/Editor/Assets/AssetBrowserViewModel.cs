@@ -1,19 +1,28 @@
+using System.Text;
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+
+using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Engine.Editor.Assets;
 
 /// <summary>
 /// The asset browser: the content folder's tree, the files of the selected folder, and a kind filter and search that look
-/// through everything below it. Opening a file raises <see cref="Opened"/>, which the editor answers by kind.
+/// through everything below it. Opening a file raises <see cref="Opened"/>, which the editor answers by kind. It creates,
+/// renames and deletes files and folders through the content manager, so their source files follow in a development build.
 /// </summary>
 public sealed partial class AssetBrowserViewModel : ObservableObject
 {
+    private const string SchemaFolder = ".schemas/";
+
+    private readonly IContentManager _content;
     private readonly AssetCatalog _catalog;
 
-    public AssetBrowserViewModel(AssetCatalog catalog)
+    public AssetBrowserViewModel(IContentManager content)
     {
-        _catalog = catalog;
+        _content = content;
+        _catalog = new AssetCatalog(content.RootDirectory);
         List<AssetFilter> filters = [new AssetFilter("All", null)];
         foreach (AssetKind kind in Enum.GetValues<AssetKind>())
         {
@@ -46,6 +55,14 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     [ObservableProperty]
     public partial IReadOnlyList<AssetEntry> Assets { get; set; } = [];
 
+    /// <summary>The file renaming and deleting work on; with none, renaming works on the selected folder.</summary>
+    [ObservableProperty]
+    public partial AssetEntry? SelectedAsset { get; set; }
+
+    /// <summary>Why the last file operation was refused, or empty.</summary>
+    [ObservableProperty]
+    public partial string Status { get; set; } = "";
+
     /// <summary>Reads the folders and files again, keeping the selected folder when it still exists.</summary>
     [RelayCommand]
     public void Refresh()
@@ -73,6 +90,90 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    public void CreateFolder()
+    {
+        string path = FindFreePath("New Folder", "");
+        _content.CreateFolder(path);
+        Refresh();
+        SelectFolder(path);
+    }
+
+    [RelayCommand]
+    public void CreateScene()
+    {
+        CreateFile("New Scene", ".fvscene", "scene", "\"entities\": []");
+    }
+
+    [RelayCommand]
+    public void CreateMaterial()
+    {
+        CreateFile("New Material", ".fvmat", "material", "\"parameters\": {}");
+    }
+
+    [RelayCommand]
+    public void CreateMood()
+    {
+        CreateFile("New Mood", ".fvmood", "mood", null);
+    }
+
+    /// <summary>Renames the selected file, keeping its extensions, or the selected folder when no file is selected.</summary>
+    [RelayCommand]
+    public void Rename(string? name)
+    {
+        Status = "";
+        if (string.IsNullOrWhiteSpace(name) || name.IndexOfAny(['/', '\\']) >= 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            Status = $"'{name}' can't be a file name.";
+            return;
+        }
+
+        if (SelectedAsset is { } asset)
+        {
+            string extension = asset.Path[(asset.Path.LastIndexOf('/') + 1 + asset.Name.Length)..];
+            string newPath = Combine(GetFolder(asset.Path), name + extension);
+            if (Move(asset.Path, newPath))
+            {
+                FindAssets();
+                SelectedAsset = Assets.FirstOrDefault(entry => entry.Path == newPath);
+            }
+
+            return;
+        }
+
+        if (SelectedFolder is { Path.Length: > 0 } folder)
+        {
+            string newPath = Combine(GetFolder(folder.Path), name);
+            if (Move(folder.Path, newPath))
+            {
+                Refresh();
+                SelectFolder(newPath);
+            }
+        }
+    }
+
+    /// <summary>Deletes the selected file, or the selected folder with everything in it when no file is selected.</summary>
+    [RelayCommand]
+    public void Delete()
+    {
+        Status = "";
+        if (SelectedAsset is { } asset)
+        {
+            _content.Delete(asset.Path);
+            SelectedAsset = null;
+            FindAssets();
+            return;
+        }
+
+        if (SelectedFolder is { Path.Length: > 0 } folder)
+        {
+            string parent = GetFolder(folder.Path);
+            _content.Delete(folder.Path);
+            Refresh();
+            SelectFolder(parent);
+        }
+    }
+
     partial void OnSelectedFolderChanged(AssetFolder? value) => FindAssets();
 
     partial void OnSelectedFilterChanged(AssetFilter value) => FindAssets();
@@ -86,6 +187,102 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         string text = SearchText ?? "";
         bool recursive = kind is not null || text.Length > 0;
         Assets = _catalog.Find(folder, recursive, kind, text);
+    }
+
+    private void CreateFile(string name, string extension, string schema, string? body)
+    {
+        string folder = SelectedFolder?.Path ?? "";
+        string path = FindFreePath(name, extension);
+        string schemaPath = GetSchemaPath(folder, schema);
+        StringBuilder text = new();
+        text.Append("{\n");
+        text.Append($"  \"$schema\": \"{schemaPath}\"");
+        if (body is not null)
+        {
+            text.Append($",\n  {body}");
+        }
+
+        text.Append("\n}\n");
+        string contents = text.ToString();
+        byte[] bytes = Encoding.UTF8.GetBytes(contents);
+        _content.Write(path, bytes);
+        SearchText = "";
+        FindAssets();
+        SelectedAsset = Assets.FirstOrDefault(entry => entry.Path == path);
+    }
+
+    /// <summary>The name with the extension in the selected folder, numbered from 2 while it is taken.</summary>
+    private string FindFreePath(string name, string extension)
+    {
+        string folder = SelectedFolder?.Path ?? "";
+        string path = Combine(folder, name + extension);
+        int number = 2;
+        while (Exists(path))
+        {
+            path = Combine(folder, $"{name} {number}{extension}");
+            number++;
+        }
+
+        return path;
+    }
+
+    private bool Move(string path, string newPath)
+    {
+        if (Exists(newPath))
+        {
+            Status = $"{newPath} already exists.";
+            return false;
+        }
+
+        _content.Move(path, newPath);
+        return true;
+    }
+
+    private bool Exists(string path)
+    {
+        string fullPath = _content.GetFullPath(path);
+        return File.Exists(fullPath) || Directory.Exists(fullPath);
+    }
+
+    private void SelectFolder(string path)
+    {
+        AssetFolder? found = FindFolder(Folders[0], path);
+        SelectedFolder = found ?? Folders[0];
+    }
+
+    /// <summary>The schema a new file in the folder names: the content folder's .schemas, which development runs write.</summary>
+    private static string GetSchemaPath(string folder, string schema)
+    {
+        StringBuilder path = new();
+        if (folder.Length > 0)
+        {
+            int depth = folder.Count(static character => character == '/') + 1;
+            path.Insert(0, "../", depth);
+        }
+
+        path.Append($"{SchemaFolder}{schema}.schema.json");
+        return path.ToString();
+    }
+
+    private static string GetFolder(string path)
+    {
+        int slash = path.LastIndexOf('/');
+        if (slash < 0)
+        {
+            return "";
+        }
+
+        return path[..slash];
+    }
+
+    private static string Combine(string folder, string name)
+    {
+        if (folder.Length == 0)
+        {
+            return name;
+        }
+
+        return $"{folder}/{name}";
     }
 
     private static AssetFolder? FindFolder(AssetFolder folder, string path)

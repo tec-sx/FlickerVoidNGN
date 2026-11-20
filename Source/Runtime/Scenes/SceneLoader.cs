@@ -105,7 +105,7 @@ public sealed partial class SceneLoader : IDisposable
             _loaded[fullPath] = loaded with { Scene = scene, Entities = entities };
             LogReloaded(loaded.Path);
         }
-        catch (InvalidDataException exception)
+        catch (Exception exception) when (exception is InvalidDataException or FileNotFoundException or DirectoryNotFoundException)
         {
             _content.Unload(loaded.Path);
             LogInvalid(loaded.Path, exception.Message);
