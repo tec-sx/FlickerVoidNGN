@@ -142,6 +142,41 @@ public sealed class GraphicsDeviceTests : IDisposable
     }
 
     [Fact]
+    public void CopiesASmallerTextureIntoACornerOfALargerOne()
+    {
+        using IGraphicsDevice device = CreateDevice();
+        const int Small = GraphicsDeviceTestsBuilder.TargetSize / 2;
+        TextureDescription sourceDescription = new(Small, Small, PixelFormat.Rgba8UNorm, TextureUsage.RenderTarget | TextureUsage.CopySource);
+        using ITexture source = device.CreateTexture(sourceDescription);
+        TextureDescription destinationDescription = new(GraphicsDeviceTestsBuilder.TargetSize, GraphicsDeviceTestsBuilder.TargetSize, PixelFormat.Rgba8UNorm, TextureUsage.RenderTarget | TextureUsage.CopyDestination | TextureUsage.CopySource);
+        using ITexture destination = device.CreateTexture(destinationDescription);
+        using ICommandList commands = device.CreateCommandList();
+
+        commands.Begin();
+        GraphicsDeviceTestsBuilder.BeginRendering(commands, source, Red);
+        commands.EndRendering();
+        GraphicsDeviceTestsBuilder.BeginRendering(commands, destination, Blue);
+        commands.EndRendering();
+        commands.Barrier(source, ResourceState.CopySource);
+        commands.Barrier(destination, ResourceState.CopyDestination);
+        commands.CopyTexture(source, destination, Small, Small);
+        commands.End();
+        device.Submit(commands);
+
+        uint[] pixels = GraphicsDeviceTestsBuilder.ReadPixels(device, destination);
+        int size = GraphicsDeviceTestsBuilder.TargetSize;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                bool inCorner = x >= Small && y >= Small;
+                uint expected = inCorner ? RedPixel : BluePixel;
+                pixels[(y * size) + x].Should().Be(expected, $"pixel {x},{y} is {(inCorner ? "inside" : "outside")} the copied corner");
+            }
+        }
+    }
+
+    [Fact]
     public void DrawsVerticesPulledFromABindlessBuffer()
     {
         using IGraphicsDevice device = CreateDevice();

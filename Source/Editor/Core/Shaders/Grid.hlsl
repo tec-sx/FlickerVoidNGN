@@ -1,6 +1,7 @@
 // The editor's ground grid on the plane y = 0: one triangle covers the screen, each pixel finds where its view ray meets the
 // plane and writes that point's depth, so the scene hides the grid. Lines every cell and every major cell, the X axis red and the
-// Z axis blue; lines fade where cells shrink to a few pixels and toward the horizon.
+// Z axis blue, all thin and faint so they only hint at the ground; lines fade where cells shrink to a few pixels and toward
+// the horizon.
 
 struct GridConstants
 {
@@ -16,12 +17,15 @@ struct GridConstants
 
 [[vk::push_constant]] ConstantBuffer<GridConstants> Grid : register(b0, space0);
 
-static const float3 LineColor = float3(0.5, 0.5, 0.5);
+static const float3 LineColor = float3(0.62, 0.6, 0.52);
 static const float3 XAxisColor = float3(0.9, 0.15, 0.15);
 static const float3 ZAxisColor = float3(0.15, 0.35, 1.0);
-static const float MinorAlpha = 0.35;
-static const float MajorAlpha = 0.6;
-static const float AxisWidth = 1.5;
+static const float MinorAlpha = 0.12;
+static const float MajorAlpha = 0.22;
+static const float AxisWidth = 0.75;
+static const float AxisAlpha = 0.7;
+// Lines are this many pixels wide, so the grid only hints at the ground.
+static const float LineWidth = 0.5;
 
 struct PixelOutput
 {
@@ -56,7 +60,7 @@ float GridLine(float2 coordinate, float spacing)
 {
     float2 cell = coordinate / spacing;
     float2 width = fwidth(cell);
-    float2 distance = abs(frac(cell - 0.5) - 0.5) / width;
+    float2 distance = abs(frac(cell - 0.5) - 0.5) / (width * LineWidth);
     float onLine = 1 - min(min(distance.x, distance.y), 1);
     float density = max(width.x, width.y);
     return onLine * (1 - smoothstep(0.1, 0.3, density));
@@ -86,13 +90,13 @@ PixelOutput PixelMain(VertexOutput input)
     if (xAxis > 0)
     {
         color = lerp(color, XAxisColor, xAxis);
-        alpha = max(alpha, xAxis);
+        alpha = max(alpha, xAxis * AxisAlpha);
     }
 
     if (zAxis > 0)
     {
         color = lerp(color, ZAxisColor, zAxis);
-        alpha = max(alpha, zAxis);
+        alpha = max(alpha, zAxis * AxisAlpha);
     }
 
     // Grazing rays crowd the lines together, so they fade toward the horizon.
