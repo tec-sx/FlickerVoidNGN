@@ -160,4 +160,33 @@ public sealed class MainWindowViewModelTests : IDisposable
         _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModel.DefaultMoodHeading);
         _builder.ViewModel.Viewport.Status.Should().StartWith("Can't open Broken.fvmood");
     }
+
+    [Fact]
+    public void LightsTheViewportWithTheMoodAnOpenedSceneNames()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lit);
+
+        _builder.ViewModel.Viewport.Mood.Exposure.Should().Be(0.5f);
+        _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModelTestsBuilder.Night);
+    }
+
+    [Fact]
+    public void ShowsTheMoodTheSceneIsGiven()
+    {
+        _builder.NameSceneMood(MainWindowViewModelTestsBuilder.Night);
+
+        _builder.ViewModel.Viewport.Mood.Exposure.Should().Be(0.5f);
+        _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModelTestsBuilder.Night);
+    }
+
+    [Fact]
+    public void GoesBackToTheDefaultMoodForASceneThatNamesNone()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lit);
+
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Hall);
+
+        _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModel.DefaultMoodHeading);
+        _builder.ViewModel.Viewport.Mood.Should().Be(new LightingMood());
+    }
 }

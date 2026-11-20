@@ -7,6 +7,7 @@ using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Viewports;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Scenes;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -14,7 +15,7 @@ namespace FlickerVoid.Editor.Tests;
 
 /// <summary>
 /// Builds the main window's view model over a temporary content folder holding Room.fvscene and Hall.fvscene, each with a Lamp,
-/// Paper.fvmat and Night.fvmood, whose exposure is 0.5; the user's answer to the unsaved files prompt is <see cref="Answer"/>.
+/// Paper.fvmat, Night.fvmood, whose exposure is 0.5, and Lit.fvscene, which names Night.fvmood as its mood; the user's answer to the unsaved files prompt is <see cref="Answer"/>.
 /// </summary>
 internal sealed class MainWindowViewModelTestsBuilder : IDisposable
 {
@@ -22,6 +23,7 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
     public const string Hall = "Hall.fvscene";
     public const string Paper = "Paper.fvmat";
     public const string Night = "Night.fvmood";
+    public const string Lit = "Lit.fvscene";
 
     private const string LampScene = """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""";
 
@@ -38,6 +40,7 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         WriteFile(Hall, LampScene);
         WriteFile(Paper, "{}");
         WriteFile(Night, """{ "exposure": 0.5 }""");
+        WriteFile(Lit, """{ "entities": [ { "name": "Lighting", "components": { "transform": {}, "sceneMood": { "mood": "Night.fvmood" } } } ] }""");
         _content = new UnsavedContent(new ContentManager(_contentFolder));
         _scene = new EditorScene(NullLoggerFactory.Instance, _content);
         _scene.Open(Room);
@@ -64,6 +67,14 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         Entity lamp = _scene.Entities[0];
         Engine.Runtime.Components.Transform moved = new() { Position = new System.Numerics.Vector3(4, 0, 0) };
         _scene.SetComponent(lamp, moved);
+    }
+
+    /// <summary>Gives the open scene's lamp a scene mood naming the mood file, as the inspector does.</summary>
+    public void NameSceneMood(string mood)
+    {
+        Entity lamp = _scene.Entities[0];
+        SceneComponent component = _scene.Game.Spawner.Components.Single(candidate => candidate.Name == "sceneMood");
+        _scene.SetComponent(lamp, component, new Engine.Rendering.Lighting.SceneMood { Mood = mood });
     }
 
     public void EditMaterial()
