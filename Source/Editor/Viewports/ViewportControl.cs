@@ -362,6 +362,7 @@ public sealed partial class ViewportControl : Control
             Height = size.Height,
             Format = PlatformGraphicsExternalImageFormat.R8G8B8A8UNorm,
             MemorySize = (ulong)handles.MemorySize,
+            TopLeftOrigin = true,
             VulkanProperties = new PlatformGraphicsExternalImageVulkanProperties { Layout = TransferSourceLayout },
         };
         ICompositionGpuInterop interop = _interop!;

@@ -16,6 +16,9 @@
     <ProjectReference Include="../Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
     <ProjectReference Include="../Rendering/FlickerVoid.Engine.Rendering.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="FlickerVoid.Engine.Editor.Tests" />
+  </ItemGroup>
   <!-- The editor's own shaders and icons (Material Symbols, Apache-2.0) go beside the engine modules' shaders in Content/Engine. -->
   <ItemGroup>
     <FlickerVoidContent Include="Shaders" OutputFolder="Engine/Editor" />
