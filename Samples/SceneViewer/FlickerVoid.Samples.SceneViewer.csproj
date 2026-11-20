@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="../../Source/Platform/FlickerVoid.Engine.Platform.csproj" />
+    <ProjectReference Include="../../Source/Hosting/FlickerVoid.Engine.Hosting.csproj" />
     <ProjectReference Include="../../Source/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
     <ProjectReference Include="../../Source/Debug/FlickerVoid.Engine.Debug.csproj" />
     <ProjectReference Include="../../Source/Rendering/FlickerVoid.Engine.Rendering.csproj" />

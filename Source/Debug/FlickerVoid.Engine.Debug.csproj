@@ -7,7 +7,6 @@
     <PackageReference Include="Hexa.NET.ImGui" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../Platform/FlickerVoid.Engine.Platform.csproj" />
-    <ProjectReference Include="../Rendering/FlickerVoid.Engine.Rendering.csproj" />
+    <ProjectReference Include="../Hosting/FlickerVoid.Engine.Hosting.csproj" />
   </ItemGroup>
 </Project>
