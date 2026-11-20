@@ -28,6 +28,18 @@ public sealed class ScenePickerTests : IDisposable
     }
 
     [Fact]
+    public void TellsHowFarAlongTheRayTheMeshIsHit()
+    {
+        _builder.WithSquare("Square.glb", 1);
+        _builder.AddMesh("Square.glb", new Vector3(0, 0, 2));
+        ScenePicker picker = _builder.Build();
+
+        picker.Pick(_builder.World, DownTheZAxis, out float distance);
+
+        distance.Should().BeApproximately(8, 0.001f);
+    }
+
+    [Fact]
     public void PicksNothingWhereTheRayMissesEveryMesh()
     {
         _builder.WithSquare("Square.glb", 1);
