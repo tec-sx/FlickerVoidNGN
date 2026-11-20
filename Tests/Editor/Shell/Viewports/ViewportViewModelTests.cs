@@ -5,6 +5,7 @@ using Arch.Core;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Gizmos;
 using FlickerVoid.Editor.Core.Overlays;
+using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Editor.Tests.Viewports;
@@ -58,6 +59,60 @@ public sealed class ViewportViewModelTests : IDisposable
         copy.Should().NotBe(lamp);
         _builder.World.Get<EntityName>(copy).Value.Should().Be("Lamp 2");
         _builder.ViewModel.Scene.Entities.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void DropsAModelOnTheGroundUnderTheMouseAndSelectsIt()
+    {
+        _builder.OpenLampScene();
+        _builder.ViewModel.Camera.LookAt(Vector3.Zero, yaw: 0.4f, pitch: -0.6f, distance: 10);
+        Vector3 ground = new(2, 0, -3);
+        Vector2 pixel = _builder.PixelOf(ground);
+
+        _builder.ViewModel.DropModel("Models/Fox.glb", pixel, Width, Height);
+
+        Entity fox = _builder.ViewModel.Selection.Selected!.Value;
+        _builder.World.Get<EntityName>(fox).Value.Should().Be("Fox");
+        _builder.World.Get<MeshRenderer>(fox).Mesh.Should().Be("Models/Fox.glb");
+        Vector3 position = _builder.World.Get<Transform>(fox).Position;
+        Vector3.Distance(position, ground).Should().BeLessThan(0.01f);
+        _builder.ViewModel.Scene.IsUnsaved.Should().BeTrue();
+    }
+
+    [Fact]
+    public void NamesEachDroppedCopyOfAModelApart()
+    {
+        _builder.OpenLampScene();
+        Vector2 pixel = _builder.PixelOf(Vector3.Zero);
+
+        _builder.ViewModel.DropModel("Fox.glb", pixel, Width, Height);
+        _builder.ViewModel.DropModel("Fox.glb", pixel, Width, Height);
+
+        Entity second = _builder.ViewModel.Selection.Selected!.Value;
+        _builder.World.Get<EntityName>(second).Value.Should().Be("Fox 2");
+    }
+
+    [Fact]
+    public void DropsAModelAtThePivotDistanceWhereTheMouseMissesTheGround()
+    {
+        _builder.OpenLampScene();
+        _builder.ViewModel.Camera.LookAt(new Vector3(0, 5, 0), yaw: 0, pitch: 0.3f, distance: 4);
+        Vector2 pixel = _builder.PixelOf(new Vector3(0, 5, 0));
+
+        _builder.ViewModel.DropModel("Fox.glb", pixel, Width, Height);
+
+        Entity fox = _builder.ViewModel.Selection.Selected!.Value;
+        Vector3 position = _builder.World.Get<Transform>(fox).Position;
+        Vector3.Distance(position, _builder.ViewModel.Camera.Pivot).Should().BeLessThan(0.01f);
+    }
+
+    [Fact]
+    public void AsksForASceneBeforeDroppingAModel()
+    {
+        _builder.ViewModel.DropModel("Fox.glb", Vector2.Zero, Width, Height);
+
+        _builder.ViewModel.Scene.Entities.Should().BeEmpty();
+        _builder.ViewModel.Status.Should().Contain("Open a scene");
     }
 
     [Fact]
