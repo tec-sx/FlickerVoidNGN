@@ -15,6 +15,7 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
     <KeyBinding Gesture="Ctrl+S" Command="{Binding Viewport.SaveCommand}" />
     <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveAssetsCommand}" />
     <KeyBinding Gesture="F5" Command="{Binding PlayCommand}" />
+    <KeyBinding Gesture="Ctrl+D" Command="{Binding Viewport.DuplicateSelectedCommand}" />
   </Window.KeyBindings>
   <Window.Resources>
     <ControlTheme x:Key="PresetMenuItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="scenesCore:EntityPreset">
@@ -31,6 +32,7 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
   <DockPanel>
     <Border DockPanel.Dock="Top" Classes="toolbar">
       <StackPanel Orientation="Horizontal">
+        <Button Content="Duplicate" Command="{Binding Viewport.DuplicateSelectedCommand}" ToolTip.Tip="Duplicate the selected entity (Ctrl+D)." />
         <Button Content="Delete" Command="{Binding Viewport.DeleteSelectedCommand}" ToolTip.Tip="Delete the selected entity (Delete)." />
         <Separator />
         <Button Content="Save" Command="{Binding Viewport.SaveCommand}" ToolTip.Tip="Save the scene (Ctrl+S)." />

@@ -90,6 +90,38 @@ public sealed class EditorSceneTests : IDisposable
     }
 
     [Fact]
+    public void DuplicatesAnEntityWithItsComponentsUnderTheNextFreeName()
+    {
+        _builder
+            .WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "components": { "transform": { "position": [1, 2, 3] }, "pointLight": { "range": 7 } } }, { "name": "Lamp 2", "components": { "transform": {} } } ] }""")
+            .Open("Room.fvscene");
+        EditorScene scene = _builder.Scene;
+        Entity lamp = scene.Entities[0];
+
+        Entity copy = scene.DuplicateEntity(lamp);
+        scene.Save();
+
+        World world = scene.Game.World;
+        world.Get<EntityName>(copy).Value.Should().Be("Lamp 3");
+        world.Get<Transform>(copy).Position.Should().Be(new Vector3(1, 2, 3));
+        world.Get<PointLight>(copy).Range.Should().Be(7);
+        scene.Entities.Should().HaveCount(3);
+        _builder.ReadScene("Room.fvscene").Should().Contain("Lamp 3");
+    }
+
+    [Fact]
+    public void NumbersTheCopyOfANumberedEntityFromItsBaseName()
+    {
+        _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp 2", "components": { "transform": {} } } ] }""");
+        Entity lamp = _builder.Open("Room.fvscene");
+
+        Entity copy = _builder.Scene.DuplicateEntity(lamp);
+
+        _builder.Scene.Game.World.Get<EntityName>(copy).Value.Should().Be("Lamp 3");
+        _builder.Scene.IsUnsaved.Should().BeTrue();
+    }
+
+    [Fact]
     public void AddsEveryPreset()
     {
         _builder.WithScene("Room.fvscene", """{ "entities": [] }""").Open("Room.fvscene");

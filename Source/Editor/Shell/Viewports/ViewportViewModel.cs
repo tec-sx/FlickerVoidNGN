@@ -164,6 +164,23 @@ public sealed partial class ViewportViewModel : ObservableObject
         set => SetModeIf(value, GizmoMode.Scale);
     }
 
+    /// <summary>Whether the handles follow the selected entity's own axes rather than the world's.</summary>
+    public bool IsLocalSpace
+    {
+        get => Gizmo.Space == GizmoSpace.Local;
+        set
+        {
+            GizmoSpace space = value ? GizmoSpace.Local : GizmoSpace.World;
+            if (space == Gizmo.Space)
+            {
+                return;
+            }
+
+            Gizmo.Space = space;
+            OnPropertyChanged();
+        }
+    }
+
     /// <summary>Moves the camera by one frame of input over a viewport the given number of pixels high.</summary>
     public void Update(in ViewportInput input, float seconds, int viewportHeight)
     {
@@ -199,6 +216,19 @@ public sealed partial class ViewportViewModel : ObservableObject
                 DeleteSelected();
                 break;
         }
+    }
+
+    /// <summary>Adds a copy of the selected entity in the same place and selects it, to move it away with the gizmo.</summary>
+    [RelayCommand]
+    public void DuplicateSelected()
+    {
+        if (Scene.ScenePath is null || Scene.Selection.Selected is not { } entity || !Scene.Game.World.IsAlive(entity))
+        {
+            return;
+        }
+
+        Entity copy = Scene.DuplicateEntity(entity);
+        Scene.Selection.Select(copy);
     }
 
     /// <summary>Destroys the selected entity; the next save leaves it out of the scene file.</summary>
