@@ -18,6 +18,7 @@
   </Folder>
   <Folder Name="/Source/">
     <Project Path="Source/Gameplay/FlickerVoid.Gameplay.csproj" />
+    <Project Path="Source/Launcher/FlickerVoid.Launcher.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/Gameplay/FlickerVoid.Gameplay.Tests.csproj" />
