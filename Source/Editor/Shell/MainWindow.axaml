@@ -112,7 +112,7 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
         <TabItem Header="Data">
           <DockPanel>
             <TextBlock DockPanel.Dock="Top" Text="{Binding DataHeading}" Classes="heading" TextTrimming="CharacterEllipsis" />
-            <data:DataView DataContext="{Binding DataForm}" IsVisible="{Binding $self.DataContext, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <data:DataView DataContext="{Binding DataContent}" />
           </DockPanel>
         </TabItem>
       </TabControl>

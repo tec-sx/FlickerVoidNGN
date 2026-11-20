@@ -1,7 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization.Metadata;
 
+using FlickerVoid.Engine.Gameplay.Definitions;
+using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Serialization;
 
@@ -20,6 +21,7 @@ public sealed class DataAssets : IDisposable
     private readonly IContentManager _content;
     private readonly DataTypes _types;
     private readonly Dictionary<string, object> _loaded = [];
+    private List<string>? _files;
 
     public DataAssets(IContentManager content, DataTypes types)
     {
@@ -52,6 +54,64 @@ public sealed class DataAssets : IDisposable
         }
 
         return typed;
+    }
+
+    /// <summary>The paths of the content folder's data asset files, as content paths with forward slashes, hidden folders skipped.</summary>
+    public IReadOnlyList<string> FindFiles()
+    {
+        if (_files is not null)
+        {
+            return _files;
+        }
+
+        List<string> files = [];
+        string root = _content.RootDirectory;
+        if (Directory.Exists(root))
+        {
+            foreach (string fullPath in Directory.EnumerateFiles(root, "*" + AssetExtension, SearchOption.AllDirectories))
+            {
+                string path = Path.GetRelativePath(root, fullPath).Replace('\\', '/');
+                if (!path.Split('/').Any(static part => part.StartsWith('.')))
+                {
+                    files.Add(path);
+                }
+            }
+        }
+
+        files.Sort(StringComparer.OrdinalIgnoreCase);
+        _files = files;
+        return files;
+    }
+
+    /// <summary>Every data asset of type <typeparamref name="T"/> in the content folder, such as all item definitions.</summary>
+    public IReadOnlyList<T> LoadAll<T>()
+        where T : class
+    {
+        List<T> found = [];
+        foreach (string path in FindFiles())
+        {
+            if (TryLoad(path) is T asset)
+            {
+                found.Add(asset);
+            }
+        }
+
+        return found;
+    }
+
+    /// <summary>The definition of type <typeparamref name="T"/> whose id is <paramref name="id"/>; null when no file holds one.</summary>
+    public T? Find<T>(Tag id)
+        where T : Definition
+    {
+        foreach (T definition in LoadAll<T>())
+        {
+            if (definition.Id == id)
+            {
+                return definition;
+            }
+        }
+
+        return null;
     }
 
     public void Dispose()
@@ -90,28 +150,40 @@ public sealed class DataAssets : IDisposable
     private object ReadTable<TRow>(string path, JsonObject file)
         where TRow : class
     {
-        Type type = DataTypes.GetType(path, file, _types.RowTypes);
+        List<KeyValuePair<string, object>> read = _types.ReadRows(path, file, out Type type);
         if (type != typeof(TRow))
         {
             throw new InvalidDataException($"{path} holds rows of {type.Name}, not {typeof(TRow).Name}.");
         }
 
-        JsonTypeInfo<TRow> typeInfo = (JsonTypeInfo<TRow>)_types.Options.GetTypeInfo(type);
         Dictionary<string, TRow> rows = [];
-        if (file["rows"] is JsonObject fileRows)
+        foreach ((string name, object row) in read)
         {
-            foreach ((string name, JsonNode? value) in fileRows)
-            {
-                TRow? row = value.Deserialize(typeInfo);
-                rows.Add(name, row ?? throw new InvalidDataException($"{path} has an empty row {name}."));
-            }
+            rows.Add(name, (TRow)row);
         }
 
         return new DataTable<TRow>(rows);
     }
 
+    /// <summary>The asset at the path, or null when the file can't be read, so one broken file doesn't hide the others.</summary>
+    private object? TryLoad(string path)
+    {
+        try
+        {
+            return GetOrRead(path, ReadAsset);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException)
+        {
+            return null;
+        }
+    }
+
     private void HandleChanged(string fullPath)
     {
         _loaded.Remove(fullPath);
+        if (fullPath.EndsWith(AssetExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            _files = null;
+        }
     }
 }

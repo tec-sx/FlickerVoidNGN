@@ -41,7 +41,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly ScenePlayer? _player;
     private readonly UnsavedContent _content;
     private MoodDocument? _mood;
-    private DataDocument? _data;
+    private string? _dataPath;
     private string? _sceneMood;
 
     /// <summary>
@@ -99,26 +99,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    /// <summary>The form of the data asset opened in the content browser, edited in the Data tab; null before one opens.</summary>
+    /// <summary>What the Data tab edits: the form of the data asset or the rows of the table last opened in the content browser.</summary>
     [ObservableProperty]
-    public partial DataObjectViewModel? DataForm { get; private set; }
+    public partial object? DataContent { get; private set; }
 
     /// <summary>The open data asset's path, marked with an asterisk when it has unsaved edits.</summary>
     public string DataHeading
     {
         get
         {
-            if (_data is null)
+            if (_dataPath is null)
             {
-                return "Open a data asset in the content browser to edit it.";
+                return "Open a data asset or table in the content browser to edit it.";
             }
 
-            if (_content.IsUnsaved(_data.Path))
+            if (_content.IsUnsaved(_dataPath))
             {
-                return $"{_data.Path} *";
+                return $"{_dataPath} *";
             }
 
-            return _data.Path;
+            return _dataPath;
         }
     }
 
@@ -291,6 +291,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             case AssetKind.Data:
                 OpenData(asset.Path);
                 break;
+            case AssetKind.Table:
+                OpenTable(asset.Path);
+                break;
         }
     }
 
@@ -299,9 +302,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         EditorScene scene = Viewport.Scene;
         DataTypes types = scene.Game.Data;
+        DataDocument document;
         try
         {
-            _data = new DataDocument(_content, types, path);
+            document = new DataDocument(_content, types, path);
         }
         catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
         {
@@ -309,10 +313,35 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        JsonTypeInfo typeInfo = types.Options.GetTypeInfo(_data.Asset.GetType());
+        JsonTypeInfo typeInfo = types.Options.GetTypeInfo(document.Asset.GetType());
         ContentFileFinder files = new(_content);
         string title = Path.GetFileNameWithoutExtension(path);
-        DataForm = new DataObjectViewModel(title, _data.Asset, typeInfo, _data.Hold, files.Find);
+        ShowData(path, new DataObjectViewModel(title, document.Asset, typeInfo, document.Hold, files.Find));
+    }
+
+    /// <summary>Edits the table's rows in the Data tab, held unsaved like a data asset's.</summary>
+    private void OpenTable(string path)
+    {
+        EditorScene scene = Viewport.Scene;
+        TableDocument document;
+        try
+        {
+            document = new TableDocument(_content, scene.Game.Data, path);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            Viewport.Status = $"Can't open {path}: {exception.Message}";
+            return;
+        }
+
+        ContentFileFinder files = new(_content);
+        ShowData(path, new TableViewModel(document, files.Find));
+    }
+
+    private void ShowData(string path, object content)
+    {
+        _dataPath = path;
+        DataContent = content;
         OnPropertyChanged(nameof(DataHeading));
         SideTab = 3;
     }
