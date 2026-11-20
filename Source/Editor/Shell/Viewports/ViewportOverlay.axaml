@@ -30,6 +30,25 @@
       </Border>
       <Border Classes="viewportBar">
         <StackPanel Orientation="Horizontal">
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.MoveSnap.IsOn}" ToolTip.Tip="Snap moves to the grid, in world units">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Grid}" />
+          </ToggleButton>
+          <ComboBox Classes="viewportSnap" ItemsSource="{Binding Gizmo.MoveSnap.Steps}" SelectedItem="{Binding Gizmo.MoveSnap.Step}"
+                    ToolTip.Tip="Grid size, in world units" />
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.RotateSnap.IsOn}" ToolTip.Tip="Snap turns to steps, in degrees">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Rotate}" />
+          </ToggleButton>
+          <ComboBox Classes="viewportSnap" ItemsSource="{Binding Gizmo.RotateSnap.Steps}" SelectedItem="{Binding Gizmo.RotateSnap.Step}"
+                    ToolTip.Tip="Turn step, in degrees" />
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.ScaleSnap.IsOn}" ToolTip.Tip="Snap scaling to steps of the starting scale">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Scale}" />
+          </ToggleButton>
+          <ComboBox Classes="viewportSnap" ItemsSource="{Binding Gizmo.ScaleSnap.Steps}" SelectedItem="{Binding Gizmo.ScaleSnap.Step}"
+                    ToolTip.Tip="Scale step, as a share of the starting scale" />
+        </StackPanel>
+      </Border>
+      <Border Classes="viewportBar">
+        <StackPanel Orientation="Horizontal">
           <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsPerspective}" ToolTip.Tip="Perspective or orthographic view">
             <PathIcon Data="{x:Static shell:MaterialIcons.Perspective}" />
           </ToggleButton>
