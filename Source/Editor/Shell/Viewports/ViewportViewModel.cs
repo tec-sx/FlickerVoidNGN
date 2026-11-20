@@ -163,6 +163,23 @@ public sealed partial class ViewportViewModel : ObservableObject
         set => SetModeIf(value, GizmoMode.Scale);
     }
 
+    /// <summary>Whether the handles follow the selected entity's own axes rather than the world's.</summary>
+    public bool IsLocalSpace
+    {
+        get => Gizmo.Space == GizmoSpace.Local;
+        set
+        {
+            GizmoSpace space = value ? GizmoSpace.Local : GizmoSpace.World;
+            if (space == Gizmo.Space)
+            {
+                return;
+            }
+
+            Gizmo.Space = space;
+            OnPropertyChanged();
+        }
+    }
+
     /// <summary>Moves the camera by one frame of input over a viewport the given number of pixels high.</summary>
     public void Update(in ViewportInput input, float seconds, int viewportHeight)
     {

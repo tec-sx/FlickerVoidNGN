@@ -65,6 +65,38 @@ public sealed class TransformGizmoTests
     }
 
     [Fact]
+    public void MovesAlongTheTargetsOwnAxisInLocalSpace()
+    {
+        Quaternion turned = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2);
+        _builder.Target = new Transform { Rotation = turned };
+        TransformGizmo gizmo = _builder.InSpace(GizmoSpace.Local).Build();
+        Vector3 localX = Vector3.Transform(Vector3.UnitX, turned);
+        Vector2 start = _builder.PixelAt(gizmo, localX * 0.7f);
+        float length = gizmo.GetHandleLength(_builder.Camera, Vector3.Zero, Height);
+        Vector2 end = _builder.Camera.Project(localX * ((0.7f * length) + 1), Width, Height);
+
+        bool dragging = gizmo.BeginDrag(_builder.Camera, _builder.Target, start, Width, Height);
+        Transform moved = gizmo.Drag(_builder.Camera, end, Width, Height);
+
+        dragging.Should().BeTrue();
+        gizmo.Hovered.Should().Be(GizmoAxis.X);
+        Vector3.Distance(moved.Position, localX).Should().BeLessThan(Precision);
+    }
+
+    [Fact]
+    public void KeepsTheWorldAxesInWorldSpace()
+    {
+        Quaternion turned = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2);
+        _builder.Target = new Transform { Rotation = turned };
+        TransformGizmo gizmo = _builder.Build();
+        Vector2 pixel = _builder.PixelAt(gizmo, new Vector3(0.7f, 0, 0));
+
+        GizmoAxis hovered = gizmo.Hover(_builder.Camera, _builder.Target, pixel, Width, Height);
+
+        hovered.Should().Be(GizmoAxis.X);
+    }
+
+    [Fact]
     public void RotatesRoundTheDraggedRing()
     {
         TransformGizmo gizmo = _builder.InMode(GizmoMode.Rotate).LookingDown().Build();
@@ -139,6 +171,27 @@ public sealed class TransformGizmoTests
 
         moved.Position.X.Should().Be(1.5f);
         moved.Position.Y.Should().Be(0.3f);
+    }
+
+    [Fact]
+    public void MovesInGridStepsAlongALocalAxis()
+    {
+        Quaternion turned = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2);
+        _builder.Target = new Transform { Position = new Vector3(0.3f, 0, 0), Rotation = turned };
+        TransformGizmo gizmo = _builder.InSpace(GizmoSpace.Local).Build();
+        gizmo.MoveSnap.IsOn = true;
+        gizmo.MoveSnap.Step = 0.5f;
+        Vector3 localX = Vector3.Transform(Vector3.UnitX, turned);
+        Vector2 start = _builder.PixelAt(gizmo, localX * 0.7f);
+        gizmo.BeginDrag(_builder.Camera, _builder.Target, start, Width, Height);
+        float length = gizmo.GetHandleLength(_builder.Camera, _builder.Target.Position, Height);
+        Vector3 end = _builder.Target.Position + (localX * ((0.7f * length) + 1.1f));
+        Vector2 endPixel = _builder.Camera.Project(end, Width, Height);
+
+        Transform moved = gizmo.Drag(_builder.Camera, endPixel, Width, Height);
+
+        Vector3 expected = new Vector3(0.3f, 0, 0) + localX;
+        Vector3.Distance(moved.Position, expected).Should().BeLessThan(0.0001f, "a local drag of 1.1 snaps to one unit");
     }
 
     [Fact]

@@ -16,6 +16,7 @@ internal sealed class TransformGizmoTestsBuilder
     public const int Height = 480;
 
     private GizmoMode _mode = GizmoMode.Move;
+    private GizmoSpace _space = GizmoSpace.World;
 
     public TransformGizmoTestsBuilder()
     {
@@ -32,6 +33,12 @@ internal sealed class TransformGizmoTestsBuilder
         return this;
     }
 
+    public TransformGizmoTestsBuilder InSpace(GizmoSpace space)
+    {
+        _space = space;
+        return this;
+    }
+
     public TransformGizmoTestsBuilder LookingDown()
     {
         Camera.LookAt(Vector3.Zero, 0, -EditorCamera.PitchLimit, 10);
@@ -40,7 +47,7 @@ internal sealed class TransformGizmoTestsBuilder
 
     public TransformGizmo Build()
     {
-        return new TransformGizmo { Mode = _mode };
+        return new TransformGizmo { Mode = _mode, Space = _space };
     }
 
     /// <summary>The pixel a point on the gizmo shows at, given as a direction from its centre in multiples of the handle length.</summary>

@@ -8,10 +8,11 @@ using FlickerVoid.Engine.Runtime.Components;
 namespace FlickerVoid.Editor.Core.Gizmos;
 
 /// <summary>
-/// The handles that move, rotate and scale a transform along the world axes: arrows, rings or cube-tipped lines that keep their
+/// The handles that move, rotate and scale a transform along the world axes or the transform's own (<see cref="Space"/>; scale
+/// handles always follow the transform's own, as its scale is along them): arrows, rings or cube-tipped lines that keep their
 /// size on screen. Finds the handle under the mouse, works out the transform as a handle is dragged, and draws itself. While
-/// snapping is on, a move puts the dragged axis on the grid, a turn goes in steps of degrees, and a scale in steps of the
-/// scale the drag started from.
+/// snapping is on, a move puts the dragged world axis on the grid (or moves in grid steps along a local one), a turn goes in
+/// steps of degrees, and a scale in steps of the scale the drag started from.
 /// </summary>
 public sealed class TransformGizmo
 {
@@ -43,8 +44,11 @@ public sealed class TransformGizmo
     private float _startAlong;
     private Vector3 _startOffset;
     private float _handleLength;
+    private Quaternion _orientation = Quaternion.Identity;
 
     public GizmoMode Mode { get; set; } = GizmoMode.Move;
+
+    public GizmoSpace Space { get; set; } = GizmoSpace.World;
 
     /// <summary>The grid moves snap to, in world units.</summary>
     public GizmoSnap MoveSnap { get; } = new([0.1f, 0.25f, 0.5f, 1, 2, 5], 0.5f);
@@ -70,7 +74,8 @@ public sealed class TransformGizmo
     {
         if (!IsDragging)
         {
-            Hovered = FindAxis(camera, target.Position, pixel, width, height);
+            Quaternion orientation = GetOrientation(target);
+            Hovered = FindAxis(camera, target.Position, orientation, pixel, width, height);
         }
 
         return Hovered;
@@ -79,7 +84,8 @@ public sealed class TransformGizmo
     /// <summary>Starts dragging the handle under the mouse; false when there is none.</summary>
     public bool BeginDrag(EditorCamera camera, in Transform target, Vector2 pixel, int width, int height)
     {
-        GizmoAxis axis = FindAxis(camera, target.Position, pixel, width, height);
+        Quaternion orientation = GetOrientation(target);
+        GizmoAxis axis = FindAxis(camera, target.Position, orientation, pixel, width, height);
         if (axis == GizmoAxis.None)
         {
             return false;
@@ -87,7 +93,7 @@ public sealed class TransformGizmo
 
         Vector3 centre = target.Position;
         Ray ray = camera.GetRay(pixel, width, height);
-        Vector3 direction = GetDirection(axis);
+        Vector3 direction = GetDirection(axis, orientation);
         switch (Mode)
         {
             case GizmoMode.Rotate:
@@ -111,6 +117,7 @@ public sealed class TransformGizmo
         IsDragging = true;
         _start = target;
         _startPixel = pixel;
+        _orientation = orientation;
         _handleLength = GetHandleLength(camera, centre, height);
         return true;
     }
@@ -150,11 +157,12 @@ public sealed class TransformGizmo
         }
 
         Vector3 centre = target.Position;
+        Quaternion orientation = GetOrientation(target);
         float length = GetHandleLength(camera, centre, viewportHeight);
         GizmoAxis[] axes = [GizmoAxis.X, GizmoAxis.Y, GizmoAxis.Z];
         foreach (GizmoAxis axis in axes)
         {
-            Vector3 direction = GetDirection(axis);
+            Vector3 direction = GetDirection(axis, orientation);
             Vector4 color = GetColor(axis);
             Vector3 tip = centre + (direction * length);
             switch (Mode)
@@ -182,7 +190,14 @@ public sealed class TransformGizmo
         }
     }
 
-    private static Vector3 GetDirection(GizmoAxis axis)
+    /// <summary>The world-space direction of an axis's handle on a gizmo turned by <paramref name="orientation"/>.</summary>
+    private static Vector3 GetDirection(GizmoAxis axis, Quaternion orientation)
+    {
+        Vector3 unit = GetUnit(axis);
+        return Vector3.Transform(unit, orientation);
+    }
+
+    private static Vector3 GetUnit(GizmoAxis axis)
     {
         switch (axis)
         {
@@ -232,7 +247,18 @@ public sealed class TransformGizmo
         }
     }
 
-    private GizmoAxis FindAxis(EditorCamera camera, Vector3 centre, Vector2 pixel, int width, int height)
+    /// <summary>How the handles are turned over a target: not at all in world space, by its rotation in local space or for scale.</summary>
+    private Quaternion GetOrientation(in Transform target)
+    {
+        if (Space == GizmoSpace.Local || Mode == GizmoMode.Scale)
+        {
+            return target.Rotation;
+        }
+
+        return Quaternion.Identity;
+    }
+
+    private GizmoAxis FindAxis(EditorCamera camera, Vector3 centre, Quaternion orientation, Vector2 pixel, int width, int height)
     {
         if (Mode == GizmoMode.Select)
         {
@@ -251,7 +277,7 @@ public sealed class TransformGizmo
         GizmoAxis[] axes = [GizmoAxis.X, GizmoAxis.Y, GizmoAxis.Z];
         foreach (GizmoAxis axis in axes)
         {
-            Vector3 direction = GetDirection(axis);
+            Vector3 direction = GetDirection(axis, orientation);
             float distance;
             if (Mode == GizmoMode.Rotate)
             {
@@ -296,23 +322,31 @@ public sealed class TransformGizmo
 
     private Transform DragMove(Ray ray)
     {
-        Vector3 direction = GetDirection(Hovered);
+        Vector3 direction = GetDirection(Hovered, _orientation);
         if (!ray.ClosestOnLine(_start.Position, direction, out float along))
         {
             return _start;
         }
 
-        Vector3 position = _start.Position + (direction * (along - _startAlong));
+        Transform moved = _start;
+        float distance = along - _startAlong;
+        if (Space == GizmoSpace.Local)
+        {
+            float steps = MoveSnap.Apply(distance);
+            moved.Position = _start.Position + (direction * steps);
+            return moved;
+        }
+
+        Vector3 position = _start.Position + (direction * distance);
         float onAxis = Vector3.Dot(position, direction);
         float snapped = MoveSnap.Apply(onAxis);
-        Transform moved = _start;
         moved.Position = position + (direction * (snapped - onAxis));
         return moved;
     }
 
     private Transform DragRotate(Ray ray)
     {
-        Vector3 axis = GetDirection(Hovered);
+        Vector3 axis = GetDirection(Hovered, _orientation);
         Vector3 centre = _start.Position;
         if (!ray.IntersectPlane(centre, axis, out Vector3 hit))
         {
@@ -345,7 +379,7 @@ public sealed class TransformGizmo
             return scaled;
         }
 
-        Vector3 direction = GetDirection(Hovered);
+        Vector3 direction = GetDirection(Hovered, _orientation);
         if (!ray.ClosestOnLine(_start.Position, direction, out float along))
         {
             return _start;
@@ -353,7 +387,8 @@ public sealed class TransformGizmo
 
         float axisDragged = 1 + ((along - _startAlong) / _handleLength);
         float axisFactor = ScaleSnap.Apply(axisDragged);
-        Vector3 factors = Vector3.One + (direction * (axisFactor - 1));
+        Vector3 unit = GetUnit(Hovered);
+        Vector3 factors = Vector3.One + (unit * (axisFactor - 1));
         Vector3 result = _start.Scale * factors;
         scaled.Scale = Vector3.Max(result, new Vector3(MinScale));
         return scaled;
