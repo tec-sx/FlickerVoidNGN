@@ -28,6 +28,12 @@ public sealed class ScenePicker : IDisposable
 
     public Entity? Pick(World world, Ray ray)
     {
+        return Pick(world, ray, out _);
+    }
+
+    /// <summary>The mesh the ray hits first, and how far along the ray it is hit (infinity when nothing is).</summary>
+    public Entity? Pick(World world, Ray ray, out float distance)
+    {
         Entity? nearest = null;
         float nearestDistance = float.PositiveInfinity;
         world.Query(in Meshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform) =>
@@ -38,6 +44,7 @@ public sealed class ScenePicker : IDisposable
                 nearestDistance = distance;
             }
         });
+        distance = nearestDistance;
         return nearest;
     }
 

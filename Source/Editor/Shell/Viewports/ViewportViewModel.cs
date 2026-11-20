@@ -21,6 +21,8 @@ using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 
+using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
+
 namespace FlickerVoid.Editor.Viewports;
 
 /// <summary>
@@ -229,6 +231,41 @@ public sealed partial class ViewportViewModel : ObservableObject
 
         Entity copy = Scene.DuplicateEntity(entity);
         Scene.Selection.Select(copy);
+    }
+
+    /// <summary>
+    /// Adds a mesh entity drawing a model file where it is dropped: on the mesh under the mouse, else on the ground, else where the
+    /// mouse's ray crosses the plane of the camera's pivot; then selects it.
+    /// </summary>
+    public void DropModel(string path, Vector2 pixel, int width, int height)
+    {
+        if (Scene.ScenePath is null)
+        {
+            Status = "Open a scene before adding models: double-click one in the content browser.";
+            return;
+        }
+
+        World world = Scene.Game.World;
+        Ray ray = Camera.GetRay(pixel, width, height);
+        Vector3 position = Camera.Pivot;
+        if (Scene.Picker.Pick(world, ray, out float distance) is not null)
+        {
+            position = ray.GetPoint(distance);
+        }
+        else if (ray.IntersectPlane(Vector3.Zero, Vector3.UnitY, out Vector3 ground))
+        {
+            position = ground;
+        }
+        else if (ray.IntersectPlane(Camera.Pivot, Camera.Forward, out Vector3 facing))
+        {
+            position = facing;
+        }
+
+        EntityPreset preset = EntityPreset.ForModel(path);
+        EntityData data = preset.Create(world, Scene.Entities, position);
+        Entity entity = Scene.AddEntity(data);
+        Selection.Select(entity);
+        Status = $"Added {data.Name}.";
     }
 
     /// <summary>Destroys the selected entity; the next save leaves it out of the scene file.</summary>
