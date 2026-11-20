@@ -10,6 +10,8 @@ internal static class DotnetCli
 
     public static readonly string TemplateFolder = Path.Combine("Templates", "Project");
 
+    private static readonly string[] MSBuildVariables = ["MSBuildSDKsPath", "MSBuildExtensionsPath", "MSBUILD_EXE_PATH"];
+
     private static readonly Lazy<string> _engine = new(ResolveEngine);
 
     public static string Engine => _engine.Value;
@@ -35,17 +37,7 @@ internal static class DotnetCli
 
     public static string Run(params string[] arguments)
     {
-        ProcessStartInfo start = new("dotnet")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        foreach (string argument in arguments)
-        {
-            start.ArgumentList.Add(argument);
-        }
-        start.Environment[EngineVariable] = Engine;
+        ProcessStartInfo start = CreateStartInfo(arguments);
 
         using Process process = Process.Start(start) ?? throw new ProjectBuildException("dotnet could not be started.");
         StringBuilder output = new();
@@ -62,6 +54,32 @@ internal static class DotnetCli
         }
 
         return text;
+    }
+
+    /// <summary>
+    /// A <c>dotnet</c> process with the engine variable set and without the MSBuild paths an IDE (or a stale system setting)
+    /// may have put in the editor's environment: they point MSBuild at one SDK's files while <c>dotnet</c> runs another.
+    /// </summary>
+    public static ProcessStartInfo CreateStartInfo(IEnumerable<string> arguments)
+    {
+        ProcessStartInfo start = new("dotnet")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (string argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        foreach (string variable in MSBuildVariables)
+        {
+            start.Environment.Remove(variable);
+        }
+
+        start.Environment[EngineVariable] = Engine;
+        return start;
     }
 
     private static string ResolveEngine()
