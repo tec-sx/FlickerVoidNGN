@@ -62,18 +62,22 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
           <inspector:InspectorView DataContext="{Binding Inspector}" />
         </TabItem>
         <TabItem Header="View">
-          <ScrollViewer>
-            <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" Margin="12,4,12,12">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="inspectorCore:FieldViewModel">
-                  <Grid ColumnDefinitions="130,*" Margin="0,2">
-                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <ContentControl Grid.Column="1" Content="{Binding}" />
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </ScrollViewer>
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="{Binding MoodHeading}" FontWeight="SemiBold" Margin="12,8,12,4"
+                       TextTrimming="CharacterEllipsis" ToolTip.Tip="The lighting mood the viewport draws with. Open a mood file in the content browser to edit it." />
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" Margin="12,4,12,12">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="inspectorCore:FieldViewModel">
+                    <Grid ColumnDefinitions="130,*" Margin="0,2">
+                      <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <ContentControl Grid.Column="1" Content="{Binding}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </DockPanel>
         </TabItem>
       </TabControl>
     </Border>

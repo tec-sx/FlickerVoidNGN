@@ -9,7 +9,7 @@ namespace FlickerVoid.Editor.Core.Viewports;
 
 /// <summary>
 /// The look of the viewport: a field for every setting of the lighting mood it draws the scene with, from the sun to the
-/// tonemapper, generated from the mood's metadata and edited in place.
+/// tonemapper, generated from the mood's metadata and edited in place; <see cref="Edited"/> follows each edit.
 /// </summary>
 public sealed class ViewSettingsViewModel
 {
@@ -24,7 +24,7 @@ public sealed class ViewSettingsViewModel
                 continue;
             }
 
-            ObjectProperty property = new(mood, info);
+            ObjectProperty property = new(mood, info, RaiseEdited);
             FieldViewModel field = FieldFactory.Create(property);
             fields.Add(field);
         }
@@ -32,7 +32,11 @@ public sealed class ViewSettingsViewModel
         Fields = fields;
     }
 
+    public event Action? Edited;
+
     public LightingMood Mood { get; }
 
     public IReadOnlyList<FieldViewModel> Fields { get; }
+
+    private void RaiseEdited() => Edited?.Invoke();
 }
