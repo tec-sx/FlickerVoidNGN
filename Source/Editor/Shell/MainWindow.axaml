@@ -15,15 +15,6 @@
   <DockPanel>
     <Border DockPanel.Dock="Top" Padding="8,4" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <ToggleButton Content="Select" IsChecked="{Binding Viewport.IsSelectMode}" ToolTip.Tip="Select (Q)" />
-        <ToggleButton Content="Move" IsChecked="{Binding Viewport.IsMoveMode}" ToolTip.Tip="Move (W)" />
-        <ToggleButton Content="Rotate" IsChecked="{Binding Viewport.IsRotateMode}" ToolTip.Tip="Rotate (E)" />
-        <ToggleButton Content="Scale" IsChecked="{Binding Viewport.IsScaleMode}" ToolTip.Tip="Scale (R)" />
-        <Separator Width="1" Margin="4,0" />
-        <ToggleButton Content="Perspective" IsChecked="{Binding Viewport.IsPerspective}"
-                      ToolTip.Tip="Perspective or orthographic view; both frame the same height at the pivot." />
-        <ToggleButton Content="Grid" IsChecked="{Binding Viewport.ShowGrid}" />
-        <Separator Width="1" Margin="4,0" />
         <DropDownButton Content="Add" ToolTip.Tip="Add an entity to the open scene at the camera's pivot.">
           <DropDownButton.Flyout>
             <MenuFlyout ItemsSource="{Binding Presets}">
@@ -79,7 +70,10 @@
       </TabControl>
     </Border>
     <Grid RowDefinitions="*,4,240">
-      <viewports:ViewportControl DataContext="{Binding Viewport}" />
+      <Panel>
+        <viewports:ViewportControl DataContext="{Binding Viewport}" />
+        <viewports:ViewportOverlay DataContext="{Binding Viewport}" />
+      </Panel>
       <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
       <assets:AssetBrowserView Grid.Row="2" DataContext="{Binding Assets}" />
     </Grid>

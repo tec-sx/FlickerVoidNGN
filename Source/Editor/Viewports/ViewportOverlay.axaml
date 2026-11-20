@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="using:FlickerVoid.Engine.Editor.Shell"
+             xmlns:viewports="using:FlickerVoid.Engine.Editor.Viewports"
+             x:Class="FlickerVoid.Engine.Editor.Viewports.ViewportOverlay"
+             x:DataType="viewports:ViewportViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.viewportBar">
+      <Setter Property="Background" Value="#CC1E1E1E" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="2" />
+    </Style>
+    <Style Selector="ToggleButton.viewportIcon">
+      <Setter Property="Width" Value="30" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="Padding" Value="6" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Foreground" Value="#DDDDDD" />
+    </Style>
+    <Style Selector="ToggleButton.viewportIcon:checked /template/ ContentPresenter">
+      <Setter Property="Background" Value="#2D7BD6" />
+    </Style>
+    <Style Selector="Button.viewportRound">
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="7" />
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="Background" Value="#CC1E1E1E" />
+      <Setter Property="Foreground" Value="#DDDDDD" />
+    </Style>
+    <Style Selector="PathIcon">
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
+    </Style>
+  </UserControl.Styles>
+  <Panel>
+    <StackPanel Orientation="Horizontal" Spacing="6" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top">
+      <Border Classes="viewportBar">
+        <StackPanel Orientation="Horizontal">
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsSelectMode}" ToolTip.Tip="Select (Q)">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Select}" />
+          </ToggleButton>
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsMoveMode}" ToolTip.Tip="Move (W)">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Move}" />
+          </ToggleButton>
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsRotateMode}" ToolTip.Tip="Rotate (E)">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Rotate}" />
+          </ToggleButton>
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsScaleMode}" ToolTip.Tip="Scale (R)">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Scale}" />
+          </ToggleButton>
+        </StackPanel>
+      </Border>
+      <Border Classes="viewportBar">
+        <StackPanel Orientation="Horizontal">
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsPerspective}" ToolTip.Tip="Perspective or orthographic view">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Perspective}" />
+          </ToggleButton>
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding ShowGrid}" ToolTip.Tip="Grid">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Grid}" />
+          </ToggleButton>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+    <StackPanel Margin="8" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Top">
+      <viewports:NavigationGizmo Width="96" Height="96" Camera="{Binding Camera}" />
+      <viewports:CameraDragButton Classes="viewportRound" Drag="Pan" Camera="{Binding Camera}"
+                                  ViewportHeight="{Binding $parent[UserControl].Bounds.Height}" ToolTip.Tip="Drag to pan the view.">
+        <PathIcon Data="{x:Static shell:MaterialIcons.Pan}" />
+      </viewports:CameraDragButton>
+      <viewports:CameraDragButton Classes="viewportRound" Drag="Zoom" Camera="{Binding Camera}" ToolTip.Tip="Drag to zoom the view.">
+        <PathIcon Data="{x:Static shell:MaterialIcons.Zoom}" />
+      </viewports:CameraDragButton>
+    </StackPanel>
+  </Panel>
+</UserControl>
