@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Platform;
 using Avalonia.Rendering;
@@ -162,6 +163,13 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
     {
         base.OnKeyDown(e);
         _alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+        if (e.Key == Key.A && e.KeyModifiers == KeyModifiers.Shift && _buttons == ViewportButtons.None)
+        {
+            ShowAddMenu();
+            e.Handled = true;
+            return;
+        }
+
         if (ViewportKeys.From(e.Key) is { } key)
         {
             _keys.Add(key);
@@ -192,6 +200,16 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
     }
 
     private double GetScaling() => this.GetPresentationSource()?.RenderScaling ?? 1;
+
+    /// <summary>Opens the flyout attached to the viewport, the Add menu, under the mouse.</summary>
+    private void ShowAddMenu()
+    {
+        if (FlyoutBase.GetAttachedFlyout(this) is PopupFlyoutBase flyout)
+        {
+            _keys.Clear();
+            flyout.ShowAt(this, showAtPointer: true);
+        }
+    }
 
     private PixelSize GetPixelSize()
     {
