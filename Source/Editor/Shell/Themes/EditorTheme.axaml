@@ -29,12 +29,12 @@
     <SolidColorBrush x:Key="EditorMutedTextBrush" Color="#B9BBA8" />
     <SolidColorBrush x:Key="EditorAccentBrush" Color="#D8955A" />
     <SolidColorBrush x:Key="EditorOverlayBrush" Color="#D91F1D16" />
-    <SolidColorBrush x:Key="EditorPlayBrush" Color="#8DA33A" />
+    <SolidColorBrush x:Key="EditorPlayBrush" Color="#A6C33F" />
     <SolidColorBrush x:Key="EditorSaveBrush" Color="#4A9BBF" />
     <SolidColorBrush x:Key="EditorDeleteBrush" Color="#C8553D" />
     <SolidColorBrush x:Key="EditorBakeBrush" Color="#E0AC2C" />
     <SolidColorBrush x:Key="EditorAxisXBrush" Color="#C8553D" />
-    <SolidColorBrush x:Key="EditorAxisYBrush" Color="#8DA33A" />
+    <StaticResource x:Key="EditorAxisYBrush" ResourceKey="EditorPlayBrush" />
     <SolidColorBrush x:Key="EditorAxisZBrush" Color="#4A8FBF" />
 
     <!-- Fluent's own tokens, read by its control themes. -->
@@ -43,7 +43,9 @@
     <CornerRadius x:Key="OverlayCornerRadius">2</CornerRadius>
     <Thickness x:Key="ButtonPadding">6,1</Thickness>
     <x:Double x:Key="TextControlThemeMinHeight">20</x:Double>
-    <x:Double x:Key="ExpanderMinHeight">24</x:Double>
+    <x:Double x:Key="ExpanderMinHeight">20</x:Double>
+    <x:Double x:Key="ExpanderChevronButtonSize">16</x:Double>
+    <Thickness x:Key="ExpanderChevronMargin">4,0</Thickness>
     <StaticResource x:Key="TextControlBorderBrush" ResourceKey="EditorLineBrush" />
     <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="EditorMutedTextBrush" />
     <StaticResource x:Key="TextControlBackground" ResourceKey="EditorControlBrush" />
@@ -113,8 +115,12 @@
     <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
   </Style>
   <Style Selector="Expander /template/ ToggleButton#ExpanderHeader">
-    <Setter Property="MinHeight" Value="24" />
-    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Padding" Value="6,0,2,0" />
+  </Style>
+  <!-- Views that want the chevron somewhere else draw their own and hide Fluent's. -->
+  <Style Selector="Expander.ownChevron /template/ ToggleButton#ExpanderHeader /template/ Border#ExpandCollapseChevronBorder">
+    <Setter Property="IsVisible" Value="False" />
   </Style>
 
   <!-- The shell's bars: the toolbar above the viewport and the status bar below it. -->
@@ -198,6 +204,15 @@
     <Setter Property="Width" Value="16" />
     <Setter Property="Height" Value="16" />
   </Style>
+  <Style Selector="Button.icon.small">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="Padding" Value="2" />
+  </Style>
+  <Style Selector="Button.icon.small PathIcon, PathIcon.small">
+    <Setter Property="Width" Value="12" />
+    <Setter Property="Height" Value="12" />
+  </Style>
   <Style Selector="ToggleButton.icon:checked /template/ ContentPresenter">
     <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
   </Style>
@@ -214,20 +229,20 @@
     <Setter Property="Foreground" Value="{StaticResource EditorBakeBrush}" />
   </Style>
   <Style Selector="Button.icon.play">
-    <Setter Property="Width" Value="36" />
-    <Setter Property="CornerRadius" Value="11" />
-    <Setter Property="Background" Value="{StaticResource EditorPlayBrush}" />
-    <Setter Property="Foreground" Value="{StaticResource EditorDeepBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorPlayBrush}" />
   </Style>
-  <Style Selector="Button.icon.play:disabled /template/ ContentPresenter">
-    <Setter Property="Background" Value="{StaticResource EditorPlayBrush}" />
-    <Setter Property="Foreground" Value="{StaticResource EditorDeepBrush}" />
-  </Style>
-  <Style Selector="Button.icon.play:disabled">
-    <Setter Property="Opacity" Value="0.35" />
+  <Style Selector="Button.icon.play PathIcon">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
   </Style>
   <Style Selector="Button.icon.play:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="#A3BA4E" />
+    <Setter Property="Foreground" Value="#C2DB5E" />
+  </Style>
+  <Style Selector="Button.icon.play:disabled /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{StaticResource EditorPlayBrush}" />
+  </Style>
+  <Style Selector="Button.icon.play:disabled">
+    <Setter Property="Opacity" Value="0.4" />
   </Style>
 
   <!-- The inspector: a line under each component's header and number boxes that fit three to a row. -->

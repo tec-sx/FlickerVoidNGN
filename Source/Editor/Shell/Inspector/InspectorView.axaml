@@ -26,14 +26,20 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="inspector:ComponentViewModel">
             <Border Classes="category">
-            <Expander IsExpanded="True" HorizontalAlignment="Stretch" Margin="0,1">
+            <Expander Classes="ownChevron" IsExpanded="True" HorizontalAlignment="Stretch" Margin="0,1">
               <Expander.Header>
                 <DockPanel>
-                  <Button DockPanel.Dock="Right" Classes="icon" IsVisible="{Binding CanRemove}" ToolTip.Tip="Remove the component"
-                          Command="{Binding $parent[UserControl].((inspector:InspectorViewModel)DataContext).RemoveComponentCommand}"
-                          CommandParameter="{Binding}">
-                    <PathIcon Data="{x:Static shell:MaterialIcons.Close}" />
-                  </Button>
+                  <Panel DockPanel.Dock="Right" Width="16">
+                    <Button Classes="icon small" IsVisible="{Binding CanRemove}" ToolTip.Tip="Remove the component"
+                            Command="{Binding $parent[UserControl].((inspector:InspectorViewModel)DataContext).RemoveComponentCommand}"
+                            CommandParameter="{Binding}">
+                      <PathIcon Data="{x:Static shell:MaterialIcons.Close}" />
+                    </Button>
+                  </Panel>
+                  <Panel DockPanel.Dock="Right" Width="16" Margin="0,0,2,0">
+                    <PathIcon Classes="small" Data="{x:Static shell:MaterialIcons.Collapse}" IsVisible="{Binding $parent[Expander].IsExpanded}" />
+                    <PathIcon Classes="small" Data="{x:Static shell:MaterialIcons.Expand}" IsVisible="{Binding !$parent[Expander].IsExpanded}" />
+                  </Panel>
                   <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontWeight="SemiBold" />
                 </DockPanel>
               </Expander.Header>

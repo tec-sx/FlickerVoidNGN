@@ -194,6 +194,18 @@
                   }
                 },
                 "additionalProperties": false
+              },
+              "sceneMood": {
+                "type": "object",
+                "properties": {
+                  "mood": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
