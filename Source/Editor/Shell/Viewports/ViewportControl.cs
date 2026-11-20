@@ -11,6 +11,7 @@ using Avalonia.Rendering;
 using Avalonia.Rendering.Composition;
 using Avalonia.VisualTree;
 
+using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Engine.Graphics.Devices;
@@ -53,6 +54,9 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
     {
         Focusable = true;
         ClipToBounds = true;
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DragOverEvent, HandleDragOver);
+        AddHandler(DragDrop.DropEvent, HandleDrop);
     }
 
     private static string ImageHandleType => OperatingSystem.IsWindows()
@@ -209,6 +213,29 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
             _keys.Clear();
             flyout.ShowAt(this, showAtPointer: true);
         }
+    }
+
+    private void HandleDragOver(object? sender, DragEventArgs e)
+    {
+        bool model = AssetDrag.GetModel(e.DataTransfer) is not null;
+        e.DragEffects = model ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void HandleDrop(object? sender, DragEventArgs e)
+    {
+        string? model = AssetDrag.GetModel(e.DataTransfer);
+        if (model is null || ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        Point position = e.GetPosition(this);
+        PixelSize size = GetPixelSize();
+        Vector2 pixel = ToPixels(position);
+        viewModel.DropModel(model, pixel, size.Width, size.Height);
+        Focus();
+        e.Handled = true;
     }
 
     private PixelSize GetPixelSize()
