@@ -139,6 +139,25 @@
     <Setter Property="Margin" Value="4,0" />
     <Setter Property="Background" Value="{StaticResource EditorLineBrush}" />
   </Style>
+  <!-- The toolbar doubles as the window's title bar, leaving room on the right for the window's own buttons. -->
+  <Style Selector="Border.titleBar">
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="6,0,140,0" />
+  </Style>
+  <Style Selector="Border.titleBar StackPanel">
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="PathIcon.logo">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="Margin" Value="2,0,4,0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="TextBlock.windowTitle">
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+    <Setter Property="Margin" Value="0,0,4,0" />
+  </Style>
   <Style Selector="Border.statusbar">
     <Setter Property="Padding" Value="6,1" />
   </Style>
