@@ -20,6 +20,7 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Engine.Debug;
+using FlickerVoid.Engine.Hosting;
 using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Rendering;
@@ -119,31 +120,24 @@ if (!File.Exists(model) && !File.Exists(bakedModel))
 
 string folder = Path.GetDirectoryName(model)!;
 string fileName = Path.GetFileName(model);
-ContentManager content = new(folder);
-
-using ILoggerFactory loggerFactory = LoggerFactory.Create(static logging => logging.AddSimpleConsole());
-GraphicsDeviceOptions options = new() { Validation = validation };
-using VulkanGraphicsDevice device = new(options, loggerFactory);
-using Game game = new(loggerFactory);
-game.AddRendering();
 string shown = fileName;
 if (sceneFile is not null)
 {
     shown = Path.GetFileName(sceneFile);
 }
 
-using GameWindow window = new(game, $"FlickerVoid  {shown}  (drag to turn, wheel to zoom, WASD to move, P for perspective, N for the next mood)", 1280, 720);
+using ILoggerFactory loggerFactory = LoggerFactory.Create(static logging => logging.AddSimpleConsole());
+HostOptions hostOptions = new() { Scene = sceneFile, ContentFolder = folder, FrameLimit = frameLimit, Validation = validation };
+string title = $"FlickerVoid  {shown}  (drag to turn, wheel to zoom, WASD to move, P for perspective, N for the next mood)";
+using SceneHost host = new(hostOptions, loggerFactory, title);
+Game game = host.Game;
+GameWindow window = host.Window;
+ContentManager content = host.Content;
 
 Entity camera = game.World.Create(new Transform(), new Camera());
-ILogger<SceneLoader> sceneLogger = loggerFactory.CreateLogger<SceneLoader>();
-using SceneLoader sceneLoader = new(game.Spawner, content, game.World, sceneLogger);
 if (sceneFile is null)
 {
     game.World.Create(new Transform(), new MeshRenderer { Mesh = fileName });
-}
-else
-{
-    sceneLoader.Load(sceneFile);
 }
 
 Vector3[] palette = [new(1, 0.3f, 0.2f), new(1, 0.8f, 0.3f), new(0.3f, 1, 0.4f), new(0.3f, 0.8f, 1), new(0.4f, 0.4f, 1), new(1, 0.4f, 0.9f)];
@@ -175,9 +169,11 @@ for (int index = 1; index < moodFiles.Length; index++)
 using LightingMoodDirector? director = CreateDirector();
 LightingMood startMood = director?.Current ?? new LightingMood();
 LightingMood configuredMood = Configure(startMood);
+host.Mood = configuredMood;
+SceneRenderSystem renderer = host.Start(CreateDebugUi);
 if (bakeProbes)
 {
-    ModelProbes.Bake(device, content, game.World, model, configuredMood);
+    ModelProbes.Bake(host.Device, content, game.World, model, configuredMood);
 }
 
 LightingMoodDirector? CreateDirector()
@@ -189,11 +185,6 @@ LightingMoodDirector? CreateDirector()
 
     ILogger<LightingMoodDirector> directorLogger = loggerFactory.CreateLogger<LightingMoodDirector>();
     return new LightingMoodDirector(facts, content, moodFiles[0], rules, directorLogger);
-}
-
-SceneRenderer CreateRenderer(PixelFormat format)
-{
-    return new SceneRenderer(device, content, format) { Mood = configuredMood };
 }
 
 LightingMood Configure(LightingMood mood)
@@ -220,8 +211,8 @@ LightingMood Configure(LightingMood mood)
 DebugUi CreateDebugUi(PixelFormat format, SceneRenderer sceneRenderer)
 {
     string settings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FlickerVoid", "SceneViewer");
-    DebugUi ui = new(device, window, format, settings);
-    ui.AddEngineWindows(game, device);
+    DebugUi ui = new(host.Device, window, format, settings);
+    ui.AddEngineWindows(game, host.Device);
     ui.AddRenderingWindows(sceneRenderer, game.World);
     ViewerWindow viewer = new(game.World, camera, walkers, facts, moodFiles);
     ui.Windows.Add(viewer);
@@ -235,8 +226,6 @@ DebugUi CreateDebugUi(PixelFormat format, SceneRenderer sceneRenderer)
     return ui;
 }
 
-using SceneRenderSystem renderer = new(window, device, game.World, CreateRenderer, frameLimit, CreateDebugUi);
-game.FrameSystems.Add(new ContentWatcher(content, game.Schemas));
 game.FrameSystems.Add(orbit);
 game.FrameSystems.Add(walkers);
 if (director is not null)
@@ -245,8 +234,7 @@ if (director is not null)
     game.FrameSystems.Add(moods);
 }
 
-game.FrameSystems.Add(renderer);
-window.Run();
+host.Run();
 double milliseconds = renderer.AverageFrameTime.TotalMilliseconds;
 double framesPerSecond = 0;
 if (milliseconds > 0)
@@ -254,5 +242,5 @@ if (milliseconds > 0)
     framesPerSecond = 1000 / milliseconds;
 }
 
-Console.WriteLine($"Rendered {renderer.Frames} frames of {shown} with Vulkan on {device.AdapterName}: {milliseconds:0.00} ms a frame ({framesPerSecond:0} fps).");
+Console.WriteLine($"Rendered {renderer.Frames} frames of {shown} with Vulkan on {host.Device.AdapterName}: {milliseconds:0.00} ms a frame ({framesPerSecond:0} fps).");
 return 0;

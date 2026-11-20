@@ -1,4 +1,7 @@
 {
   "$schema": "../.schemas/scene.schema.json",
-  "entities": []
+  "entities": [
+    {"name": "Camera", "components": {"transform": {"position": [0, 2, 8]}, "camera": {}}},
+    {"name": "Light", "components": {"transform": {"position": [0, 3, 2]}, "pointLight": {"color": [1, 0.9, 0.8], "intensity": 2, "range": 8}}}
+  ]
 }

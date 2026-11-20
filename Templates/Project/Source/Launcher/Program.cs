@@ -1,20 +1,21 @@
-using FlickerVoid.Engine.Platform.Windowing;
-using FlickerVoid.Engine.Runtime.Loop;
-
-using FlickerVoidGame.Launcher;
+using FlickerVoid.Engine.Hosting;
 
 using Microsoft.Extensions.Logging;
 
-// Opens the game window. Escape closes it; "--frames <count>" closes it after that many frames.
-int frameLimit = 0;
-if (args.Length == 2 && args[0] == "--frames")
+// Runs the game in a window on its startup scene; Escape closes it. "--scene <file>" runs another scene (the editor's Play does),
+// "--mood <file>" lights it with a lighting mood, "--frames <count>" closes it after that many frames and "--validation" checks Vulkan calls.
+HostOptions options;
+try
 {
-    frameLimit = int.Parse(args[1]);
+    options = HostOptions.Parse(args, "Scenes/Main.fvscene");
+}
+catch (ArgumentException exception)
+{
+    Console.Error.WriteLine(exception.Message);
+    return 1;
 }
 
 using ILoggerFactory loggerFactory = LoggerFactory.Create(static logging => logging.AddSimpleConsole());
-using Game game = new(loggerFactory);
-using GameWindow window = new(game, "FlickerVoidGame", 1280, 720);
-CloseSystem close = new(window, frameLimit);
-game.FrameSystems.Add(close);
-window.Run();
+using SceneHost host = new(options, loggerFactory, "FlickerVoidGame");
+host.Run();
+return 0;
