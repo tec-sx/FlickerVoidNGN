@@ -23,7 +23,7 @@ xmlns:projects="using:FlickerVoid.Editor.Projects"
         <DataTemplate DataType="persistence:ProjectEntry">
           <StackPanel>
             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-            <TextBlock Text="{Binding File}" Opacity="0.6" FontSize="12" />
+            <TextBlock Text="{Binding File}" Opacity="0.6" Classes="small" />
           </StackPanel>
         </DataTemplate>
       </ListBox.ItemTemplate>

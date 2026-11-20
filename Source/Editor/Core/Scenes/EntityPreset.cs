@@ -11,20 +11,21 @@ using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
 namespace FlickerVoid.Editor.Core.Scenes;
 
 /// <summary>
-/// A kind of entity the editor can add: a name and the components it starts with, each with its defaults. The entity is named
-/// uniquely in the scene, because changes to the scene file match entities by name.
+/// A kind of entity the editor can add: a name, the components it starts with, each with its defaults, and the group it is listed
+/// under in the Add menu (<see cref="EntityPresetGroup.Custom"/> when it names none). The entity is named uniquely in the scene,
+/// because changes to the scene file match entities by name.
 /// </summary>
-public sealed record EntityPreset(string Name, IReadOnlyList<string> Components)
+public sealed record EntityPreset(string Name, IReadOnlyList<string> Components, string? Group = null)
 {
     public static IReadOnlyList<EntityPreset> All { get; } =
     [
-        new("Empty", ["transform"]),
-        new("Mesh", ["transform", "meshRenderer"]),
-        new("Point Light", ["transform", "pointLight"]),
-        new("Spot Light", ["transform", "spotLight"]),
-        new("Camera", ["transform", "camera"]),
-        new("Irradiance Volume", ["transform", "irradianceVolume"]),
-        new("Scene Mood", ["transform", "sceneMood"]),
+        new("Empty", ["transform"], "Empty"),
+        new("Mesh", ["transform", "meshRenderer"], "Model"),
+        new("Point Light", ["transform", "pointLight"], "Light"),
+        new("Spot Light", ["transform", "spotLight"], "Light"),
+        new("Irradiance Volume", ["transform", "irradianceVolume"], "Light"),
+        new("Scene Mood", ["transform", "sceneMood"], "Light"),
+        new("Camera", ["transform", "camera"], "Camera"),
     ];
 
     /// <summary>The starting JSON of components with required properties; the rest start as <c>{}</c>.</summary>

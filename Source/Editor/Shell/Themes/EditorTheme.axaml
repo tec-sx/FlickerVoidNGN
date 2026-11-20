@@ -1,0 +1,134 @@
+<!-- The editor's one theme: compact sizes over Fluent (smaller fonts, square corners, tight padding) and the shared classes
+     of the shell's bars, headings and viewport overlay, so the viewport gets as much of the window as it can. Views use these
+     classes and resources instead of their own sizes. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <!-- Fluent's own tokens, read by its control themes. -->
+    <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
+    <CornerRadius x:Key="ControlCornerRadius">2</CornerRadius>
+    <CornerRadius x:Key="OverlayCornerRadius">2</CornerRadius>
+    <Thickness x:Key="ButtonPadding">8,2</Thickness>
+    <x:Double x:Key="TextControlThemeMinHeight">22</x:Double>
+    <Thickness x:Key="TextControlThemePadding">4,2</Thickness>
+
+    <!-- The editor's own sizes. -->
+    <x:Double x:Key="EditorFontSize">12</x:Double>
+    <x:Double x:Key="EditorHeadingFontSize">13</x:Double>
+    <x:Double x:Key="EditorSmallFontSize">11</x:Double>
+    <x:Double x:Key="EditorSpacing">4</x:Double>
+  </Styles.Resources>
+
+  <!-- Text: every control inherits the window's size. -->
+  <Style Selector="Window">
+    <Setter Property="FontSize" Value="{StaticResource EditorFontSize}" />
+  </Style>
+  <Style Selector="TextBlock.heading">
+    <Setter Property="FontSize" Value="{StaticResource EditorHeadingFontSize}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Margin" Value="6,4" />
+  </Style>
+  <Style Selector="TextBlock.small">
+    <Setter Property="FontSize" Value="{StaticResource EditorSmallFontSize}" />
+  </Style>
+
+  <!-- Buttons and inputs: square and tight. -->
+  <Style Selector="Button, ToggleButton, DropDownButton, SplitButton, RepeatButton">
+    <Setter Property="Padding" Value="8,2" />
+    <Setter Property="MinHeight" Value="22" />
+    <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBox, AutoCompleteBox">
+    <Setter Property="MinHeight" Value="22" />
+    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
+  </Style>
+  <Style Selector="ComboBox">
+    <Setter Property="MinHeight" Value="22" />
+    <Setter Property="Padding" Value="6,2,0,2" />
+    <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
+  </Style>
+  <Style Selector="CheckBox">
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Padding" Value="4,0,0,0" />
+  </Style>
+
+  <!-- Lists, trees, menus and tabs. -->
+  <Style Selector="ListBoxItem">
+    <Setter Property="Padding" Value="6,2" />
+    <Setter Property="MinHeight" Value="20" />
+  </Style>
+  <Style Selector="TreeViewItem">
+    <Setter Property="MinHeight" Value="20" />
+  </Style>
+  <Style Selector="MenuItem">
+    <Setter Property="Padding" Value="8,3" />
+  </Style>
+  <Style Selector="TabItem">
+    <Setter Property="FontSize" Value="{StaticResource EditorHeadingFontSize}" />
+    <Setter Property="MinHeight" Value="26" />
+    <Setter Property="Padding" Value="8,2" />
+  </Style>
+  <Style Selector="Expander">
+    <Setter Property="Padding" Value="6,2" />
+    <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
+  </Style>
+  <Style Selector="Expander /template/ ToggleButton#ExpanderHeader">
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="Padding" Value="6,0" />
+  </Style>
+
+  <!-- The shell's bars: the toolbar above the viewport and the status bar below it. -->
+  <Style Selector="Border.toolbar, Border.statusbar">
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" />
+  </Style>
+  <Style Selector="Border.toolbar">
+    <Setter Property="Padding" Value="4,2" />
+  </Style>
+  <Style Selector="Border.toolbar StackPanel">
+    <Setter Property="Spacing" Value="{StaticResource EditorSpacing}" />
+  </Style>
+  <Style Selector="Border.toolbar Separator">
+    <Setter Property="Width" Value="1" />
+    <Setter Property="Margin" Value="2,0" />
+  </Style>
+  <Style Selector="Border.statusbar">
+    <Setter Property="Padding" Value="6,1" />
+  </Style>
+  <Style Selector="Border.statusbar TextBlock">
+    <Setter Property="FontSize" Value="{StaticResource EditorSmallFontSize}" />
+  </Style>
+
+  <!-- The viewport's floating tool bars and camera buttons. -->
+  <Style Selector="Border.viewportBar">
+    <Setter Property="Background" Value="#CC1E1E1E" />
+    <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
+    <Setter Property="Padding" Value="1" />
+  </Style>
+  <Style Selector="ToggleButton.viewportIcon">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="#DDDDDD" />
+  </Style>
+  <Style Selector="ToggleButton.viewportIcon:checked /template/ ContentPresenter">
+    <Setter Property="Background" Value="#2D7BD6" />
+  </Style>
+  <Style Selector="Button.viewportRound">
+    <Setter Property="Width" Value="26" />
+    <Setter Property="Height" Value="26" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="5" />
+    <Setter Property="CornerRadius" Value="13" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="Background" Value="#CC1E1E1E" />
+    <Setter Property="Foreground" Value="#DDDDDD" />
+  </Style>
+  <Style Selector="Button.viewportRound PathIcon, ToggleButton.viewportIcon PathIcon">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+  </Style>
+</Styles>
