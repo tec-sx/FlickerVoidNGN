@@ -4,6 +4,7 @@ using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Runtime.Content;
 
@@ -17,11 +18,14 @@ internal sealed class SkinningPass : IRenderPass
 {
     private readonly MeshLibrary _meshes;
     private readonly MeshSkinner _skinner;
+    private readonly MaterialLibrary _materials;
 
     public SkinningPass(IGraphicsDevice device, ShaderLibrary shaders, IContentManager content)
     {
         _meshes = new MeshLibrary(device, content);
         _skinner = new MeshSkinner(device, shaders);
+        ShaderParameters parameters = ShaderParameters.Load(shaders, "Scene");
+        _materials = new MaterialLibrary(device, content, parameters.Parameters);
     }
 
     public void Prepare(RenderContext context)
@@ -36,7 +40,7 @@ internal sealed class SkinningPass : IRenderPass
                 posed = _skinner.Pose(mesh.Id, model, animator);
             }
 
-            AddDraws(context.Draws, mesh.World, model, posed);
+            AddDraws(context.Draws, mesh, model, posed);
         }
     }
 
@@ -47,11 +51,12 @@ internal sealed class SkinningPass : IRenderPass
 
     public void Dispose()
     {
+        _materials.Dispose();
         _skinner.Dispose();
         _meshes.Dispose();
     }
 
-    private static void AddDraws(List<MeshDraw> draws, Matrix4x4 meshWorld, GpuModel model, IBuffer[]? posed)
+    private void AddDraws(List<MeshDraw> draws, RenderMesh mesh, GpuModel model, IBuffer[]? posed)
     {
         for (int index = 0; index < model.Parts.Count; index++)
         {
@@ -62,7 +67,14 @@ internal sealed class SkinningPass : IRenderPass
                 vertices = posed[index];
             }
 
-            draws.Add(new MeshDraw(meshWorld, part, vertices));
+            string? materialPath = null;
+            if (mesh.Materials is { } materials && index < materials.Length)
+            {
+                materialPath = materials[index];
+            }
+
+            IBuffer material = _materials.Get(materialPath);
+            draws.Add(new MeshDraw(mesh.World, part, vertices, material));
         }
     }
 }

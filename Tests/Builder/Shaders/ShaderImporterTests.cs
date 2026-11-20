@@ -1,3 +1,8 @@
+using System.Text.Json;
+
+using FlickerVoid.Engine.Rendering.Materials;
+using FlickerVoid.Engine.Rendering.Serialization;
+
 namespace FlickerVoid.Engine.Builder.Tests.Shaders;
 
 public sealed class ShaderImporterTests : IDisposable
@@ -80,5 +85,44 @@ public sealed class ShaderImporterTests : IDisposable
         BuildReport report = _files.BuildAll(builder);
 
         report.Failed.Should().ContainSingle().Which.Message.Should().Contain("undefinedValue");
+    }
+
+    [Fact]
+    public void WritesTheMaterialParametersAShaderDeclaresBesideIt()
+    {
+        _files.WithSource("Shaders/Lit.shader.json", """
+                {
+                  "entryPoints": { "PixelMain": "Pixel" },
+                  "parameters": [
+                    { "name": "wrap", "type": "float", "default": 0, "minimum": 0, "maximum": 1 },
+                    { "name": "emissive", "type": "color", "default": [0, 0, 0] }
+                  ]
+                }
+                """)
+            .WithSource("Shaders/Lit.hlsl", "float4 PixelMain() : SV_Target { return 1; }");
+        AssetBuilder builder = _files.Build();
+
+        BuildReport report = _files.BuildAll(builder);
+
+        report.Failed.Should().BeEmpty();
+        byte[] json = _files.ReadOutput("Shaders/Lit.parameters.json");
+        ShaderParameters? parameters = JsonSerializer.Deserialize(json, RenderingJsonContext.Default.ShaderParameters);
+        string[] names = [.. parameters!.Parameters.Select(parameter => parameter.Name)];
+        names.Should().Equal("wrap", "emissive");
+        parameters.Parameters[0].Maximum.Should().Be(1);
+        parameters.Parameters[1].Type.Should().Be(ShaderParameterType.Color);
+    }
+
+    [Fact]
+    public void WritesNoParametersForAShaderThatDeclaresNone()
+    {
+        _files.WithSource("Shaders/Simple.shader.json", SimpleManifest)
+            .WithSource("Shaders/Simple.hlsl", Simple)
+            .WithSource("Shaders/Common/Colors.hlsli", Colors);
+        AssetBuilder builder = _files.Build();
+
+        _files.BuildAll(builder);
+
+        _files.OutputExists("Shaders/Simple.parameters.json").Should().BeFalse();
     }
 }

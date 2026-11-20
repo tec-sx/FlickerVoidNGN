@@ -499,4 +499,95 @@ public sealed class SceneRendererTests : IDisposable
         (byte right, _, _) = SceneRendererTestsBuilder.Channels(pixels[7]);
         right.Should().BeGreaterThan(0, "the edited cookie's right half is white");
     }
+
+    [Fact]
+    public void DrawsMeshPartsWithTheMaterialsTheirRendererNames()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithFile("Glow.material.json", """{ "parameters": { "tint": [0, 0, 0], "emissive": [0, 1, 0] } }""");
+        _builder.WithScene(Camera, MaterialQuad("Glow.material.json"));
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        uint green = SceneRendererTestsBuilder.Rgba(0, 255, 0, 255);
+        pixels.Should().AllBeEquivalentTo(green, "a black tint hides the red base color and the emissive light shows alone");
+    }
+
+    [Fact]
+    public void WrapsDiffuseLightRoundToSurfacesTheLightGrazes()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithFile("Wrapped.material.json", """{ "parameters": { "wrap": 1 } }""");
+        _builder.WithScene(Camera, MaterialQuad("Wrapped.material.json"));
+        _builder.WithLight(sunDirection: -Vector3.UnitX, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(124, 132, "full wrap lights a surface the light grazes by half");
+    }
+
+    [Fact]
+    public void TintsTheSidesTurnedFromTheLight()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Vector4.One));
+        _builder.WithFile("Cool.material.json", """{ "parameters": { "shadowTint": [0, 0, 0.5] } }""");
+        _builder.WithScene(Camera, MaterialQuad("Cool.material.json"));
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().Be(0);
+        blue.Should().BeInRange(124, 132, "unlit sides take the shadow tint");
+    }
+
+    [Fact]
+    public void AddsASpecularHighlightWhereTheLightReflectsTowardTheCamera()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithFile("Shiny.material.json", """{ "parameters": { "specular": 0.5 } }""");
+        _builder.WithScene(Camera, MaterialQuad("Shiny.material.json"));
+        _builder.WithLight(sunDirection: -Vector3.UnitZ, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        (_, byte green, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        green.Should().BeInRange(124, 132, "a mirror-facing surface reflects the specular share of white sunlight");
+    }
+
+    [Fact]
+    public void KeepsTheModelsLookWithoutAMaterial()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithFile("Plain.material.json", """{ "parameters": {} }""");
+        _builder.WithScene(Camera, MaterialQuad("Plain.material.json"));
+
+        uint[] pixels = _builder.Render();
+
+        pixels.Should().AllBeEquivalentTo(RedPixel, "every parameter defaults to the plain look");
+    }
+
+    [Fact]
+    public void RedrawsAMaterialChangedOnDisk()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithFile("Glow.material.json", """{ "parameters": { "emissive": [0, 0, 0] } }""");
+        _builder.WithScene(Camera, MaterialQuad("Glow.material.json"));
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+        _builder.Render();
+
+        _builder.WithFile("Glow.material.json", """{ "parameters": { "emissive": [0, 0, 1] } }""");
+        _builder.NotifyChanged("Glow.material.json");
+        uint[] pixels = _builder.Render();
+
+        uint blue = SceneRendererTestsBuilder.Rgba(0, 0, 255, 255);
+        pixels.Should().AllBeEquivalentTo(blue);
+    }
+
+    private static string MaterialQuad(string material)
+    {
+        return $$"""{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb", "materials": ["{{material}}"] } } }""";
+    }
 }

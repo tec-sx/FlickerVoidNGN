@@ -91,6 +91,14 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Writes a text file, such as a material, into the content folder.</summary>
+    public SceneRendererTestsBuilder WithFile(string path, string text)
+    {
+        string fullPath = Path.Combine(_contentFolder, path);
+        File.WriteAllText(fullPath, text);
+        return this;
+    }
+
     /// <summary>Saves the probes into the content folder.</summary>
     public SceneRendererTestsBuilder WithProbes(string path, IrradianceProbes probes)
     {
