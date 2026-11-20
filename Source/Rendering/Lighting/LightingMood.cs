@@ -90,6 +90,7 @@ public sealed record LightingMood
     public float Grain { get; set; }
 
     /// <summary>An image file in the content folder laid over the screen at one texel per pixel and multiplied in, such as paper.</summary>
+    [ContentFile(".png", ".jpg", ".jpeg", ".tga", ".bmp")]
     public string? Paper { get; set; }
 
     /// <summary>

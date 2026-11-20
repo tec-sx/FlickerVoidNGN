@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Platform;
+using Avalonia.Rendering;
 using Avalonia.Rendering.Composition;
 using Avalonia.VisualTree;
 
@@ -22,7 +23,7 @@ namespace FlickerVoid.Engine.Editor.Viewports;
 /// over it to the view model's camera. Imports the renderer's shared texture and semaphores once per size, then renders a frame
 /// each composition update once Avalonia has taken the previous one.
 /// </summary>
-public sealed partial class ViewportControl : Control
+public sealed partial class ViewportControl : Control, ICustomHitTest
 {
     private const int TransferSourceLayout = (int)Silk.NET.Vulkan.ImageLayout.TransferSrcOptimal;
 
@@ -61,6 +62,12 @@ public sealed partial class ViewportControl : Control
         : KnownPlatformGraphicsExternalSemaphoreHandleTypes.VulkanOpaquePosixFileDescriptor;
 
     private ViewportViewModel? ViewModel => DataContext as ViewportViewModel;
+
+    public bool HitTest(Point point)
+    {
+        Rect bounds = new(Bounds.Size);
+        return bounds.Contains(point);
+    }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -362,6 +369,7 @@ public sealed partial class ViewportControl : Control
             Height = size.Height,
             Format = PlatformGraphicsExternalImageFormat.R8G8B8A8UNorm,
             MemorySize = (ulong)handles.MemorySize,
+            TopLeftOrigin = true,
             VulkanProperties = new PlatformGraphicsExternalImageVulkanProperties { Layout = TransferSourceLayout },
         };
         ICompositionGpuInterop interop = _interop!;

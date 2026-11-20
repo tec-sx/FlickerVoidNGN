@@ -43,6 +43,14 @@ internal sealed class InspectorViewModelTestsBuilder : IDisposable
         return entity;
     }
 
+    public InspectorViewModelTestsBuilder WithContentFile(string path)
+    {
+        string fullPath = Path.Combine(_contentFolder, path);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        File.WriteAllText(fullPath, "{}");
+        return this;
+    }
+
     public void SelectNothing()
     {
         _scene.Selection.Select(null);

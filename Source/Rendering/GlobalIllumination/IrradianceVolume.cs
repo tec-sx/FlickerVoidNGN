@@ -1,5 +1,7 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Runtime.Components;
+
 namespace FlickerVoid.Engine.Rendering.GlobalIllumination;
 
 /// <summary>
@@ -22,6 +24,7 @@ public struct IrradianceVolume
     public int ProbesZ { get; set; } = 4;
 
     /// <summary>The baked probes file in the content folder; none lights the box by the ambient light alone.</summary>
+    [ContentFile(".fvprobes")]
     public string? Probes { get; set; }
 
     /// <summary>

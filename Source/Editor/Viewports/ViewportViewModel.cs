@@ -33,6 +33,7 @@ public sealed partial class ViewportViewModel : ObservableObject
     private const float SelectionLineWidth = 2;
     private const float ReachLineWidth = 1.5f;
     private const int ConeEdges = 4;
+    private const float FrustumAspect = 16f / 9f;
 
     private static readonly Vector4 SelectionColor = EditorIcons.SelectedColor;
 
@@ -193,6 +194,19 @@ public sealed partial class ViewportViewModel : ObservableObject
             case Key.G:
                 IsGameView = !IsGameView;
                 break;
+            case Key.Delete:
+                DeleteSelected();
+                break;
+        }
+    }
+
+    /// <summary>Destroys the selected entity; the next save leaves it out of the scene file.</summary>
+    [RelayCommand]
+    public void DeleteSelected()
+    {
+        if (Scene.Selection.Selected is { } entity)
+        {
+            Scene.DestroyEntity(entity);
         }
     }
 
@@ -308,6 +322,11 @@ public sealed partial class ViewportViewModel : ObservableObject
             DrawCone(overlay, transform, spot);
         }
 
+        if (world.TryGet(selected, out Rendering.Cameras.Camera camera))
+        {
+            DrawFrustum(overlay, transform, camera);
+        }
+
         if (world.TryGet(selected, out IrradianceVolume volume))
         {
             Vector3 half = volume.Size / 2;
@@ -333,6 +352,41 @@ public sealed partial class ViewportViewModel : ObservableObject
             Vector3 rim = baseCentre + (offset * radius);
             overlay.AddLine(apex, rim, SelectionColor, ReachLineWidth);
         }
+    }
+
+    /// <summary>The camera's view volume along its -Z, from its near to its far plane, framed at a 16:9 aspect.</summary>
+    private static void DrawFrustum(OverlayBuilder overlay, in Transform transform, in Rendering.Cameras.Camera camera)
+    {
+        Span<Vector3> near = stackalloc Vector3[4];
+        Span<Vector3> far = stackalloc Vector3[4];
+        GetFrustumCorners(camera, camera.NearPlane, near);
+        GetFrustumCorners(camera, camera.FarPlane, far);
+        for (int corner = 0; corner < 4; corner++)
+        {
+            near[corner] = transform.Position + Vector3.Transform(near[corner], transform.Rotation);
+            far[corner] = transform.Position + Vector3.Transform(far[corner], transform.Rotation);
+        }
+
+        for (int corner = 0; corner < 4; corner++)
+        {
+            int next = (corner + 1) % 4;
+            overlay.AddLine(near[corner], near[next], SelectionColor, ReachLineWidth);
+            overlay.AddLine(far[corner], far[next], SelectionColor, ReachLineWidth);
+            overlay.AddLine(near[corner], far[corner], SelectionColor, ReachLineWidth);
+        }
+    }
+
+    /// <summary>The corners of the camera's view at a distance, in its own space, going round.</summary>
+    private static void GetFrustumCorners(in Rendering.Cameras.Camera camera, float distance, Span<Vector3> corners)
+    {
+        float halfHeight = camera.Projection == CameraProjection.Perspective
+            ? distance * MathF.Tan(float.DegreesToRadians(camera.FieldOfView) / 2)
+            : camera.OrthographicHeight / 2;
+        float halfWidth = halfHeight * FrustumAspect;
+        corners[0] = new Vector3(-halfWidth, -halfHeight, -distance);
+        corners[1] = new Vector3(halfWidth, -halfHeight, -distance);
+        corners[2] = new Vector3(halfWidth, halfHeight, -distance);
+        corners[3] = new Vector3(-halfWidth, halfHeight, -distance);
     }
 
     /// <summary>Saves the world into its scene file.</summary>

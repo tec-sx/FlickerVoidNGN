@@ -4,6 +4,7 @@
         xmlns:inspector="using:FlickerVoid.Engine.Editor.Inspector"
         xmlns:assets="using:FlickerVoid.Engine.Editor.Assets"
         xmlns:viewports="using:FlickerVoid.Engine.Editor.Viewports"
+        xmlns:scenes="using:FlickerVoid.Engine.Editor.Scenes"
         x:Class="FlickerVoid.Engine.Editor.Shell.MainWindow"
         x:DataType="shell:MainWindowViewModel"
         Title="{Binding Title}"
@@ -14,14 +15,20 @@
   <DockPanel>
     <Border DockPanel.Dock="Top" Padding="8,4" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <ToggleButton Content="Select" IsChecked="{Binding Viewport.IsSelectMode}" ToolTip.Tip="Select (Q)" />
-        <ToggleButton Content="Move" IsChecked="{Binding Viewport.IsMoveMode}" ToolTip.Tip="Move (W)" />
-        <ToggleButton Content="Rotate" IsChecked="{Binding Viewport.IsRotateMode}" ToolTip.Tip="Rotate (E)" />
-        <ToggleButton Content="Scale" IsChecked="{Binding Viewport.IsScaleMode}" ToolTip.Tip="Scale (R)" />
-        <Separator Width="1" Margin="4,0" />
-        <ToggleButton Content="Perspective" IsChecked="{Binding Viewport.IsPerspective}"
-                      ToolTip.Tip="Perspective or orthographic view; both frame the same height at the pivot." />
-        <ToggleButton Content="Grid" IsChecked="{Binding Viewport.ShowGrid}" />
+        <DropDownButton Content="Add" ToolTip.Tip="Add an entity to the open scene at the camera's pivot.">
+          <DropDownButton.Flyout>
+            <MenuFlyout ItemsSource="{Binding Presets}">
+              <MenuFlyout.ItemContainerTheme>
+                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="scenes:EntityPreset">
+                  <Setter Property="Header" Value="{Binding Name}" />
+                  <Setter Property="Command" Value="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddEntityCommand}" />
+                  <Setter Property="CommandParameter" Value="{Binding}" />
+                </ControlTheme>
+              </MenuFlyout.ItemContainerTheme>
+            </MenuFlyout>
+          </DropDownButton.Flyout>
+        </DropDownButton>
+        <Button Content="Delete" Command="{Binding Viewport.DeleteSelectedCommand}" ToolTip.Tip="Delete the selected entity (Delete)." />
         <Separator Width="1" Margin="4,0" />
         <Button Content="Save" Command="{Binding Viewport.SaveCommand}" ToolTip.Tip="Save the scene (Ctrl+S)." />
         <Button Content="Bake Probes" Command="{Binding Viewport.BakeProbesCommand}" ToolTip.Tip="Bake the irradiance volumes' probes with the View tab's lighting." />
@@ -40,6 +47,9 @@
     <Border DockPanel.Dock="Right" Width="380" BorderThickness="1,0,0,0"
             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
       <TabControl Padding="0">
+        <TabItem Header="Scene">
+          <scenes:SceneTreeView DataContext="{Binding SceneTree}" />
+        </TabItem>
         <TabItem Header="Inspector">
           <inspector:InspectorView DataContext="{Binding Inspector}" />
         </TabItem>
@@ -60,7 +70,10 @@
       </TabControl>
     </Border>
     <Grid RowDefinitions="*,4,240">
-      <viewports:ViewportControl DataContext="{Binding Viewport}" />
+      <Panel>
+        <viewports:ViewportControl DataContext="{Binding Viewport}" />
+        <viewports:ViewportOverlay DataContext="{Binding Viewport}" />
+      </Panel>
       <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
       <assets:AssetBrowserView Grid.Row="2" DataContext="{Binding Assets}" />
     </Grid>

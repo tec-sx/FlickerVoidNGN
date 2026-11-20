@@ -31,6 +31,21 @@ public sealed class InspectorViewModelTests : IDisposable
     }
 
     [Fact]
+    public void AddsAndRemovesComponents()
+    {
+        Entity lamp = _builder.Select("Lamp", new Transform(), new PointLight());
+        Runtime.Scenes.SceneComponent spot = _builder.ViewModel.AddableComponents.Single(component => component.Name == "spotLight");
+
+        _builder.ViewModel.AddComponentCommand.Execute(spot);
+        _builder.ViewModel.RemoveComponentCommand.Execute(_builder.Component("Point Light"));
+
+        _builder.World.Has<SpotLight>(lamp).Should().BeTrue();
+        _builder.World.Has<PointLight>(lamp).Should().BeFalse();
+        _builder.ViewModel.AddableComponents.Should().NotContain(spot);
+        _builder.Component("Transform").CanRemove.Should().BeFalse();
+    }
+
+    [Fact]
     public void ShowsNothingWhenNothingIsSelected()
     {
         _builder.Select("Lamp", new Transform(), new PointLight());
@@ -156,5 +171,46 @@ public sealed class InspectorViewModelTests : IDisposable
 
         _builder.Field<NumberFieldViewModel>("Point Light", "Intensity").Value.Should().Be(1.6);
         _builder.Field<VectorFieldViewModel>("Transform", "Position").X.Should().Be(-0.66);
+    }
+
+    [Fact]
+    public void EditsAListOfFilesItemByItem()
+    {
+        Entity entity = _builder.Select("Crate", new Transform(), new MeshRenderer { Mesh = "Crate.glb", Materials = ["Wood.fvmat"] });
+        ListFieldViewModel materials = _builder.Field<ListFieldViewModel>("Mesh Renderer", "Materials");
+
+        materials.Items.Should().ContainSingle().Which.Text.Should().Be("Wood.fvmat");
+        materials.AddCommand.Execute(null);
+        materials.Items[1].Text = "Iron.fvmat";
+
+        _builder.World.Get<MeshRenderer>(entity).Materials.Should().Equal("Wood.fvmat", "Iron.fvmat");
+
+        materials.RemoveCommand.Execute(materials.Items[0]);
+
+        _builder.World.Get<MeshRenderer>(entity).Materials.Should().Equal("Iron.fvmat");
+    }
+
+    [Fact]
+    public void AnEmptyOptionalListIsNull()
+    {
+        Entity entity = _builder.Select("Crate", new Transform(), new MeshRenderer { Mesh = "Crate.glb", Materials = ["Wood.fvmat"] });
+        ListFieldViewModel materials = _builder.Field<ListFieldViewModel>("Mesh Renderer", "Materials");
+
+        materials.RemoveCommand.Execute(materials.Items[0]);
+
+        _builder.World.Get<MeshRenderer>(entity).Materials.Should().BeNull();
+    }
+
+    [Fact]
+    public void SuggestsTheContentFilesAFileFieldTakes()
+    {
+        _builder.WithContentFile("Props/Crate.glb").WithContentFile("Wood.fvmat").WithContentFile("Paper.png");
+        _builder.Select("Crate", new Transform(), new MeshRenderer { Mesh = "Props/Crate.glb", Materials = ["Wood.fvmat"] });
+
+        TextFieldViewModel mesh = _builder.Field<TextFieldViewModel>("Mesh Renderer", "Mesh");
+        ListFieldViewModel materials = _builder.Field<ListFieldViewModel>("Mesh Renderer", "Materials");
+
+        mesh.Suggestions.Should().Equal("Props/Crate.glb");
+        materials.Items[0].Suggestions.Should().Equal("Wood.fvmat");
     }
 }

@@ -46,6 +46,26 @@ public sealed partial class SceneLoader : IDisposable
         return entities;
     }
 
+    /// <summary>
+    /// Creates an entity in the loaded scene file at <paramref name="path"/>, as if the file had it last: it is saved with the
+    /// scene and matched by later changes to the file.
+    /// </summary>
+    public Entity Add(string path, EntityData data)
+    {
+        LoadedScene loaded = GetLoaded(path, out string fullPath);
+        Entity entity = _spawner.Create(data, _world);
+        SceneData scene = new() { Schema = loaded.Scene.Schema, Entities = [.. loaded.Scene.Entities, data] };
+        List<Entity> entities = [.. loaded.Entities, entity];
+        _loaded[fullPath] = loaded with { Scene = scene, Entities = entities };
+        return entity;
+    }
+
+    /// <summary>The entities spawned from the loaded scene file at <paramref name="path"/>, destroyed ones included.</summary>
+    public IReadOnlyList<Entity> GetEntities(string path)
+    {
+        return GetLoaded(path, out _).Entities;
+    }
+
     /// <summary>Destroys the entities spawned from the scene file and stops following it; does nothing when it isn't loaded.</summary>
     public void Unload(string path)
     {
@@ -84,6 +104,17 @@ public sealed partial class SceneLoader : IDisposable
         string text = writer.ToString();
         byte[] contents = Encoding.UTF8.GetBytes(text);
         _content.Write(path, contents);
+    }
+
+    private LoadedScene GetLoaded(string path, out string fullPath)
+    {
+        fullPath = _content.GetFullPath(path);
+        if (!_loaded.TryGetValue(fullPath, out LoadedScene? loaded))
+        {
+            throw new InvalidOperationException($"{path} is not loaded.");
+        }
+
+        return loaded;
     }
 
     public void Dispose()

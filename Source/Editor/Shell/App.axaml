@@ -22,7 +22,26 @@
       <CheckBox IsChecked="{Binding Value}" IsEnabled="{Binding !IsReadOnly}" />
     </DataTemplate>
     <DataTemplate DataType="inspector:TextFieldViewModel">
-      <TextBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding IsReadOnly}" />
+      <AutoCompleteBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" ItemsSource="{Binding Suggestions}"
+                       FilterMode="Contains" MinimumPrefixLength="0" IsEnabled="{Binding !IsReadOnly}" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:ListFieldViewModel">
+      <StackPanel Spacing="2">
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="inspector:ListItemViewModel">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4" Margin="0,1">
+                <AutoCompleteBox Text="{Binding Text, UpdateSourceTrigger=LostFocus}" ItemsSource="{Binding Suggestions}"
+                                 FilterMode="Contains" MinimumPrefixLength="0" />
+                <Button Grid.Column="1" Content="-" ToolTip.Tip="Remove"
+                        Command="{Binding $parent[ItemsControl].((inspector:ListFieldViewModel)DataContext).RemoveCommand}"
+                        CommandParameter="{Binding}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button Content="+" ToolTip.Tip="Add" Command="{Binding AddCommand}" IsEnabled="{Binding !IsReadOnly}" />
+      </StackPanel>
     </DataTemplate>
     <DataTemplate DataType="inspector:EnumFieldViewModel">
       <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Value}" IsEnabled="{Binding !IsReadOnly}"
