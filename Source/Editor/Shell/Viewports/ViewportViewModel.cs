@@ -17,6 +17,7 @@ using FlickerVoid.Editor.Scenes;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
@@ -367,6 +368,20 @@ public sealed partial class ViewportViewModel : ObservableObject
         Transform transform = world.Get<Transform>(selected);
         DrawSelection(overlay, world, selected, transform);
         Gizmo.Draw(overlay, Camera, transform, viewportHeight);
+    }
+
+    /// <summary>The selected camera and where it looks from, shown live in a corner of the viewport; none in the game view.</summary>
+    public RenderCamera? GetPreviewCamera()
+    {
+        World world = Scene.Game.World;
+        if (IsGameView || Selection.Selected is not { } selected || !world.IsAlive(selected) || !world.Has<Camera, Transform>(selected))
+        {
+            return null;
+        }
+
+        Camera camera = world.Get<Camera>(selected);
+        Transform transform = world.Get<Transform>(selected);
+        return new RenderCamera(camera, transform);
     }
 
     /// <summary>A mesh's box, a point light's reach as three circles, a spot light's cone, or an irradiance volume's box.</summary>

@@ -76,5 +76,8 @@ public static class MaterialIcons
 
     public static Avalonia.Media.Geometry File { get; } = Parse("M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z");
 
+    /// <summary>A four-pointed star, the editor's mark until it has a logo.</summary>
+    public static Avalonia.Media.Geometry Logo { get; } = Parse("M12,1 C12.9,8 16,11.1 23,12 C16,12.9 12.9,16 12,23 C11.1,16 8,12.9 1,12 C8,11.1 11.1,8 12,1 Z");
+
     private static Avalonia.Media.Geometry Parse(string data) => StreamGeometry.Parse(data);
 }
