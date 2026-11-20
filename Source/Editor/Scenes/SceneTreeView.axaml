@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:scenes="using:FlickerVoid.Engine.Editor.Scenes"
+             x:Class="FlickerVoid.Engine.Editor.Scenes.SceneTreeView"
+             x:DataType="scenes:SceneTreeViewModel">
+  <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}">
+    <ListBox.ItemTemplate>
+      <DataTemplate DataType="scenes:SceneTreeItem">
+        <TextBlock Text="{Binding Name}" />
+      </DataTemplate>
+    </ListBox.ItemTemplate>
+  </ListBox>
+</UserControl>

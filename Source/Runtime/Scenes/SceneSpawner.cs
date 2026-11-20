@@ -211,6 +211,11 @@ public sealed class SceneSpawner : ISceneSpawner
         return true;
     }
 
+    public Entity Create(EntityData data, World world)
+    {
+        return Create(world, data);
+    }
+
     private Entity Create(World world, EntityData data)
     {
         Entity entity = world.Create();

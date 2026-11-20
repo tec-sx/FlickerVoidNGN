@@ -1,3 +1,5 @@
+using Arch.Core;
+
 using FlickerVoid.Engine.Editor.Selection;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Runtime.Content;
@@ -5,6 +7,8 @@ using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 
 using Microsoft.Extensions.Logging;
+
+using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
 
 namespace FlickerVoid.Engine.Editor.Scenes;
 
@@ -44,6 +48,55 @@ public sealed class EditorScene : IDisposable
     /// <summary>Raised after a scene file was opened.</summary>
     public event Action? Opened;
 
+    /// <summary>Raised after the editor added or destroyed an entity, or opened a scene.</summary>
+    public event Action? EntitiesChanged;
+
+    /// <summary>The live entities of the open scene, in the file's order; empty without one.</summary>
+    public IReadOnlyList<Entity> Entities
+    {
+        get
+        {
+            if (ScenePath is null)
+            {
+                return [];
+            }
+
+            World world = Game.World;
+            return [.. _loader.GetEntities(ScenePath).Where(world.IsAlive)];
+        }
+    }
+
+    /// <summary>Creates an entity in the open scene, saved with it; throws without an open scene.</summary>
+    public Entity AddEntity(EntityData data)
+    {
+        if (ScenePath is null)
+        {
+            throw new InvalidOperationException("Open a scene before adding entities.");
+        }
+
+        Entity entity = _loader.Add(ScenePath, data);
+        EntitiesChanged?.Invoke();
+        return entity;
+    }
+
+    /// <summary>Destroys an entity; the next save leaves it out of the scene file.</summary>
+    public void DestroyEntity(Entity entity)
+    {
+        World world = Game.World;
+        if (!world.IsAlive(entity))
+        {
+            return;
+        }
+
+        if (Selection.Selected == entity)
+        {
+            Selection.Select(null);
+        }
+
+        world.Destroy(entity);
+        EntitiesChanged?.Invoke();
+    }
+
     /// <summary>The open scene file, relative to the content folder, or null for an unsaved world.</summary>
     public string? ScenePath { get; private set; }
 
@@ -51,15 +104,24 @@ public sealed class EditorScene : IDisposable
     public void Open(string path)
     {
         Selection.Select(null);
-        if (ScenePath is not null)
+        string? previous = ScenePath;
+        if (previous is not null && string.Equals(Content.GetFullPath(previous), Content.GetFullPath(path), StringComparison.OrdinalIgnoreCase))
         {
-            _loader.Unload(ScenePath);
+            _loader.Unload(previous);
             ScenePath = null;
+            previous = null;
         }
 
+        // Loads first, so a scene that can't be read leaves the open one in place.
         _loader.Load(path);
+        if (previous is not null)
+        {
+            _loader.Unload(previous);
+        }
+
         ScenePath = path;
         Opened?.Invoke();
+        EntitiesChanged?.Invoke();
     }
 
     /// <summary>

@@ -1,4 +1,7 @@
+using Arch.Core;
+
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Engine.Editor.Assets;
 using FlickerVoid.Engine.Editor.Inspector;
@@ -7,15 +10,18 @@ using FlickerVoid.Engine.Editor.Scenes;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Editor.Viewports;
 
+using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
+
 namespace FlickerVoid.Engine.Editor.Shell;
 
 /// <summary>The editor's main window: its title, the scene view, the asset browser, the inspector and the view settings.</summary>
-public sealed class MainWindowViewModel : ObservableObject
+public sealed partial class MainWindowViewModel : ObservableObject
 {
     public MainWindowViewModel(ViewportViewModel viewport, InspectorViewModel inspector)
     {
         Viewport = viewport;
         Inspector = inspector;
+        SceneTree = new SceneTreeViewModel(viewport.Scene);
         ViewSettings = new ViewSettingsViewModel(viewport.Mood);
         Assets = new AssetBrowserViewModel(viewport.Scene.Content);
         Assets.Opened += OpenAsset;
@@ -31,6 +37,9 @@ public sealed class MainWindowViewModel : ObservableObject
     public ViewportViewModel Viewport { get; }
 
     public InspectorViewModel Inspector { get; }
+
+    /// <summary>The open scene's entities, to select one that is hard to click in the viewport.</summary>
+    public SceneTreeViewModel SceneTree { get; }
 
     /// <summary>The content folder's files; opening a scene shows it, opening a material shows it in the material editor.</summary>
     public AssetBrowserViewModel Assets { get; }
@@ -93,7 +102,8 @@ public sealed class MainWindowViewModel : ObservableObject
             Viewport.Scene.Open(path);
             Viewport.Status = $"Opened {path}.";
         }
-        catch (InvalidDataException exception)
+        catch (Exception exception) when (exception is InvalidDataException or FileNotFoundException or DirectoryNotFoundException
+            or System.Text.Json.JsonException or KeyNotFoundException or ArgumentException or InvalidOperationException)
         {
             Viewport.Status = $"Can't open {path}: {exception.Message}";
         }
@@ -102,5 +112,25 @@ public sealed class MainWindowViewModel : ObservableObject
     private void HandleSceneOpened()
     {
         OnPropertyChanged(nameof(Title));
+    }
+
+    /// <summary>The kinds of entity the Add menu offers.</summary>
+    public IReadOnlyList<EntityPreset> Presets => EntityPreset.All;
+
+    /// <summary>Adds an entity of the preset at the camera's pivot to the open scene and selects it.</summary>
+    [RelayCommand]
+    private void AddEntity(EntityPreset preset)
+    {
+        EditorScene scene = Viewport.Scene;
+        if (scene.ScenePath is null)
+        {
+            Viewport.Status = "Open a scene before adding entities: double-click one in the content browser.";
+            return;
+        }
+
+        EntityData data = preset.Create(scene.Game.World, scene.Entities, Viewport.Camera.Pivot);
+        Entity entity = scene.AddEntity(data);
+        scene.Selection.Select(entity);
+        Viewport.Status = $"Added {data.Name}.";
     }
 }

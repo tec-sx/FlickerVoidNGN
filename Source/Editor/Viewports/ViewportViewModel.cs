@@ -193,6 +193,19 @@ public sealed partial class ViewportViewModel : ObservableObject
             case Key.G:
                 IsGameView = !IsGameView;
                 break;
+            case Key.Delete:
+                DeleteSelected();
+                break;
+        }
+    }
+
+    /// <summary>Destroys the selected entity; the next save leaves it out of the scene file.</summary>
+    [RelayCommand]
+    public void DeleteSelected()
+    {
+        if (Scene.Selection.Selected is { } entity)
+        {
+            Scene.DestroyEntity(entity);
         }
     }
 

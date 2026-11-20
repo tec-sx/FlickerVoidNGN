@@ -1,6 +1,9 @@
+using System.Text.Json;
+
 using Arch.Core;
 
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Engine.Editor.Assets;
 using FlickerVoid.Engine.Editor.Scenes;
@@ -33,6 +36,38 @@ public sealed partial class InspectorViewModel : ObservableObject
     [ObservableProperty]
     public partial IReadOnlyList<ComponentViewModel> Components { get; set; } = [];
 
+    /// <summary>The registered components the selected entity doesn't have yet.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<SceneComponent> AddableComponents { get; set; } = [];
+
+    /// <summary>Gives the selected entity the component with its defaults.</summary>
+    [RelayCommand]
+    private void AddComponent(SceneComponent component)
+    {
+        World world = _scene.Game.World;
+        if (_scene.Selection.Selected is not { } entity || !world.IsAlive(entity) || component.Has(world, entity))
+        {
+            return;
+        }
+
+        using JsonDocument defaults = JsonDocument.Parse("{}");
+        component.Read(world, entity, defaults.RootElement);
+        Rebuild();
+    }
+
+    [RelayCommand]
+    private void RemoveComponent(ComponentViewModel shown)
+    {
+        World world = _scene.Game.World;
+        if (!shown.CanRemove || _scene.Selection.Selected is not { } entity || !world.IsAlive(entity))
+        {
+            return;
+        }
+
+        shown.Component.Remove(world, entity);
+        Rebuild();
+    }
+
     /// <summary>Shows changes made elsewhere, such as by a gizmo, and clears when the entity is gone.</summary>
     public void Refresh()
     {
@@ -60,6 +95,7 @@ public sealed partial class InspectorViewModel : ObservableObject
         {
             Title = NothingSelected;
             Components = [];
+            AddableComponents = [];
             return;
         }
 
@@ -74,6 +110,7 @@ public sealed partial class InspectorViewModel : ObservableObject
 
         ContentFileFinder files = new(_scene.Content);
         List<ComponentViewModel> components = [];
+        List<SceneComponent> addable = [];
         foreach (SceneComponent component in _scene.Game.Spawner.Components)
         {
             if (component.Has(world, entity))
@@ -81,8 +118,13 @@ public sealed partial class InspectorViewModel : ObservableObject
                 ComponentViewModel shown = new(world, entity, component, files);
                 components.Add(shown);
             }
+            else
+            {
+                addable.Add(component);
+            }
         }
 
         Components = components;
+        AddableComponents = addable;
     }
 }
