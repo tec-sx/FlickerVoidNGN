@@ -47,6 +47,9 @@ public sealed partial class ViewportViewModel : ObservableObject
 
     public EditorCamera Camera { get; } = new();
 
+    /// <summary>The light and grade the viewport draws the scene with.</summary>
+    public LightingMood Mood { get; } = new();
+
     public EditorSelection Selection => Scene.Selection;
 
     public TransformGizmo Gizmo { get; } = new();

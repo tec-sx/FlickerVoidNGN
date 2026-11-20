@@ -9,6 +9,7 @@ using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Textures;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 
@@ -54,6 +55,13 @@ internal sealed class ViewportRenderer : IDisposable
 
     /// <summary>What the overlay pass draws over the scene each frame.</summary>
     public OverlayBuilder Overlay => _overlay.Overlay;
+
+    /// <summary>The light and grade the scene is drawn with.</summary>
+    public LightingMood Mood
+    {
+        get => _scene.Mood;
+        set => _scene.Mood = value;
+    }
 
     public bool ShowGrid
     {

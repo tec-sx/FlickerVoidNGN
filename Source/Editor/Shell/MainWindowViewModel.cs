@@ -8,9 +8,12 @@ using FlickerVoid.Engine.Editor.Viewports;
 
 namespace FlickerVoid.Engine.Editor.Shell;
 
-/// <summary>The editor's main window: its title, the scene view and the inspector.</summary>
+/// <summary>The editor's main window: its title, the scene view, the inspector and the view settings.</summary>
 public sealed class MainWindowViewModel(ViewportViewModel viewport, InspectorViewModel inspector) : ObservableObject
 {
+    /// <summary>The viewport's lighting and post-processing, tweaked beside the inspector.</summary>
+    public ViewSettingsViewModel ViewSettings { get; } = new(viewport.Mood);
+
     public ViewportViewModel Viewport { get; } = viewport;
 
     public InspectorViewModel Inspector { get; } = inspector;

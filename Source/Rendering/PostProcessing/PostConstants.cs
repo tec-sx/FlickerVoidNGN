@@ -16,5 +16,7 @@ internal readonly record struct PostConstants(
     uint BloomTexture,
     uint Paper,
     uint ClampSampler,
-    uint WrapSampler);
+    uint WrapSampler,
+    uint Tonemapper,
+    float WhitePoint);
 

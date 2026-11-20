@@ -73,7 +73,9 @@ internal sealed class PostProcessor : IDisposable
             bloom,
             paperIndex,
             clamp.BindlessIndex,
-            wrap.BindlessIndex);
+            wrap.BindlessIndex,
+            (uint)mood.Tonemapper,
+            mood.WhitePoint);
         commands.PushConstants(constants);
         commands.Draw(3);
         commands.EndRendering();
