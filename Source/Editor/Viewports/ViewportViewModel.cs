@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 
 using Arch.Core;
@@ -5,6 +6,7 @@ using Arch.Core;
 using Avalonia.Input;
 
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Engine.Editor.Cameras;
 using FlickerVoid.Engine.Editor.Geometry;
@@ -12,6 +14,8 @@ using FlickerVoid.Engine.Editor.Gizmos;
 using FlickerVoid.Engine.Editor.Overlays;
 using FlickerVoid.Engine.Editor.Scenes;
 using FlickerVoid.Engine.Editor.Selection;
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
@@ -328,6 +332,31 @@ public sealed partial class ViewportViewModel : ObservableObject
             Vector3 offset = (first * MathF.Cos(around)) + (second * MathF.Sin(around));
             Vector3 rim = baseCentre + (offset * radius);
             overlay.AddLine(apex, rim, SelectionColor, ReachLineWidth);
+        }
+    }
+
+    /// <summary>Bakes every irradiance volume's probes with the viewport's mood, on a device of its own; the viewport reloads them.</summary>
+    [RelayCommand]
+    public void BakeProbes()
+    {
+        Stopwatch watch = Stopwatch.StartNew();
+        try
+        {
+            GraphicsDeviceOptions options = new() { Validation = Validation };
+            using VulkanGraphicsDevice device = new(options, Scene.Game.LoggerFactory);
+            IReadOnlyList<string> baked = SceneProbes.Bake(device, Scene, Mood);
+            if (baked.Count == 0)
+            {
+                Status = "No irradiance volumes to bake.";
+                return;
+            }
+
+            string files = string.Join(", ", baked);
+            Status = $"Baked {files} in {watch.Elapsed.TotalSeconds:0.0} s.";
+        }
+        catch (GraphicsUnavailableException exception)
+        {
+            Status = exception.Message;
         }
     }
 
