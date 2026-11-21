@@ -9,7 +9,7 @@
   <FluentTheme>
     <FluentTheme.Palettes>
       <ColorPaletteResources x:Key="Dark"
-                             RegionColor="#1F1D16" Accent="#D8955A" ErrorText="#E0664A"
+                             RegionColor="#2A3723" Accent="#D8955A" ErrorText="#E0664A"
                              AltHigh="#17150F" AltLow="#17150F" AltMedium="#17150F" AltMediumHigh="#17150F" AltMediumLow="#17150F"
                              BaseHigh="#E8E5DD" BaseLow="#3A372B" BaseMedium="#9C9A88" BaseMediumHigh="#B9BBA8" BaseMediumLow="#6E6C5C"
                              ChromeAltLow="#B9BBA8" ChromeBlackHigh="#0C0A08" ChromeBlackLow="#B9BBA8" ChromeBlackMedium="#17150F"
@@ -24,9 +24,10 @@
     <!-- The editor's palette, from deepest to lightest, then the colours of actions and axes. -->
     <SolidColorBrush x:Key="EditorDeepBrush" Color="#17150F" />
     <SolidColorBrush x:Key="EditorPanelBrush" Color="#1F1D16" />
-    <SolidColorBrush x:Key="EditorBarBrush" Color="#2A2E22" />
+    <!-- The frame around the content: bars, headers, tabs and the gaps between panels, lighter than the wells it holds. -->
+    <SolidColorBrush x:Key="EditorFrameBrush" Color="#2A3723" />
     <SolidColorBrush x:Key="EditorControlBrush" Color="#2E3226" />
-    <SolidColorBrush x:Key="EditorLineBrush" Color="#3A372B" />
+    <SolidColorBrush x:Key="EditorLineBrush" Color="#3E4B34" />
     <SolidColorBrush x:Key="EditorTextBrush" Color="#E8E5DD" />
     <SolidColorBrush x:Key="EditorMutedTextBrush" Color="#B9BBA8" />
     <SolidColorBrush x:Key="EditorAccentBrush" Color="#D8955A" />
@@ -50,8 +51,9 @@
     <Thickness x:Key="ExpanderChevronMargin">4,0</Thickness>
     <StaticResource x:Key="TextControlBorderBrush" ResourceKey="EditorLineBrush" />
     <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="EditorMutedTextBrush" />
-    <StaticResource x:Key="TextControlBackground" ResourceKey="EditorControlBrush" />
-    <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="EditorControlBrush" />
+    <StaticResource x:Key="TextControlBackground" ResourceKey="EditorDeepBrush" />
+    <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="EditorDeepBrush" />
+    <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="EditorDeepBrush" />
     <Thickness x:Key="TextControlThemePadding">4,1</Thickness>
 
     <!-- The editor's own sizes. -->
@@ -62,6 +64,9 @@
     <!-- Menus scroll past this height. -->
     <x:Double x:Key="EditorMenuMaxHeight">360</x:Double>
     <CornerRadius x:Key="EditorSearchCornerRadius">10</CornerRadius>
+    <!-- The wells: content sunk into the frame, slightly rounded, shaded along their top and sides. -->
+    <CornerRadius x:Key="EditorWellCornerRadius">5</CornerRadius>
+    <BoxShadows x:Key="EditorWellShadow">inset 0 3 10 2 #F0000000</BoxShadows>
 
     <!-- The item of a menu built from choices (MenuNode): its icon, its key and its submenu, or a separator. -->
     <ControlTheme x:Key="ChoiceMenuItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="menus:MenuNode">
@@ -78,9 +83,30 @@
     </ControlTheme>
   </Styles.Resources>
 
-  <!-- Text: every control inherits the window's size. -->
+  <!-- Text: every control inherits the window's size. The window is the frame that the wells sink into. -->
   <Style Selector="Window">
     <Setter Property="FontSize" Value="{StaticResource EditorFontSize}" />
+    <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
+  </Style>
+
+  <!-- A well: an area of content (a tree, list, form or canvas) sunk into the frame, so the content reads as deeper than the
+       bars and headers around it. Lists and trees inside let it show through. -->
+  <Style Selector="Border.well">
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="CornerRadius" Value="{StaticResource EditorWellCornerRadius}" />
+    <Setter Property="BoxShadow" Value="{StaticResource EditorWellShadow}" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="Margin" Value="2" />
+    <Setter Property="Padding" Value="1,3,1,1" />
+  </Style>
+  <Style Selector="Border.well.viewport">
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="Border.well ListBox, Border.well TreeView, Border.well ScrollViewer">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="GridSplitter">
+    <Setter Property="Background" Value="Transparent" />
   </Style>
   <Style Selector="TextBlock.heading">
     <Setter Property="FontSize" Value="{StaticResource EditorHeadingFontSize}" />
@@ -176,8 +202,6 @@
   <!-- The asset browser's narrow column of kind filters. -->
   <Style Selector="ListBox.filters">
     <Setter Property="Width" Value="88" />
-    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
-    <Setter Property="BorderThickness" Value="0,0,1,0" />
   </Style>
   <Style Selector="ListBox.filters ListBoxItem">
     <Setter Property="Padding" Value="6,1" />
@@ -205,9 +229,9 @@
     <Setter Property="IsVisible" Value="False" />
   </Style>
 
-  <!-- The shell's bars: the toolbar above the viewport and the status bar below it. -->
+  <!-- The shell's bars: the toolbar above the viewport and the status bar below it, part of the frame. -->
   <Style Selector="Border.toolbar, Border.statusbar">
-    <Setter Property="Background" Value="{StaticResource EditorBarBrush}" />
+    <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
   </Style>
   <Style Selector="Border.toolbar">
     <Setter Property="Padding" Value="2,1" />
