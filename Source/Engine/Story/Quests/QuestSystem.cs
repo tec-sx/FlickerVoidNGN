@@ -10,6 +10,7 @@ using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Services;
 
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,7 @@ namespace FlickerVoid.Engine.Story.Quests;
 /// <summary>
 /// Runs the quests of the content folder: starts them by their conditions or rules, completes their objectives and them as facts
 /// change, fails them, and runs each active quest's flow graph. A quest's state lives in its fact, so a save holds it; the system
-/// starts with the game's first step, keeping quests the facts say are active.
+/// starts with the game's first step and after each load, running the flows of the quests the facts say are active.
 /// </summary>
 public sealed partial class QuestSystem : BaseSystem<World, GameTime>
 {
@@ -31,6 +32,7 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
     private readonly EventBus _events;
     private readonly ILogger<QuestSystem> _logger;
     private readonly Dictionary<Tag, FlowRun> _flows = [];
+    private SaveSystem? _saves;
     private bool _started;
     private bool _evaluating;
     private bool _dirty;
@@ -186,6 +188,12 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
     {
         _started = true;
         _facts.FactChanged += HandleFactChanged;
+        _saves = _services.GetService<SaveSystem>();
+        if (_saves is not null)
+        {
+            _saves.Loaded += HandleLoaded;
+        }
+
         Evaluate();
         foreach (QuestDefinition quest in GetQuests(QuestState.Active))
         {
@@ -198,6 +206,11 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
         if (_started)
         {
             _facts.FactChanged -= HandleFactChanged;
+            if (_saves is not null)
+            {
+                _saves.Loaded -= HandleLoaded;
+            }
+
             _started = false;
         }
 
@@ -352,6 +365,25 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
     private ConditionContext CreateContext() => new(_facts) { Services = _services };
 
     private void HandleFactChanged(Tag tag, int oldValue, int newValue) => Evaluate();
+
+    /// <summary>Stops the flows of quests the save doesn't hold active and starts the active ones' from their start.</summary>
+    private void HandleLoaded(SaveGame save)
+    {
+        foreach ((Tag quest, FlowRun run) in _flows.ToList())
+        {
+            if (GetState(quest) != QuestState.Active)
+            {
+                run.Finish();
+            }
+        }
+
+        Evaluate();
+        foreach (QuestDefinition quest in GetQuests(QuestState.Active))
+        {
+            StartFlow(quest);
+            Notify(quest.Id);
+        }
+    }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Quests still changed after {Passes} passes; check quests whose effects start or finish each other.")]
     private partial void LogStillChanging(int passes);
