@@ -14,8 +14,8 @@ public sealed class FlowRun : IDisposable
 
     private readonly Dictionary<FlowNode, List<FlowWire>[]> _wires = [];
     private readonly List<FlowNode> _active = [];
-    private int _depth;
-    private int _steps;
+    private readonly Stack<FlowWire> _signals = [];
+    private bool _dispatching;
 
     /// <summary>Resolves the graph's links to its nodes' pins; throws <see cref="InvalidDataException"/> for a link to a missing node or pin.</summary>
     public FlowRun(FlowGraph graph, ConditionContext conditions)
@@ -122,7 +122,10 @@ public sealed class FlowRun : IDisposable
         }
     }
 
-    /// <summary>Passes a signal from the node's output to every input wired to it, in the links' order.</summary>
+    /// <summary>
+    /// Passes a signal from the node's output to every input wired to it, depth first in the links' order. Signals wait on a stack
+    /// rather than nesting calls, so a long chain of nodes can't overflow the call stack.
+    /// </summary>
     internal void Trigger(FlowNode node, int output)
     {
         if (!IsRunning)
@@ -130,23 +133,25 @@ public sealed class FlowRun : IDisposable
             return;
         }
 
-        if (_depth == 0)
+        List<FlowWire> wires = _wires[node][output];
+        for (int index = wires.Count - 1; index >= 0; index--)
         {
-            _steps = 0;
+            _signals.Push(wires[index]);
         }
 
-        _depth++;
+        if (_dispatching)
+        {
+            return;
+        }
+
+        _dispatching = true;
+        int steps = 0;
         try
         {
-            foreach (FlowWire wire in _wires[node][output].ToArray())
+            while (IsRunning && _signals.TryPop(out FlowWire wire))
             {
-                if (!IsRunning)
-                {
-                    return;
-                }
-
-                _steps++;
-                if (_steps > MaxStepsPerTrigger)
+                steps++;
+                if (steps > MaxStepsPerTrigger)
                 {
                     Finish();
                     throw new InvalidOperationException($"The flow passed more than {MaxStepsPerTrigger} signals from {node.Id} without stopping; its links loop.");
@@ -157,7 +162,8 @@ public sealed class FlowRun : IDisposable
         }
         finally
         {
-            _depth--;
+            _signals.Clear();
+            _dispatching = false;
         }
     }
 
