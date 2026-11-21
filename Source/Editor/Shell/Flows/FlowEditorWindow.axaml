@@ -11,12 +11,20 @@
     <KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedCommand}" />
   </Window.KeyBindings>
   <Grid ColumnDefinitions="*,4,300">
-    <!-- The canvas: Shift+A adds a node, right-click offers what can be done there, drag a node to move it, drag from a pin to
-         wire it, or onto empty space to add a node wired to it. -->
-    <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#1A1918">
-      <Panel x:Name="Canvas" Width="4000" Height="3000" Background="Transparent">
+    <!-- The endless canvas: drag with the right or middle button to pan, the wheel zooms, F frames the selected node (or all),
+         Shift+A adds a node, right-click offers what can be done there, drag a node to move it, drag from a pin to wire it, or
+         onto empty space to add a node wired to it. -->
+    <Panel Grid.Column="0" x:Name="Surface" ClipToBounds="True" Background="#1A1918" Focusable="True">
+      <shellflows:FlowGrid View="{Binding View}" IsHitTestVisible="False" />
+      <Panel x:Name="Canvas" HorizontalAlignment="Left" VerticalAlignment="Top" Width="1" Height="1" RenderTransformOrigin="0,0">
         <shellflows:FlowWires x:Name="Wires" Graph="{Binding}" IsHitTestVisible="False" />
-        <ItemsControl ItemsSource="{Binding Nodes}">
+        <ItemsControl ItemsSource="{Binding Nodes}" ClipToBounds="False">
+          <!-- No border: nodes stand anywhere on the endless canvas, outside the control's own bounds. -->
+          <ItemsControl.Template>
+            <ControlTemplate>
+              <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" ClipToBounds="False" />
+            </ControlTemplate>
+          </ItemsControl.Template>
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
               <Canvas />
@@ -93,7 +101,7 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </Panel>
-    </ScrollViewer>
+    </Panel>
     <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
     <!-- The selected node's values. -->
     <ScrollViewer Grid.Column="2" Padding="8">

@@ -139,6 +139,23 @@ public sealed class FlowGraphViewModelTests : IDisposable
     }
 
     [Fact]
+    public void FramesTheSelectedNodeOrEveryNode()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+        FlowNodeViewModel finish = canvas.Nodes[2];
+
+        canvas.FrameSelected(1000, 600);
+        FlowPoint start = canvas.View.ToScreen(0, 0);
+        canvas.Select(finish);
+        canvas.FrameSelected(1000, 600);
+        FlowPoint middle = canvas.View.ToScreen(finish.X + (FlowNodeViewModel.Width / 2), finish.Y + (finish.Height / 2));
+
+        start.X.Should().BeGreaterThanOrEqualTo(0);
+        middle.X.Should().BeApproximately(500, 1e-6);
+        middle.Y.Should().BeApproximately(300, 1e-6);
+    }
+
+    [Fact]
     public void FindsThePinNearAPoint()
     {
         FlowGraphViewModel canvas = _builder.Build(Graph);

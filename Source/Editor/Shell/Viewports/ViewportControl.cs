@@ -240,7 +240,8 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         MenuChoice add = EditorMenus.AddEntry(this);
         MenuChoice duplicate = new("Duplicate", viewModel.DuplicateSelected, "Entity", "Duplicate", "Ctrl+D");
         MenuChoice delete = new("Delete", viewModel.DeleteSelected, "Entity", "Delete", "Delete");
-        List<MenuChoice> choices = [add];
+        MenuChoice frame = new("Frame Selected", viewModel.FrameSelected, "View", "Zoom", "F");
+        List<MenuChoice> choices = [add, frame];
         if (viewModel.Selection.Selected is not null)
         {
             choices.Add(duplicate);

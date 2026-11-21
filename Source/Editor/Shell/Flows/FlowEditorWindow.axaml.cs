@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 
 using FlickerVoid.Editor.Controls;
@@ -21,27 +23,89 @@ public partial class FlowEditorWindow : Window
     private FlowPoint _nodeStart;
     private FlowPinViewModel? _wiring;
     private Point _pointer;
+    private Point? _panFrom;
+    private bool _panned;
+    private FlowCanvasView? _view;
+
+    /// <summary>How far the mouse may move, in pixels, for a right-click to open the options menu rather than pan.</summary>
+    private const double ClickSlop = 4;
 
     public FlowEditorWindow()
     {
         InitializeComponent();
-        Canvas.AddHandler(PointerPressedEvent, HandleCanvasPressed, RoutingStrategies.Tunnel);
-        Canvas.PointerMoved += HandleCanvasMoved;
-        Canvas.PointerReleased += HandleCanvasReleased;
+        Surface.AddHandler(PointerPressedEvent, HandleCanvasPressed, RoutingStrategies.Tunnel);
+        Surface.PointerMoved += HandleCanvasMoved;
+        Surface.PointerReleased += HandleCanvasReleased;
+        Surface.PointerWheelChanged += HandleWheel;
         AddHandler(KeyDownEvent, HandleKeyDown, RoutingStrategies.Tunnel);
+        Opened += HandleOpened;
     }
 
     private FlowGraphViewModel? Graph => DataContext as FlowGraphViewModel;
 
-    private void HandleKeyDown(object? sender, KeyEventArgs e)
+    protected override void OnDataContextChanged(EventArgs e)
     {
-        bool addKey = e.Key == Key.A && e.KeyModifiers == KeyModifiers.Shift;
-        if (!addKey || e.Source is TextBox || Graph is not { } graph)
+        base.OnDataContextChanged(e);
+        if (_view is not null)
+        {
+            _view.PropertyChanged -= HandleViewChanged;
+        }
+
+        _view = Graph?.View;
+        if (_view is not null)
+        {
+            _view.PropertyChanged += HandleViewChanged;
+            ShowView();
+        }
+    }
+
+    /// <summary>Starts with every node in view.</summary>
+    private void HandleOpened(object? sender, EventArgs e)
+    {
+        Dispatcher.UIThread.Post(Frame, DispatcherPriority.Loaded);
+    }
+
+    private void Frame()
+    {
+        Graph?.FrameSelected(Surface.Bounds.Width, Surface.Bounds.Height);
+    }
+
+    private void HandleViewChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => ShowView();
+
+    private void ShowView()
+    {
+        if (_view is not { } view)
         {
             return;
         }
 
-        ShowAddMenu(graph, _pointer, null);
+        Matrix matrix = Matrix.CreateScale(view.Zoom, view.Zoom) * Matrix.CreateTranslation(view.OffsetX, view.OffsetY);
+        Canvas.RenderTransform = new MatrixTransform(matrix);
+    }
+
+    private void HandleKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Source is TextBox || Graph is not { } graph)
+        {
+            return;
+        }
+
+        if (e.Key == Key.A && e.KeyModifiers == KeyModifiers.Shift)
+        {
+            ShowAddMenu(graph, _pointer, null);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F && e.KeyModifiers == KeyModifiers.None)
+        {
+            Frame();
+            e.Handled = true;
+        }
+    }
+
+    private void HandleWheel(object? sender, PointerWheelEventArgs e)
+    {
+        Point screen = e.GetPosition(Surface);
+        Graph?.View.ZoomAt(screen.X, screen.Y, e.Delta.Y);
         e.Handled = true;
     }
 
@@ -52,21 +116,28 @@ public partial class FlowEditorWindow : Window
             return;
         }
 
+        Surface.Focus();
         Point point = e.GetPosition(Canvas);
-        PointerPointProperties pressed = e.GetCurrentPoint(Canvas).Properties;
+        PointerPointProperties pressed = e.GetCurrentPoint(Surface).Properties;
+        if (pressed.IsRightButtonPressed || pressed.IsMiddleButtonPressed)
+        {
+            _panFrom = e.GetPosition(Surface);
+            _panned = false;
+            e.Pointer.Capture(Surface);
+            if (pressed.IsRightButtonPressed && FindNode(e.Source) is { } clicked && graph.FindPin(point.X, point.Y, FlowGraphViewModel.GrabRadius) is null)
+            {
+                graph.Select(clicked);
+            }
+
+            e.Handled = true;
+            return;
+        }
+
         FlowPinViewModel? pin = graph.FindPin(point.X, point.Y, FlowGraphViewModel.GrabRadius);
         if (pin is not null)
         {
-            if (pressed.IsRightButtonPressed)
-            {
-                ShowPinOptions(graph, pin);
-            }
-            else
-            {
-                _wiring = pin;
-                e.Pointer.Capture(Canvas);
-            }
-
+            _wiring = pin;
+            e.Pointer.Capture(Surface);
             e.Handled = true;
             return;
         }
@@ -79,11 +150,7 @@ public partial class FlowEditorWindow : Window
                 _dragged = node;
                 _dragStart = point;
                 _nodeStart = new FlowPoint(node.X, node.Y);
-                e.Pointer.Capture(Canvas);
-            }
-            else if (pressed.IsRightButtonPressed)
-            {
-                ShowNodeOptions(graph, node, point);
+                e.Pointer.Capture(Surface);
             }
 
             e.Handled = true;
@@ -91,10 +158,23 @@ public partial class FlowEditorWindow : Window
         }
 
         graph.Select(null);
-        if (pressed.IsRightButtonPressed)
+    }
+
+    /// <summary>A right-click that didn't pan: the options for the pin, node or empty space under the mouse.</summary>
+    private void ShowOptionsAt(FlowGraphViewModel graph, Point point, object? source)
+    {
+        if (graph.FindPin(point.X, point.Y, FlowGraphViewModel.GrabRadius) is { } pin)
         {
+            ShowPinOptions(graph, pin);
+        }
+        else if (FindNode(source) is { } node)
+        {
+            ShowNodeOptions(graph, node, point);
+        }
+        else
+        {
+            graph.Select(null);
             ShowCanvasOptions(graph, point);
-            e.Handled = true;
         }
     }
 
@@ -102,10 +182,21 @@ public partial class FlowEditorWindow : Window
     {
         Point point = e.GetPosition(Canvas);
         _pointer = point;
-        if (_dragged is { } node && Graph is { } graph)
+        if (_panFrom is { } from && Graph is { } panned)
         {
-            double x = Math.Max(0, _nodeStart.X + point.X - _dragStart.X);
-            double y = Math.Max(0, _nodeStart.Y + point.Y - _dragStart.Y);
+            Point screen = e.GetPosition(Surface);
+            Point moved = screen - from;
+            if (_panned || Math.Abs(moved.X) > ClickSlop || Math.Abs(moved.Y) > ClickSlop)
+            {
+                _panned = true;
+                panned.View.Pan(moved.X, moved.Y);
+                _panFrom = screen;
+            }
+        }
+        else if (_dragged is { } node && Graph is { } graph)
+        {
+            double x = _nodeStart.X + point.X - _dragStart.X;
+            double y = _nodeStart.Y + point.Y - _dragStart.Y;
             graph.MoveNode(node, x, y);
         }
         else if (_wiring is { } pin && Graph is { } wired)
@@ -123,6 +214,21 @@ public partial class FlowEditorWindow : Window
 
     private void HandleCanvasReleased(object? sender, PointerReleasedEventArgs e)
     {
+        if (_panFrom is not null)
+        {
+            bool clicked = !_panned && e.InitialPressMouseButton == MouseButton.Right;
+            _panFrom = null;
+            e.Pointer.Capture(null);
+            if (clicked && Graph is { } options)
+            {
+                Point at = e.GetPosition(Canvas);
+                IInputElement? under = Surface.InputHitTest(e.GetPosition(Surface));
+                ShowOptionsAt(options, at, under);
+            }
+
+            return;
+        }
+
         if (_wiring is { } pin && Graph is { } graph)
         {
             Point point = e.GetPosition(Canvas);
@@ -132,7 +238,7 @@ public partial class FlowEditorWindow : Window
             {
                 graph.Connect(pin, target);
             }
-            else if (FindNode(Canvas.InputHitTest(point)) is null)
+            else if (FindNode(Surface.InputHitTest(e.GetPosition(Surface))) is null)
             {
                 ShowAddMenu(graph, point, pin);
             }
@@ -147,26 +253,26 @@ public partial class FlowEditorWindow : Window
     private void ShowAddMenu(FlowGraphViewModel graph, Point point, FlowPinViewModel? from)
     {
         IReadOnlyList<MenuChoice> choices = graph.GetAddChoices(point.X, point.Y, from);
-        SearchMenu.Show(Canvas, choices, MenuGrouping.Separators);
+        SearchMenu.Show(Surface, choices, MenuGrouping.Separators);
     }
 
     private void ShowCanvasOptions(FlowGraphViewModel graph, Point point)
     {
         MenuChoice add = new("Add Node…", () => ShowAddMenu(graph, point, null), Icon: "Add", Gesture: EditorMenus.AddGesture);
-        EditorMenus.ShowOptions(Canvas, [add], MenuGrouping.None);
+        EditorMenus.ShowOptions(Surface, [add], MenuGrouping.None);
     }
 
     private void ShowNodeOptions(FlowGraphViewModel graph, FlowNodeViewModel node, Point point)
     {
         MenuChoice add = new("Add Node…", () => ShowAddMenu(graph, point, null), Icon: "Add", Gesture: EditorMenus.AddGesture);
         MenuChoice remove = new("Delete", () => graph.RemoveNode(node), node.Title, "Delete", "Delete");
-        EditorMenus.ShowOptions(Canvas, [add, remove], MenuGrouping.Separators);
+        EditorMenus.ShowOptions(Surface, [add, remove], MenuGrouping.Separators);
     }
 
     private void ShowPinOptions(FlowGraphViewModel graph, FlowPinViewModel pin)
     {
         MenuChoice disconnect = new("Break Links", () => graph.Disconnect(pin), Icon: "Remove");
-        EditorMenus.ShowOptions(Canvas, [disconnect], MenuGrouping.None);
+        EditorMenus.ShowOptions(Surface, [disconnect], MenuGrouping.None);
     }
 
     /// <summary>The node under a pointer, from anything drawn on it.</summary>
