@@ -49,18 +49,40 @@ public sealed class SceneSpawner : ISceneSpawner
     /// <summary>The schema of a scene file: its entities may have every registered component and no other.</summary>
     public JsonObject GetSchema()
     {
+        JsonObject components = GetComponentsSchema();
+        JsonObject entityProperties = new()
+        {
+            ["name"] = new JsonObject { ["type"] = "string" },
+            ["template"] = new JsonObject { ["type"] = "string" },
+            ["components"] = components,
+        };
+        JsonObject entity = new() { ["type"] = "object", ["properties"] = entityProperties, ["additionalProperties"] = false };
+        JsonObject entities = new() { ["type"] = "array", ["items"] = entity };
+        JsonObject sceneProperties = new() { [JsonSchemas.SchemaProperty] = new JsonObject { ["type"] = "string" }, ["entities"] = entities };
+        return new JsonObject { ["type"] = "object", ["properties"] = sceneProperties, ["additionalProperties"] = false };
+    }
+
+    public JsonObject GetTemplateSchema()
+    {
+        JsonObject components = GetComponentsSchema();
+        JsonObject properties = new()
+        {
+            [JsonSchemas.SchemaProperty] = new JsonObject { ["type"] = "string" },
+            ["base"] = new JsonObject { ["type"] = "string" },
+            ["components"] = components,
+        };
+        return new JsonObject { ["type"] = "object", ["properties"] = properties, ["additionalProperties"] = false };
+    }
+
+    private JsonObject GetComponentsSchema()
+    {
         JsonObject components = [];
         foreach (SceneComponent component in _componentList)
         {
             components[component.Name] = JsonSchemas.Create(component.TypeInfo);
         }
 
-        JsonObject componentsSchema = new() { ["type"] = "object", ["properties"] = components, ["additionalProperties"] = false };
-        JsonObject entityProperties = new() { ["name"] = new JsonObject { ["type"] = "string" }, ["components"] = componentsSchema };
-        JsonObject entity = new() { ["type"] = "object", ["properties"] = entityProperties, ["additionalProperties"] = false };
-        JsonObject entities = new() { ["type"] = "array", ["items"] = entity };
-        JsonObject sceneProperties = new() { [JsonSchemas.SchemaProperty] = new JsonObject { ["type"] = "string" }, ["entities"] = entities };
-        return new JsonObject { ["type"] = "object", ["properties"] = sceneProperties, ["additionalProperties"] = false };
+        return new JsonObject { ["type"] = "object", ["properties"] = components, ["additionalProperties"] = false };
     }
 
     public IReadOnlyList<Entity> Spawn(SceneData scene, World world)
@@ -146,7 +168,7 @@ public sealed class SceneSpawner : ISceneSpawner
 
     private EntityData CaptureEntity(World world, Entity entity, EntityData previous)
     {
-        EntityData data = new();
+        EntityData data = new() { Template = previous.Template };
         if (world.TryGet(entity, out EntityName name))
         {
             data.Name = name.Value;

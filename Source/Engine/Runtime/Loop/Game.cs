@@ -32,6 +32,7 @@ public sealed partial class Game : IDisposable
         Spawner.Register("transform", RuntimeJsonContext.Default.Transform);
         Services.AddService(Spawner);
         Schemas.Add("scene", Spawner.GetSchema);
+        Schemas.Add("entity", Spawner.GetTemplateSchema);
         Services.AddService(DebugConsole);
         Services.AddService(Events);
 

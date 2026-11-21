@@ -23,6 +23,9 @@ public interface ISceneSpawner
     /// <summary>The JSON Schema of a scene file, with every registered component.</summary>
     JsonObject GetSchema();
 
+    /// <summary>The JSON Schema of entity template files (<c>.fventity</c>), with the same components as scene entities.</summary>
+    JsonObject GetTemplateSchema();
+
     /// <summary>Creates the scene's entities in order, then starts them; if one fails, destroys those already created and throws.</summary>
     IReadOnlyList<Entity> Spawn(SceneData scene, World world);
 
