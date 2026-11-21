@@ -30,6 +30,8 @@ internal sealed class QuestSystemTestsBuilder : IDisposable
 
     public SaveSystem Saves { get; private set; } = null!;
 
+    public DataAssets Data => _data!;
+
     public QuestSystemTestsBuilder WithFile(string path, string json)
     {
         string fullPath = Path.Combine(_folder, path);

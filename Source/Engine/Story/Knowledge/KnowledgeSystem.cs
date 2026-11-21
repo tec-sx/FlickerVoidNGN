@@ -1,4 +1,5 @@
 using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Entities;
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Data;
@@ -9,6 +10,9 @@ namespace FlickerVoid.Engine.Story.Knowledge;
 /// <summary>What the protagonist knows: clues, topics, thoughts and documents, each kept in the fact its id names.</summary>
 public sealed class KnowledgeSystem(IFactDatabase facts, IServiceRegistry services)
 {
+    /// <summary>Who learning applies its effects for, as their instigator: the player, which the game sets.</summary>
+    public IEntityView? Player { get; set; }
+
     public bool Knows(Tag knowledge) => facts.GetFact(knowledge) > 0;
 
     /// <summary>True when the knowledge has a file, isn't known yet and its prerequisites are.</summary>
@@ -28,7 +32,7 @@ public sealed class KnowledgeSystem(IFactDatabase facts, IServiceRegistry servic
         }
 
         facts.SetFact(knowledge, 1);
-        ConditionContext context = new(facts) { Services = services };
+        ConditionContext context = new(facts) { Services = services, Instigator = Player };
         definition.OnLearned.Apply(context);
         return true;
     }

@@ -3,6 +3,8 @@ using System.Text.Json;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Flow;
+using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Rendering;
@@ -51,6 +53,8 @@ internal sealed class ClickControlSystemTestsBuilder : IDisposable
     public ClickControlSystemTestsBuilder WithFile(string path, string json)
     {
         string fullPath = Path.Combine(_folder, path);
+        string? folder = Path.GetDirectoryName(fullPath);
+        Directory.CreateDirectory(folder!);
         File.WriteAllText(fullPath, json);
         return this;
     }
@@ -67,6 +71,9 @@ internal sealed class ClickControlSystemTestsBuilder : IDisposable
         _data = new DataAssets(content, Game.Data);
         Game.Services.AddService(_data);
         Game.AddRendering();
+        Game.AddFlow();
+        FlowGraphs graphs = new(content, Game.Data);
+        Game.Services.AddService(graphs);
         GameplayModule gameplay = new();
         gameplay.Add(Game);
         Game.Lifecycle.Play(Game.World);
