@@ -43,6 +43,9 @@ public sealed partial class InventorySystem
 
     public InventorySettings Settings { get; }
 
+    /// <summary>Whether the entity has an inventory while the game plays.</summary>
+    public bool HasInventory(Entity owner) => TryGetInventory(owner, out _);
+
     /// <summary>The owner's stacks in order; empty when it has no inventory.</summary>
     public IReadOnlyList<ItemStack> GetStacks(Entity owner)
     {
