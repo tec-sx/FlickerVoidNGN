@@ -70,31 +70,34 @@
   <Style Selector="Button.choice:disabled TextBlock">
     <Setter Property="Foreground" Value="{StaticResource HudFaintBrush}" />
   </Style>
-  <!-- The hub: tabs in the heading font on light grey, the selected one white, underlined in red, on the yellow bar. -->
+  <!-- The hub: tabs in the heading font on the yellow bar itself, underlined; the ones not shown are faded. -->
   <Style Selector="TextBlock.value">
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="FontSize" Value="20" />
   </Style>
   <Style Selector="Button.tab">
-    <Setter Property="Background" Value="#BDBDBD" />
+    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
     <Setter Property="CornerRadius" Value="0" />
     <Setter Property="Padding" Value="16,4,16,6" />
-    <Setter Property="Margin" Value="0,0,2,0" />
     <Setter Property="MinWidth" Value="170" />
     <Setter Property="Height" Value="50" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
   </Style>
-  <Style Selector="Button.tab:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="#D8D8D8" />
-  </Style>
-  <Style Selector="Button.tab.selected /template/ ContentPresenter">
-    <Setter Property="Background" Value="#FFFFFF" />
+  <Style Selector="Button.tab:pointerover /template/ ContentPresenter, Button.tab:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
   </Style>
   <Style Selector="TextBlock.tab">
     <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
     <Setter Property="FontSize" Value="24" />
     <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
     <Setter Property="TextDecorations" Value="Underline" />
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+  <Style Selector="Button.tab:pointerover TextBlock.tab">
+    <Setter Property="Opacity" Value="0.75" />
+  </Style>
+  <Style Selector="Button.tab.selected TextBlock.tab">
+    <Setter Property="Opacity" Value="1" />
   </Style>
   <Style Selector="Button.close">
     <Setter Property="Background" Value="{StaticResource AccentBrush}" />
@@ -104,8 +107,8 @@
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
-  <Style Selector="Button.close:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="#FFC21A" />
+  <Style Selector="Button.close:pointerover /template/ ContentPresenter, Button.close:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
   </Style>
 
   <!-- Cells and outfit slots: dark squares outlined in the tint, filled faintly when selected and outlined in the accent when the
