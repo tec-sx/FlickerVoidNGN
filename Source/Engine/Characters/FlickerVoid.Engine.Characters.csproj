@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+    <NoWarn>$(NoWarn);NU5104</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Physics/FlickerVoid.Engine.Physics.csproj" />
+  </ItemGroup>
+</Project>

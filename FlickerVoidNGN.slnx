@@ -10,6 +10,7 @@
     <Project Path="Source/Editor/Shell/FlickerVoid.Editor.csproj" />
   </Folder>
   <Folder Name="/Source/Engine/">
+    <Project Path="Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
     <Project Path="Source/Engine/Debug/FlickerVoid.Engine.Debug.csproj" />
     <Project Path="Source/Engine/Flow/FlickerVoid.Engine.Flow.csproj" />
     <Project Path="Source/Engine/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
@@ -33,6 +34,7 @@
     <Project Path="Tests/Editor/Shell/FlickerVoid.Editor.Tests.csproj" />
   </Folder>
   <Folder Name="/Tests/Engine/">
+    <Project Path="Tests/Engine/Characters/FlickerVoid.Engine.Characters.Tests.csproj" />
     <Project Path="Tests/Engine/Debug/FlickerVoid.Engine.Debug.Tests.csproj" />
     <Project Path="Tests/Engine/Flow/FlickerVoid.Engine.Flow.Tests.csproj" />
     <Project Path="Tests/Engine/Gameplay/FlickerVoid.Engine.Gameplay.Tests.csproj" />

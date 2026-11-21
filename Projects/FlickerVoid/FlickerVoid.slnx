@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/Engine/">
     <Project Path="../../Source/Tools/Builder/FlickerVoid.Tools.Builder.csproj" />
+    <Project Path="../../Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
     <Project Path="../../Source/Engine/Debug/FlickerVoid.Engine.Debug.csproj" />
     <Project Path="../../Source/Editor/Assets/FlickerVoid.Editor.Assets.csproj" />
     <Project Path="../../Source/Editor/Core/FlickerVoid.Editor.Core.csproj" />

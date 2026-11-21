@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text.Json;
 
 using Arch.Core;
@@ -5,6 +6,7 @@ using Arch.Core;
 using BepuPhysics;
 
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
@@ -41,6 +43,35 @@ public sealed class PhysicsSystemTests : IDisposable
 
         Transform transform = _game.World.Get<Transform>(entities[0]);
         transform.Position.Y.Should().BeInRange(4.5f, 6);
+    }
+
+    [Fact]
+    public void RayCastsFindTheNearestBodyAndWhereTheRayMetIt()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Crate", "components": {
+                "transform": { "position": [2, 0.5, 0] },
+                "rigidBody": { "kinematic": true, "collider": { "type": "box" } } } },
+            { "name": "Floor", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "box", "size": [20, 0.2, 20] } } } }
+            """);
+        Step();
+        Ray down = new(new Vector3(-3, 10, 0), -Vector3.UnitY);
+        Ray onCrate = new(new Vector3(2, 10, 0), -Vector3.UnitY);
+
+        bool hitFloor = _physics.RayCast(down, 100, out RayHit floor);
+        bool hitCrate = _physics.RayCast(onCrate, 100, out RayHit crate);
+        bool missed = _physics.RayCast(down, 5, out _);
+
+        hitFloor.Should().BeTrue();
+        floor.Entity.Should().Be(entities[1]);
+        floor.Point.Y.Should().BeApproximately(0.1f, 1e-3f);
+        floor.Normal.Y.Should().BeApproximately(1, 1e-3f);
+        hitCrate.Should().BeTrue();
+        crate.Entity.Should().Be(entities[0]);
+        crate.Distance.Should().BeApproximately(9, 1e-3f);
+        missed.Should().BeFalse();
     }
 
     [Fact]
