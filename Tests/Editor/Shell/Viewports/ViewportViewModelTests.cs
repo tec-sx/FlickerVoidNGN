@@ -50,6 +50,32 @@ public sealed class ViewportViewModelTests : IDisposable
     }
 
     [Fact]
+    public void FramesTheSelectionWithF()
+    {
+        Entity first = _builder.AddPointLight(new Vector3(10, 0, 0));
+        Entity second = _builder.AddPointLight(new Vector3(14, 0, 0));
+        _builder.ViewModel.Selection.SelectAll([first, second]);
+
+        _builder.ViewModel.KeyPressed(ViewportKey.F, ViewportButtons.None);
+
+        EditorCamera camera = _builder.ViewModel.Camera;
+        Vector3.Distance(camera.Pivot, new Vector3(12, 0, 0)).Should().BeLessThan(1e-3f);
+        camera.PivotDistance.Should().BeGreaterThan(2);
+    }
+
+    [Fact]
+    public void FramesEverythingWhenNothingIsSelected()
+    {
+        _builder.OpenLampScene();
+        _builder.ViewModel.Camera.LookAt(new Vector3(20, 5, 0), 0.3f, -0.4f, 40);
+        _builder.ViewModel.Selection.Select(null);
+
+        _builder.ViewModel.FrameSelected();
+
+        Vector3.Distance(_builder.ViewModel.Camera.Pivot, Vector3.Zero).Should().BeLessThan(1e-3f);
+    }
+
+    [Fact]
     public void DuplicatesTheSelectionAndSelectsTheCopy()
     {
         Entity lamp = _builder.OpenLampScene();

@@ -18,6 +18,7 @@ public static class ViewportKeys
         Key.E => ViewportKey.E,
         Key.R => ViewportKey.R,
         Key.G => ViewportKey.G,
+        Key.F => ViewportKey.F,
         Key.Delete => ViewportKey.Delete,
         _ => null,
     };

@@ -77,6 +77,9 @@ public sealed partial class FlowGraphViewModel : ObservableObject
 
     public ObservableCollection<FlowNodeViewModel> Nodes { get; } = [];
 
+    /// <summary>The part of the endless canvas the window shows.</summary>
+    public FlowCanvasView View { get; } = new();
+
     public ObservableCollection<FlowLinkViewModel> Links { get; } = [];
 
     [ObservableProperty]
@@ -196,6 +199,31 @@ public sealed partial class FlowGraphViewModel : ObservableObject
         }
 
         _edited();
+    }
+
+    /// <summary>Frames the selected node, or every node when none is selected, in a view of the given size (F).</summary>
+    public void FrameSelected(double width, double height)
+    {
+        List<FlowNodeViewModel> framed = [];
+        if (Selected is { } selected)
+        {
+            framed.Add(selected);
+        }
+        else
+        {
+            framed.AddRange(Nodes);
+        }
+
+        if (framed.Count == 0)
+        {
+            return;
+        }
+
+        double minX = framed.Min(node => node.X);
+        double minY = framed.Min(node => node.Y);
+        double maxX = framed.Max(node => node.X + FlowNodeViewModel.Width);
+        double maxY = framed.Max(node => node.Y + node.Height);
+        View.Frame(minX, minY, maxX, maxY, width, height);
     }
 
     [RelayCommand]

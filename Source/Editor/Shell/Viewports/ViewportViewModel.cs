@@ -38,6 +38,9 @@ public sealed partial class ViewportViewModel : ObservableObject
     private const int ConeEdges = 4;
     private const float FrustumAspect = 16f / 9f;
 
+    /// <summary>The radius framed round an entity without a mesh, such as a light.</summary>
+    private const float FramedPointRadius = 1;
+
     private static readonly Vector4 SelectionColor = EditorIcons.SelectedColor;
 
     private readonly EditorCameraController _controller;
@@ -218,7 +221,61 @@ public sealed partial class ViewportViewModel : ObservableObject
             case ViewportKey.Delete:
                 DeleteSelected();
                 break;
+            case ViewportKey.F:
+                FrameSelected();
+                break;
         }
+    }
+
+    /// <summary>
+    /// Moves the camera, still looking the same way, so the selection fills the view (F): meshes by their boxes, anything else
+    /// as a small sphere round its place. With nothing selected it frames every entity of the scene.
+    /// </summary>
+    [RelayCommand]
+    public void FrameSelected()
+    {
+        World world = Scene.Game.World;
+        IEnumerable<Entity> framed = Selection.Entities.Count > 0 ? Selection.Entities : Scene.Entities;
+        Vector3 min = new(float.MaxValue);
+        Vector3 max = new(float.MinValue);
+        bool any = false;
+        foreach (Entity entity in framed)
+        {
+            if (!world.IsAlive(entity) || !world.TryGet(entity, out Transform transform))
+            {
+                continue;
+            }
+
+            any = true;
+            if (Scene.Picker.TryGetBounds(world, entity, out Vector3 low, out Vector3 high))
+            {
+                Matrix4x4 matrix = transform.ToMatrix();
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    float x = (corner & 1) == 0 ? low.X : high.X;
+                    float y = (corner & 2) == 0 ? low.Y : high.Y;
+                    float z = (corner & 4) == 0 ? low.Z : high.Z;
+                    Vector3 point = Vector3.Transform(new Vector3(x, y, z), matrix);
+                    min = Vector3.Min(min, point);
+                    max = Vector3.Max(max, point);
+                }
+            }
+            else
+            {
+                Vector3 room = new(FramedPointRadius);
+                min = Vector3.Min(min, transform.Position - room);
+                max = Vector3.Max(max, transform.Position + room);
+            }
+        }
+
+        if (!any)
+        {
+            return;
+        }
+
+        Vector3 center = (min + max) / 2;
+        float radius = Vector3.Distance(min, max) / 2;
+        Camera.Frame(center, radius);
     }
 
     /// <summary>Adds a copy of each selected entity in the same place and selects the copies, to move them away with the gizmo.</summary>
