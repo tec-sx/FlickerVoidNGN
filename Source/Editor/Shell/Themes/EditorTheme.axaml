@@ -162,6 +162,17 @@
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
   </Style>
+  <!-- The scene outline: small icons, folders in the asset browser's folder colour. -->
+  <Style Selector="TreeView.outline TreeViewItem">
+    <Setter Property="MinHeight" Value="20" />
+  </Style>
+  <Style Selector="PathIcon.outlineIcon">
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="PathIcon.outlineIcon.folder">
+    <Setter Property="Foreground" Value="#DCBC98" />
+  </Style>
+
   <!-- The asset browser's narrow column of kind filters. -->
   <Style Selector="ListBox.filters">
     <Setter Property="Width" Value="88" />

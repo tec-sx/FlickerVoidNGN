@@ -87,7 +87,8 @@
       <Grid Grid.Column="2" RowDefinitions="*,2,*" Classes="sidePanel">
         <DockPanel>
           <TextBlock DockPanel.Dock="Top" Text="Scene" Classes="heading" />
-          <scenes:SceneTreeView DataContext="{Binding SceneTree}" />
+          <scenes:SceneTreeView x:Name="SceneTree" DataContext="{Binding SceneTree}"
+                                controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
         </DockPanel>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
         <TabControl Grid.Row="2" Padding="0" SelectedIndex="{Binding SideTab}">
