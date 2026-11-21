@@ -1,0 +1,71 @@
+<!-- The HUD: tracked quests at the top left; at the bottom centre the dialogue box while talking, else the prompt for what the
+     pointer is over. Only the dialogue box takes clicks, so everything else leaves the mouse to the world. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hud="using:FlickerVoid.Interface.Hud"
+             xmlns:quests="using:FlickerVoid.Interface.Hud.Quests"
+             xmlns:conversations="using:FlickerVoid.Interface.Hud.Conversations"
+             xmlns:prompts="using:FlickerVoid.Interface.Hud.Prompts"
+             x:Class="FlickerVoid.Interface.Hud.HudView"
+             x:DataType="hud:HudViewModel">
+  <Grid>
+    <Border Classes="panel" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="24" Width="300"
+            IsHitTestVisible="False" IsVisible="{Binding !!Quests.Count}">
+      <ItemsControl ItemsSource="{Binding Quests}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="quests:TrackedQuestViewModel">
+            <StackPanel Margin="0,2,0,6" Spacing="2">
+              <TextBlock Classes="heading" Text="{Binding Name}" />
+              <TextBlock Classes="muted" Text="{Binding Objective}" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
+    <Border Classes="panel" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="24,0,24,32" Width="640"
+            IsVisible="{Binding Dialogue.IsOpen}">
+      <StackPanel Spacing="8">
+        <TextBlock Classes="heading" Text="{Binding Dialogue.Speaker}" IsVisible="{Binding !!Dialogue.Speaker.Length}" />
+        <TextBlock Text="{Binding Dialogue.Line}" FontSize="17" IsVisible="{Binding !!Dialogue.Line.Length}" />
+        <ItemsControl ItemsSource="{Binding Dialogue.Choices}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="conversations:DialogueChoiceViewModel">
+              <Button Classes="choice" Command="{Binding ChooseCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding Label}" />
+                  <TextBlock Classes="muted locked" Text="{Binding LockedReason}" IsVisible="{Binding IsLocked}" />
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4">
+          <Button Classes="choice" HorizontalAlignment="Right" Command="{Binding Dialogue.AdvanceCommand}" IsVisible="{Binding Dialogue.CanAdvance}">
+            <TextBlock Text="Next" />
+          </Button>
+          <Button Classes="choice" HorizontalAlignment="Right" Command="{Binding Dialogue.LeaveCommand}">
+            <TextBlock Classes="muted" Text="Leave" />
+          </Button>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <Border Classes="panel" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="24,0,24,32" MinWidth="180"
+            IsHitTestVisible="False" IsVisible="{Binding Prompt.IsVisible}">
+      <StackPanel Spacing="2">
+        <TextBlock Classes="heading" Text="{Binding Prompt.Title}" HorizontalAlignment="Center" />
+        <ItemsControl ItemsSource="{Binding Prompt.Offers}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="prompts:PromptOfferViewModel">
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                <TextBlock Text="{Binding Name}" Classes.locked="{Binding !IsAvailable}" />
+                <TextBlock Classes="muted" Text="{Binding LockedReason}" IsVisible="{Binding IsLocked}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>
