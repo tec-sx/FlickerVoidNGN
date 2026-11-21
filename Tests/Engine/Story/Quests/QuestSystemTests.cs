@@ -260,4 +260,30 @@ public sealed class QuestSystemTests : IDisposable
 
         _builder.Quests.GetState(Cellar).Should().Be(QuestState.Active);
     }
+
+    [Fact]
+    public void ALoadRunsTheFlowsOfTheQuestsActiveInTheSave()
+    {
+        string flow = """
+            {
+              "nodes": [ { "$type": "start", "id": "start" }, { "$type": "waitForConditions", "id": "wait", "conditions": { "conditions": [ { "$type": "fact", "fact": "Fact.Never" } ] } } ],
+              "links": [ { "from": "start", "to": "wait" } ]
+            }
+            """;
+        _builder.WithFile("Quests/Cellar.fvflow", flow)
+            .WithFile("Quests/Later.fvflow", flow)
+            .WithQuest(Cellar.Name, """ "flow": "Quests/Cellar.fvflow" """)
+            .WithQuest("Quest.Later", """ "flow": "Quests/Later.fvflow" """)
+            .Build();
+        _builder.Quests.Start(Cellar);
+        _builder.Saves.Save("Slot");
+        _builder.Quests.Fail(Cellar);
+        _builder.Quests.Start(new Tag("Quest.Later"));
+
+        _builder.Saves.Load("Slot");
+
+        _builder.Quests.GetState(Cellar).Should().Be(QuestState.Active);
+        _builder.Quests.IsFlowRunning(Cellar).Should().BeTrue();
+        _builder.Quests.IsFlowRunning(new Tag("Quest.Later")).Should().BeFalse();
+    }
 }
