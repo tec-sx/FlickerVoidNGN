@@ -12,6 +12,7 @@
   <Folder Name="/Source/Engine/">
     <Project Path="Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
     <Project Path="Source/Engine/Interaction/FlickerVoid.Engine.Interaction.csproj" />
+    <Project Path="Source/Engine/Inventory/FlickerVoid.Engine.Inventory.csproj" />
     <Project Path="Source/Engine/Debug/FlickerVoid.Engine.Debug.csproj" />
     <Project Path="Source/Engine/Flow/FlickerVoid.Engine.Flow.csproj" />
     <Project Path="Source/Engine/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
@@ -37,6 +38,7 @@
   <Folder Name="/Tests/Engine/">
     <Project Path="Tests/Engine/Characters/FlickerVoid.Engine.Characters.Tests.csproj" />
     <Project Path="Tests/Engine/Interaction/FlickerVoid.Engine.Interaction.Tests.csproj" />
+    <Project Path="Tests/Engine/Inventory/FlickerVoid.Engine.Inventory.Tests.csproj" />
     <Project Path="Tests/Engine/Debug/FlickerVoid.Engine.Debug.Tests.csproj" />
     <Project Path="Tests/Engine/Flow/FlickerVoid.Engine.Flow.Tests.csproj" />
     <Project Path="Tests/Engine/Gameplay/FlickerVoid.Engine.Gameplay.Tests.csproj" />
