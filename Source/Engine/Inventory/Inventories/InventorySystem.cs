@@ -4,6 +4,7 @@ using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Inventory.Items;
+using FlickerVoid.Engine.Inventory.Outfits;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Events;
@@ -16,7 +17,8 @@ namespace FlickerVoid.Engine.Inventory.Inventories;
 
 /// <summary>
 /// Holds the items and money of inventories while the game plays. Units of an item without instance data merge up to the item's
-/// stack size; each stack claims the item's cells, and key items take no weight or cells. Changes are sent as events.
+/// stack size; each stack claims the item's cells, and key items take no weight or cells. Worn bags add room, and worn stacks are
+/// removed and used last and never transferred. Changes are sent as events.
 /// </summary>
 public sealed partial class InventorySystem
 {
@@ -298,7 +300,10 @@ public sealed partial class InventorySystem
         return taken;
     }
 
-    /// <summary>Removes units from plain stacks before customized ones; removes nothing and returns false when there aren't enough.</summary>
+    /// <summary>
+    /// Removes units from plain stacks before customized ones, and worn ones last; removes nothing and returns false when there aren't
+    /// enough, or when taking off a worn bag would leave more carried than fits.
+    /// </summary>
     public bool RemoveItem(Entity owner, ItemDefinition item, int quantity = 1)
     {
         if (quantity <= 0 || GetQuantity(owner, item) < quantity)
@@ -307,8 +312,8 @@ public sealed partial class InventorySystem
         }
 
         IEnumerable<ItemStack> stacks = GetStacks(owner);
-        List<ItemStack> candidates = stacks.Where(stack => stack.Item == item).OrderBy(static stack => stack.IsPlain ? 0 : 1).ToList();
-        int oldTotal = GetQuantity(owner, item);
+        List<ItemStack> candidates = stacks.Where(stack => stack.Item == item).OrderBy(stack => GetRemovalPriority(owner, stack)).ToList();
+        List<(Guid Id, int Quantity)> plan = [];
         int left = quantity;
         foreach (ItemStack stack in candidates)
         {
@@ -318,19 +323,30 @@ public sealed partial class InventorySystem
             }
 
             int taken = Math.Min(left, stack.Quantity);
-            SetStackQuantity(owner, stack.Id, stack.Quantity - taken);
+            if (!CanRemoveFromStack(owner, stack, taken))
+            {
+                return false;
+            }
+
+            plan.Add((stack.Id, stack.Quantity - taken));
             left -= taken;
+        }
+
+        int oldTotal = GetQuantity(owner, item);
+        foreach ((Guid id, int newQuantity) in plan)
+        {
+            SetStackQuantity(owner, id, newQuantity);
         }
 
         SendItemChanged(owner, item, oldTotal);
         return true;
     }
 
-    /// <summary>Removes units of one stack; removes nothing and returns false when it holds fewer.</summary>
+    /// <summary>Removes units of one stack; removes nothing and returns false when it holds fewer, or when it is a worn bag whose room is needed.</summary>
     public bool RemoveStack(Entity owner, Guid id, int quantity = 1)
     {
         ItemStack? stack = FindStack(owner, id);
-        if (stack is null || quantity <= 0 || stack.Quantity < quantity)
+        if (stack is null || quantity <= 0 || stack.Quantity < quantity || !CanRemoveFromStack(owner, stack, quantity))
         {
             return false;
         }
@@ -374,7 +390,14 @@ public sealed partial class InventorySystem
     {
         ItemStack? stack = FindStack(owner, id);
         UsableFragment? usable = stack?.Item.FindFragment<UsableFragment>();
-        if (usable is null)
+        if (stack is null || usable is null)
+        {
+            return false;
+        }
+
+        // A unit this use would use up must be able to leave the inventory.
+        ItemStack spent = stack.Copy();
+        if (spent.SpendUse() && !CanRemoveFromStack(owner, stack, 1))
         {
             return false;
         }
@@ -418,7 +441,7 @@ public sealed partial class InventorySystem
     }
 
     /// <summary>
-    /// Moves up to <paramref name="quantity"/> units of a stack to another inventory, keeping its instance data (a stack with instance
+    /// Moves up to <paramref name="quantity"/> units of an unworn stack to another inventory, keeping its instance data (a stack with instance
     /// data moves whole, up to what one stack holds, or not at all); the units moved.
     /// </summary>
     public int TransferStack(Entity from, Entity to, Guid id, int quantity)
@@ -432,7 +455,7 @@ public sealed partial class InventorySystem
         return MoveStack(from, to, id, quantity, true, stolenFrom);
     }
 
-    /// <summary>Moves every stack, and the money when asked, to another inventory; a valid <paramref name="stolenFrom"/> marks the items stolen. The stacks moved whole.</summary>
+    /// <summary>Moves every unworn stack, and the money when asked, to another inventory; a valid <paramref name="stolenFrom"/> marks the items stolen. The stacks moved whole.</summary>
     public int TransferAll(Entity from, Entity to, bool includeMoney = true, Tag stolenFrom = default)
     {
         if (from == to || !TryGetInventory(to, out _))
@@ -441,7 +464,7 @@ public sealed partial class InventorySystem
         }
 
         IEnumerable<ItemStack> stacks = GetStacks(from);
-        List<(Guid Id, int Quantity)> moving = stacks.Select(static stack => (stack.Id, stack.Quantity)).ToList();
+        List<(Guid Id, int Quantity)> moving = stacks.Where(stack => !IsWorn(from, stack.Id)).Select(static stack => (stack.Id, stack.Quantity)).ToList();
         int movedStacks = 0;
         foreach ((Guid id, int quantity) in moving)
         {
@@ -538,13 +561,18 @@ public sealed partial class InventorySystem
         return total;
     }
 
-    /// <summary>The settings' base limit plus the bonus the game grants.</summary>
+    /// <summary>The settings' base limit plus worn bags plus the bonus the game grants.</summary>
     public float GetWeightLimit(Entity owner)
     {
         float bonus = 0;
         if (TryGetInventory(owner, out ActiveInventory inventory))
         {
             bonus = inventory.WeightBonus;
+        }
+
+        foreach (ContainerFragment container in GetWornContainers(owner))
+        {
+            bonus += container.WeightBonus;
         }
 
         return Settings.BaseWeightLimit + bonus;
@@ -565,7 +593,7 @@ public sealed partial class InventorySystem
         return used;
     }
 
-    /// <summary>The settings' pockets plus the bonus the game grants.</summary>
+    /// <summary>The settings' pockets plus worn bags plus the bonus the game grants.</summary>
     public int GetCellCapacity(Entity owner)
     {
         int bonus = 0;
@@ -574,7 +602,35 @@ public sealed partial class InventorySystem
             bonus = inventory.CellBonus;
         }
 
+        foreach (ContainerFragment container in GetWornContainers(owner))
+        {
+            bonus += container.Cells;
+        }
+
         return Settings.BasePocketCells + bonus;
+    }
+
+    /// <summary>
+    /// Whether what is carried still fits after the limits change by <paramref name="weightLimitChange"/> and <paramref name="cellCapacityChange"/>
+    /// and the load by <paramref name="weightChange"/> and <paramref name="usedCellChange"/>; only a lowered limit is checked.
+    /// </summary>
+    public bool FitsAfterChange(Entity owner, float weightLimitChange, int cellCapacityChange, float weightChange = 0, int usedCellChange = 0)
+    {
+        if (!TryGetInventory(owner, out ActiveInventory inventory) || !inventory.ApplyCarryLimits)
+        {
+            return true;
+        }
+
+        float weight = GetTotalWeight(owner) + weightChange;
+        float weightLimit = GetWeightLimit(owner) + weightLimitChange;
+        if (weightLimitChange < 0 && Settings.EnforceWeight && weight > weightLimit + WeightTolerance)
+        {
+            return false;
+        }
+
+        int cells = GetUsedCells(owner) + usedCellChange;
+        int capacity = GetCellCapacity(owner) + cellCapacityChange;
+        return cellCapacityChange >= 0 || !Settings.EnforceSpace || cells <= capacity;
     }
 
     /// <summary>Sets the extra allowance the game grants, such as from an Athletics attribute.</summary>
@@ -721,6 +777,61 @@ public sealed partial class InventorySystem
         return inventory.Stacks;
     }
 
+    private bool IsWorn(Entity owner, Guid id)
+    {
+        return _world.TryGet(owner, out ActiveEquipment equipment) && equipment.IsWorn(id);
+    }
+
+    private List<ContainerFragment> GetWornContainers(Entity owner)
+    {
+        List<ContainerFragment> containers = [];
+        if (!_world.IsAlive(owner) || !_world.TryGet(owner, out ActiveEquipment equipment))
+        {
+            return containers;
+        }
+
+        foreach (EquippedItem worn in equipment.Items)
+        {
+            ContainerFragment? container = worn.Item.FindFragment<ContainerFragment>();
+            if (container is not null)
+            {
+                containers.Add(container);
+            }
+        }
+
+        return containers;
+    }
+
+    /// <summary>Plain stacks before customized ones, and worn ones last.</summary>
+    private int GetRemovalPriority(Entity owner, ItemStack stack)
+    {
+        int priority = 0;
+        if (IsWorn(owner, stack.Id))
+        {
+            priority += 2;
+        }
+
+        if (!stack.IsPlain)
+        {
+            priority++;
+        }
+
+        return priority;
+    }
+
+    /// <summary>Taking a whole worn bag off loses its room but also its own weight and cells, which must leave the rest fitting.</summary>
+    private bool CanRemoveFromStack(Entity owner, ItemStack stack, int quantity)
+    {
+        ContainerFragment? container = stack.Item.FindFragment<ContainerFragment>();
+        if (quantity < stack.Quantity || container is null || !IsWorn(owner, stack.Id))
+        {
+            return true;
+        }
+
+        float weight = stack.Item.Weight * stack.Quantity;
+        return FitsAfterChange(owner, -container.WeightBonus, -container.Cells, -weight, -stack.Item.CellCount);
+    }
+
     private bool CanAcceptStack(Entity owner, ItemStack stack)
     {
         ItemDefinition item = stack.Item;
@@ -769,7 +880,7 @@ public sealed partial class InventorySystem
         return quantity;
     }
 
-    /// <summary>A partly used unit first, then plain stacks before customized ones.</summary>
+    /// <summary>A partly used unit first, then plain stacks before customized ones, and worn ones last.</summary>
     private Guid FindStackToUse(Entity owner, ItemDefinition item)
     {
         ItemStack? best = null;
@@ -789,6 +900,11 @@ public sealed partial class InventorySystem
             else if (stack.IsPlain)
             {
                 priority = 1;
+            }
+
+            if (IsWorn(owner, stack.Id))
+            {
+                priority += 3;
             }
 
             if (priority < bestPriority)
@@ -849,7 +965,7 @@ public sealed partial class InventorySystem
     private int MoveStack(Entity from, Entity to, Guid id, int quantity, bool markStolen, Tag stolenFrom)
     {
         ItemStack? stack = FindStack(from, id);
-        if (from == to || stack is null || quantity <= 0 || !TryGetInventory(to, out _))
+        if (from == to || stack is null || quantity <= 0 || IsWorn(from, id) || !TryGetInventory(to, out _))
         {
             return 0;
         }
