@@ -14,6 +14,7 @@ using FlickerVoid.Editor.Assets.Moods;
 using FlickerVoid.Editor.Core.Data;
 using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Editor.Inspector;
@@ -127,7 +128,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    /// <summary>The side panel's open tab: 0 scene, 1 inspector, 2 view, 3 data.</summary>
+    /// <summary>The index of the Data tab under the scene outliner.</summary>
+    public const int DataTab = 2;
+
+    /// <summary>The open tab under the scene outliner: 0 inspector, 1 view, 2 data.</summary>
     [ObservableProperty]
     public partial int SideTab { get; set; }
 
@@ -373,7 +377,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _dataPath = path;
         DataContent = content;
         OnPropertyChanged(nameof(DataHeading));
-        SideTab = 3;
+        SideTab = DataTab;
     }
 
     /// <summary>Draws the viewport with the mood file and edits it in the View tab; a file that can't be read leaves the view as it is.</summary>
@@ -482,12 +486,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    /// <summary>The kinds of entity the viewport's Add menu (Shift+A) offers, by group.</summary>
-    public IReadOnlyList<EntityPresetGroup> PresetGroups { get; } = EntityPresetGroup.From(EntityPreset.All);
+    /// <summary>The kinds of entity the viewport's Add menu (Shift+A) offers, each in its group.</summary>
+    public IReadOnlyList<MenuChoice> AddChoices => field ??= [.. EntityPreset.All.Select(ToChoice)];
 
     /// <summary>Adds an entity of the preset at the camera's pivot to the open scene and selects it.</summary>
-    [RelayCommand]
-    private void AddEntity(EntityPreset preset)
+    public void AddEntity(EntityPreset preset)
     {
         EditorScene scene = Viewport.Scene;
         if (scene.ScenePath is null)
@@ -500,5 +503,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Entity entity = scene.AddEntity(data);
         scene.Selection.Select(entity);
         Viewport.Status = $"Added {data.Name}.";
+    }
+
+    private MenuChoice ToChoice(EntityPreset preset)
+    {
+        return new MenuChoice(preset.Name, () => AddEntity(preset), preset.Group, preset.Icon);
     }
 }

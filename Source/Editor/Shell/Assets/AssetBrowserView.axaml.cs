@@ -62,6 +62,10 @@ public sealed partial class AssetBrowserView : UserControl
                 AskDelete();
                 e.Handled = true;
                 break;
+            case Key.Back:
+                Browser?.UpCommand.Execute(null);
+                e.Handled = true;
+                break;
         }
     }
 
@@ -184,6 +188,7 @@ public sealed partial class AssetBrowserView : UserControl
 
     private void HandlePointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        _list.Focus();
         PointerPoint point = e.GetCurrentPoint(this);
         bool left = point.Properties.IsLeftButtonPressed;
         StyledElement? source = e.Source as StyledElement;

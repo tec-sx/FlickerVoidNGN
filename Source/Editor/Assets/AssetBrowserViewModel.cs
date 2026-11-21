@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
@@ -18,6 +19,10 @@ namespace FlickerVoid.Editor.Assets;
 public sealed partial class AssetBrowserViewModel : ObservableObject
 {
     private const string SchemaFolder = ".schemas/";
+    private const string LookGroup = "Look";
+    private const string FlowGroup = "Flow";
+    private const string DataGroup = "Data Asset";
+    private const string TableGroup = "Table";
 
     private readonly IContentManager _content;
     private readonly List<AssetCatalog> _catalogs;
@@ -26,25 +31,30 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     public AssetBrowserViewModel(IContentManager content, DataTypes? data = null)
     {
         _content = content;
-        List<AssetChoice> dataChoices = [];
-        List<AssetChoice> tableChoices = [];
+        List<MenuChoice> choices =
+        [
+            new("Folder", CreateFolder, Icon: "NewFolder"),
+            new("Scene", CreateScene, Icon: "Scene"),
+            new("Material", CreateMaterial, LookGroup, "Materials"),
+            new("Mood", CreateMood, LookGroup, "Mood"),
+            new("Flow Graph", CreateFlow, FlowGroup, "Flow"),
+        ];
         if (data is not null)
         {
             foreach (string type in data.AssetTypes.Keys)
             {
-                RelayCommand create = new(() => CreateData(type));
-                dataChoices.Add(new AssetChoice(type, create));
+                string name = DisplayNames.FromIdentifier(type);
+                choices.Add(new MenuChoice(name, () => CreateData(type), DataGroup, "Data"));
             }
 
             foreach (string type in data.RowTypes.Keys)
             {
-                RelayCommand create = new(() => CreateTable(type));
-                tableChoices.Add(new AssetChoice(type, create));
+                string name = DisplayNames.FromIdentifier(type);
+                choices.Add(new MenuChoice(name, () => CreateTable(type), TableGroup, "Table"));
             }
         }
 
-        DataChoices = dataChoices;
-        TableChoices = tableChoices;
+        NewChoices = choices;
         _catalogs = AssetCatalog.ForContent(content);
         List<AssetFilter> filters = [new AssetFilter("All", null)];
         foreach (AssetKind kind in Enum.GetValues<AssetKind>())
@@ -67,11 +77,11 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
     public IReadOnlyList<AssetFilter> Filters { get; }
 
-    /// <summary>The data asset types New Data Asset offers, by the names files give them.</summary>
-    public IReadOnlyList<AssetChoice> DataChoices { get; }
-
-    /// <summary>The row types New Table offers.</summary>
-    public IReadOnlyList<AssetChoice> TableChoices { get; }
+    /// <summary>
+    /// What the browser can create in the selected folder, in groups: folders and scenes, then materials and moods, flows, a data
+    /// asset of each registered type and a table of each row type. Each menu showing them picks how to group them.
+    /// </summary>
+    public IReadOnlyList<MenuChoice> NewChoices { get; }
 
     /// <summary>The roots of the tree: the game's source folders in a development build, else the content folder.</summary>
     [ObservableProperty]

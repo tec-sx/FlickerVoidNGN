@@ -100,7 +100,7 @@ public sealed class MainWindowViewModelTests : IDisposable
     {
         _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetKind.Data);
 
-        _builder.ViewModel.SideTab.Should().Be(3);
+        _builder.ViewModel.SideTab.Should().Be(MainWindowViewModel.DataTab);
         NumberFieldViewModel hours = (NumberFieldViewModel)((Core.Data.DataObjectViewModel)_builder.ViewModel.DataContent!).Fields.Single();
         hours.Value.Should().Be(6);
         hours.Value = 9;

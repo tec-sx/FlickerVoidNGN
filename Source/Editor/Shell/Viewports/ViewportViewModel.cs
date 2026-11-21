@@ -288,9 +288,7 @@ public sealed partial class ViewportViewModel : ObservableObject
         World world = Scene.Game.World;
         if (IsGameView)
         {
-            Ray gameRay = Camera.GetRay(pixel, width, height);
-            Entity? mesh = Scene.Picker.Pick(world, gameRay);
-            Selection.Select(mesh);
+            SelectAt(pixel, width, height);
             return;
         }
 
@@ -303,8 +301,20 @@ public sealed partial class ViewportViewModel : ObservableObject
             }
         }
 
-        Icons.Collect(world, Selection.Selected);
-        Entity? picked = Icons.HitTest(Camera, pixel, width, height);
+        SelectAt(pixel, width, height);
+    }
+
+    /// <summary>Selects what is under the mouse: an icon first, then a mesh, or nothing; the game view has no icons.</summary>
+    public void SelectAt(Vector2 pixel, int width, int height)
+    {
+        World world = Scene.Game.World;
+        Entity? picked = null;
+        if (!IsGameView)
+        {
+            Icons.Collect(world, Selection.Selected);
+            picked = Icons.HitTest(Camera, pixel, width, height);
+        }
+
         if (picked is null)
         {
             Ray ray = Camera.GetRay(pixel, width, height);
