@@ -130,6 +130,52 @@ public sealed class FlowRunTests : IDisposable
     }
 
     [Fact]
+    public void RunsALongChainWithoutDeepCalls()
+    {
+        const int Length = 5_000;
+        System.Text.StringBuilder nodes = new("""{ "$type": "start", "id": "n0" }""");
+        System.Text.StringBuilder links = new();
+        for (int index = 1; index <= Length; index++)
+        {
+            nodes.Append($$""", { "$type": "applyEffects", "id": "n{{index}}", "effects": { "effects": [ { "$type": "fact", "fact": "Quest.Cellar.Opened", "write": "Add" } ] } }""");
+            if (index > 1)
+            {
+                links.Append(", ");
+            }
+
+            links.Append($$"""{ "from": "n{{index - 1}}", "to": "n{{index}}" }""");
+        }
+
+        FlowRun run = _builder.Build($$"""{ "nodes": [ {{nodes}} ], "links": [ {{links}} ] }""");
+        Thread thread = new(run.Start, maxStackSize: 256 * 1024);
+
+        thread.Start();
+        thread.Join();
+
+        _builder.Facts.GetFact(Opened).Should().Be(Length);
+    }
+
+    [Fact]
+    public void PassesSignalsDepthFirstInTheLinksOrder()
+    {
+        FlowRun run = _builder.Build("""
+            {
+              "nodes": [
+                { "$type": "start", "id": "start" },
+                { "$type": "applyEffects", "id": "a", "effects": { "effects": [ { "$type": "fact", "fact": "Quest.Cellar.Opened", "value": 1 } ] } },
+                { "$type": "applyEffects", "id": "b", "effects": { "effects": [ { "$type": "fact", "fact": "Quest.Cellar.Opened", "value": 2 } ] } },
+                { "$type": "applyEffects", "id": "c", "effects": { "effects": [ { "$type": "fact", "fact": "Quest.Cellar.Opened", "value": 3 } ] } }
+              ],
+              "links": [ { "from": "start", "to": "a" }, { "from": "start", "to": "c" }, { "from": "a", "to": "b" } ]
+            }
+            """);
+
+        run.Start();
+
+        _builder.Facts.GetFact(Opened).Should().Be(3, "a and the b after it run before c");
+    }
+
+    [Fact]
     public void ALinkToAMissingNodeThrows()
     {
         Action build = () => _builder.Build("""{ "nodes": [ { "$type": "start", "id": "start" } ], "links": [ { "from": "start", "to": "gone" } ] }""");
