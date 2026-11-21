@@ -1,10 +1,13 @@
+using System.Text.Json.Serialization;
+
 namespace FlickerVoid.Engine.Gameplay.Conditions;
 
 /// <summary>Effects applied in order.</summary>
 public sealed class EffectList
 {
-    public List<Effect> Effects { get; init; } = [];
+    public List<Effect> Effects { get; set; } = [];
 
+    [JsonIgnore]
     public bool IsEmpty => Effects.Count == 0;
 
     public void Apply(ConditionContext context)

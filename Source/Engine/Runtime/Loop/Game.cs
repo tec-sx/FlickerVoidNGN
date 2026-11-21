@@ -1,6 +1,8 @@
 using Arch.Core;
 using Arch.System;
 
+using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Debugging;
@@ -34,6 +36,10 @@ public sealed partial class Game : IDisposable
         Services.AddService(Spawner);
         Schemas.Add("scene", Spawner.GetSchema);
         Schemas.Add("entity", Spawner.GetTemplateSchema);
+        Data.AddResolver(GameplayJsonContext.Default);
+        Data.RegisterDerived<Condition, FactCondition>("fact");
+        Data.RegisterDerived<Condition, GroupCondition>("group");
+        Data.RegisterDerived<Effect, FactEffect>("fact");
         Schemas.Add("data", Data.GetAssetSchema);
         Schemas.Add("table", Data.GetTableSchema);
         Services.AddService(DebugConsole);

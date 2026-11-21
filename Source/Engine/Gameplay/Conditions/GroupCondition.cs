@@ -3,7 +3,7 @@ namespace FlickerVoid.Engine.Gameplay.Conditions;
 /// <summary>A nested condition set, so All and Any can be combined.</summary>
 public sealed class GroupCondition : Condition
 {
-    public ConditionSet Set { get; init; } = new();
+    public ConditionSet Set { get; set; } = new();
 
     public override string Describe() => Set.Describe();
 
