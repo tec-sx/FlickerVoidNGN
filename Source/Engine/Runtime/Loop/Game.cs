@@ -22,7 +22,7 @@ public sealed partial class Game : IDisposable
     private readonly ILogger _logger;
     private bool _initialized;
 
-    /// <summary>Creates the world and registers it, the logger factory, the scene spawner and the debug console as services.</summary>
+    /// <summary>Creates the world and registers it, the logger factory, the scene spawner, the debug console, the events and the facts as services.</summary>
     public Game(ILoggerFactory loggerFactory)
     {
         LoggerFactory = loggerFactory;
@@ -44,6 +44,7 @@ public sealed partial class Game : IDisposable
         Schemas.Add("table", Data.GetTableSchema);
         Services.AddService(DebugConsole);
         Services.AddService(Events);
+        Services.AddService(Facts);
 
         Loop.FixedUpdate += HandleFixedUpdate;
         Loop.Update += HandleUpdate;
@@ -66,6 +67,9 @@ public sealed partial class Game : IDisposable
 
     /// <summary>Starts and stops entities; systems add their components' hooks to it. It is the spawner's, so scenes start what they spawn.</summary>
     public EntityLifecycle Lifecycle => Spawner.Lifecycle;
+
+    /// <summary>The game's facts, the saved state rules read and effects change.</summary>
+    public IFactDatabase Facts { get; } = new FactDatabase(new FactSettings());
 
     /// <summary>Events systems send and handle, dispatched after each group of systems runs.</summary>
     public EventBus Events { get; } = new();
