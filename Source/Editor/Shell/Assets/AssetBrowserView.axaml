@@ -5,11 +5,17 @@
              x:Class="FlickerVoid.Editor.Assets.AssetBrowserView"
              x:DataType="assets:AssetBrowserViewModel">
   <UserControl.Resources>
+    <ControlTheme x:Key="ChoiceItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="assets:AssetChoice">
+      <Setter Property="Header" Value="{Binding Name}" />
+      <Setter Property="Command" Value="{Binding Command}" />
+    </ControlTheme>
     <MenuFlyout x:Key="NewMenu">
       <MenuItem Header="Folder" Command="{Binding CreateFolderCommand}" />
       <MenuItem Header="Scene" Command="{Binding CreateSceneCommand}" />
       <MenuItem Header="Material" Command="{Binding CreateMaterialCommand}" />
       <MenuItem Header="Mood" Command="{Binding CreateMoodCommand}" />
+      <MenuItem Header="Data Asset" ItemsSource="{Binding DataChoices}" IsEnabled="{Binding !!DataChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
+      <MenuItem Header="Table" ItemsSource="{Binding TableChoices}" IsEnabled="{Binding !!TableChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
     </MenuFlyout>
   </UserControl.Resources>
   <Grid ColumnDefinitions="160,2,*">
@@ -28,6 +34,8 @@
           <MenuItem Header="New Scene" Command="{Binding CreateSceneCommand}" />
           <MenuItem Header="New Material" Command="{Binding CreateMaterialCommand}" />
           <MenuItem Header="New Mood" Command="{Binding CreateMoodCommand}" />
+          <MenuItem Header="New Data Asset" ItemsSource="{Binding DataChoices}" IsEnabled="{Binding !!DataChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
+          <MenuItem Header="New Table" ItemsSource="{Binding TableChoices}" IsEnabled="{Binding !!TableChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
           <Separator />
           <MenuItem Header="Rename Folder" Click="HandleRenameFolderClick" InputGesture="F2" />
           <MenuItem Header="Delete Folder" Click="HandleDeleteFolderClick" />
@@ -95,6 +103,8 @@
             <MenuItem Header="New Scene" Command="{Binding CreateSceneCommand}" />
             <MenuItem Header="New Material" Command="{Binding CreateMaterialCommand}" />
             <MenuItem Header="New Mood" Command="{Binding CreateMoodCommand}" />
+            <MenuItem Header="New Data Asset" ItemsSource="{Binding DataChoices}" IsEnabled="{Binding !!DataChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
+            <MenuItem Header="New Table" ItemsSource="{Binding TableChoices}" IsEnabled="{Binding !!TableChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
           </ContextMenu>
         </ListBox.ContextMenu>
       </ListBox>

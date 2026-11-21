@@ -15,6 +15,8 @@ public sealed class AssetCatalog(string root, string prefix = "")
         (".fvmat", AssetKind.Material),
         (".fvshader", AssetKind.Shader),
         (".fvmood", AssetKind.Mood),
+        (".fvdata", AssetKind.Data),
+        (".fvtable", AssetKind.Table),
         (".glb", AssetKind.Model),
         (".gltf", AssetKind.Model),
         (".fvmodel", AssetKind.Model),

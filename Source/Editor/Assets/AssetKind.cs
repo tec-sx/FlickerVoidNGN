@@ -10,5 +10,7 @@ public enum AssetKind
     Texture,
     Mood,
     Shader,
+    Data,
+    Table,
     Folder,
 }
