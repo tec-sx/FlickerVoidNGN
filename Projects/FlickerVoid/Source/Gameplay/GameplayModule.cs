@@ -1,5 +1,9 @@
 using Arch.Core;
 
+using FlickerVoid.Engine.Abilities;
+using FlickerVoid.Engine.Abilities.Activation;
+using FlickerVoid.Engine.Attributes;
+using FlickerVoid.Engine.Attributes.Checks;
 using FlickerVoid.Engine.Characters;
 using FlickerVoid.Engine.Dialogue;
 using FlickerVoid.Engine.Dialogue.Conversations;
@@ -23,8 +27,8 @@ using FlickerVoid.Gameplay.World.Objects.Doors;
 namespace FlickerVoid.Gameplay;
 
 /// <summary>
-/// FlickerVoid's gameplay: physics, point and click characters, interaction, possessions, quests and knowledge for the protagonist,
-/// conversations, and doors that keys open; the click control only where there is a window to click in.
+/// FlickerVoid's gameplay: physics, point and click characters, interaction, attributes and abilities, possessions, quests and knowledge for the protagonist,
+/// conversations, and doors that keys open and lockpicks pick; the click control only where there is a window to click in.
 /// </summary>
 public sealed class GameplayModule : IGameModule
 {
@@ -33,6 +37,8 @@ public sealed class GameplayModule : IGameModule
         IPhysicsSystem physics = game.AddPhysics();
         game.AddCharacters();
         game.AddInteraction();
+        game.AddAttributes();
+        AbilitySystem abilities = game.AddAbilities();
         InventorySettings possessions = new() { KeyItemCategories = [new Tag("Item.Key")] };
         InventorySystem inventories = game.AddInventory(possessions);
         game.AddStory();
@@ -41,8 +47,10 @@ public sealed class GameplayModule : IGameModule
         AddPlayer(game);
         game.Spawner.Register("doorSwing", FlickerVoidJsonContext.Default.DoorSwing);
 
-        // Keys hear a blocked door before the door rattles.
+        // Keys hear a blocked door before lockpicks, and both before the door rattles.
         _ = new KeySystem(game.World, game.Events, inventories);
+        CheckSystem checks = game.Services.GetService<CheckSystem>()!;
+        _ = new LockpickSystem(game.World, game.Events, abilities, checks, game.Facts, game.Services);
         DoorSwingSystem doors = new(game);
         game.FixedSystems.Add(doors);
 

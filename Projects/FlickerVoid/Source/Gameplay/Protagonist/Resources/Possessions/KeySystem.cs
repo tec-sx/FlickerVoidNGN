@@ -4,6 +4,7 @@ using FlickerVoid.Engine.Interaction.Locks;
 using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Inventory.Inventories;
 using FlickerVoid.Engine.Runtime.Events;
+using FlickerVoid.Gameplay.World.Objects.Doors;
 
 namespace FlickerVoid.Gameplay.Protagonist.Resources.Possessions;
 
@@ -47,18 +48,11 @@ public sealed class KeySystem
             return;
         }
 
-        targetLock.Locked = false;
-        _events.Send(new LockChangedEvent(target, false, blocked.Instigator));
         if (targetLock.ConsumeKey)
         {
             _inventories.RemoveStack(blocked.Instigator, key.Id, 1);
         }
 
-        if (_world.Has<Toggle>(target))
-        {
-            ref Toggle toggle = ref _world.Get<Toggle>(target);
-            toggle.Open = blocked.Opening;
-            _events.Send(new ToggledEvent(target, toggle.Open, blocked.Instigator));
-        }
+        DoorLocks.Unlock(_world, _events, target, blocked.Instigator, blocked.Opening);
     }
 }

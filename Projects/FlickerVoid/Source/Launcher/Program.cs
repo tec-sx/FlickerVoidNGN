@@ -1,3 +1,5 @@
+using FlickerVoid.Engine.Abilities.Activation;
+using FlickerVoid.Engine.Attributes.Values;
 using FlickerVoid.Engine.Debug;
 using FlickerVoid.Engine.Dialogue.Conversations;
 using FlickerVoid.Engine.Graphics.Textures;
@@ -13,7 +15,7 @@ using Microsoft.Extensions.Logging;
 
 // Runs the game in a window on its startup scene; Escape closes it. "--scene <file>" runs another scene (the editor's Play does),
 // "--mood <file>" lights it with a lighting mood, "--frames <count>" closes it after that many frames, "--saves <folder>" keeps save slots there,
-// "--validation" checks Vulkan calls and "--debug" starts with the debug interface shown (F1 toggles it; its Game menu has the Story panel).
+// "--validation" checks Vulkan calls and "--debug" starts with the debug interface shown (F1 toggles it; its Game menu has the Story and Rules panels).
 HostOptions options;
 try
 {
@@ -45,6 +47,10 @@ DebugUi CreateDebugUi(PixelFormat format, SceneRenderer renderer)
     KnowledgeSystem knowledge = host.Game.Services.GetService<KnowledgeSystem>()!;
     StoryWindow story = new(dialogue, quests, knowledge, host.Data, host.Game.World) { IsOpen = true };
     ui.Windows.Add(story);
+    AttributeSystem attributes = host.Game.Services.GetService<AttributeSystem>()!;
+    AbilitySystem abilities = host.Game.Services.GetService<AbilitySystem>()!;
+    RulesWindow rules = new(attributes, abilities, quests, host.Game.Events) { IsOpen = true };
+    ui.Windows.Add(rules);
     ui.LoadLayout();
     ui.Visible = options.Debug;
     return ui;
