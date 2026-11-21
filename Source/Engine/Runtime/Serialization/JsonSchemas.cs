@@ -43,6 +43,11 @@ public static class JsonSchemas
     private static JsonNode Transform(JsonSchemaExporterContext context, JsonNode schema)
     {
         Type type = context.TypeInfo.Type;
+        if (type == typeof(Vector2))
+        {
+            return CreateNumberArray(2);
+        }
+
         if (type == typeof(Vector3))
         {
             return CreateNumberArray(3);
