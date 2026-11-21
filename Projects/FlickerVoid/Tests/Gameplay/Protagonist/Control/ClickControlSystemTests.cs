@@ -2,11 +2,13 @@ using System.Numerics;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Dialogue.Conversations;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Interaction.Locks;
 using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Inventory.Inventories;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Story.Quests;
 using FlickerVoid.Gameplay.World.Objects.Doors;
 
 namespace FlickerVoid.Gameplay.Tests.Protagonist.Control;
@@ -43,6 +45,38 @@ public sealed class ClickControlSystemTests : IDisposable
           "staticBody": { "collider": { "type": "box", "size": [0.3, 0.1, 0.3], "offset": [0, 0.05, 0] } },
           "interactable": { "definition": "Pickup.fvdata" },
           "pickup": { "item": "CellarKey.fvdata" } } }
+        """;
+
+    private const string Talk = """
+        { "type": "interactable", "offers": [ { "input": "Input.Use", "action": "Interaction.Action.Talk", "display": { "name": "Talk" },
+          "effects": { "effects": [ { "$type": "startConversation" } ] } } ] }
+        """;
+
+    private const string Innkeeper = """
+        { "name": "Innkeeper", "components": { "transform": { "position": [-2, 0, 0] },
+          "staticBody": { "collider": { "type": "box", "size": [0.6, 1.7, 0.4], "offset": [0, 0.85, 0] } },
+          "interactable": { "definition": "Talk.fvdata" },
+          "dialogueParticipant": { "speaker": "Character.Innkeeper", "dialogue": "Innkeeper.fvflow" } } }
+        """;
+
+    private const string Quest = """
+        { "type": "quest", "id": "Quest.Cellar", "objectives": [
+          { "fact": "Quest.Cellar.FoundKey", "completeWhen": { "conditions": [ { "$type": "hasItem", "item": "CellarKey.fvdata" } ] } },
+          { "fact": "Quest.Cellar.ReturnedKey" } ],
+          "onCompleted": { "effects": [ { "$type": "giveMoney", "amount": 5 } ] } }
+        """;
+
+    private const string InnkeeperDialogue = """
+        { "nodes": [
+            { "$type": "start", "id": "start" },
+            { "$type": "choice", "id": "ask", "options": [
+              { "text": "Anything I can do?", "conditions": { "conditions": [ { "$type": "questState", "quest": "Quest.Cellar", "state": "NotStarted" } ] },
+                "onChosen": { "effects": [ { "$type": "setQuestState", "quest": "Quest.Cellar", "state": "Active" } ] } },
+              { "text": "I found your key.", "conditions": { "conditions": [ { "$type": "hasItem", "item": "CellarKey.fvdata" } ] } } ] },
+            { "$type": "completeObjective", "id": "returned", "objective": "Quest.Cellar.ReturnedKey" },
+            { "$type": "finish", "id": "end" } ],
+          "links": [ { "from": "start", "to": "ask" }, { "from": "ask", "output": "First", "to": "end" },
+            { "from": "ask", "output": "Second", "to": "returned" }, { "from": "returned", "to": "end" } ] }
         """;
 
     private readonly ClickControlSystemTestsBuilder _builder = new();
@@ -109,5 +143,41 @@ public sealed class ClickControlSystemTests : IDisposable
         _builder.Game.World.Get<Lockable>(door).Locked.Should().BeTrue();
         _builder.Game.World.Get<Toggle>(door).Open.Should().BeFalse();
         rattles.Should().ContainSingle().Which.Should().Be(DoorSwingSystem.RattleTime);
+    }
+
+    [Fact]
+    public void TalkingToTheInnkeeperGivesTheQuestAndBringingTheKeyCompletesIt()
+    {
+        _builder.WithFile("Talk.fvdata", Talk).WithFile("Innkeeper.fvflow", InnkeeperDialogue).WithFile("Quests/Cellar.fvdata", Quest)
+            .WithFile("Pickup.fvdata", KeyPickup).WithFile("CellarKey.fvdata", CellarKey).Build();
+        string entities = string.Join(", ", ClickControlSystemTestsBuilder.Camera, ClickControlSystemTestsBuilder.Floor, Hero, Innkeeper, Key);
+        IReadOnlyList<Entity> spawned = _builder.Spawn(entities);
+        Entity camera = spawned[0];
+        Entity hero = spawned[2];
+        DialogueSystem dialogue = _builder.Game.Services.GetService<DialogueSystem>()!;
+        QuestSystem quests = _builder.Game.Services.GetService<QuestSystem>()!;
+        InventorySystem inventories = _builder.Game.Services.GetService<InventorySystem>()!;
+
+        _builder.ClickAt(camera, new Vector3(-2, 0, 0));
+        _builder.Run(6);
+        bool talking = dialogue.IsInConversation;
+        Vector3 before = _builder.Game.World.Get<Transform>(hero).Position;
+        _builder.ClickAt(camera, new Vector3(3, 0, 3));
+        _builder.Run(1);
+        Vector3 after = _builder.Game.World.Get<Transform>(hero).Position;
+        dialogue.Choose(0);
+        QuestState given = quests.GetState(new Tag("Quest.Cellar"));
+        _builder.ClickAt(camera, new Vector3(2.5f, 0, 2));
+        _builder.Run(6);
+        _builder.ClickAt(camera, new Vector3(-2, 0, 0));
+        _builder.Run(6);
+        dialogue.Choose(1);
+
+        talking.Should().BeTrue();
+        after.Should().Be(before);
+        given.Should().Be(QuestState.Active);
+        quests.GetState(new Tag("Quest.Cellar")).Should().Be(QuestState.Completed);
+        inventories.GetMoney(hero).Should().Be(5);
+        dialogue.IsInConversation.Should().BeFalse();
     }
 }

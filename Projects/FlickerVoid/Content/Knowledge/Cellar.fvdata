@@ -1,0 +1,7 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "knowledge",
+  "id": "Knowledge.Topic.Cellar",
+  "display": { "name": "The cellar", "shortDescription": "Wine, mostly, and whatever the last owner left behind." },
+  "kind": "Topic"
+}

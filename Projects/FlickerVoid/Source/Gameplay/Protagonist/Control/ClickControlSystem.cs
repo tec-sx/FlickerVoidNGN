@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Engine.Characters.Movement;
+using FlickerVoid.Engine.Dialogue.Conversations;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Interaction.Interactables;
 using FlickerVoid.Engine.Interaction.Interactors;
@@ -22,7 +23,7 @@ using World = Arch.Core.World;
 
 /// <summary>
 /// Point and click: a press of <see cref="Use"/> walks the protagonist to where the mouse points, or, on an interactable, focuses it,
-/// walks within reach and uses it.
+/// walks within reach and uses it. While the protagonist talks, clicks belong to the conversation and walk nowhere.
 /// </summary>
 public sealed class ClickControlSystem
 {
@@ -41,22 +42,24 @@ public sealed class ClickControlSystem
     private readonly IInputState _input;
     private readonly IGameWindow _window;
     private readonly IPhysicsSystem _physics;
+    private readonly DialogueSystem _dialogue;
     private Entity _pending = Entity.Null;
 
-    public ClickControlSystem(World world, EventBus events, IInputState input, IGameWindow window, IPhysicsSystem physics)
+    public ClickControlSystem(World world, EventBus events, IInputState input, IGameWindow window, IPhysicsSystem physics, DialogueSystem dialogue)
     {
         _world = world;
         _events = events;
         _input = input;
         _window = window;
         _physics = physics;
+        _dialogue = dialogue;
         events.Handle((in InputActionEvent action) => HandleInput(action));
         events.Handle((in ArrivedEvent arrived) => HandleArrived(arrived.Character));
     }
 
     private void HandleInput(in InputActionEvent action)
     {
-        if (action.Action != Use || action.Phase != InputPhase.Pressed)
+        if (action.Action != Use || action.Phase != InputPhase.Pressed || _dialogue.IsInConversation)
         {
             return;
         }

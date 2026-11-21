@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Hosting/FlickerVoid.Engine.Hosting.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Debug/FlickerVoid.Engine.Debug.csproj" />
     <ProjectReference Include="../Gameplay/FlickerVoid.Gameplay.csproj" />
   </ItemGroup>
   <ItemGroup>
