@@ -85,7 +85,8 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
     public string GetFullPath(string path)
     {
         string local = GetLocalPath(path);
-        return Path.Combine(Root, local);
+        string relative = local.Replace('/', Path.DirectorySeparatorChar);
+        return Path.Combine(Root, relative);
     }
 
     /// <summary>A path this catalog holds, below its root: "World/Doors" for "/Code/World/Doors".</summary>

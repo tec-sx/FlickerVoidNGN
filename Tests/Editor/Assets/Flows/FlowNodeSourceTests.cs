@@ -27,7 +27,8 @@ public sealed class FlowNodeSourceTests : IDisposable
 
         string file = FlowNodeSource.Create(folder, "Open Gate");
 
-        file.Should().Be(_builder.GetPath("Gameplay/World/Doors/OpenGateNode.cs"));
+        string expected = _builder.GetPath("Gameplay/World/Doors/OpenGateNode.cs");
+        file.Should().Be(Path.GetFullPath(expected));
         string text = File.ReadAllText(file);
         text.Should().Contain("namespace Cellar.Gameplay.World.Doors;");
         text.Should().Contain("[FlowNodeType(\"openGate\")]");
