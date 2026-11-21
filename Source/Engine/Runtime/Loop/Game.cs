@@ -2,6 +2,7 @@ using Arch.Core;
 using Arch.System;
 
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Debugging;
 using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Events;
@@ -33,6 +34,8 @@ public sealed partial class Game : IDisposable
         Services.AddService(Spawner);
         Schemas.Add("scene", Spawner.GetSchema);
         Schemas.Add("entity", Spawner.GetTemplateSchema);
+        Schemas.Add("data", Data.GetAssetSchema);
+        Schemas.Add("table", Data.GetTableSchema);
         Services.AddService(DebugConsole);
         Services.AddService(Events);
 
@@ -48,6 +51,9 @@ public sealed partial class Game : IDisposable
 
     /// <summary>The schemas of the game's text content; modules add the file kinds they read.</summary>
     public ContentSchemas Schemas { get; } = new();
+
+    /// <summary>The types data asset and table files hold; modules register theirs, with the source-generated contexts that read them.</summary>
+    public DataTypes Data { get; } = new();
 
     /// <summary>Spawns scene files into the world; modules register their components on it.</summary>
     public ISceneSpawner Spawner { get; } = new SceneSpawner();
