@@ -2,6 +2,10 @@
   "$schema": "../.schemas/data.schema.json",
   "type": "inputMap",
   "actions": [
-    { "id": "Input.Use", "bindings": [ { "button": "Left" } ] }
+    { "id": "Input.Use", "bindings": [ { "button": "Left" } ] },
+    { "id": "Input.Hub", "bindings": [ { "key": "Tab" } ] },
+    { "id": "Input.Back", "bindings": [ { "key": "Escape" } ] },
+    { "id": "Input.NextPage", "bindings": [ { "key": "E" } ] },
+    { "id": "Input.PreviousPage", "bindings": [ { "key": "Q" } ] }
   ]
 }

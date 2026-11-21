@@ -1,0 +1,43 @@
+<!-- The character page: attributes, what changes them now, and abilities, side by side. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:character="using:FlickerVoid.Interface.Hub.Character"
+             xmlns:controls="using:FlickerVoid.Interface.Controls"
+             x:Class="FlickerVoid.Interface.Hub.Character.CharacterPageView"
+             x:DataType="character:CharacterPageViewModel">
+  <Grid ColumnDefinitions="*,24,*,24,*" VerticalAlignment="Top">
+    <StackPanel Grid.Column="0" Spacing="6">
+      <TextBlock Classes="label" Text="ATTRIBUTES" />
+      <controls:HudFrame>
+        <ItemsControl ItemsSource="{Binding Attributes}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="character:StatRowViewModel">
+              <Grid ColumnDefinitions="*,Auto" Margin="0,3">
+                <TextBlock Text="{Binding Name}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Value}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </controls:HudFrame>
+    </StackPanel>
+    <StackPanel Grid.Column="2" Spacing="6">
+      <TextBlock Classes="label" Text="EFFECTS" />
+      <controls:HudFrame>
+        <Panel>
+          <TextBlock Classes="muted" Text="Nothing affects you." IsVisible="{Binding !Modifiers.Count}" />
+          <ItemsControl ItemsSource="{Binding Modifiers}" />
+        </Panel>
+      </controls:HudFrame>
+    </StackPanel>
+    <StackPanel Grid.Column="4" Spacing="6">
+      <TextBlock Classes="label" Text="ABILITIES" />
+      <controls:HudFrame>
+        <Panel>
+          <TextBlock Classes="muted" Text="No abilities." IsVisible="{Binding !Abilities.Count}" />
+          <ItemsControl ItemsSource="{Binding Abilities}" />
+        </Panel>
+      </controls:HudFrame>
+    </StackPanel>
+  </Grid>
+</UserControl>

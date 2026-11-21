@@ -70,4 +70,113 @@
   <Style Selector="Button.choice:disabled TextBlock">
     <Setter Property="Foreground" Value="{StaticResource HudFaintBrush}" />
   </Style>
+  <!-- The hub: tabs in the heading font on light grey, the selected one white, underlined in red, on the yellow bar. -->
+  <Style Selector="TextBlock.value">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="20" />
+  </Style>
+  <Style Selector="Button.tab">
+    <Setter Property="Background" Value="#BDBDBD" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="16,4,16,6" />
+    <Setter Property="Margin" Value="0,0,2,0" />
+    <Setter Property="MinWidth" Value="170" />
+    <Setter Property="Height" Value="50" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.tab:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#D8D8D8" />
+  </Style>
+  <Style Selector="Button.tab.selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="#FFFFFF" />
+  </Style>
+  <Style Selector="TextBlock.tab">
+    <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
+    <Setter Property="FontSize" Value="24" />
+    <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+    <Setter Property="TextDecorations" Value="Underline" />
+  </Style>
+  <Style Selector="Button.close">
+    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Width" Value="50" />
+    <Setter Property="Height" Value="50" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.close:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#FFC21A" />
+  </Style>
+
+  <!-- Cells and outfit slots: dark squares outlined in the tint, filled faintly when selected and outlined in the accent when the
+       selected stack can be worn there. -->
+  <Style Selector="Button.cell, Button.slot">
+    <Setter Property="Background" Value="#0B0B0D" />
+    <Setter Property="BorderBrush" Value="{StaticResource HudFaintBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="2" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="Margin" Value="3" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.cell">
+    <Setter Property="Height" Value="78" />
+  </Style>
+  <Style Selector="Button.slot">
+    <Setter Property="Height" Value="112" />
+    <Setter Property="Margin" Value="0" />
+  </Style>
+  <Style Selector="Button.cell:pointerover /template/ ContentPresenter, Button.slot:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#1C1C20" />
+    <Setter Property="BorderBrush" Value="{StaticResource HudMutedBrush}" />
+  </Style>
+  <Style Selector="Button.cell:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="#0B0B0D" />
+    <Setter Property="BorderBrush" Value="{StaticResource HudFaintBrush}" />
+  </Style>
+  <Style Selector="Button.cell.selected /template/ ContentPresenter, Button.slot.selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="#2A2A30" />
+    <Setter Property="BorderBrush" Value="{StaticResource HudTintBrush}" />
+  </Style>
+  <Style Selector="Button.slot.take /template/ ContentPresenter">
+    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="Button.cell.worn TextBlock.cell, Button.slot.blocked TextBlock.cell">
+    <Setter Property="Foreground" Value="{StaticResource HudMutedBrush}" />
+  </Style>
+  <Style Selector="TextBlock.cell">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.count">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+  </Style>
+  <Style Selector="TextBlock.slot">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.action">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{StaticResource HudMutedBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="14,4" />
+  </Style>
+  <Style Selector="Button.action:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#22FFFFFF" />
+    <Setter Property="BorderBrush" Value="{StaticResource HudTintBrush}" />
+  </Style>
+  <Style Selector="TextBlock.action">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="LetterSpacing" Value="1" />
+  </Style>
 </Styles>
