@@ -30,6 +30,12 @@ public sealed partial class FlowGraphViewModel : ObservableObject
     /// <summary>How near a pin, in canvas units, a press or a dropped wire still finds it.</summary>
     public const double PinRadius = 14;
 
+    /// <summary>How near a pin, in canvas units, a press starts a wire from it rather than dragging its node.</summary>
+    public const double GrabRadius = 18;
+
+    /// <summary>How far outside a node, in canvas units, a dropped wire still lands on it.</summary>
+    public const double DropRadius = 32;
+
     public FlowGraphViewModel(string title, FlowGraph graph, DataTypes types, Action edited, FindContentFiles? files = null)
     {
         Title = title;
@@ -115,6 +121,38 @@ public sealed partial class FlowGraphViewModel : ObservableObject
                 double dy = pin.Point.Y - y;
                 double distance = (dx * dx) + (dy * dy);
                 if (distance <= best)
+                {
+                    best = distance;
+                    nearest = pin;
+                }
+            }
+        }
+
+        return nearest;
+    }
+
+    /// <summary>
+    /// Where a wire dragged from <paramref name="from"/> lands when dropped at the point: anywhere over a node, or within
+    /// <see cref="DropRadius"/> of it, picks that node's nearest pin that can take the wire; null on empty space.
+    /// </summary>
+    public FlowPinViewModel? FindDropTarget(double x, double y, FlowPinViewModel from)
+    {
+        FlowPinViewModel? nearest = null;
+        double best = double.MaxValue;
+        foreach (FlowNodeViewModel node in Nodes)
+        {
+            if (node == from.Node || !IsNear(node, x, y))
+            {
+                continue;
+            }
+
+            IReadOnlyList<FlowPinViewModel> pins = from.IsOutput ? node.Inputs : node.Outputs;
+            foreach (FlowPinViewModel pin in pins)
+            {
+                double dx = pin.Point.X - x;
+                double dy = pin.Point.Y - y;
+                double distance = (dx * dx) + (dy * dy);
+                if (distance < best)
                 {
                     best = distance;
                     nearest = pin;
@@ -244,6 +282,13 @@ public sealed partial class FlowGraphViewModel : ObservableObject
         node.IsSelected = true;
         JsonTypeInfo typeInfo = _types.Options.GetTypeInfo(node.Node.GetType());
         SelectedForm = new DataObjectViewModel(node.Title, node.Node, typeInfo, () => EditSelected(node), _files, CanvasProperties);
+    }
+
+    private static bool IsNear(FlowNodeViewModel node, double x, double y)
+    {
+        bool inX = x >= node.X - DropRadius && x <= node.X + FlowNodeViewModel.Width + DropRadius;
+        bool inY = y >= node.Y - DropRadius && y <= node.Y + node.Height + DropRadius;
+        return inX && inY;
     }
 
     private void AddWired(string type, double x, double y, FlowPinViewModel? from)

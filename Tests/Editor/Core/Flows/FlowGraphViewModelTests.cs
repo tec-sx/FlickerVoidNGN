@@ -98,6 +98,47 @@ public sealed class FlowGraphViewModelTests : IDisposable
     }
 
     [Fact]
+    public void SnapsADroppedWireToTheNearestFittingPinOfTheNodeUnderIt()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+        FlowPinViewModel startOutput = canvas.Nodes[0].Outputs[0];
+        FlowNodeViewModel branch = canvas.Nodes[1];
+
+        FlowPinViewModel? target = canvas.FindDropTarget(branch.X + 150, branch.Y + 60, startOutput);
+
+        target.Should().Be(branch.Inputs[0]);
+    }
+
+    [Fact]
+    public void SnapsADroppedWireToAFittingPinNearTheNode()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+        FlowPinViewModel branchTrue = canvas.Nodes[1].Outputs[0];
+        FlowPinViewModel finishInput = canvas.Nodes[2].Inputs[0];
+
+        FlowPinViewModel? near = canvas.FindDropTarget(finishInput.Point.X - 25, finishInput.Point.Y + 10, branchTrue);
+        FlowPinViewModel? far = canvas.FindDropTarget(finishInput.Point.X - 80, finishInput.Point.Y, branchTrue);
+
+        near.Should().Be(finishInput);
+        far.Should().BeNull();
+    }
+
+    [Fact]
+    public void NeverSnapsAWireToItsOwnNodeOrAPinOfTheSameSide()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+        FlowPinViewModel branchTrue = canvas.Nodes[1].Outputs[0];
+        FlowNodeViewModel branch = canvas.Nodes[1];
+        FlowPinViewModel startOutput = canvas.Nodes[0].Outputs[0];
+
+        FlowPinViewModel? own = canvas.FindDropTarget(branch.X + 90, branch.Y + 60, branchTrue);
+        FlowPinViewModel? sameSide = canvas.FindDropTarget(startOutput.Point.X, startOutput.Point.Y, branchTrue);
+
+        own.Should().BeNull();
+        sameSide.Should().BeNull();
+    }
+
+    [Fact]
     public void FindsThePinNearAPoint()
     {
         FlowGraphViewModel canvas = _builder.Build(Graph);

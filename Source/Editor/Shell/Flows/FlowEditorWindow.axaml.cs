@@ -54,7 +54,7 @@ public partial class FlowEditorWindow : Window
 
         Point point = e.GetPosition(Canvas);
         PointerPointProperties pressed = e.GetCurrentPoint(Canvas).Properties;
-        FlowPinViewModel? pin = graph.FindPin(point.X, point.Y);
+        FlowPinViewModel? pin = graph.FindPin(point.X, point.Y, FlowGraphViewModel.GrabRadius);
         if (pin is not null)
         {
             if (pressed.IsRightButtonPressed)
@@ -108,10 +108,16 @@ public partial class FlowEditorWindow : Window
             double y = Math.Max(0, _nodeStart.Y + point.Y - _dragStart.Y);
             graph.MoveNode(node, x, y);
         }
-        else if (_wiring is { } pin)
+        else if (_wiring is { } pin && Graph is { } wired)
         {
             Point start = new(pin.Point.X, pin.Point.Y);
-            Wires.SetPending(start, point);
+            Point end = point;
+            if (wired.FindDropTarget(point.X, point.Y, pin) is { } target)
+            {
+                end = new Point(target.Point.X, target.Point.Y);
+            }
+
+            Wires.SetPending(start, end);
         }
     }
 
@@ -120,13 +126,13 @@ public partial class FlowEditorWindow : Window
         if (_wiring is { } pin && Graph is { } graph)
         {
             Point point = e.GetPosition(Canvas);
-            FlowPinViewModel? other = graph.FindPin(point.X, point.Y);
+            FlowPinViewModel? target = graph.FindDropTarget(point.X, point.Y, pin);
             Wires.SetPending(null, point);
-            if (other is not null && other != pin)
+            if (target is not null)
             {
-                graph.Connect(pin, other);
+                graph.Connect(pin, target);
             }
-            else if (other is null && FindNode(Canvas.InputHitTest(point)) is null)
+            else if (FindNode(Canvas.InputHitTest(point)) is null)
             {
                 ShowAddMenu(graph, point, pin);
             }
