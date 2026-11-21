@@ -4,17 +4,23 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 
+using FlickerVoid.Editor.Controls;
 using FlickerVoid.Editor.Core.Flows;
+using FlickerVoid.Editor.Core.Menus;
 
 namespace FlickerVoid.Editor.Flows;
 
-/// <summary>The flow graph editor: the canvas of nodes and wires, and the selected node's values beside it.</summary>
+/// <summary>
+/// The flow graph editor: the canvas of nodes and wires, and the selected node's values beside it. Shift+A opens the Add menu at
+/// the mouse, a right-click the options for what is under it, and a wire dropped on empty space the Add menu for a node wired to it.
+/// </summary>
 public partial class FlowEditorWindow : Window
 {
     private FlowNodeViewModel? _dragged;
     private Point _dragStart;
     private FlowPoint _nodeStart;
     private FlowPinViewModel? _wiring;
+    private Point _pointer;
 
     public FlowEditorWindow()
     {
@@ -22,9 +28,22 @@ public partial class FlowEditorWindow : Window
         Canvas.AddHandler(PointerPressedEvent, HandleCanvasPressed, RoutingStrategies.Tunnel);
         Canvas.PointerMoved += HandleCanvasMoved;
         Canvas.PointerReleased += HandleCanvasReleased;
+        AddHandler(KeyDownEvent, HandleKeyDown, RoutingStrategies.Tunnel);
     }
 
     private FlowGraphViewModel? Graph => DataContext as FlowGraphViewModel;
+
+    private void HandleKeyDown(object? sender, KeyEventArgs e)
+    {
+        bool addKey = e.Key == Key.A && e.KeyModifiers == KeyModifiers.Shift;
+        if (!addKey || e.Source is TextBox || Graph is not { } graph)
+        {
+            return;
+        }
+
+        ShowAddMenu(graph, _pointer, null);
+        e.Handled = true;
+    }
 
     private void HandleCanvasPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -35,12 +54,12 @@ public partial class FlowEditorWindow : Window
 
         Point point = e.GetPosition(Canvas);
         PointerPointProperties pressed = e.GetCurrentPoint(Canvas).Properties;
-        object? target = FindTarget(e.Source);
-        if (target is FlowPinViewModel pin)
+        FlowPinViewModel? pin = graph.FindPin(point.X, point.Y, FlowGraphViewModel.GrabRadius);
+        if (pin is not null)
         {
             if (pressed.IsRightButtonPressed)
             {
-                graph.Disconnect(pin);
+                ShowPinOptions(graph, pin);
             }
             else
             {
@@ -52,7 +71,7 @@ public partial class FlowEditorWindow : Window
             return;
         }
 
-        if (target is FlowNodeViewModel node)
+        if (FindNode(e.Source) is { } node)
         {
             graph.Select(node);
             if (pressed.IsLeftButtonPressed)
@@ -62,6 +81,10 @@ public partial class FlowEditorWindow : Window
                 _nodeStart = new FlowPoint(node.X, node.Y);
                 e.Pointer.Capture(Canvas);
             }
+            else if (pressed.IsRightButtonPressed)
+            {
+                ShowNodeOptions(graph, node, point);
+            }
 
             e.Handled = true;
             return;
@@ -70,7 +93,7 @@ public partial class FlowEditorWindow : Window
         graph.Select(null);
         if (pressed.IsRightButtonPressed)
         {
-            ShowAddMenu(graph, point);
+            ShowCanvasOptions(graph, point);
             e.Handled = true;
         }
     }
@@ -78,16 +101,23 @@ public partial class FlowEditorWindow : Window
     private void HandleCanvasMoved(object? sender, PointerEventArgs e)
     {
         Point point = e.GetPosition(Canvas);
+        _pointer = point;
         if (_dragged is { } node && Graph is { } graph)
         {
             double x = Math.Max(0, _nodeStart.X + point.X - _dragStart.X);
             double y = Math.Max(0, _nodeStart.Y + point.Y - _dragStart.Y);
             graph.MoveNode(node, x, y);
         }
-        else if (_wiring is { } pin)
+        else if (_wiring is { } pin && Graph is { } wired)
         {
             Point start = new(pin.Point.X, pin.Point.Y);
-            Wires.SetPending(start, point);
+            Point end = point;
+            if (wired.FindDropTarget(point.X, point.Y, pin) is { } target)
+            {
+                end = new Point(target.Point.X, target.Point.Y);
+            }
+
+            Wires.SetPending(start, end);
         }
     }
 
@@ -96,13 +126,16 @@ public partial class FlowEditorWindow : Window
         if (_wiring is { } pin && Graph is { } graph)
         {
             Point point = e.GetPosition(Canvas);
-            IInputElement? hit = Canvas.InputHitTest(point);
-            if (FindTarget(hit) is FlowPinViewModel other)
-            {
-                graph.Connect(pin, other);
-            }
-
+            FlowPinViewModel? target = graph.FindDropTarget(point.X, point.Y, pin);
             Wires.SetPending(null, point);
+            if (target is not null)
+            {
+                graph.Connect(pin, target);
+            }
+            else if (FindNode(Canvas.InputHitTest(point)) is null)
+            {
+                ShowAddMenu(graph, point, pin);
+            }
         }
 
         _wiring = null;
@@ -110,28 +143,35 @@ public partial class FlowEditorWindow : Window
         e.Pointer.Capture(null);
     }
 
-    /// <summary>Offers every node type at the clicked point.</summary>
-    private void ShowAddMenu(FlowGraphViewModel graph, Point point)
+    /// <summary>The searchable Add menu at a point; from a dragged pin it offers only nodes that can be wired to it, and wires them.</summary>
+    private void ShowAddMenu(FlowGraphViewModel graph, Point point, FlowPinViewModel? from)
     {
-        ContextMenu menu = new();
-        foreach (string choice in graph.NodeChoices)
-        {
-            MenuItem item = new() { Header = $"Add {Core.Inspector.DisplayNames.FromIdentifier(choice)}" };
-            item.Click += (_, _) => graph.AddNode(choice, point.X, point.Y);
-            menu.Items.Add(item);
-        }
-
-        menu.Open(Canvas);
+        IReadOnlyList<MenuChoice> choices = graph.GetAddChoices(point.X, point.Y, from);
+        SearchMenu.Show(Canvas, choices, MenuGrouping.Separators);
     }
 
-    /// <summary>The pin or node under a pointer: a pin's dot, or anything else on a node.</summary>
-    private object? FindTarget(object? source)
+    private void ShowCanvasOptions(FlowGraphViewModel graph, Point point)
     {
-        if (source is Avalonia.Controls.Shapes.Ellipse { DataContext: FlowPinViewModel pin } ellipse && ellipse.Classes.Contains("pin"))
-        {
-            return pin;
-        }
+        MenuChoice add = new("Add Node…", () => ShowAddMenu(graph, point, null), Icon: "Add", Gesture: EditorMenus.AddGesture);
+        EditorMenus.ShowOptions(Canvas, [add], MenuGrouping.None);
+    }
 
+    private void ShowNodeOptions(FlowGraphViewModel graph, FlowNodeViewModel node, Point point)
+    {
+        MenuChoice add = new("Add Node…", () => ShowAddMenu(graph, point, null), Icon: "Add", Gesture: EditorMenus.AddGesture);
+        MenuChoice remove = new("Delete", () => graph.RemoveNode(node), node.Title, "Delete", "Delete");
+        EditorMenus.ShowOptions(Canvas, [add, remove], MenuGrouping.Separators);
+    }
+
+    private void ShowPinOptions(FlowGraphViewModel graph, FlowPinViewModel pin)
+    {
+        MenuChoice disconnect = new("Break Links", () => graph.Disconnect(pin), Icon: "Remove");
+        EditorMenus.ShowOptions(Canvas, [disconnect], MenuGrouping.None);
+    }
+
+    /// <summary>The node under a pointer, from anything drawn on it.</summary>
+    private FlowNodeViewModel? FindNode(object? source)
+    {
         Visual? visual = source as Visual;
         while (visual is not null && visual != Canvas)
         {

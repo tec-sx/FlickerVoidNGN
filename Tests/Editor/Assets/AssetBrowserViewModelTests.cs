@@ -1,3 +1,5 @@
+using FlickerVoid.Editor.Core.Menus;
+
 namespace FlickerVoid.Editor.Assets.Tests;
 
 public sealed class AssetBrowserViewModelTests : IDisposable
@@ -176,13 +178,24 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     {
         AssetBrowserViewModel browser = _builder.BuildWithData();
 
-        browser.DataChoices.Select(static choice => choice.Name).Should().Equal("barrel");
-        browser.TableChoices.Select(static choice => choice.Name).Should().Equal("wine");
-        browser.DataChoices[0].Command.Execute(null);
-        browser.TableChoices[0].Command.Execute(null);
+        MenuChoice barrel = browser.NewChoices.Should().ContainSingle(static choice => choice.Group == "Data Asset").Which;
+        MenuChoice wine = browser.NewChoices.Should().ContainSingle(static choice => choice.Group == "Table").Which;
+        barrel.Name.Should().Be("Barrel");
+        wine.Name.Should().Be("Wine");
+        barrel.Run();
+        wine.Run();
 
         _builder.ReadFile("New Barrel.fvdata").Should().Contain("\"$schema\": \".schemas/data.schema.json\"").And.Contain("\"type\": \"barrel\"");
         _builder.ReadFile("New Wine Table.fvtable").Should().Contain("\"type\": \"wine\"").And.Contain("\"rows\": {}");
+    }
+
+    [Fact]
+    public void GroupsWhatItCreatesSoFlowsSitTogether()
+    {
+        AssetBrowserViewModel browser = _builder.Build();
+
+        browser.NewChoices.Select(static choice => $"{choice.Group}/{choice.Name}").Should()
+            .Equal("/Folder", "/Scene", "Look/Material", "Look/Mood", "Flow/Flow Graph");
     }
 
     [Fact]

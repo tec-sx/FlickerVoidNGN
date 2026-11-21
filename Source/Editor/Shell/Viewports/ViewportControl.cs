@@ -12,7 +12,9 @@ using Avalonia.Rendering.Composition;
 using Avalonia.VisualTree;
 
 using FlickerVoid.Editor.Assets;
+using FlickerVoid.Editor.Controls;
 using FlickerVoid.Editor.Core.Cameras;
+using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Textures;
@@ -34,6 +36,9 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
     /// <summary>Avalonia reports a wheel notch as a delta of one.</summary>
     private const float NotchesPerDelta = 1;
 
+    /// <summary>How far the mouse may move, in pixels, for a right-click to open the options menu rather than look round.</summary>
+    private const double ClickSlop = 4;
+
     private readonly Stopwatch _clock = new();
     private readonly HashSet<ViewportKey> _keys = [];
     private CompositionSurfaceVisual? _visual;
@@ -48,6 +53,7 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
     private ViewportButtons _buttons;
     private bool _alt;
     private Point? _lastPointer;
+    private Point? _rightPressedAt;
     private Vector2 _mouseDelta;
     private float _wheel;
 
@@ -110,6 +116,11 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         TrackPointer(e);
         PointerPoint point = e.GetCurrentPoint(this);
         bool leftClick = point.Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed;
+        if (point.Properties.PointerUpdateKind == PointerUpdateKind.RightButtonPressed)
+        {
+            _rightPressedAt = point.Position;
+        }
+
         if (leftClick && !_alt)
         {
             ViewportViewModel? viewModel = ViewModel;
@@ -133,6 +144,21 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         if (_buttons == ViewportButtons.None)
         {
             e.Pointer.Capture(null);
+        }
+
+        Point released = e.GetPosition(this);
+        if (e.InitialPressMouseButton == MouseButton.Right && _rightPressedAt is { } pressed && !_alt)
+        {
+            Point moved = released - pressed;
+            if (Math.Abs(moved.X) <= ClickSlop && Math.Abs(moved.Y) <= ClickSlop)
+            {
+                ShowOptions(released);
+            }
+        }
+
+        if (e.InitialPressMouseButton == MouseButton.Right)
+        {
+            _rightPressedAt = null;
         }
 
         e.Handled = true;
@@ -168,13 +194,6 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
     {
         base.OnKeyDown(e);
         _alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
-        if (e.Key == Key.A && e.KeyModifiers == KeyModifiers.Shift && _buttons == ViewportButtons.None)
-        {
-            ShowAddMenu();
-            e.Handled = true;
-            return;
-        }
-
         if (ViewportKeys.From(e.Key) is { } key)
         {
             _keys.Add(key);
@@ -206,14 +225,29 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
 
     private double GetScaling() => this.GetPresentationSource()?.RenderScaling ?? 1;
 
-    /// <summary>Opens the flyout attached to the viewport, the Add menu, under the mouse.</summary>
-    private void ShowAddMenu()
+    /// <summary>A right-click that didn't look round: selects what is under the mouse and offers what to do with it.</summary>
+    private void ShowOptions(Point position)
     {
-        if (FlyoutBase.GetAttachedFlyout(this) is PopupFlyoutBase flyout)
+        if (ViewModel is not { } viewModel)
         {
-            _keys.Clear();
-            flyout.ShowAt(this, showAtPointer: true);
+            return;
         }
+
+        PixelSize size = GetPixelSize();
+        Vector2 pixel = ToPixels(position);
+        viewModel.SelectAt(pixel, size.Width, size.Height);
+        _keys.Clear();
+        MenuChoice add = EditorMenus.AddEntry(this);
+        MenuChoice duplicate = new("Duplicate", viewModel.DuplicateSelected, "Entity", "Duplicate", "Ctrl+D");
+        MenuChoice delete = new("Delete", viewModel.DeleteSelected, "Entity", "Delete", "Delete");
+        List<MenuChoice> choices = [add];
+        if (viewModel.Selection.Selected is not null)
+        {
+            choices.Add(duplicate);
+            choices.Add(delete);
+        }
+
+        EditorMenus.ShowOptions(this, choices, MenuGrouping.Separators);
     }
 
     private void HandleDragOver(object? sender, DragEventArgs e)

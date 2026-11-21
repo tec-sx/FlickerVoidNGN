@@ -11,7 +11,8 @@
     <KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedCommand}" />
   </Window.KeyBindings>
   <Grid ColumnDefinitions="*,4,300">
-    <!-- The canvas: right-click to add nodes, drag a node to move it, drag from a pin to wire it, right-click a pin to unwire it. -->
+    <!-- The canvas: Shift+A adds a node, right-click offers what can be done there, drag a node to move it, drag from a pin to
+         wire it, or onto empty space to add a node wired to it. -->
     <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#1A1918">
       <Panel x:Name="Canvas" Width="4000" Height="3000" Background="Transparent">
         <shellflows:FlowWires x:Name="Wires" Graph="{Binding}" IsHitTestVisible="False" />
@@ -30,13 +31,25 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate DataType="flows:FlowNodeViewModel">
               <Border Width="180" Height="{Binding Height}" CornerRadius="4" Background="#2B2926"
-                      BorderThickness="1" Classes="node" Classes.selected="{Binding IsSelected}">
+                      BorderThickness="1" Classes="node" Classes.selected="{Binding IsSelected}"
+                      BoxShadow="0 6 18 2 #E0000000">
                 <Border.Styles>
                   <Style Selector="Border.node">
                     <Setter Property="BorderBrush" Value="#45413B" />
                   </Style>
                   <Style Selector="Border.node.selected">
                     <Setter Property="BorderBrush" Value="#E0AC2C" />
+                  </Style>
+                  <Style Selector="Ellipse.pin">
+                    <Setter Property="Width" Value="12" />
+                    <Setter Property="Height" Value="12" />
+                    <Setter Property="Stroke" Value="#1A1918" />
+                    <Setter Property="StrokeThickness" Value="1" />
+                  </Style>
+                  <Style Selector="Panel.pinTarget:pointerover Ellipse.pin">
+                    <Setter Property="Width" Value="14" />
+                    <Setter Property="Height" Value="14" />
+                    <Setter Property="Stroke" Value="#F2E6C8" />
                   </Style>
                 </Border.Styles>
                 <StackPanel>
@@ -49,9 +62,11 @@
                     <ItemsControl ItemsSource="{Binding Inputs}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="flows:FlowPinViewModel">
-                          <StackPanel Orientation="Horizontal" Height="22" Spacing="4" Margin="-6,0,0,0" Background="Transparent">
-                            <Ellipse Classes="pin" Width="11" Height="11" Fill="#C8C2B0" Cursor="Hand"
-                                     ToolTip.Tip="Drag to wire, right-click to unwire" />
+                          <StackPanel Orientation="Horizontal" Height="22" Spacing="0" Margin="-11,0,0,0" Background="Transparent">
+                            <Panel Classes="pinTarget" Width="22" Height="22" Background="Transparent" Cursor="Hand"
+                                   ToolTip.Tip="Drag to wire, or onto empty space to add a node; right-click for options">
+                              <Ellipse Classes="pin" Fill="#C8C2B0" />
+                            </Panel>
                             <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center" />
                           </StackPanel>
                         </DataTemplate>
@@ -60,11 +75,13 @@
                     <ItemsControl Grid.Column="1" ItemsSource="{Binding Outputs}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="flows:FlowPinViewModel">
-                          <StackPanel Orientation="Horizontal" Height="22" Spacing="4" Margin="0,0,-6,0"
+                          <StackPanel Orientation="Horizontal" Height="22" Spacing="0" Margin="0,0,-11,0"
                                       HorizontalAlignment="Right" Background="Transparent">
                             <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center" />
-                            <Ellipse Classes="pin" Width="11" Height="11" Fill="#E0AC2C" Cursor="Hand"
-                                     ToolTip.Tip="Drag to wire, right-click to unwire" />
+                            <Panel Classes="pinTarget" Width="22" Height="22" Background="Transparent" Cursor="Hand"
+                                   ToolTip.Tip="Drag to wire, or onto empty space to add a node; right-click for options">
+                              <Ellipse Classes="pin" Fill="#E0AC2C" />
+                            </Panel>
                           </StackPanel>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>

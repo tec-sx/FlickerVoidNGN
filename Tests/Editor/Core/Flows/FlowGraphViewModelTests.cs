@@ -1,4 +1,5 @@
 using FlickerVoid.Editor.Core.Flows;
+using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Flow.Nodes;
 
@@ -32,6 +33,122 @@ public sealed class FlowGraphViewModelTests : IDisposable
         canvas.Links.Should().HaveCount(2);
         canvas.Links[1].Output.Name.Should().Be("True");
         canvas.NodeChoices.Should().Contain(["start", "finish", "branch", "applyEffects", "waitForConditions"]);
+    }
+
+    [Fact]
+    public void OffersEveryNodeTypeGroupedByItsModule()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+
+        IReadOnlyList<MenuChoice> choices = canvas.GetAddChoices(10, 20);
+
+        choices.Select(choice => choice.Name).Should().Contain(["Start", "Branch", "Apply Effects"]);
+        choices.Should().OnlyContain(choice => choice.Group == "Flow");
+    }
+
+    [Fact]
+    public void AddsTheChosenNodeWhereTheMenuOpened()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+
+        canvas.GetAddChoices(10, 20).First(choice => choice.Name == "Branch").Run();
+
+        FlowNodeViewModel added = canvas.Nodes[^1];
+        added.Node.Should().BeOfType<BranchNode>();
+        added.X.Should().Be(10);
+        added.Y.Should().Be(20);
+    }
+
+    [Fact]
+    public void WiresANodeAddedFromAnOutputToItsInput()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+        FlowPinViewModel falseOutput = canvas.Nodes[1].Outputs[1];
+
+        canvas.GetAddChoices(600, 100, falseOutput).First(choice => choice.Name == "Finish").Run();
+
+        FlowLinkViewModel link = canvas.Links[^1];
+        link.Output.Should().Be(falseOutput);
+        link.Input.Node.Should().Be(canvas.Nodes[^1]);
+    }
+
+    [Fact]
+    public void WiresANodeAddedFromAnInputToItsFirstOutput()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+        FlowPinViewModel finishInput = canvas.Nodes[2].Inputs[0];
+
+        canvas.GetAddChoices(300, 200, finishInput).First(choice => choice.Name == "Branch").Run();
+
+        FlowLinkViewModel link = canvas.Links[^1];
+        link.Input.Should().Be(finishInput);
+        link.Output.Node.Should().Be(canvas.Nodes[^1]);
+        link.Output.Name.Should().Be("True");
+    }
+
+    [Fact]
+    public void OffersOnlyNodesThatCanBeWiredToTheDraggedPin()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+        FlowPinViewModel startOutput = canvas.Nodes[0].Outputs[0];
+
+        IReadOnlyList<MenuChoice> choices = canvas.GetAddChoices(0, 0, startOutput);
+
+        choices.Select(choice => choice.Name).Should().NotContain("Start").And.Contain("Finish");
+    }
+
+    [Fact]
+    public void SnapsADroppedWireToTheNearestFittingPinOfTheNodeUnderIt()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+        FlowPinViewModel startOutput = canvas.Nodes[0].Outputs[0];
+        FlowNodeViewModel branch = canvas.Nodes[1];
+
+        FlowPinViewModel? target = canvas.FindDropTarget(branch.X + 150, branch.Y + 60, startOutput);
+
+        target.Should().Be(branch.Inputs[0]);
+    }
+
+    [Fact]
+    public void SnapsADroppedWireToAFittingPinNearTheNode()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+        FlowPinViewModel branchTrue = canvas.Nodes[1].Outputs[0];
+        FlowPinViewModel finishInput = canvas.Nodes[2].Inputs[0];
+
+        FlowPinViewModel? near = canvas.FindDropTarget(finishInput.Point.X - 25, finishInput.Point.Y + 10, branchTrue);
+        FlowPinViewModel? far = canvas.FindDropTarget(finishInput.Point.X - 80, finishInput.Point.Y, branchTrue);
+
+        near.Should().Be(finishInput);
+        far.Should().BeNull();
+    }
+
+    [Fact]
+    public void NeverSnapsAWireToItsOwnNodeOrAPinOfTheSameSide()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+        FlowPinViewModel branchTrue = canvas.Nodes[1].Outputs[0];
+        FlowNodeViewModel branch = canvas.Nodes[1];
+        FlowPinViewModel startOutput = canvas.Nodes[0].Outputs[0];
+
+        FlowPinViewModel? own = canvas.FindDropTarget(branch.X + 90, branch.Y + 60, branchTrue);
+        FlowPinViewModel? sameSide = canvas.FindDropTarget(startOutput.Point.X, startOutput.Point.Y, branchTrue);
+
+        own.Should().BeNull();
+        sameSide.Should().BeNull();
+    }
+
+    [Fact]
+    public void FindsThePinNearAPoint()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+        FlowPinViewModel input = canvas.Nodes[1].Inputs[0];
+
+        FlowPinViewModel? near = canvas.FindPin(input.Point.X - 9, input.Point.Y + 6);
+        FlowPinViewModel? far = canvas.FindPin(input.Point.X - 40, input.Point.Y);
+
+        near.Should().Be(input);
+        far.Should().BeNull();
     }
 
     [Fact]
