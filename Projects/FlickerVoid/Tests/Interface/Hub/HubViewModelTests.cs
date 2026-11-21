@@ -39,7 +39,9 @@ public sealed class HubViewModelTests : IDisposable
 
         hub.CloseCommand.Execute(null);
         hub.IsOpen.Should().BeFalse();
+        hub.ShownPage.Should().BeNull("a closed hub holds no page view");
         hub.Toggle();
+        hub.ShownPage.Should().BeSameAs(hub.Character);
 
         hub.SelectedPage.Should().BeOfType<CharacterPageViewModel>();
     }

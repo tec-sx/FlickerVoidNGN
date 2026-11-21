@@ -11,12 +11,13 @@ using FlickerVoid.Engine.Inventory.Inventories;
 using FlickerVoid.Engine.Inventory.Items;
 using FlickerVoid.Engine.Inventory.Outfits;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Engine.Ui.Stages;
 
 namespace FlickerVoid.Interface.Hub.Inventory;
 
 /// <summary>
 /// The hub's inventory page: the carried weight and money, a grid of the carried stacks filled up to the inventory's cells, the
-/// outfit slots, and the selected stack with Use and Wear or Take off. Clicking a slot wears the selected stack there when it fits,
+/// outfit slots, the selected stack with Use and Wear or Take off, and the protagonist on a stage. Clicking a slot wears the selected stack there when it fits,
 /// otherwise selects what is worn there.
 /// </summary>
 public sealed partial class InventoryPageViewModel : HubPageViewModel
@@ -31,11 +32,16 @@ public sealed partial class InventoryPageViewModel : HubPageViewModel
     {
         _inventories = game.Services.GetService<InventorySystem>()!;
         _equipment = game.Services.GetService<EquipmentSystem>()!;
+        StageSystem? stages = game.Services.GetService<StageSystem>();
+        Stage = stages?.Create(StageScene);
         game.Events.Handle((in StackChangedEvent e) => RefreshFor(e.Owner));
         game.Events.Handle((in MoneyChangedEvent e) => RefreshFor(e.Owner));
         game.Events.Handle((in CapacityChangedEvent e) => RefreshFor(e.Owner));
         game.Events.Handle((in EquipmentChangedEvent e) => RefreshFor(e.Owner));
     }
+
+    /// <summary>The protagonist on the stage in the middle of the page.</summary>
+    public const string StageScene = "Stages/Protagonist.fvscene";
 
     /// <summary>Two columns of three, the way the page lays them out.</summary>
     public static IReadOnlyList<OutfitSlot> OutfitSlots { get; } =
@@ -47,6 +53,9 @@ public sealed partial class InventoryPageViewModel : HubPageViewModel
         new(new Tag("Equipment.Slot.Shoes"), "Shoes"),
         new(new Tag("Equipment.Slot.Storage"), "Storage"),
     ];
+
+    /// <summary>The protagonist turning in the middle of the page; null in a game without stages.</summary>
+    public Stage? Stage { get; }
 
     public ObservableCollection<InventoryCellViewModel> Cells { get; } = [];
 

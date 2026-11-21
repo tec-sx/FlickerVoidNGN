@@ -82,7 +82,8 @@ float PixelNoise(float2 pixel)
 float4 PixelMain(float4 position : SV_Position) : SV_Target
 {
     Texture2D scene = Textures[Post.Scene];
-    float3 color = scene.Load(int3(position.xy, 0)).rgb;
+    float4 sceneColor = scene.Load(int3(position.xy, 0));
+    float3 color = sceneColor.rgb;
     if (Post.BloomTexture != None)
     {
         uint width;
@@ -111,5 +112,7 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
     }
 
     color += (PixelNoise(position.xy) - 0.5) * Post.Grain;
-    return float4(color, 1);
+
+    // Coverage: 0 where nothing was drawn, so a stage's image shows over the interface; light added there (bloom) stays additive.
+    return float4(color, sceneColor.a);
 }
