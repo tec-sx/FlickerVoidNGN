@@ -417,33 +417,14 @@ public sealed partial class EquipmentSystem
         }
     }
 
-    /// <summary>Applies the difference between the granted tags and those applied before, keeping the entity's other owned tags.</summary>
+    /// <summary>Swaps the tags applied before for those the worn items grant now.</summary>
     private void RefreshGrantedTags(Entity owner)
     {
         ref ActiveEquipment equipment = ref _world.Get<ActiveEquipment>(owner);
         List<Tag> granted = GetGrantedTags(equipment);
-        List<Tag> owned = [];
-        if (_world.TryGet(owner, out OwnedTags current))
-        {
-            owned.AddRange(current.Tags);
-        }
-
-        foreach (Tag applied in equipment.AppliedTags)
-        {
-            owned.Remove(applied);
-        }
-
-        owned.AddRange(granted);
+        List<Tag> previous = equipment.AppliedTags;
         equipment.AppliedTags = granted;
-        OwnedTags updated = new(owned);
-        if (_world.Has<OwnedTags>(owner))
-        {
-            _world.Set(owner, updated);
-        }
-        else
-        {
-            _world.Add(owner, updated);
-        }
+        GrantedTags.Replace(_world, owner, previous, granted);
     }
 
     /// <summary>A worn stack that left the inventory comes off, or with items allowed without being carried, stays worn without its stack.</summary>
