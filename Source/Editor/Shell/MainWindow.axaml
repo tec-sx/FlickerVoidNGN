@@ -75,11 +75,13 @@
          View and Data tabs. Every splitter resizes. -->
     <Grid ColumnDefinitions="*,2,300">
       <Grid RowDefinitions="*,2,160">
+        <Border Classes="well viewport">
         <Panel>
           <viewports:ViewportControl DataContext="{Binding Viewport}"
                                      controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
           <viewports:ViewportOverlay DataContext="{Binding Viewport}" />
         </Panel>
+        </Border>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
         <assets:AssetBrowserView Grid.Row="2" DataContext="{Binding Assets}" />
       </Grid>
@@ -87,8 +89,10 @@
       <Grid Grid.Column="2" RowDefinitions="*,2,*" Classes="sidePanel">
         <DockPanel>
           <TextBlock DockPanel.Dock="Top" Text="Scene" Classes="heading" />
-          <scenes:SceneTreeView x:Name="SceneTree" DataContext="{Binding SceneTree}"
-                                controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
+          <Border Classes="well">
+            <scenes:SceneTreeView x:Name="SceneTree" DataContext="{Binding SceneTree}"
+                                  controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
+          </Border>
         </DockPanel>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
         <TabControl Grid.Row="2" Padding="0" SelectedIndex="{Binding SideTab}">
@@ -99,6 +103,7 @@
             <DockPanel>
               <TextBlock DockPanel.Dock="Top" Text="{Binding MoodHeading}" Classes="heading"
                          TextTrimming="CharacterEllipsis" ToolTip.Tip="The lighting mood the viewport draws with. Open a mood file in the content browser to edit it." />
+              <Border Classes="well">
               <ScrollViewer>
                 <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" Margin="4,2">
                   <ItemsControl.ItemTemplate>
@@ -111,12 +116,15 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
               </ScrollViewer>
+              </Border>
             </DockPanel>
           </TabItem>
           <TabItem Header="Data">
             <DockPanel>
               <TextBlock DockPanel.Dock="Top" Text="{Binding DataHeading}" Classes="heading" TextTrimming="CharacterEllipsis" />
-              <data:DataView DataContext="{Binding DataContent}" />
+              <Border Classes="well">
+                <data:DataView DataContext="{Binding DataContent}" />
+              </Border>
             </DockPanel>
           </TabItem>
         </TabControl>
