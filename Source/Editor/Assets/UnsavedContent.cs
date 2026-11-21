@@ -6,12 +6,12 @@ using FlickerVoid.Engine.Runtime.Content;
 namespace FlickerVoid.Editor.Assets;
 
 /// <summary>
-/// The editor's content: the files on disk, with the material, mood and data asset files edited but not saved held in memory, so the
+/// The editor's content: the files on disk, with the material, mood, data asset and table files edited but not saved held in memory, so the
 /// scene shows the edits at once and the file changes only when they are saved.
 /// </summary>
 public sealed class UnsavedContent : IContentManager
 {
-    private static readonly string[] TrackedExtensions = [".fvmat", ".fvmood", ".fvdata"];
+    private static readonly string[] TrackedExtensions = [".fvmat", ".fvmood", ".fvdata", ".fvtable"];
 
     private readonly IContentManager _disk;
     private readonly Dictionary<string, byte[]> _unsaved = new(ContentManager.PathComparer);

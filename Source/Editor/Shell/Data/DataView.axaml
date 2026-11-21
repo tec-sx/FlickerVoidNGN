@@ -1,10 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:data="using:FlickerVoid.Editor.Core.Data"
+             xmlns:tables="using:FlickerVoid.Editor.Assets.Data"
              xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
              xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Data.DataView"
-             x:DataType="data:DataObjectViewModel">
+             x:DataType="x:Object">
   <UserControl.DataTemplates>
     <DataTemplate DataType="data:DataObjectViewModel">
       <StackPanel>
@@ -64,6 +65,33 @@
                       <PathIcon Data="{x:Static shell:MaterialIcons.Delete}" />
                     </Button>
                     <TextBlock Text="{Binding Form.Title}" VerticalAlignment="Center" />
+                  </DockPanel>
+                </Expander.Header>
+                <ContentControl Content="{Binding Form}" />
+              </Expander>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate DataType="tables:TableViewModel">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2">
+          <Button Content="Add Row" Command="{Binding AddRowCommand}" />
+          <Button Content="Export CSV" Click="HandleExportClick" />
+          <Button Content="Import CSV" Click="HandleImportClick" />
+        </StackPanel>
+        <ItemsControl ItemsSource="{Binding Rows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="tables:TableRowViewModel">
+              <Expander IsExpanded="False" HorizontalAlignment="Stretch" Margin="0,1">
+                <Expander.Header>
+                  <DockPanel>
+                    <Button DockPanel.Dock="Right" Classes="icon delete" ToolTip.Tip="Remove row"
+                            Command="{Binding Table.RemoveRowCommand}" CommandParameter="{Binding}">
+                      <PathIcon Data="{x:Static shell:MaterialIcons.Delete}" />
+                    </Button>
+                    <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}" />
                   </DockPanel>
                 </Expander.Header>
                 <ContentControl Content="{Binding Form}" />

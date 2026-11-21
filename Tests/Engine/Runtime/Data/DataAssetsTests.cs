@@ -143,6 +143,49 @@ public sealed class DataAssetsTests : IDisposable
     }
 
     [Fact]
+    public void FindsADefinitionByItsId()
+    {
+        DataAssets data = _builder
+            .WithFile("Items/Key.fvdata", Key)
+            .WithFile("Items/Lamp.fvdata", """{ "type": "item", "id": "Item.Lamp" }""")
+            .WithFile("Factions/Guard.fvdata", """{ "type": "faction", "id": "Item.Lamp" }""")
+            .Build();
+
+        TestItem? lamp = data.Find<TestItem>(new Tag("Item.Lamp"));
+        TestItem? missing = data.Find<TestItem>(new Tag("Item.Sword"));
+
+        lamp.Should().NotBeNull();
+        lamp!.Id.Should().Be(new Tag("Item.Lamp"));
+        missing.Should().BeNull();
+    }
+
+    [Fact]
+    public void LoadsEveryAssetOfATypeSkippingBrokenFiles()
+    {
+        DataAssets data = _builder
+            .WithFile("Items/Key.fvdata", Key)
+            .WithFile("Items/Lamp.fvdata", """{ "type": "item", "id": "Item.Lamp" }""")
+            .WithFile("Items/Broken.fvdata", """{ "type": "item", "slots": 3 }""")
+            .WithFile(".play/Old.fvdata", """{ "type": "item", "id": "Item.Old" }""")
+            .Build();
+
+        IReadOnlyList<TestItem> items = data.LoadAll<TestItem>();
+
+        items.Select(static item => item.Id.Name).Should().BeEquivalentTo(["Item.Key.Cellar", "Item.Lamp"]);
+    }
+
+    [Fact]
+    public void FindsAFileAddedAfterTheFirstLookup()
+    {
+        DataAssets data = _builder.WithFile("Items/Key.fvdata", Key).Build();
+        data.LoadAll<TestItem>();
+
+        _builder.ChangeFile("Items/Lamp.fvdata", """{ "type": "item", "id": "Item.Lamp" }""");
+
+        data.Find<TestItem>(new Tag("Item.Lamp")).Should().NotBeNull();
+    }
+
+    [Fact]
     public void DescribesEveryAssetTypeWithItsFragmentsInTheSchema()
     {
         JsonObject schema = _builder.Types.GetAssetSchema();

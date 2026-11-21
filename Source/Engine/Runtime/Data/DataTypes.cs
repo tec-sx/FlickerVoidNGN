@@ -120,6 +120,62 @@ public sealed class DataTypes
             }
         }
 
+        return Write(file);
+    }
+
+    /// <summary>The rows of a <c>.fvtable</c> file in its order, as the row type its <c>type</c> names, returned in <paramref name="type"/>.</summary>
+    public List<KeyValuePair<string, object>> ReadRows(string path, JsonObject file, out Type type)
+    {
+        type = GetType(path, file, _rows);
+        JsonTypeInfo typeInfo = Options.GetTypeInfo(type);
+        List<KeyValuePair<string, object>> rows = [];
+        if (file["rows"] is not JsonObject fileRows)
+        {
+            return rows;
+        }
+
+        foreach ((string name, JsonNode? value) in fileRows)
+        {
+            object? row;
+            try
+            {
+                row = value.Deserialize(typeInfo);
+            }
+            catch (Exception exception) when (exception is JsonException or NotSupportedException)
+            {
+                throw new InvalidDataException($"{path} can't be read at row {name}: {exception.Message}", exception);
+            }
+
+            rows.Add(new KeyValuePair<string, object>(name, row ?? throw new InvalidDataException($"{path} has an empty row {name}.")));
+        }
+
+        return rows;
+    }
+
+    /// <summary>Rows of a registered row type as a <c>.fvtable</c> file: its schema, the type's name, then the rows by name.</summary>
+    public byte[] WriteTable(Type rowType, IEnumerable<KeyValuePair<string, object>> rows, string? schema)
+    {
+        string name = _rows.First(pair => pair.Value == rowType).Key;
+        JsonTypeInfo typeInfo = Options.GetTypeInfo(rowType);
+        JsonObject file = [];
+        if (schema is not null)
+        {
+            file[JsonSchemas.SchemaProperty] = schema;
+        }
+
+        file[TypeProperty] = name;
+        JsonObject fileRows = [];
+        foreach ((string rowName, object row) in rows)
+        {
+            fileRows[rowName] = JsonSerializer.SerializeToNode(row, typeInfo);
+        }
+
+        file["rows"] = fileRows;
+        return Write(file);
+    }
+
+    private static byte[] Write(JsonObject file)
+    {
         using MemoryStream stream = new();
         using (Utf8JsonWriter writer = new(stream, new JsonWriterOptions { Indented = true }))
         {
