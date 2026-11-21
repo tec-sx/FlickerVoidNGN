@@ -1,0 +1,7 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "inputMap",
+  "actions": [
+    { "id": "Input.Use", "bindings": [ { "button": "Left" } ] }
+  ]
+}

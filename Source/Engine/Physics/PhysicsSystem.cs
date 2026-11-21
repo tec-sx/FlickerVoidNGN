@@ -22,7 +22,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
 
     private static readonly QueryDescription NewRigidBodies = new QueryDescription().WithAll<RigidBody, Transform>().WithNone<BodyHandle>();
     private static readonly QueryDescription NewStaticBodies = new QueryDescription().WithAll<StaticBody, Transform>().WithNone<StaticHandle>();
-    private static readonly QueryDescription SimulatedBodies = new QueryDescription().WithAll<Transform, BodyHandle>();
+    private static readonly QueryDescription SimulatedBodies = new QueryDescription().WithAll<Transform, BodyHandle, RigidBody>();
 
     private readonly BufferPool _pool = new();
     private readonly ThreadDispatcher _dispatcher;
@@ -149,7 +149,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         {
             RigidBody body = World.Get<RigidBody>(entity);
             Transform transform = World.Get<Transform>(entity);
-            RigidPose pose = new(transform.Position, transform.Rotation);
+            RigidPose pose = body.Collider.GetPose(transform.Position, transform.Rotation);
             TypedIndex shape = body.Collider.AddShape(Simulation.Shapes);
             CollidableDescription collidable = new(shape);
             BodyActivityDescription activity = new(SleepThreshold);
@@ -180,7 +180,8 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
             StaticBody body = World.Get<StaticBody>(entity);
             Transform transform = World.Get<Transform>(entity);
             TypedIndex shape = body.Collider.AddShape(Simulation.Shapes);
-            StaticDescription description = new(transform.Position, transform.Rotation, shape);
+            RigidPose pose = body.Collider.GetPose(transform.Position, transform.Rotation);
+            StaticDescription description = new(pose, shape);
             StaticHandle handle = Simulation.Statics.Add(description);
             World.Add(entity, in handle);
             _statics.Add(entity, handle);
@@ -198,7 +199,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
     private void CopyPosesToTransforms()
     {
         Bodies bodies = Simulation.Bodies;
-        World.Query(in SimulatedBodies, (ref Transform transform, ref BodyHandle handle) =>
+        World.Query(in SimulatedBodies, (ref Transform transform, ref BodyHandle handle, ref RigidBody rigidBody) =>
         {
             BodyReference body = bodies[handle];
             if (!body.Awake)
@@ -206,8 +207,9 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
                 return;
             }
 
-            transform.Position = body.Pose.Position;
-            transform.Rotation = body.Pose.Orientation;
+            RigidPose pose = body.Pose;
+            transform.Position = rigidBody.Collider.GetEntityPosition(pose);
+            transform.Rotation = pose.Orientation;
         });
     }
 }

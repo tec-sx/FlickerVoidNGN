@@ -1,0 +1,5 @@
+# Build output (the engine's build settings put it under artifacts/), IDE state and user files.
+artifacts/
+.vs/
+.idea/
+*.user

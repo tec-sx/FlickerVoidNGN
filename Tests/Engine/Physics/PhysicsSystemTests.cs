@@ -93,6 +93,33 @@ public sealed class PhysicsSystemTests : IDisposable
     }
 
     [Fact]
+    public void ShapesSitAtTheirCollidersOffsetInTheEntitysSpace()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Door", "components": {
+                "transform": { "position": [3, 0, 0], "rotation": [0, 0.7071068, 0, 0.7071068] },
+                "staticBody": { "collider": { "type": "box", "size": [1, 2, 0.1], "offset": [0.5, 1, 0] } } } },
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 5, 0] },
+                "rigidBody": { "mass": 10, "collider": { "type": "box", "offset": [0, 0.5, 0] } } } },
+            { "name": "Floor", "components": {
+                "transform": { "position": [0, -0.5, 0] },
+                "staticBody": { "collider": { "type": "box", "size": [20, 1, 20] } } } }
+            """);
+        Step();
+        Ray atPanel = new(new Vector3(3, 1, 5), -Vector3.UnitZ);
+
+        bool hit = _physics.RayCast(atPanel, 100, out RayHit panel);
+        Run(seconds: 3);
+
+        hit.Should().BeTrue();
+        panel.Entity.Should().Be(entities[0]);
+        panel.Point.Z.Should().BeApproximately(0, 1e-3f);
+        Transform crate = _game.World.Get<Transform>(entities[1]);
+        crate.Position.Y.Should().BeInRange(-0.05f, 0.05f);
+    }
+
+    [Fact]
     public void KinematicBodiesStayWhereTheyAre()
     {
         IReadOnlyList<Entity> entities = Spawn("""

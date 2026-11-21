@@ -1,0 +1,20 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "interactable",
+  "id": "Interactable.Door.Locked",
+  "display": { "name": "Door", "shortDescription": "A heavy wooden door." },
+  "offers": [
+    {
+      "input": "Input.Use",
+      "action": "Interaction.Action.Unlock",
+      "weight": 1,
+      "display": { "name": "Unlock" },
+      "conditions": { "conditions": [ { "$type": "locked" } ] }
+    },
+    {
+      "input": "Input.Use",
+      "action": "Interaction.Action.Toggle",
+      "display": { "name": "Open" }
+    }
+  ]
+}
