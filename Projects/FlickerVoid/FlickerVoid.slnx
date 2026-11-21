@@ -17,6 +17,7 @@
     <Project Path="../../Source/Engine/Platform/FlickerVoid.Engine.Platform.csproj" />
     <Project Path="../../Source/Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
     <Project Path="../../Source/Engine/Runtime/FlickerVoid.Engine.Runtime.csproj" />
+    <Project Path="../../Source/Engine/Story/FlickerVoid.Engine.Story.csproj" />
     <Project Path="../../Source/Tools/ShaderCompiler/FlickerVoid.Tools.ShaderCompiler.csproj" />
   </Folder>
   <Folder Name="/Source/">
