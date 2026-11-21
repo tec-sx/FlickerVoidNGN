@@ -15,13 +15,12 @@ namespace FlickerVoid.Interface;
 
 /// <summary>
 /// FlickerVoid's interface over a game: the HUD, and the hub over it while open, with a frame system that opens and closes the hub
-/// (Hub toggles it, Back closes it, Next and Previous Page switch pages), shows the prompt for what the pointer is over and turns the
+/// (Hub toggles it, Next and Previous Page switch pages), shows the prompt for what the pointer is over and turns the
 /// minimap. Draw <see cref="View"/> with the engine's <c>GameUi</c>.
 /// </summary>
 public sealed class GameInterface : ISystem<GameTime>
 {
     public static readonly Tag HubInput = new("Input.Hub");
-    public static readonly Tag BackInput = new("Input.Back");
     public static readonly Tag NextPageInput = new("Input.NextPage");
     public static readonly Tag PreviousPageInput = new("Input.PreviousPage");
 
@@ -78,10 +77,6 @@ public sealed class GameInterface : ISystem<GameTime>
         if (_actions.WasPressed(HubInput))
         {
             Hub.Toggle();
-        }
-        else if (Hub.IsOpen && _actions.WasPressed(BackInput))
-        {
-            Hub.Close();
         }
         else if (Hub.IsOpen && _actions.WasPressed(NextPageInput))
         {
