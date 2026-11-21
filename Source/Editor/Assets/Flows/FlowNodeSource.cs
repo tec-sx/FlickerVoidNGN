@@ -47,24 +47,25 @@ public static partial class FlowNodeSource
     /// </summary>
     public static string Create(string folder, string name)
     {
+        string fullFolder = Path.GetFullPath(folder);
         string typeName = GetTypeName(name);
         if (typeName == Suffix)
         {
             throw new InvalidOperationException($"'{name}' has no letters to name a class with.");
         }
 
-        string file = Path.Combine(folder, typeName + ".cs");
+        string file = Path.Combine(fullFolder, typeName + ".cs");
         if (File.Exists(file))
         {
             throw new InvalidOperationException($"{file} already exists.");
         }
 
-        string project = FindProject(folder)
-            ?? throw new InvalidOperationException($"{folder} isn't in a C# project.");
+        string project = FindProject(fullFolder)
+            ?? throw new InvalidOperationException($"{fullFolder} isn't in a C# project.");
         string projectFolder = Path.GetDirectoryName(project)!;
         string context = FindJsonContext(projectFolder)
             ?? throw new InvalidOperationException($"{project} has no JsonSerializerContext to read the node with.");
-        string space = GetNamespace(project, folder);
+        string space = GetNamespace(project, fullFolder);
         string typeId = GetTypeId(typeName);
         string text = $$"""
             using FlickerVoid.Engine.Flow.Graphs;
