@@ -19,6 +19,7 @@
   <ItemGroup>
     <FlickerVoidEngineContent Include="$(MSBuildThisFileDirectory)../../Engine/Rendering/Shaders" Assembly="FlickerVoid.Engine.Rendering" OutputFolder="Engine/Rendering" />
     <FlickerVoidEngineContent Include="$(MSBuildThisFileDirectory)../../Engine/Debug/Shaders" Assembly="FlickerVoid.Engine.Debug" OutputFolder="Engine/Debug" />
+    <FlickerVoidEngineContent Include="$(MSBuildThisFileDirectory)../../Engine/Ui/Shaders" Assembly="FlickerVoid.Engine.Ui" OutputFolder="Engine/Ui" />
   </ItemGroup>
 
   <Target Name="BuildFlickerVoidContent" AfterTargets="ResolveReferences">

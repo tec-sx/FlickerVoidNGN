@@ -96,4 +96,22 @@ public sealed class InputActionsTests : IDisposable
         actions.IsDown(Interact).Should().BeFalse();
         _builder.Events.Should().EndWith(new InputActionEvent(Interact, InputPhase.Cancelled));
     }
+
+    [Fact]
+    public void MouseButtonsOverAnInterfaceThatCapturesThePointerAreLeftToIt()
+    {
+        InputActions actions = _builder.Build(Map);
+        IPointerCapture overlay = Substitute.For<IPointerCapture>();
+        overlay.CapturesPointer.Returns(true);
+        actions.PointerCaptures.Add(overlay);
+        _builder.Input.PressButton(MouseButton.Left);
+        _builder.Frame(actions);
+        bool clickedThrough = actions.IsDown(Interact);
+        _builder.Input.PressKey(Key.E);
+
+        _builder.Frame(actions);
+
+        clickedThrough.Should().BeFalse();
+        actions.IsDown(Interact).Should().BeTrue("keys still reach the game");
+    }
 }

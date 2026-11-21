@@ -5,6 +5,7 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Hosting;
+using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Platform.Windowing;
 
 using Hexa.NET.ImGui;
@@ -18,7 +19,7 @@ namespace FlickerVoid.Engine.Debug;
 /// category, and the windows opened from it. Engine and game code add panels to <see cref="Windows"/>. F1 shows and hides it.
 /// Call <see cref="Update"/> each frame, then <see cref="Draw"/> after the scene is drawn into the target. Only one can exist at a time.
 /// </summary>
-public sealed unsafe class DebugUi : IFrameOverlay
+public sealed unsafe class DebugUi : IFrameOverlay, IPointerCapture
 {
     private const string LayoutFile = "debug-ui.json";
     private const string ImGuiFile = "debug-ui.ini";
@@ -72,6 +73,9 @@ public sealed unsafe class DebugUi : IFrameOverlay
 
     /// <summary>True while the pointer is over a debug window or menu or one is dragged, so the game should ignore the mouse.</summary>
     public bool WantsMouse { get; private set; }
+
+    /// <summary>The same as <see cref="WantsMouse"/>, so the game's input actions leave the mouse's buttons to the debug interface.</summary>
+    public bool CapturesPointer => WantsMouse;
 
     /// <summary>True while a text box has focus, so the game should ignore the keyboard.</summary>
     public bool WantsKeyboard { get; private set; }

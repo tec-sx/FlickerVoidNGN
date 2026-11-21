@@ -86,6 +86,7 @@ public sealed class DebugUiTests : IDisposable
         _builder.RenderFrame(visible: true);
 
         _builder.Ui.WantsMouse.Should().BeTrue("the pointer is over the menu bar");
+        _builder.Ui.CapturesPointer.Should().BeTrue();
     }
 
     [Fact]
