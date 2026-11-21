@@ -13,5 +13,6 @@ public enum AssetKind
     Data,
     Table,
     Flow,
+    Code,
     Folder,
 }

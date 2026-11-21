@@ -27,6 +27,9 @@ public sealed class EditorProject
 
     public string Folder => Path.GetDirectoryName(File)!;
 
+    /// <summary>The project's code: the Source folder beside the project file.</summary>
+    public string CodeFolder => Path.Combine(Folder, "Source");
+
     /// <summary>The game's C# project, as a full path.</summary>
     public string Game { get; }
 

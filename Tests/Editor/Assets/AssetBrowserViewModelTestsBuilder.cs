@@ -5,6 +5,9 @@ namespace FlickerVoid.Editor.Assets.Tests;
 /// <summary>Builds the asset browser over a temporary content folder.</summary>
 internal sealed class AssetBrowserViewModelTestsBuilder : IDisposable
 {
+    private const string CodeFolderName = "_Code";
+    private const string ContentFolderName = "_Content";
+
     private readonly string _folder;
 
     public AssetBrowserViewModelTestsBuilder()
@@ -35,7 +38,31 @@ internal sealed class AssetBrowserViewModelTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>A file in the project's code folder, which the browser shows as its Code root.</summary>
+    public AssetBrowserViewModelTestsBuilder WithCodeFile(string path, string text = "")
+    {
+        return WithFile(Path.Combine(CodeFolderName, path), text);
+    }
+
     public AssetBrowserViewModel Build() => new(new ContentManager(_folder));
+
+    /// <summary>The browser over the content folder and the code folder.</summary>
+    public AssetBrowserViewModel BuildWithCode()
+    {
+        string code = Path.Combine(_folder, CodeFolderName);
+        Directory.CreateDirectory(code);
+        return new AssetBrowserViewModel(new ContentManager(Path.Combine(_folder, ContentFolderName)), codeFolder: code);
+    }
+
+    /// <summary>A file in the content folder that <see cref="BuildWithCode"/> browses.</summary>
+    public AssetBrowserViewModelTestsBuilder WithContentFile(string path)
+    {
+        return WithFile(Path.Combine(ContentFolderName, path));
+    }
+
+    public string ReadCodeFile(string path) => ReadFile(Path.Combine(CodeFolderName, path));
+
+    public bool CodeFileExists(string path) => Exists(Path.Combine(CodeFolderName, path));
 
     /// <summary>The browser with the test barrel and wine types to create.</summary>
     public AssetBrowserViewModel BuildWithData() => new(new ContentManager(_folder), Data.BarrelJsonContext.CreateTypes());

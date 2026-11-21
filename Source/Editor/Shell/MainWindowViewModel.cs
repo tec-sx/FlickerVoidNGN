@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
@@ -49,9 +50,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     /// <summary>
     /// Shows the scene over <paramref name="content"/>, the scene's content with its unsaved edits; <paramref name="player"/>
-    /// plays it in the project's game, when a project is open.
+    /// plays it in the project's game, when a project is open, and the asset browser shows <paramref name="codeFolder"/>, the
+    /// project's source folder.
     /// </summary>
-    public MainWindowViewModel(ViewportViewModel viewport, InspectorViewModel inspector, UnsavedContent content, ScenePlayer? player = null)
+    public MainWindowViewModel(
+        ViewportViewModel viewport,
+        InspectorViewModel inspector,
+        UnsavedContent content,
+        ScenePlayer? player = null,
+        string? codeFolder = null)
     {
         _player = player;
         _content = content;
@@ -62,7 +69,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Inspector = inspector;
         SceneTree = new SceneTreeViewModel(viewport.Scene);
         ViewSettings = new ViewSettingsViewModel(viewport.Mood);
-        Assets = new AssetBrowserViewModel(viewport.Scene.Content, viewport.Scene.Game.Data);
+        Assets = new AssetBrowserViewModel(viewport.Scene.Content, viewport.Scene.Game.Data, codeFolder);
         Assets.Opened += OpenAsset;
         viewport.Scene.Opened += HandleSceneOpened;
         viewport.Scene.UnsavedChanged += HandleUnsavedChanged;
@@ -306,6 +313,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
             case AssetKind.Flow:
                 OpenFlow(asset.Path);
                 break;
+            case AssetKind.Code:
+                OpenCode(asset);
+                break;
+        }
+    }
+
+    /// <summary>Opens a code file in the program the system opens it with, the IDE.</summary>
+    private void OpenCode(AssetEntry asset)
+    {
+        string fullPath = Assets.GetFullPath(asset);
+        ProcessStartInfo start = new(fullPath) { UseShellExecute = true };
+        try
+        {
+            using Process? process = Process.Start(start);
+        }
+        catch (Win32Exception exception)
+        {
+            Viewport.Status = $"Can't open {fullPath}: {exception.Message}";
         }
     }
 

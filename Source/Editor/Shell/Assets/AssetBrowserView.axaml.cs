@@ -36,6 +36,43 @@ public sealed partial class AssetBrowserView : UserControl
 
     private AssetBrowserViewModel? Browser => DataContext as AssetBrowserViewModel;
 
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (Browser is { } browser)
+        {
+            browser.PropertyChanged += HandleBrowserChanged;
+        }
+    }
+
+    private void HandleBrowserChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(AssetBrowserViewModel.Prompt) && Browser?.Prompt is not null)
+        {
+            TextBox name = this.GetControl<TextBox>("PromptName");
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => name.Focus());
+        }
+    }
+
+    private void HandlePromptKeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Enter:
+                Browser?.ConfirmPromptCommand.Execute(null);
+                e.Handled = true;
+                break;
+            case Key.Escape:
+                Browser?.CancelPromptCommand.Execute(null);
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void HandlePromptCreateClick(object? sender, RoutedEventArgs e) => Browser?.ConfirmPromptCommand.Execute(null);
+
+    private void HandlePromptCancelClick(object? sender, RoutedEventArgs e) => Browser?.CancelPromptCommand.Execute(null);
+
     private void HandleDoubleTapped(object? sender, TappedEventArgs e) => OpenSelected();
 
     private void OpenSelected()
