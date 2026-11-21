@@ -1,0 +1,9 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "attribute",
+  "id": "Attribute.Skill.Stealth",
+  "display": { "name": "Stealth", "shortDescription": "Moving unseen and unheard." },
+  "category": "Attribute.Skill",
+  "max": 10,
+  "integer": true
+}

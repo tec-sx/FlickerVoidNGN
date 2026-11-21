@@ -1,0 +1,9 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "attribute",
+  "id": "Attribute.Skill.Charisma",
+  "display": { "name": "Charisma", "shortDescription": "Being liked and believed." },
+  "category": "Attribute.Skill",
+  "max": 10,
+  "integer": true
+}
