@@ -13,7 +13,8 @@ namespace FlickerVoid.Engine.Characters.Movement;
 
 /// <summary>
 /// Walks characters to their destinations each fixed step: along the ground in a straight line at their speed, turning to face where
-/// they walk, standing on whatever physics finds below them, and sending an <see cref="ArrivedEvent"/> when they get there.
+/// they walk, standing on whatever physics finds below them, and sending an <see cref="ArrivedEvent"/> when they get there; and
+/// characters steered along a direction (<see cref="SteerCommand"/>) the same way, with no end until the steering ends.
 /// </summary>
 public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
 {
@@ -23,6 +24,7 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
     private const float GroundSearch = 2;
 
     private static readonly QueryDescription Walking = new QueryDescription().WithAll<CharacterMover, Destination, Transform>();
+    private static readonly QueryDescription Steered = new QueryDescription().WithAll<CharacterMover, Heading, Transform>();
 
     private readonly EventBus _events;
     private readonly IPhysicsSystem? _physics;
@@ -34,7 +36,9 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
         _events = events;
         _physics = physics;
         ArrayRegistry.Add<Destination>();
+        ArrayRegistry.Add<Heading>();
         events.Handle((in MoveCommand command) => Move(command));
+        events.Handle((in SteerCommand command) => Steer(command));
         events.Handle((in StopCommand command) => Stop(command.Character));
     }
 
@@ -49,6 +53,9 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
                 _arrived.Add((entity, destination.Point));
             }
         });
+
+        World.Query(in Steered, (ref CharacterMover mover, ref Heading heading, ref Transform transform) =>
+            Step(mover, heading.Direction, ref transform, seconds));
 
         foreach ((Entity entity, Vector3 point) in _arrived)
         {
@@ -71,11 +78,28 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
 
         Vector3 direction = toPoint / distance;
         float step = MathF.Min(mover.Speed * seconds, distance);
+        Advance(mover, direction, step, ref transform, seconds);
+        return distance - step <= mover.ArriveDistance;
+    }
+
+    /// <summary>Moves one step along a steered direction, at the speed scaled by its length.</summary>
+    private void Step(in CharacterMover mover, Vector3 direction, ref Transform transform, float seconds)
+    {
+        float length = direction.Length();
+        float scale = MathF.Min(length, 1);
+        Vector3 unit = direction / length;
+        float step = mover.Speed * scale * seconds;
+        Advance(mover, unit, step, ref transform, seconds);
+    }
+
+    /// <summary>Moves the step along the unit direction on the ground, turning toward it.</summary>
+    private void Advance(in CharacterMover mover, Vector3 direction, float step, ref Transform transform, float seconds)
+    {
+        Vector3 position = transform.Position;
         Vector3 moved = position + (direction * step);
         moved.Y = FindGround(moved, position.Y);
         transform.Position = moved;
         transform.Rotation = Turn(transform.Rotation, direction, mover.TurnSpeed * seconds);
-        return distance - step <= mover.ArriveDistance;
     }
 
     /// <summary>The height of the ground under a point, or the old height where physics finds none.</summary>
@@ -119,6 +143,7 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
             return;
         }
 
+        RemoveHeading(character);
         Destination destination = new() { Point = command.Point };
         if (World.Has<Destination>(character))
         {
@@ -130,11 +155,54 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
         }
     }
 
+    /// <summary>Steers the character along the direction flattened onto the ground, replacing where it was going; a zero direction ends the steering.</summary>
+    private void Steer(in SteerCommand command)
+    {
+        Entity character = command.Character;
+        if (!World.IsAlive(character) || !World.Has<CharacterMover>(character))
+        {
+            return;
+        }
+
+        Vector3 direction = command.Direction;
+        direction.Y = 0;
+        if (direction.LengthSquared() < 1e-6f)
+        {
+            RemoveHeading(character);
+            return;
+        }
+
+        if (World.Has<Destination>(character))
+        {
+            World.Remove<Destination>(character);
+        }
+
+        Heading heading = new() { Direction = direction };
+        if (World.Has<Heading>(character))
+        {
+            World.Set(character, heading);
+        }
+        else
+        {
+            World.Add(character, heading);
+        }
+    }
+
     private void Stop(Entity character)
     {
         if (World.IsAlive(character) && World.Has<Destination>(character))
         {
             World.Remove<Destination>(character);
+        }
+
+        RemoveHeading(character);
+    }
+
+    private void RemoveHeading(Entity character)
+    {
+        if (World.IsAlive(character) && World.Has<Heading>(character))
+        {
+            World.Remove<Heading>(character);
         }
     }
 }
