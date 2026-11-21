@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.System;
 
+using FlickerVoid.Engine.Interaction.Locks;
 using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Events;
@@ -12,7 +13,7 @@ namespace FlickerVoid.Gameplay.World.Objects.Doors;
 
 using World = Arch.Core.World;
 
-/// <summary>Swings doors toward open or shut as their toggles change, each fixed step, and rattles them when a lock blocks them.</summary>
+/// <summary>Swings doors toward open or shut as their toggles change, each fixed step, and rattles them when a lock blocks them and no key opens it.</summary>
 public sealed class DoorSwingSystem : BaseSystem<World, GameTime>
 {
     /// <summary>Seconds a blocked door rattles.</summary>
@@ -103,7 +104,13 @@ public sealed class DoorSwingSystem : BaseSystem<World, GameTime>
 
     private void Rattle(Entity door)
     {
-        if (World.IsAlive(door) && World.Has<DoorHinge>(door))
+        if (!World.IsAlive(door) || (World.TryGet(door, out Lockable doorLock) && !doorLock.Locked))
+        {
+            // A key opened it before the door heard it was blocked.
+            return;
+        }
+
+        if (World.Has<DoorHinge>(door))
         {
             World.Get<DoorHinge>(door).Rattle = RattleTime;
         }

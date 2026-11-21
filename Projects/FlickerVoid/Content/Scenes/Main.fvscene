@@ -1,12 +1,13 @@
-// The first scene of FlickerVoid: the painted room at dusk, six lamps, and the fox the player walks to a locked door with clicks.
+// The first scene of FlickerVoid: the painted room at dusk, six lamps, and the fox the player walks with clicks to a key and the locked door it opens.
 {
   "$schema": "../.schemas/scene.schema.json",
   "entities": [
     {"name": "Camera", "components": {"transform": {"position": [0, 6, 9], "rotation": [-0.2588, 0, 0, 0.9659]}, "camera": {"projection": "Orthographic", "orthographicHeight": 6.5}}},
     {"name": "Mood", "components": {"transform": {}, "sceneMood": {"mood": "Moods/Dusk.fvmood"}}},
     {"name": "Room", "components": {"transform": {}, "meshRenderer": {"mesh": "Room.glb"}, "staticBody": {"collider": {"type": "box", "size": [8, 0.2, 8], "offset": [0, -0.1, 0]}}}},
-    {"name": "Fox", "components": {"transform": {"position": [3, 0, 0], "scale": [0.012, 0.012, 0.012]}, "meshRenderer": {"mesh": "Fox.glb"}, "meshAnimator": {"animation": "Walk"}, "protagonist": {}, "characterMover": {}, "interactor": {"kind": "Interactor.Player", "reach": 1.6}}},
-    {"name": "Door", "components": {"transform": {"position": [1.9, 0, -3.95]}, "meshRenderer": {"mesh": "Door.glb"}, "staticBody": {"collider": {"type": "box", "size": [0.9, 2, 0.06], "offset": [0.45, 1, 0]}}, "interactable": {"definition": "Interactables/LockedDoor.fvdata"}, "lock": {"action": "Interaction.Action.Unlock"}, "toggle": {"action": "Interaction.Action.Toggle"}, "doorSwing": {"openAngle": -90}}},
+    {"name": "Fox", "components": {"transform": {"position": [3, 0, 0], "scale": [0.012, 0.012, 0.012]}, "meshRenderer": {"mesh": "Fox.glb"}, "meshAnimator": {"animation": "Walk"}, "protagonist": {}, "characterMover": {}, "interactor": {"kind": "Interactor.Player", "reach": 1.6}, "inventory": {}}},
+    {"name": "Door", "components": {"transform": {"position": [1.9, 0, -3.95]}, "meshRenderer": {"mesh": "Door.glb"}, "staticBody": {"collider": {"type": "box", "size": [0.9, 2, 0.06], "offset": [0.45, 1, 0]}}, "interactable": {"definition": "Interactables/LockedDoor.fvdata"}, "lock": {"key": "Key.Cellar"}, "toggle": {"action": "Interaction.Action.Toggle"}, "doorSwing": {"openAngle": -90}}},
+    {"name": "Cellar Key", "components": {"transform": {"position": [-1.5, 0, 1.5], "rotation": [0, 0.3827, 0, 0.9239]}, "meshRenderer": {"mesh": "Key.glb"}, "staticBody": {"collider": {"type": "box", "size": [0.4, 0.1, 0.2], "offset": [0, 0.05, 0]}}, "interactable": {"definition": "Interactables/Pickup.fvdata"}, "pickup": {"item": "Items/CellarKey.fvdata"}}},
     {"name": "Lamp 1", "components": {"transform": {"position": [-3.3, 0.9, -3.3]}, "pointLight": {"color": [1, 0.45, 0.45], "intensity": 1.6, "range": 1.8, "castsShadows": true}}},
     {"name": "Lamp 2", "components": {"transform": {"position": [-1.98, 0.9, -3.3]}, "pointLight": {"color": [1.0, 1, 0.45], "intensity": 1.6, "range": 1.8}}},
     {"name": "Lamp 3", "components": {"transform": {"position": [-0.66, 0.9, -3.3]}, "pointLight": {"color": [0.45, 1, 0.45], "intensity": 1.6, "range": 1.8}}},
