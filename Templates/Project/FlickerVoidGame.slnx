@@ -4,6 +4,7 @@
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Interaction/FlickerVoid.Engine.Interaction.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Debug/FlickerVoid.Engine.Debug.csproj" />
+    <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Dialogue/FlickerVoid.Engine.Dialogue.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Editor/Assets/FlickerVoid.Editor.Assets.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Editor/Core/FlickerVoid.Editor.Core.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Editor/Persistence/FlickerVoid.Editor.Persistence.csproj" />
