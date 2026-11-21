@@ -123,6 +123,11 @@ public sealed class EditorScene : IDisposable
         }
 
         EntityData data = new() { Name = GetFreeName(name) };
+        if (world.TryGet(entity, out EntityFolder folder))
+        {
+            data.Folder = folder.Path;
+        }
+
         foreach (SceneComponent component in Game.Spawner.Components)
         {
             if (component.Has(world, entity))
@@ -144,10 +149,7 @@ public sealed class EditorScene : IDisposable
             return;
         }
 
-        if (Selection.Selected == entity)
-        {
-            Selection.Select(null);
-        }
+        Selection.Deselect(entity);
 
         Game.Spawner.Lifecycle.Destroy(world, entity);
         EntitiesChanged?.Invoke();
@@ -168,6 +170,39 @@ public sealed class EditorScene : IDisposable
         lifecycle.StopComponent(world, entity, typeof(T));
         world.Set(entity, component);
         lifecycle.StartComponent(world, entity, typeof(T));
+        MarkEdited();
+    }
+
+    /// <summary>Files the entity under an outline folder, such as <c>Lights/Hall</c>, or at the top for null or empty.</summary>
+    public void SetFolder(Entity entity, string? path)
+    {
+        World world = Game.World;
+        if (!world.IsAlive(entity))
+        {
+            return;
+        }
+
+        string? current = world.TryGet(entity, out EntityFolder folder) ? folder.Path : null;
+        string? wanted = string.IsNullOrEmpty(path) ? null : path;
+        if (current == wanted)
+        {
+            return;
+        }
+
+        if (wanted is null)
+        {
+            world.Remove<EntityFolder>(entity);
+        }
+        else if (current is null)
+        {
+            world.Add(entity, new EntityFolder(wanted));
+        }
+        else
+        {
+            world.Set(entity, new EntityFolder(wanted));
+        }
+
+        EntitiesChanged?.Invoke();
         MarkEdited();
     }
 

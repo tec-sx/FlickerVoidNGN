@@ -31,6 +31,43 @@ public sealed class SceneLoaderTests : IDisposable
     }
 
     [Fact]
+    public void PutsEntitiesInTheFoldersTheSceneNames()
+    {
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "folder": "Lights/Hall" }, { "name": "Box" } ] }""").Build();
+
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
+
+        _builder.World.Get<EntityFolder>(entities[0]).Path.Should().Be("Lights/Hall");
+        _builder.World.Has<EntityFolder>(entities[1]).Should().BeFalse();
+    }
+
+    [Fact]
+    public void SavesTheFoldersOfEntities()
+    {
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "folder": "Lights" }, { "name": "Box" } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
+        _builder.World.Remove<EntityFolder>(entities[0]);
+        _builder.World.Add(entities[1], new EntityFolder("Props"));
+
+        loader.Save("Room.fvscene");
+
+        string text = _builder.ReadFile("Room.fvscene");
+        text.Should().Contain("\"folder\":\"Props\"").And.NotContain("Lights");
+    }
+
+    [Fact]
+    public void MovesEntitiesBetweenFoldersWhenTheFileChanges()
+    {
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "folder": "Lights" }, { "name": "Box" } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
+
+        _builder.ChangeScene("Room.fvscene", """{ "entities": [ { "name": "Lamp" }, { "name": "Box", "folder": "Props" } ] }""");
+
+        _builder.World.Has<EntityFolder>(entities[0]).Should().BeFalse();
+        _builder.World.Get<EntityFolder>(entities[1]).Path.Should().Be("Props");
+    }
+
+    [Fact]
     public void SpawnsEntitiesFromTheirTemplatesUnderTheirOwnValues()
     {
         SceneLoader loader = _builder

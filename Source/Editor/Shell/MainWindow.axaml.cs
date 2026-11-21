@@ -6,6 +6,7 @@ using FlickerVoid.Editor.Assets.Materials;
 using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Flows;
 using FlickerVoid.Editor.Materials;
+using FlickerVoid.Editor.Scenes;
 
 namespace FlickerVoid.Editor;
 
@@ -18,6 +19,15 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         AvaloniaXamlLoader.Load(this);
+        this.GetControl<SceneTreeView>("SceneTree").DeleteRequested += HandleOutlineDelete;
+    }
+
+    private void HandleOutlineDelete()
+    {
+        if (DataContext is MainWindowViewModel main)
+        {
+            main.Viewport.DeleteSelected();
+        }
     }
 
     /// <summary>Asks whether to save or discard the unsaved scene and assets before closing, and keeps the window open on cancel.</summary>
