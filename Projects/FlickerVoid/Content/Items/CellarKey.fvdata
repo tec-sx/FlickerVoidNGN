@@ -1,0 +1,9 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "item",
+  "id": "Item.CellarKey",
+  "display": { "name": "Cellar key", "shortDescription": "A heavy brass key." },
+  "category": "Item.Key",
+  "tags": [ "Key.Cellar" ],
+  "weight": 0.05
+}
