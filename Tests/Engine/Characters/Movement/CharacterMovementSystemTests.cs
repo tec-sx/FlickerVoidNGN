@@ -49,7 +49,7 @@ public sealed class CharacterMovementSystemTests : IDisposable
         _builder.Run(0.5f);
 
         Quaternion rotation = _builder.Game.World.Get<Transform>(hero).Rotation;
-        Vector3 forward = Vector3.Transform(-Vector3.UnitZ, rotation);
+        Vector3 forward = Vector3.Transform(Vector3.UnitZ, rotation);
         forward.X.Should().BeApproximately(1, 1e-3f);
     }
 
