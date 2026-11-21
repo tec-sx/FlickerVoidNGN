@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Characters.Movement;
 using FlickerVoid.Engine.Physics;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
@@ -11,16 +12,23 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlickerVoid.Engine.Characters.Tests.Movement;
 
-/// <summary>Builds a game with characters, and physics when asked, spawning entities written as scene JSON and stepping its fixed updates.</summary>
+/// <summary>Builds a game with characters, and physics and a path finder when asked, spawning entities written as scene JSON and stepping its fixed updates.</summary>
 internal sealed class CharacterMovementSystemTestsBuilder : IDisposable
 {
     private bool _physics;
+    private IPathFinder? _paths;
 
     public Game Game { get; } = new(NullLoggerFactory.Instance);
 
     public CharacterMovementSystemTestsBuilder WithPhysics()
     {
         _physics = true;
+        return this;
+    }
+
+    public CharacterMovementSystemTestsBuilder WithPathFinder(IPathFinder paths)
+    {
+        _paths = paths;
         return this;
     }
 
@@ -31,7 +39,8 @@ internal sealed class CharacterMovementSystemTestsBuilder : IDisposable
             Game.AddPhysics();
         }
 
-        Game.AddCharacters();
+        CharacterMovementSystem movement = Game.AddCharacters();
+        movement.PathFinder = _paths;
         return Game;
     }
 

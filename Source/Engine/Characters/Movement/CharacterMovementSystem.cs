@@ -12,8 +12,9 @@ using FlickerVoid.Engine.Runtime.Loop;
 namespace FlickerVoid.Engine.Characters.Movement;
 
 /// <summary>
-/// Walks characters to their destinations each fixed step: along the ground in a straight line at their speed, turning to face where
-/// they walk, standing on whatever physics finds below them, and sending an <see cref="ArrivedEvent"/> when they get there.
+/// Walks characters to their destinations each fixed step: through the corners of the path the <see cref="PathFinder"/> finds (or in a
+/// straight line without one) at their speed, turning to face where they walk, standing on whatever physics finds below them, and
+/// sending an <see cref="ArrivedEvent"/> at the last corner.
 /// </summary>
 public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
 {
@@ -38,15 +39,28 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
         events.Handle((in StopCommand command) => Stop(command.Character));
     }
 
+    /// <summary>Finds the way around obstacles; set by the module that provides paths, such as Ai.</summary>
+    public IPathFinder? PathFinder { get; set; }
+
     public override void Update(in GameTime t)
     {
         float seconds = (float)t.Elapsed.TotalSeconds;
         _arrived.Clear();
         World.Query(in Walking, (Entity entity, ref CharacterMover mover, ref Destination destination, ref Transform transform) =>
         {
-            if (Walk(mover, destination.Point, ref transform, seconds))
+            Vector3 corner = destination.Corners[destination.Corner];
+            if (!Walk(mover, corner, ref transform, seconds))
             {
-                _arrived.Add((entity, destination.Point));
+                return;
+            }
+
+            if (destination.Corner == destination.Corners.Count - 1)
+            {
+                _arrived.Add((entity, corner));
+            }
+            else
+            {
+                destination.Corner++;
             }
         });
 
@@ -114,12 +128,27 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
     private void Move(in MoveCommand command)
     {
         Entity character = command.Character;
-        if (!World.IsAlive(character) || !World.Has<CharacterMover>(character))
+        if (!World.IsAlive(character) || !World.Has<CharacterMover>(character) || !World.Has<Transform>(character))
         {
             return;
         }
 
-        Destination destination = new() { Point = command.Point };
+        List<Vector3> corners = [];
+        if (PathFinder is null)
+        {
+            corners.Add(command.Point);
+        }
+        else
+        {
+            Vector3 from = World.Get<Transform>(character).Position;
+            if (!PathFinder.TryFindPath(from, command.Point, corners) || corners.Count == 0)
+            {
+                Stop(character);
+                return;
+            }
+        }
+
+        Destination destination = new() { Point = command.Point, Corners = corners };
         if (World.Has<Destination>(character))
         {
             World.Set(character, destination);
