@@ -4,5 +4,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Interaction/FlickerVoid.Engine.Interaction.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
   </ItemGroup>
 </Project>

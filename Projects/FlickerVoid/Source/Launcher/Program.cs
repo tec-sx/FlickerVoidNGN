@@ -1,4 +1,6 @@
 using FlickerVoid.Engine.Hosting;
+using FlickerVoid.Engine.Platform.Input;
+using FlickerVoid.Gameplay;
 
 using Microsoft.Extensions.Logging;
 
@@ -17,5 +19,8 @@ catch (ArgumentException exception)
 
 using ILoggerFactory loggerFactory = LoggerFactory.Create(static logging => logging.AddSimpleConsole());
 using SceneHost host = new(options, loggerFactory, "FlickerVoid");
+GameplayModule gameplay = new();
+gameplay.Add(host.Game);
+host.Input.Map = host.Data.Load<InputMap>("Input/Controls.fvdata");
 host.Run();
 return 0;
