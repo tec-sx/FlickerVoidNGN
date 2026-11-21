@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:assets="using:FlickerVoid.Editor.Assets"
+             xmlns:flows="using:FlickerVoid.Editor.Assets.Flows"
              xmlns:shell="using:FlickerVoid.Editor"
              xmlns:controls="using:FlickerVoid.Editor.Controls"
              x:Class="FlickerVoid.Editor.Assets.AssetBrowserView"
@@ -15,7 +16,8 @@
         <TreeView.ItemTemplate>
           <TreeDataTemplate DataType="assets:AssetFolder" ItemsSource="{Binding Children}">
             <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent">
-              <PathIcon Width="14" Height="14" Data="{x:Static shell:MaterialIcons.Folder}" Foreground="#DCBC98" />
+              <PathIcon Width="14" Height="14" Data="{Binding Converter={x:Static assets:AssetKindLooks.FolderIcon}}"
+                        Foreground="{Binding Converter={x:Static assets:AssetKindLooks.FolderBrush}}" />
               <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
             </StackPanel>
           </TreeDataTemplate>
@@ -63,6 +65,21 @@
                    Foreground="{StaticResource EditorDeleteBrush}" TextTrimming="CharacterEllipsis" />
         <TextBlock Text="{Binding SelectedFolder.Path}" VerticalAlignment="Center" Opacity="0.6" TextTrimming="CharacterEllipsis" />
       </DockPanel>
+      <!-- Asks for a new flow node class's name and code folder; Enter creates it, Escape cancels. -->
+      <Border DockPanel.Dock="Top" Margin="6,2" Padding="8" CornerRadius="4" Background="{StaticResource EditorBarBrush}"
+              IsVisible="{Binding Prompt, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <StackPanel x:DataType="flows:FlowNodePrompt" DataContext="{Binding Prompt}" Orientation="Horizontal" Spacing="6"
+                    KeyDown="HandlePromptKeyDown">
+          <PathIcon Width="14" Height="14" Data="{x:Static shell:MaterialIcons.Code}" Foreground="#B48EC9" />
+          <TextBlock Text="New Flow Node" VerticalAlignment="Center" FontWeight="SemiBold" />
+          <TextBox x:Name="PromptName" Width="180" Text="{Binding Name}" Watermark="Name, such as Open Gate" />
+          <TextBlock Text="in" VerticalAlignment="Center" Opacity="0.6" />
+          <ComboBox MinWidth="220" ItemsSource="{Binding Folders}" SelectedItem="{Binding Folder}"
+                    ToolTip.Tip="The code folder the class goes in; its namespace follows the folder." />
+          <Button Content="Create" Click="HandlePromptCreateClick" />
+          <Button Content="Cancel" Click="HandlePromptCancelClick" />
+        </StackPanel>
+      </Border>
       <ListBox x:Name="AssetList" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedAsset}" DragDrop.AllowDrop="True"
                DoubleTapped="HandleDoubleTapped" KeyDown="HandleKeyDown" Background="Transparent"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled">

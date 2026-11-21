@@ -20,6 +20,8 @@ public sealed class GameplayModule : IGameModule
         game.AddInteraction();
         game.Spawner.Register("protagonist", FlickerVoidJsonContext.Default.Protagonist);
         game.Spawner.Register("doorSwing", FlickerVoidJsonContext.Default.DoorSwing);
+        game.Data.AddResolver(FlickerVoidJsonContext.Default);
+        FlowNodeTypes.Register(game.Data);
         DoorSwingSystem doors = new(game);
         game.FixedSystems.Add(doors);
 
