@@ -3,6 +3,8 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 
 using FlickerVoid.Editor.Assets.Materials;
+using FlickerVoid.Editor.Core.Flows;
+using FlickerVoid.Editor.Flows;
 using FlickerVoid.Editor.Materials;
 
 namespace FlickerVoid.Editor;
@@ -51,6 +53,7 @@ public sealed partial class MainWindow : Window
         if (DataContext is MainWindowViewModel main)
         {
             main.MaterialRequested += ShowMaterial;
+            main.FlowRequested += ShowFlow;
             main.AskUnsaved = AskUnsaved;
         }
     }
@@ -90,6 +93,12 @@ public sealed partial class MainWindow : Window
         {
             editor.SelectedMaterial = path;
         }
+    }
+
+    private void ShowFlow(FlowGraphViewModel graph)
+    {
+        FlowEditorWindow window = new() { DataContext = graph };
+        window.Show(this);
     }
 
     private void HandleMaterialsClosed(object? sender, EventArgs e)

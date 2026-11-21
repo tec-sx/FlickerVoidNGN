@@ -12,5 +12,6 @@ public enum AssetKind
     Shader,
     Data,
     Table,
+    Flow,
     Folder,
 }

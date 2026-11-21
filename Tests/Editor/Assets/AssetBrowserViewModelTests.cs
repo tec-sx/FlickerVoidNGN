@@ -186,6 +186,18 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     }
 
     [Fact]
+    public void CreatesFlowGraphsWithAStartNode()
+    {
+        AssetBrowserViewModel browser = _builder.Build();
+
+        browser.CreateFlowCommand.Execute(null);
+
+        browser.Assets.Should().ContainSingle().Which.Kind.Should().Be(AssetKind.Flow);
+        string text = _builder.ReadFile("New Flow.fvflow");
+        text.Should().Contain("flow.schema.json").And.Contain("\"$type\": \"start\"");
+    }
+
+    [Fact]
     public void CreatesMoodsAndFolders()
     {
         AssetBrowserViewModel browser = _builder.Build();

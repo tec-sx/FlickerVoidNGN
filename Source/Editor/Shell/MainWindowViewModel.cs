@@ -8,9 +8,11 @@ using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Assets.Data;
+using FlickerVoid.Editor.Assets.Flows;
 using FlickerVoid.Editor.Assets.Materials;
 using FlickerVoid.Editor.Assets.Moods;
 using FlickerVoid.Editor.Core.Data;
+using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Viewports;
@@ -66,6 +68,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         viewport.Scene.Edited += HandleSceneEdited;
         ShowSceneMood();
     }
+
+    /// <summary>Raised to show a flow graph opened in the content browser in a graph editor window.</summary>
+    public event Action<FlowGraphViewModel>? FlowRequested;
 
     /// <summary>Raised to show a material in the material editor, by its path in the content folder.</summary>
     public event Action<string>? MaterialRequested;
@@ -294,6 +299,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             case AssetKind.Table:
                 OpenTable(asset.Path);
                 break;
+            case AssetKind.Flow:
+                OpenFlow(asset.Path);
+                break;
         }
     }
 
@@ -317,6 +325,28 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ContentFileFinder files = new(_content);
         string title = Path.GetFileNameWithoutExtension(path);
         ShowData(path, new DataObjectViewModel(title, document.Asset, typeInfo, document.Hold, files.Find));
+    }
+
+    /// <summary>Edits the flow graph in a graph editor window, its edits held unsaved like a data asset's.</summary>
+    private void OpenFlow(string path)
+    {
+        EditorScene scene = Viewport.Scene;
+        DataTypes types = scene.Game.Data;
+        FlowDocument document;
+        try
+        {
+            document = new FlowDocument(_content, types, path);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            Viewport.Status = $"Can't open {path}: {exception.Message}";
+            return;
+        }
+
+        ContentFileFinder files = new(_content);
+        string title = Path.GetFileNameWithoutExtension(path);
+        FlowGraphViewModel graph = new(title, document.Graph, types, document.Hold, files.Find);
+        FlowRequested?.Invoke(graph);
     }
 
     /// <summary>Edits the table's rows in the Data tab, held unsaved like a data asset's.</summary>

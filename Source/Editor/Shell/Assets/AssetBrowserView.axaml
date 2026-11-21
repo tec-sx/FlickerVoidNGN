@@ -14,6 +14,7 @@
       <MenuItem Header="Scene" Command="{Binding CreateSceneCommand}" />
       <MenuItem Header="Material" Command="{Binding CreateMaterialCommand}" />
       <MenuItem Header="Mood" Command="{Binding CreateMoodCommand}" />
+      <MenuItem Header="Flow" Command="{Binding CreateFlowCommand}" />
       <MenuItem Header="Data Asset" ItemsSource="{Binding DataChoices}" IsEnabled="{Binding !!DataChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
       <MenuItem Header="Table" ItemsSource="{Binding TableChoices}" IsEnabled="{Binding !!TableChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
     </MenuFlyout>
@@ -34,6 +35,7 @@
           <MenuItem Header="New Scene" Command="{Binding CreateSceneCommand}" />
           <MenuItem Header="New Material" Command="{Binding CreateMaterialCommand}" />
           <MenuItem Header="New Mood" Command="{Binding CreateMoodCommand}" />
+          <MenuItem Header="New Flow" Command="{Binding CreateFlowCommand}" />
           <MenuItem Header="New Data Asset" ItemsSource="{Binding DataChoices}" IsEnabled="{Binding !!DataChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
           <MenuItem Header="New Table" ItemsSource="{Binding TableChoices}" IsEnabled="{Binding !!TableChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
           <Separator />
@@ -103,6 +105,7 @@
             <MenuItem Header="New Scene" Command="{Binding CreateSceneCommand}" />
             <MenuItem Header="New Material" Command="{Binding CreateMaterialCommand}" />
             <MenuItem Header="New Mood" Command="{Binding CreateMoodCommand}" />
+            <MenuItem Header="New Flow" Command="{Binding CreateFlowCommand}" />
             <MenuItem Header="New Data Asset" ItemsSource="{Binding DataChoices}" IsEnabled="{Binding !!DataChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
             <MenuItem Header="New Table" ItemsSource="{Binding TableChoices}" IsEnabled="{Binding !!TableChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
           </ContextMenu>

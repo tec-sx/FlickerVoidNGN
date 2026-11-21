@@ -42,6 +42,20 @@ public sealed class FlowGraphs(IContentManager content, DataTypes types)
         }
     }
 
+    /// <summary>The graph as the indented JSON of a <c>.fvflow</c> file, each node naming its <c>$type</c>.</summary>
+    public static byte[] Write(FlowGraph graph, DataTypes types)
+    {
+        JsonTypeInfo typeInfo = types.Options.GetTypeInfo(typeof(FlowGraph));
+        using MemoryStream stream = new();
+        using (Utf8JsonWriter writer = new(stream, new JsonWriterOptions { Indented = true }))
+        {
+            JsonSerializer.Serialize(writer, graph, typeInfo);
+        }
+
+        stream.WriteByte((byte)'\n');
+        return stream.ToArray();
+    }
+
     public static JsonObject GetSchema(DataTypes types)
     {
         JsonTypeInfo typeInfo = types.Options.GetTypeInfo(typeof(FlowGraph));

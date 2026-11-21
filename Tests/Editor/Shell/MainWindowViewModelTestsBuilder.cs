@@ -15,7 +15,7 @@ namespace FlickerVoid.Editor.Tests;
 
 /// <summary>
 /// Builds the main window's view model over a temporary content folder holding Room.fvscene and Hall.fvscene, each with a Lamp,
-/// Paper.fvmat, Night.fvmood, whose exposure is 0.5, Lantern.fvdata, a lantern of 6 hours, and Lit.fvscene, which names Night.fvmood as its mood; the user's answer to the unsaved files prompt is <see cref="Answer"/>.
+/// Paper.fvmat, Night.fvmood, whose exposure is 0.5, Lantern.fvdata, a lantern of 6 hours, Cellar.fvflow, a flow with a start node, and Lit.fvscene, which names Night.fvmood as its mood; the user's answer to the unsaved files prompt is <see cref="Answer"/>.
 /// </summary>
 internal sealed class MainWindowViewModelTestsBuilder : IDisposable
 {
@@ -25,6 +25,7 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
     public const string Night = "Night.fvmood";
     public const string Lit = "Lit.fvscene";
     public const string Lantern = "Lantern.fvdata";
+    public const string Cellar = "Cellar.fvflow";
 
     private const string LampScene = """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""";
 
@@ -38,6 +39,7 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         _contentFolder = Path.Combine(Path.GetTempPath(), folderName);
         Directory.CreateDirectory(_contentFolder);
         WriteFile(Room, LampScene);
+        WriteFile(Cellar, """{ "nodes": [ { "$type": "start", "id": "start" } ] }""");
         WriteFile(Hall, LampScene);
         WriteFile(Paper, "{}");
         WriteFile(Night, """{ "exposure": 0.5 }""");

@@ -111,6 +111,22 @@ public sealed class MainWindowViewModelTests : IDisposable
     }
 
     [Fact]
+    public void OpensFlowGraphsInAGraphEditorWithTheirEditsHeldUnsaved()
+    {
+        Core.Flows.FlowGraphViewModel? requested = null;
+        _builder.ViewModel.FlowRequested += graph => requested = graph;
+
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Cellar, AssetKind.Flow);
+
+        requested.Should().NotBeNull();
+        requested!.Nodes.Should().ContainSingle();
+        requested.AddNode("finish", 200, 0);
+        _builder.ViewModel.UnsavedPaths.Should().Equal(MainWindowViewModelTestsBuilder.Cellar);
+        _builder.ViewModel.SaveAssets();
+        _builder.ReadFile(MainWindowViewModelTestsBuilder.Cellar).Should().Contain("\"$type\": \"finish\"");
+    }
+
+    [Fact]
     public void ShowsTheDefaultMoodUntilAMoodFileIsOpened()
     {
         _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModel.DefaultMoodHeading);

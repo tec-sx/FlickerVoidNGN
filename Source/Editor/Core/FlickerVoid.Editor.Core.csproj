@@ -4,6 +4,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../Engine/Flow/FlickerVoid.Engine.Flow.csproj" />
     <ProjectReference Include="../../Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
   </ItemGroup>
   <ItemGroup>

@@ -1,5 +1,7 @@
 using Arch.Core;
 
+using FlickerVoid.Engine.Flow;
+using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
@@ -45,6 +47,9 @@ public sealed partial class SceneHost : IDisposable
         Game.Services.AddService(Scenes.Templates);
         Data = new DataAssets(Content, Game.Data);
         Game.Services.AddService(Data);
+        Game.AddFlow();
+        Flows = new FlowGraphs(Content, Game.Data);
+        Game.Services.AddService(Flows);
         ContentWatcher watcher = new(Content, Game.Schemas);
         Game.FrameSystems.Add(watcher);
         if (options.Mood is { } mood)
@@ -65,6 +70,9 @@ public sealed partial class SceneHost : IDisposable
 
     /// <summary>Reads the game's data asset and table files.</summary>
     public DataAssets Data { get; }
+
+    /// <summary>Reads the game's flow graphs and starts runs of them.</summary>
+    public FlowGraphs Flows { get; }
 
     /// <summary>The mood the renderer starts with: the options' mood file, else the one the scene names (<see cref="SceneMood"/>), else the default.</summary>
     public LightingMood Mood { get; set; } = new();

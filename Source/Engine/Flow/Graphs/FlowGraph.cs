@@ -10,6 +10,7 @@ public sealed class FlowGraph
     public const string Extension = ".fvflow";
 
     [JsonPropertyName(JsonSchemas.SchemaProperty)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Schema { get; set; }
 
     public List<FlowNode> Nodes { get; set; } = [];
