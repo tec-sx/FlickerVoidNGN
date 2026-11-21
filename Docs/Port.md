@@ -22,7 +22,7 @@ The project's modules follow the ontology's first level: `Gameplay` (Protagonist
 | FVFramework: relevance (distance bands), world clock, easing, saveable | `Runtime` (`Relevance`, `Time`, `Saves`) | relevance system and bands, world clock, saves of components and facts | entity model |
 | FVFramework: input config, gestures, input component | `Platform` (`Input`) | input actions mapped from keys and pads, gestures (hold, double tap) | |
 | FVFramework: Flow nodes, flow context; Flow plugin | `Flow` | graph runtime, core nodes, `.fvflow`, then the graph editor | data assets |
-| FVFramework: UI layout, HUD, activatable widgets (CommonUI) | `Ui` | game UI layer | **decide** UI technology |
+| FVFramework: UI layout, HUD, activatable widgets (CommonUI) | `Ui` | game UI layer: Avalonia (AXAML and MVVM, like the editor) drawn into a texture over the scene (owner, 2026-11-21) | Hosting |
 | FVFramework: debug HUD, fact and relevance debug | `Debug` | ImGui panels | |
 | FVFramework: editor customizations, MaxEntries validator | `Editor` and `Builder` | inspector views, build-time validation | data assets |
 | FVFramework: highlight component | `Rendering` | outline pass | |
@@ -74,7 +74,3 @@ Each step is one pull request or a short stack, and ends in something to try in 
 8. **Interface:** the `Ui` module, HUD and hub pages.
 9. **World:** `Maps`, `Ai` with residents, the scanner.
 10. **Saves** across every module, then the stage 7 gate: the basic story loop from the Unreal milestone plays in NGN.
-
-## Open decisions
-
-- Game UI technology for `Ui`, decided before step 8.
