@@ -2,6 +2,7 @@ using Arch.System;
 
 using BepuPhysics;
 
+using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Physics;
@@ -10,4 +11,7 @@ namespace FlickerVoid.Engine.Physics;
 public interface IPhysicsSystem : ISystem<GameTime>
 {
     Simulation Simulation { get; }
+
+    /// <summary>The nearest body along the ray within <paramref name="maxDistance"/>, such as the floor or door the player clicked.</summary>
+    bool RayCast(Ray ray, float maxDistance, out RayHit hit);
 }

@@ -1,7 +1,7 @@
 using System.Numerics;
 
 using FlickerVoid.Editor.Core.Cameras;
-using FlickerVoid.Editor.Core.Geometry;
+using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Editor.Core.Overlays;
 using FlickerVoid.Engine.Runtime.Components;
 
