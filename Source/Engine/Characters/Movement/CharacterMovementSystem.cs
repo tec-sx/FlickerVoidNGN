@@ -96,10 +96,10 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
         return height;
     }
 
-    /// <summary>Turns the yaw toward the direction by at most the given degrees; a character faces down its -Z axis.</summary>
+    /// <summary>Turns the yaw toward the direction by at most the given degrees; a character faces down its +Z axis, the front of a glTF model.</summary>
     private static Quaternion Turn(Quaternion rotation, Vector3 direction, float maxDegrees)
     {
-        float yaw = MathF.Atan2(-direction.X, -direction.Z);
+        float yaw = MathF.Atan2(direction.X, direction.Z);
         Quaternion target = Quaternion.CreateFromAxisAngle(Vector3.UnitY, yaw);
         float dot = MathF.Abs(Quaternion.Dot(rotation, target));
         float angle = float.RadiansToDegrees(2 * MathF.Acos(MathF.Min(dot, 1)));
