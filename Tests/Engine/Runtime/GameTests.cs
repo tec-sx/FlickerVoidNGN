@@ -1,6 +1,7 @@
 using Arch.Core;
 using Arch.System;
 
+using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Debugging;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
@@ -49,6 +50,33 @@ public class GameTests
         IDebugConsole? console = game.Services.GetService<IDebugConsole>();
 
         console.Should().BeSameAs(game.DebugConsole);
+    }
+
+    [Fact]
+    public void DeliversEventsSystemsSendAfterTheirGroupRuns()
+    {
+        using Game game = _builder.WithFrameSystem(_frameSystem).Build();
+        List<int> delivered = [];
+        game.Events.Handle((in int value) => delivered.Add(value));
+        _frameSystem.When(system => system.Update(Arg.Any<GameTime>())).Do(_ => game.Events.Send(7));
+
+        game.Tick(game.Loop.FixedStep);
+
+        delivered.Should().Equal(7);
+    }
+
+    [Fact]
+    public void StopsItsEntitiesWhenDisposed()
+    {
+        Game game = _builder.Build();
+        List<string> detached = [];
+        game.Lifecycle.OnDetach((Entity _, ref EntityName name) => detached.Add(name.Value));
+        Entity entity = game.World.Create(new EntityName("Lamp"));
+        game.Lifecycle.Start(game.World, entity);
+
+        game.Dispose();
+
+        detached.Should().Equal("Lamp");
     }
 
     [Fact]

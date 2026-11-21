@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:data="using:FlickerVoid.Editor.Core.Data"
+             xmlns:tables="using:FlickerVoid.Editor.Assets.Data"
+             xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
+             xmlns:shell="using:FlickerVoid.Editor"
+             x:Class="FlickerVoid.Editor.Data.DataView"
+             x:DataType="x:Object">
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="data:DataObjectViewModel">
+      <StackPanel>
+        <ItemsControl ItemsSource="{Binding Fields}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="inspector:FieldViewModel">
+              <Grid ColumnDefinitions="104,*" Margin="0,1">
+                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <ContentControl Grid.Column="1" Content="{Binding}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <ItemsControl ItemsSource="{Binding Objects}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="data:DataObjectViewModel">
+              <Expander Header="{Binding Title}" IsExpanded="True" HorizontalAlignment="Stretch" Margin="0,1">
+                <ContentControl Content="{Binding}" />
+              </Expander>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <ItemsControl ItemsSource="{Binding Lists}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="data:DataListViewModel">
+              <ContentControl Content="{Binding}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate DataType="data:DataListViewModel">
+      <StackPanel Margin="0,4,0,0">
+        <DockPanel>
+          <DropDownButton DockPanel.Dock="Right" Content="Add" IsEnabled="{Binding !!AddChoices.Count}">
+            <DropDownButton.Flyout>
+              <MenuFlyout ItemsSource="{Binding AddChoices}">
+                <MenuFlyout.ItemContainerTheme>
+                  <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="data:DataChoice">
+                    <Setter Property="Header" Value="{Binding Name}" />
+                    <Setter Property="Command" Value="{Binding Command}" />
+                  </ControlTheme>
+                </MenuFlyout.ItemContainerTheme>
+              </MenuFlyout>
+            </DropDownButton.Flyout>
+          </DropDownButton>
+          <TextBlock Text="{Binding Label}" Classes="heading" VerticalAlignment="Center" />
+        </DockPanel>
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="data:DataListItemViewModel">
+              <Expander IsExpanded="True" HorizontalAlignment="Stretch" Margin="0,1">
+                <Expander.Header>
+                  <DockPanel>
+                    <Button DockPanel.Dock="Right" Classes="icon delete" ToolTip.Tip="Remove"
+                            Command="{Binding List.RemoveCommand}" CommandParameter="{Binding}">
+                      <PathIcon Data="{x:Static shell:MaterialIcons.Delete}" />
+                    </Button>
+                    <TextBlock Text="{Binding Form.Title}" VerticalAlignment="Center" />
+                  </DockPanel>
+                </Expander.Header>
+                <ContentControl Content="{Binding Form}" />
+              </Expander>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate DataType="tables:TableViewModel">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2">
+          <Button Content="Add Row" Command="{Binding AddRowCommand}" />
+          <Button Content="Export CSV" Click="HandleExportClick" />
+          <Button Content="Import CSV" Click="HandleImportClick" />
+        </StackPanel>
+        <ItemsControl ItemsSource="{Binding Rows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="tables:TableRowViewModel">
+              <Expander IsExpanded="False" HorizontalAlignment="Stretch" Margin="0,1">
+                <Expander.Header>
+                  <DockPanel>
+                    <Button DockPanel.Dock="Right" Classes="icon delete" ToolTip.Tip="Remove row"
+                            Command="{Binding Table.RemoveRowCommand}" CommandParameter="{Binding}">
+                      <PathIcon Data="{x:Static shell:MaterialIcons.Delete}" />
+                    </Button>
+                    <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}" />
+                  </DockPanel>
+                </Expander.Header>
+                <ContentControl Content="{Binding Form}" />
+              </Expander>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+  <ScrollViewer>
+    <ContentControl Content="{Binding}" Margin="4,2" />
+  </ScrollViewer>
+</UserControl>

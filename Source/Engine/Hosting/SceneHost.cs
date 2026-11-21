@@ -1,14 +1,18 @@
 using Arch.Core;
 
+using FlickerVoid.Engine.Flow;
+using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
+using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Serialization;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 
@@ -39,8 +43,16 @@ public sealed partial class SceneHost : IDisposable
         Game = new Game(loggerFactory);
         Game.AddRendering();
         Window = new GameWindow(Game, title, 1280, 720);
+        Game.AddInput();
+        Input = Game.AddInputActions(Window.Input);
         ILogger<SceneLoader> sceneLogger = loggerFactory.CreateLogger<SceneLoader>();
         Scenes = new SceneLoader(Game.Spawner, Content, Game.World, sceneLogger);
+        Game.Services.AddService(Scenes.Templates);
+        Data = new DataAssets(Content, Game.Data);
+        Game.Services.AddService(Data);
+        Game.AddFlow();
+        Flows = new FlowGraphs(Content, Game.Data);
+        Game.Services.AddService(Flows);
         ContentWatcher watcher = new(Content, Game.Schemas);
         Game.FrameSystems.Add(watcher);
         if (options.Mood is { } mood)
@@ -59,6 +71,15 @@ public sealed partial class SceneHost : IDisposable
 
     public SceneLoader Scenes { get; }
 
+    /// <summary>Reads the game's data asset and table files.</summary>
+    public DataAssets Data { get; }
+
+    /// <summary>The input actions systems read, from the map the game sets.</summary>
+    public InputActions Input { get; }
+
+    /// <summary>Reads the game's flow graphs and starts runs of them.</summary>
+    public FlowGraphs Flows { get; }
+
     /// <summary>The mood the renderer starts with: the options' mood file, else the one the scene names (<see cref="SceneMood"/>), else the default.</summary>
     public LightingMood Mood { get; set; } = new();
 
@@ -66,7 +87,7 @@ public sealed partial class SceneHost : IDisposable
     public SceneRenderSystem? Renderer { get; private set; }
 
     /// <summary>
-    /// Spawns the options' scene and creates the renderer, with an overlay when <paramref name="createOverlay"/> makes one;
+    /// Spawns the options' scene, starts play (activating its entities) and creates the renderer, with an overlay when <paramref name="createOverlay"/> makes one;
     /// <see cref="Run"/> calls it when nothing has.
     /// </summary>
     public SceneRenderSystem Start(Func<PixelFormat, SceneRenderer, IFrameOverlay?>? createOverlay = null)
@@ -80,6 +101,8 @@ public sealed partial class SceneHost : IDisposable
         {
             Scenes.Load(scene);
         }
+
+        Game.Lifecycle.Play(Game.World);
 
         if (_options.Mood is null && SceneMood.Find(Game.World) is { } sceneMood)
         {
@@ -115,6 +138,7 @@ public sealed partial class SceneHost : IDisposable
         _disposed = true;
         Renderer?.Dispose();
         Scenes.Dispose();
+        Data.Dispose();
         Window.Dispose();
         Game.Dispose();
         Device.Dispose();

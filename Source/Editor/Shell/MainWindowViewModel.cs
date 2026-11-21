@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
 
@@ -6,8 +7,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Assets;
+using FlickerVoid.Editor.Assets.Data;
+using FlickerVoid.Editor.Assets.Flows;
 using FlickerVoid.Editor.Assets.Materials;
 using FlickerVoid.Editor.Assets.Moods;
+using FlickerVoid.Editor.Core.Data;
+using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Viewports;
@@ -20,6 +25,7 @@ using FlickerVoid.Editor.Viewports;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Data;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
 
@@ -37,6 +43,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly ScenePlayer? _player;
     private readonly UnsavedContent _content;
     private MoodDocument? _mood;
+    private string? _dataPath;
     private string? _sceneMood;
 
     /// <summary>
@@ -54,13 +61,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Inspector = inspector;
         SceneTree = new SceneTreeViewModel(viewport.Scene);
         ViewSettings = new ViewSettingsViewModel(viewport.Mood);
-        Assets = new AssetBrowserViewModel(viewport.Scene.Content);
+        Assets = new AssetBrowserViewModel(viewport.Scene.Content, viewport.Scene.Game.Data);
         Assets.Opened += OpenAsset;
         viewport.Scene.Opened += HandleSceneOpened;
         viewport.Scene.UnsavedChanged += HandleUnsavedChanged;
         viewport.Scene.Edited += HandleSceneEdited;
         ShowSceneMood();
     }
+
+    /// <summary>Raised to show a flow graph opened in the content browser in a graph editor window.</summary>
+    public event Action<FlowGraphViewModel>? FlowRequested;
 
     /// <summary>Raised to show a material in the material editor, by its path in the content folder.</summary>
     public event Action<string>? MaterialRequested;
@@ -93,6 +103,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return _mood.Path;
         }
     }
+
+    /// <summary>What the Data tab edits: the form of the data asset or the rows of the table last opened in the content browser.</summary>
+    [ObservableProperty]
+    public partial object? DataContent { get; private set; }
+
+    /// <summary>The open data asset's path, marked with an asterisk when it has unsaved edits.</summary>
+    public string DataHeading
+    {
+        get
+        {
+            if (_dataPath is null)
+            {
+                return "Open a data asset or table in the content browser to edit it.";
+            }
+
+            if (_content.IsUnsaved(_dataPath))
+            {
+                return $"{_dataPath} *";
+            }
+
+            return _dataPath;
+        }
+    }
+
+    /// <summary>The side panel's open tab: 0 scene, 1 inspector, 2 view, 3 data.</summary>
+    [ObservableProperty]
+    public partial int SideTab { get; set; }
 
     public ViewportViewModel Viewport { get; }
 
@@ -231,6 +268,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(HasUnsavedChanges));
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(MoodHeading));
+        OnPropertyChanged(nameof(DataHeading));
         SaveAssetsCommand.NotifyCanExecuteChanged();
         DiscardAssetsCommand.NotifyCanExecuteChanged();
     }
@@ -255,7 +293,87 @@ public sealed partial class MainWindowViewModel : ObservableObject
             case AssetKind.Mood:
                 OpenMood(asset.Path);
                 break;
+            case AssetKind.Data:
+                OpenData(asset.Path);
+                break;
+            case AssetKind.Table:
+                OpenTable(asset.Path);
+                break;
+            case AssetKind.Flow:
+                OpenFlow(asset.Path);
+                break;
         }
+    }
+
+    /// <summary>Edits the data asset in the Data tab, its edits held unsaved like a material's; a file that can't be read is reported.</summary>
+    private void OpenData(string path)
+    {
+        EditorScene scene = Viewport.Scene;
+        DataTypes types = scene.Game.Data;
+        DataDocument document;
+        try
+        {
+            document = new DataDocument(_content, types, path);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            Viewport.Status = $"Can't open {path}: {exception.Message}";
+            return;
+        }
+
+        JsonTypeInfo typeInfo = types.Options.GetTypeInfo(document.Asset.GetType());
+        ContentFileFinder files = new(_content);
+        string title = Path.GetFileNameWithoutExtension(path);
+        ShowData(path, new DataObjectViewModel(title, document.Asset, typeInfo, document.Hold, files.Find));
+    }
+
+    /// <summary>Edits the flow graph in a graph editor window, its edits held unsaved like a data asset's.</summary>
+    private void OpenFlow(string path)
+    {
+        EditorScene scene = Viewport.Scene;
+        DataTypes types = scene.Game.Data;
+        FlowDocument document;
+        try
+        {
+            document = new FlowDocument(_content, types, path);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            Viewport.Status = $"Can't open {path}: {exception.Message}";
+            return;
+        }
+
+        ContentFileFinder files = new(_content);
+        string title = Path.GetFileNameWithoutExtension(path);
+        FlowGraphViewModel graph = new(title, document.Graph, types, document.Hold, files.Find);
+        FlowRequested?.Invoke(graph);
+    }
+
+    /// <summary>Edits the table's rows in the Data tab, held unsaved like a data asset's.</summary>
+    private void OpenTable(string path)
+    {
+        EditorScene scene = Viewport.Scene;
+        TableDocument document;
+        try
+        {
+            document = new TableDocument(_content, scene.Game.Data, path);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            Viewport.Status = $"Can't open {path}: {exception.Message}";
+            return;
+        }
+
+        ContentFileFinder files = new(_content);
+        ShowData(path, new TableViewModel(document, files.Find));
+    }
+
+    private void ShowData(string path, object content)
+    {
+        _dataPath = path;
+        DataContent = content;
+        OnPropertyChanged(nameof(DataHeading));
+        SideTab = 3;
     }
 
     /// <summary>Draws the viewport with the mood file and edits it in the View tab; a file that can't be read leaves the view as it is.</summary>

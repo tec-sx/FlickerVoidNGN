@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Scenes;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
@@ -27,6 +28,97 @@ public sealed class SceneLoaderTests : IDisposable
 
         EntityName name = _builder.World.Get<EntityName>(entities[0]);
         name.Value.Should().Be("Lamp");
+    }
+
+    [Fact]
+    public void SpawnsEntitiesFromTheirTemplatesUnderTheirOwnValues()
+    {
+        SceneLoader loader = _builder
+            .WithScene("Props/Lamp.fventity", """{ "components": { "transform": { "position": [0, 2, 0], "scale": [2, 2, 2] } } }""")
+            .WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "template": "Props/Lamp.fventity", "components": { "transform": { "position": [1, 0, 0] } } } ] }""")
+            .Build();
+
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
+
+        Transform lamp = _builder.World.Get<Transform>(entities[0]);
+        lamp.Position.Should().Be(new Vector3(1, 0, 0));
+        lamp.Scale.Should().Be(new Vector3(2, 2, 2));
+    }
+
+    [Fact]
+    public void FollowsATemplatesBase()
+    {
+        SceneLoader loader = _builder
+            .WithScene("Props/Lamp.fventity", """{ "components": { "transform": { "scale": [2, 2, 2] } } }""")
+            .WithScene("Props/TallLamp.fventity", """{ "base": "Props/Lamp.fventity", "components": { "transform": { "position": [0, 3, 0] } } }""")
+            .WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "template": "Props/TallLamp.fventity" } ] }""")
+            .Build();
+
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
+
+        Transform lamp = _builder.World.Get<Transform>(entities[0]);
+        lamp.Position.Should().Be(new Vector3(0, 3, 0));
+        lamp.Scale.Should().Be(new Vector3(2, 2, 2));
+    }
+
+    [Fact]
+    public void RefusesATemplateThatIsItsOwnBase()
+    {
+        SceneLoader loader = _builder
+            .WithScene("Props/Lamp.fventity", """{ "base": "Props/Lamp.fventity" }""")
+            .WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "template": "Props/Lamp.fventity" } ] }""")
+            .Build();
+
+        Action load = () => loader.Load("Room.fvscene");
+
+        load.Should().Throw<InvalidDataException>().WithMessage("*Props/Lamp.fventity*");
+    }
+
+    [Fact]
+    public void SavesOnlyWhatDiffersFromTheTemplate()
+    {
+        SceneLoader loader = _builder
+            .WithScene("Props/Lamp.fventity", """{ "components": { "transform": { "position": [0, 2, 0], "scale": [2, 2, 2] } } }""")
+            .WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "template": "Props/Lamp.fventity" }, { "name": "Moved", "template": "Props/Lamp.fventity" } ] }""")
+            .Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
+        _builder.World.Get<Transform>(entities[1]).Position = new Vector3(5, 0, 0);
+
+        loader.Save("Room.fvscene");
+
+        string saved = _builder.ReadFile("Room.fvscene");
+        saved.Should().Contain("""{"name":"Lamp","template":"Props/Lamp.fventity","components":{}}""");
+        saved.Should().Contain("""{"name":"Moved","template":"Props/Lamp.fventity","components":{"transform":{"position":[5,0,0]}}}""");
+    }
+
+    [Fact]
+    public void PatchesTheEntitiesOfATemplateThatChanges()
+    {
+        SceneLoader loader = _builder
+            .WithScene("Props/Lamp.fventity", """{ "components": { "transform": { "scale": [2, 2, 2] } } }""")
+            .WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "template": "Props/Lamp.fventity" } ] }""")
+            .Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
+
+        _builder.ChangeScene("Props/Lamp.fventity", """{ "components": { "transform": { "scale": [3, 3, 3] } } }""");
+
+        Transform lamp = _builder.World.Get<Transform>(entities[0]);
+        lamp.Scale.Should().Be(new Vector3(3, 3, 3));
+    }
+
+    [Fact]
+    public void SpawnsATemplateFromCodeAndStartsIt()
+    {
+        SceneLoader loader = _builder
+            .WithScene("Props/Lamp.fventity", """{ "components": { "transform": { "position": [0, 2, 0], "scale": [2, 2, 2] } } }""")
+            .Build();
+        Transform placed = new() { Position = new Vector3(4, 0, 0) };
+
+        Entity lamp = loader.Templates.Spawn("Props/Lamp.fventity", _builder.World, placed);
+
+        Transform transform = _builder.World.Get<Transform>(lamp);
+        transform.Position.Should().Be(new Vector3(4, 0, 0), "the placed transform replaces the template's");
+        _builder.World.Has<Attached>(lamp).Should().BeTrue();
     }
 
     [Fact]

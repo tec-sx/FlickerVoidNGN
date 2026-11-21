@@ -6,6 +6,7 @@ using System.Text.Json.Serialization.Metadata;
 using Arch.Core;
 
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 
@@ -138,6 +139,19 @@ public sealed class SceneSpawnerTests : IDisposable
     }
 
     [Fact]
+    public void DescribesEntityTemplatesWithTheSameComponents()
+    {
+        JsonObject scene = _spawner.GetSchema();
+        JsonObject template = _spawner.GetTemplateSchema();
+
+        JsonNode entityProperties = scene["properties"]!["entities"]!["items"]!["properties"]!;
+        entityProperties["template"]!["type"]!.GetValue<string>().Should().Be("string");
+        template["properties"]!["base"]!["type"]!.GetValue<string>().Should().Be("string");
+        JsonNode position = template["properties"]!["components"]!["properties"]!["transform"]!["properties"]!["position"]!;
+        position["minItems"]!.GetValue<int>().Should().Be(3);
+    }
+
+    [Fact]
     public void ListsTheRegisteredComponentsWithTheirMetadata()
     {
         IReadOnlyList<SceneComponent> components = _spawner.Components;
@@ -214,6 +228,46 @@ public sealed class SceneSpawnerTests : IDisposable
         IReadOnlyList<Entity> patched = _spawner.Patch(before, after, entities, _world);
 
         patched[0].Should().Be(entities[0]);
+    }
+
+    [Fact]
+    public void StartsTheEntitiesItSpawns()
+    {
+        SceneData scene = Parse("""{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""");
+
+        IReadOnlyList<Entity> entities = _spawner.Spawn(scene, _world);
+
+        _world.Has<Attached>(entities[0]).Should().BeTrue();
+    }
+
+    [Fact]
+    public void PatchRestartsTheComponentsAFileChanged()
+    {
+        List<string> calls = [];
+        _spawner.Lifecycle.OnAttach((Entity _, ref Transform transform) => calls.Add($"attach {transform.Position.X}"));
+        _spawner.Lifecycle.OnDetach((Entity _, ref Transform transform) => calls.Add($"detach {transform.Position.X}"));
+        SceneData before = Parse("""{ "entities": [ { "name": "Lamp", "components": { "transform": { "position": [1, 0, 0] } } } ] }""");
+        SceneData after = Parse("""{ "entities": [ { "name": "Lamp", "components": { "transform": { "position": [2, 0, 0] } } } ] }""");
+        IReadOnlyList<Entity> entities = _spawner.Spawn(before, _world);
+        calls.Clear();
+
+        _spawner.Patch(before, after, entities, _world);
+
+        calls.Should().Equal("detach 1", "attach 2");
+    }
+
+    [Fact]
+    public void PatchStopsRemovedEntitiesAndComponentsFirst()
+    {
+        List<string> detached = [];
+        _spawner.Lifecycle.OnDetach((Entity entity, ref Transform _) => detached.Add(_world.Get<EntityName>(entity).Value));
+        SceneData before = Parse("""{ "entities": [ { "name": "Lamp", "components": { "transform": {} } }, { "name": "Crate", "components": { "transform": {} } } ] }""");
+        SceneData after = Parse("""{ "entities": [ { "name": "Crate" } ] }""");
+        IReadOnlyList<Entity> entities = _spawner.Spawn(before, _world);
+
+        _spawner.Patch(before, after, entities, _world);
+
+        detached.Should().Equal("Crate", "Lamp");
     }
 
     private static SceneData Parse(string json)

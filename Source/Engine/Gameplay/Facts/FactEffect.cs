@@ -6,12 +6,12 @@ namespace FlickerVoid.Engine.Gameplay.Facts;
 /// <summary>Sets, adds to or removes a fact.</summary>
 public sealed class FactEffect : Effect
 {
-    public Tag Fact { get; init; }
+    public Tag Fact { get; set; }
 
-    public FactWrite Write { get; init; } = FactWrite.Set;
+    public FactWrite Write { get; set; } = FactWrite.Set;
 
     /// <summary>Unused by Remove.</summary>
-    public int Value { get; init; } = 1;
+    public int Value { get; set; } = 1;
 
     public override void Apply(ConditionContext context)
     {

@@ -74,6 +74,12 @@ public static class MaterialIcons
 
     public static Avalonia.Media.Geometry Shader { get; } = Parse("M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z");
 
+    public static Avalonia.Media.Geometry Data { get; } = Parse("M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z");
+
+    public static Avalonia.Media.Geometry Table { get; } = Parse("M10 10.02h5V21h-5zM17 21h3c1.1 0 2-.9 2-2v-9h-5v11zm3-18H5c-1.1 0-2 .9-2 2v3h19V5c0-1.1-.9-2-2-2zM3 19c0 1.1.9 2 2 2h3V10H3v9z");
+
+    public static Avalonia.Media.Geometry Flow { get; } = Parse("M22 11V3h-7v3H9V3H2v8h7V8h2v10h4v3h7v-8h-7v3h-2V8h2v3z");
+
     public static Avalonia.Media.Geometry File { get; } = Parse("M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z");
 
     /// <summary>A four-pointed star, the editor's mark until it has a logo.</summary>

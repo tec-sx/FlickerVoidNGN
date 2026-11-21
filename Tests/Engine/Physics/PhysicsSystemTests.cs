@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text.Json;
 
 using Arch.Core;
@@ -5,6 +6,7 @@ using Arch.Core;
 using BepuPhysics;
 
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
@@ -44,6 +46,35 @@ public sealed class PhysicsSystemTests : IDisposable
     }
 
     [Fact]
+    public void RayCastsFindTheNearestBodyAndWhereTheRayMetIt()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Crate", "components": {
+                "transform": { "position": [2, 0.5, 0] },
+                "rigidBody": { "kinematic": true, "collider": { "type": "box" } } } },
+            { "name": "Floor", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "box", "size": [20, 0.2, 20] } } } }
+            """);
+        Step();
+        Ray down = new(new Vector3(-3, 10, 0), -Vector3.UnitY);
+        Ray onCrate = new(new Vector3(2, 10, 0), -Vector3.UnitY);
+
+        bool hitFloor = _physics.RayCast(down, 100, out RayHit floor);
+        bool hitCrate = _physics.RayCast(onCrate, 100, out RayHit crate);
+        bool missed = _physics.RayCast(down, 5, out _);
+
+        hitFloor.Should().BeTrue();
+        floor.Entity.Should().Be(entities[1]);
+        floor.Point.Y.Should().BeApproximately(0.1f, 1e-3f);
+        floor.Normal.Y.Should().BeApproximately(1, 1e-3f);
+        hitCrate.Should().BeTrue();
+        crate.Entity.Should().Be(entities[0]);
+        crate.Distance.Should().BeApproximately(9, 1e-3f);
+        missed.Should().BeFalse();
+    }
+
+    [Fact]
     public void BodiesComeToRestOnStaticBodies()
     {
         IReadOnlyList<Entity> entities = Spawn("""
@@ -59,6 +90,33 @@ public sealed class PhysicsSystemTests : IDisposable
 
         Transform crate = _game.World.Get<Transform>(entities[0]);
         crate.Position.Y.Should().BeInRange(0.95f, 1.05f);
+    }
+
+    [Fact]
+    public void ShapesSitAtTheirCollidersOffsetInTheEntitysSpace()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Door", "components": {
+                "transform": { "position": [3, 0, 0], "rotation": [0, 0.7071068, 0, 0.7071068] },
+                "staticBody": { "collider": { "type": "box", "size": [1, 2, 0.1], "offset": [0.5, 1, 0] } } } },
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 5, 0] },
+                "rigidBody": { "mass": 10, "collider": { "type": "box", "offset": [0, 0.5, 0] } } } },
+            { "name": "Floor", "components": {
+                "transform": { "position": [0, -0.5, 0] },
+                "staticBody": { "collider": { "type": "box", "size": [20, 1, 20] } } } }
+            """);
+        Step();
+        Ray atPanel = new(new Vector3(3, 1, 5), -Vector3.UnitZ);
+
+        bool hit = _physics.RayCast(atPanel, 100, out RayHit panel);
+        Run(seconds: 3);
+
+        hit.Should().BeTrue();
+        panel.Entity.Should().Be(entities[0]);
+        panel.Point.Z.Should().BeApproximately(0, 1e-3f);
+        Transform crate = _game.World.Get<Transform>(entities[1]);
+        crate.Position.Y.Should().BeInRange(-0.05f, 0.05f);
     }
 
     [Fact]

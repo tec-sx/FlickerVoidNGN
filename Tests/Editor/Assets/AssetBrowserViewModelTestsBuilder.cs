@@ -37,6 +37,9 @@ internal sealed class AssetBrowserViewModelTestsBuilder : IDisposable
 
     public AssetBrowserViewModel Build() => new(new ContentManager(_folder));
 
+    /// <summary>The browser with the test barrel and wine types to create.</summary>
+    public AssetBrowserViewModel BuildWithData() => new(new ContentManager(_folder), Data.BarrelJsonContext.CreateTypes());
+
     public string ReadFile(string path) => File.ReadAllText(Path.Combine(_folder, path));
 
     public bool Exists(string path) => File.Exists(Path.Combine(_folder, path));

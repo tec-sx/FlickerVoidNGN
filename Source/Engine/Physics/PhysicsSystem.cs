@@ -1,3 +1,5 @@
+using System.Numerics;
+
 using Arch.Core;
 using Arch.System;
 
@@ -8,6 +10,7 @@ using BepuUtilities;
 using BepuUtilities.Memory;
 
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Physics;
@@ -19,12 +22,14 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
 
     private static readonly QueryDescription NewRigidBodies = new QueryDescription().WithAll<RigidBody, Transform>().WithNone<BodyHandle>();
     private static readonly QueryDescription NewStaticBodies = new QueryDescription().WithAll<StaticBody, Transform>().WithNone<StaticHandle>();
-    private static readonly QueryDescription SimulatedBodies = new QueryDescription().WithAll<Transform, BodyHandle>();
+    private static readonly QueryDescription SimulatedBodies = new QueryDescription().WithAll<Transform, BodyHandle, RigidBody>();
 
     private readonly BufferPool _pool = new();
     private readonly ThreadDispatcher _dispatcher;
     private readonly Dictionary<Entity, BodyHandle> _bodies = [];
     private readonly Dictionary<Entity, StaticHandle> _statics = [];
+    private readonly Dictionary<BodyHandle, Entity> _bodyEntities = [];
+    private readonly Dictionary<StaticHandle, Entity> _staticEntities = [];
     private readonly List<Entity> _pending = [];
 
     public PhysicsSystem(World world)
@@ -51,6 +56,38 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         Simulation.Timestep(dt, _dispatcher);
 
         CopyPosesToTransforms();
+    }
+
+    public bool RayCast(Ray ray, float maxDistance, out RayHit hit)
+    {
+        hit = default;
+        ClosestHitHandler handler = new();
+        Simulation.RayCast(ray.Origin, ray.Direction, maxDistance, _pool, ref handler);
+        if (!handler.Found)
+        {
+            return false;
+        }
+
+        Entity entity;
+        bool known;
+        if (handler.Collidable.Mobility == CollidableMobility.Static)
+        {
+            known = _staticEntities.TryGetValue(handler.Collidable.StaticHandle, out entity);
+        }
+        else
+        {
+            known = _bodyEntities.TryGetValue(handler.Collidable.BodyHandle, out entity);
+        }
+
+        if (!known)
+        {
+            return false;
+        }
+
+        Vector3 point = ray.GetPoint(handler.Distance);
+        Vector3 normal = Vector3.Normalize(handler.Normal);
+        hit = new RayHit(entity, point, normal, handler.Distance);
+        return true;
     }
 
     public override void Dispose()
@@ -80,6 +117,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
             }
 
             _bodies.Remove(entity);
+            _bodyEntities.Remove(handle);
         }
 
         foreach ((Entity entity, StaticHandle handle) in _statics)
@@ -100,6 +138,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
             }
 
             _statics.Remove(entity);
+            _staticEntities.Remove(handle);
         }
     }
 
@@ -110,7 +149,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         {
             RigidBody body = World.Get<RigidBody>(entity);
             Transform transform = World.Get<Transform>(entity);
-            RigidPose pose = new(transform.Position, transform.Rotation);
+            RigidPose pose = body.Collider.GetPose(transform.Position, transform.Rotation);
             TypedIndex shape = body.Collider.AddShape(Simulation.Shapes);
             CollidableDescription collidable = new(shape);
             BodyActivityDescription activity = new(SleepThreshold);
@@ -129,6 +168,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
             BodyHandle handle = Simulation.Bodies.Add(description);
             World.Add(entity, in handle);
             _bodies.Add(entity, handle);
+            _bodyEntities.Add(handle, entity);
         }
     }
 
@@ -140,10 +180,12 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
             StaticBody body = World.Get<StaticBody>(entity);
             Transform transform = World.Get<Transform>(entity);
             TypedIndex shape = body.Collider.AddShape(Simulation.Shapes);
-            StaticDescription description = new(transform.Position, transform.Rotation, shape);
+            RigidPose pose = body.Collider.GetPose(transform.Position, transform.Rotation);
+            StaticDescription description = new(pose, shape);
             StaticHandle handle = Simulation.Statics.Add(description);
             World.Add(entity, in handle);
             _statics.Add(entity, handle);
+            _staticEntities.Add(handle, entity);
         }
     }
 
@@ -157,7 +199,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
     private void CopyPosesToTransforms()
     {
         Bodies bodies = Simulation.Bodies;
-        World.Query(in SimulatedBodies, (ref Transform transform, ref BodyHandle handle) =>
+        World.Query(in SimulatedBodies, (ref Transform transform, ref BodyHandle handle, ref RigidBody rigidBody) =>
         {
             BodyReference body = bodies[handle];
             if (!body.Awake)
@@ -165,8 +207,9 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
                 return;
             }
 
-            transform.Position = body.Pose.Position;
-            transform.Rotation = body.Pose.Orientation;
+            RigidPose pose = body.Pose;
+            transform.Position = rigidBody.Collider.GetEntityPosition(pose);
+            transform.Rotation = pose.Orientation;
         });
     }
 }

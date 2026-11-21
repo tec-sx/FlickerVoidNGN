@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:data="using:FlickerVoid.Editor.Data"
         xmlns:shell="using:FlickerVoid.Editor"
         xmlns:inspector="using:FlickerVoid.Editor.Inspector"
 xmlns:inspectorCore="using:FlickerVoid.Editor.Core.Inspector"
@@ -83,7 +84,7 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
       </DockPanel>
     </Border>
     <Border DockPanel.Dock="Right" Width="300" BorderThickness="1,0,0,0" BorderBrush="{StaticResource EditorLineBrush}">
-      <TabControl Padding="0">
+      <TabControl Padding="0" SelectedIndex="{Binding SideTab}">
         <TabItem Header="Scene">
           <scenes:SceneTreeView DataContext="{Binding SceneTree}" />
         </TabItem>
@@ -106,6 +107,12 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </ScrollViewer>
+          </DockPanel>
+        </TabItem>
+        <TabItem Header="Data">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="{Binding DataHeading}" Classes="heading" TextTrimming="CharacterEllipsis" />
+            <data:DataView DataContext="{Binding DataContent}" />
           </DockPanel>
         </TabItem>
       </TabControl>

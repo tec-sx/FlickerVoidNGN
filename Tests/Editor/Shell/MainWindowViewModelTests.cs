@@ -1,4 +1,5 @@
 using FlickerVoid.Editor.Assets;
+using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Engine.Rendering.Lighting;
 
 namespace FlickerVoid.Editor.Tests;
@@ -92,6 +93,37 @@ public sealed class MainWindowViewModelTests : IDisposable
 
         _builder.Scene.ScenePath.Should().Be(MainWindowViewModelTestsBuilder.Room);
         _builder.Scene.IsUnsaved.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OpeningADataAssetEditsItInTheDataTabUntilItIsSaved()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetKind.Data);
+
+        _builder.ViewModel.SideTab.Should().Be(3);
+        NumberFieldViewModel hours = (NumberFieldViewModel)((Core.Data.DataObjectViewModel)_builder.ViewModel.DataContent!).Fields.Single();
+        hours.Value.Should().Be(6);
+        hours.Value = 9;
+        _builder.ViewModel.UnsavedPaths.Should().Equal(MainWindowViewModelTestsBuilder.Lantern);
+        _builder.ViewModel.DataHeading.Should().Be("Lantern.fvdata *");
+        _builder.ViewModel.SaveAssets();
+        _builder.ReadFile(MainWindowViewModelTestsBuilder.Lantern).Should().Contain("\"hours\": 9").And.Contain("\"type\": \"lantern\"");
+    }
+
+    [Fact]
+    public void OpensFlowGraphsInAGraphEditorWithTheirEditsHeldUnsaved()
+    {
+        Core.Flows.FlowGraphViewModel? requested = null;
+        _builder.ViewModel.FlowRequested += graph => requested = graph;
+
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Cellar, AssetKind.Flow);
+
+        requested.Should().NotBeNull();
+        requested!.Nodes.Should().ContainSingle();
+        requested.AddNode("finish", 200, 0);
+        _builder.ViewModel.UnsavedPaths.Should().Equal(MainWindowViewModelTestsBuilder.Cellar);
+        _builder.ViewModel.SaveAssets();
+        _builder.ReadFile(MainWindowViewModelTestsBuilder.Cellar).Should().Contain("\"$type\": \"finish\"");
     }
 
     [Fact]

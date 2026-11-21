@@ -1,6 +1,6 @@
 using System.Numerics;
 
-using FlickerVoid.Editor.Core.Geometry;
+using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Runtime.Components;
 
@@ -134,17 +134,7 @@ public sealed class EditorCamera
     public Ray GetRay(Vector2 pixel, int width, int height)
     {
         Matrix4x4 viewProjection = GetViewProjection(width, height);
-        Matrix4x4.Invert(viewProjection, out Matrix4x4 inverse);
-        float x = (2 * pixel.X / width) - 1;
-        float y = 1 - (2 * pixel.Y / height);
-        Vector4 nearClip = new(x, y, 0, 1);
-        Vector4 farClip = new(x, y, 1, 1);
-        Vector4 near = Vector4.Transform(nearClip, inverse);
-        Vector4 far = Vector4.Transform(farClip, inverse);
-        Vector3 nearPoint = new Vector3(near.X, near.Y, near.Z) / near.W;
-        Vector3 farPoint = new Vector3(far.X, far.Y, far.Z) / far.W;
-        Vector3 direction = Vector3.Normalize(farPoint - nearPoint);
-        return new Ray(nearPoint, direction);
+        return Ray.FromViewProjection(viewProjection, pixel, width, height);
     }
 
     /// <summary>The viewport pixel, from its top left, a world point shows at.</summary>

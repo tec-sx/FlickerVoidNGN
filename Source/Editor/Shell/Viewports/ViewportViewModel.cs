@@ -7,7 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Core.Cameras;
-using FlickerVoid.Editor.Core.Geometry;
+using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Editor.Core.Gizmos;
 using FlickerVoid.Editor.Core.Overlays;
 using FlickerVoid.Editor.Core.Scenes;

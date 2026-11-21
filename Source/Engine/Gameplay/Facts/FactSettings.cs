@@ -5,7 +5,7 @@ namespace FlickerVoid.Engine.Gameplay.Facts;
 /// <summary>The declared facts: defaults, ranges and value labels.</summary>
 public sealed class FactSettings
 {
-    public List<FactDefinition> Definitions { get; init; } = [];
+    public List<FactDefinition> Definitions { get; set; } = [];
 
     public FactDefinition? FindDefinition(Tag tag) => Definitions.Find(definition => definition.Tag == tag);
 

@@ -1,8 +1,8 @@
 using System.Numerics;
 
-using FlickerVoid.Editor.Core.Geometry;
+using FlickerVoid.Engine.Runtime.Geometry;
 
-namespace FlickerVoid.Editor.Core.Tests.Geometry;
+namespace FlickerVoid.Engine.Runtime.Tests.Geometry;
 
 public sealed class RayTests
 {
@@ -82,5 +82,22 @@ public sealed class RayTests
         bool found = DownTheZAxis.ClosestOnLine(Vector3.Zero, Vector3.UnitZ, out _);
 
         found.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ARayFromTheViewportCentreRunsDownTheViewDirection()
+    {
+        Matrix4x4 view = Matrix4x4.CreateLookAt(new Vector3(0, 10, 0), Vector3.Zero, -Vector3.UnitZ);
+        Matrix4x4 projection = Matrix4x4.CreateOrthographic(8, 6, 0.1f, 100);
+        Matrix4x4 viewProjection = view * projection;
+        Vector2 centre = new(400, 300);
+        Vector2 rightEdge = new(800, 300);
+
+        Ray middle = Ray.FromViewProjection(viewProjection, centre, 800, 600);
+        Ray right = Ray.FromViewProjection(viewProjection, rightEdge, 800, 600);
+
+        middle.Direction.Y.Should().BeApproximately(-1, Precision);
+        middle.Origin.X.Should().BeApproximately(0, Precision);
+        right.Origin.X.Should().BeApproximately(4, Precision);
     }
 }

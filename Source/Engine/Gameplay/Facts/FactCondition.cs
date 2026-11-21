@@ -6,12 +6,12 @@ namespace FlickerVoid.Engine.Gameplay.Facts;
 /// <summary>Compares a fact, or checks whether it is defined.</summary>
 public sealed class FactCondition : Condition
 {
-    public Tag Fact { get; init; }
+    public Tag Fact { get; set; }
 
-    public FactCompare Compare { get; init; } = FactCompare.GreaterOrEqual;
+    public FactCompare Compare { get; set; } = FactCompare.GreaterOrEqual;
 
     /// <summary>Unused by Defined and Undefined.</summary>
-    public int Value { get; init; } = 1;
+    public int Value { get; set; } = 1;
 
     public override string Describe()
     {

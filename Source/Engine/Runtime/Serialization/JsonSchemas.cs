@@ -3,6 +3,8 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
 using System.Text.Json.Serialization.Metadata;
 
+using FlickerVoid.Engine.Gameplay.Tags;
+
 namespace FlickerVoid.Engine.Runtime.Serialization;
 
 /// <summary>
@@ -41,6 +43,11 @@ public static class JsonSchemas
     private static JsonNode Transform(JsonSchemaExporterContext context, JsonNode schema)
     {
         Type type = context.TypeInfo.Type;
+        if (type == typeof(Vector2))
+        {
+            return CreateNumberArray(2);
+        }
+
         if (type == typeof(Vector3))
         {
             return CreateNumberArray(3);
@@ -49,6 +56,11 @@ public static class JsonSchemas
         if (type == typeof(Quaternion))
         {
             return CreateNumberArray(4);
+        }
+
+        if (type == typeof(Tag))
+        {
+            return new JsonObject { ["type"] = "string" };
         }
 
         return schema;

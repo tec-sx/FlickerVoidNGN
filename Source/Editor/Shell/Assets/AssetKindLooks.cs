@@ -28,6 +28,12 @@ public static class AssetKindLooks
                 return MaterialIcons.Mood;
             case AssetKind.Shader:
                 return MaterialIcons.Shader;
+            case AssetKind.Data:
+                return MaterialIcons.Data;
+            case AssetKind.Table:
+                return MaterialIcons.Table;
+            case AssetKind.Flow:
+                return MaterialIcons.Flow;
             default:
                 return MaterialIcons.File;
         }
@@ -51,6 +57,12 @@ public static class AssetKindLooks
                 return new SolidColorBrush(Color.Parse("#E0AC2C"));
             case AssetKind.Shader:
                 return new SolidColorBrush(Color.Parse("#B9C5CF"));
+            case AssetKind.Data:
+                return new SolidColorBrush(Color.Parse("#8FB8A0"));
+            case AssetKind.Table:
+                return new SolidColorBrush(Color.Parse("#7FA6C9"));
+            case AssetKind.Flow:
+                return new SolidColorBrush(Color.Parse("#B48EC9"));
             default:
                 return new SolidColorBrush(Color.Parse("#9C9A88"));
         }

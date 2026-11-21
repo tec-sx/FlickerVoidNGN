@@ -4,8 +4,11 @@ using System.Text.Json;
 using Arch.Core;
 
 using FlickerVoid.Editor.Core.Selection;
+using FlickerVoid.Engine.Flow;
+using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
@@ -28,9 +31,22 @@ public sealed class EditorScene : IDisposable
 
     /// <summary>Opens an empty world over the content.</summary>
     public EditorScene(ILoggerFactory loggerFactory, IContentManager content)
+        : this(loggerFactory, content, [])
+    {
+    }
+
+    /// <summary>Opens an empty world over the content, with the project's game modules added (see <see cref="Projects.GameCode"/>).</summary>
+    public EditorScene(ILoggerFactory loggerFactory, IContentManager content, IReadOnlyList<IGameModule> modules)
     {
         Game = new Game(loggerFactory);
         Game.AddRendering();
+        Game.AddFlow();
+        Game.AddInput();
+        foreach (IGameModule module in modules)
+        {
+            module.Add(Game);
+        }
+
         Content = content;
         ILogger<SceneLoader> logger = loggerFactory.CreateLogger<SceneLoader>();
         _loader = new SceneLoader(Game.Spawner, Content, Game.World, logger);
@@ -133,7 +149,7 @@ public sealed class EditorScene : IDisposable
             Selection.Select(null);
         }
 
-        world.Destroy(entity);
+        Game.Spawner.Lifecycle.Destroy(world, entity);
         EntitiesChanged?.Invoke();
         MarkEdited();
     }
@@ -148,7 +164,10 @@ public sealed class EditorScene : IDisposable
             return;
         }
 
+        EntityLifecycle lifecycle = Game.Spawner.Lifecycle;
+        lifecycle.StopComponent(world, entity, typeof(T));
         world.Set(entity, component);
+        lifecycle.StartComponent(world, entity, typeof(T));
         MarkEdited();
     }
 
@@ -161,7 +180,11 @@ public sealed class EditorScene : IDisposable
             return;
         }
 
+        EntityLifecycle lifecycle = Game.Spawner.Lifecycle;
+        Type type = component.TypeInfo.Type;
+        lifecycle.StopComponent(world, entity, type);
         component.Set(world, entity, value);
+        lifecycle.StartComponent(world, entity, type);
         MarkEdited();
     }
 
@@ -176,6 +199,8 @@ public sealed class EditorScene : IDisposable
 
         using JsonDocument defaults = JsonDocument.Parse("{}");
         component.Read(world, entity, defaults.RootElement);
+        Type type = component.TypeInfo.Type;
+        Game.Spawner.Lifecycle.StartComponent(world, entity, type);
         MarkEdited();
     }
 
@@ -187,6 +212,8 @@ public sealed class EditorScene : IDisposable
             return;
         }
 
+        Type type = component.TypeInfo.Type;
+        Game.Spawner.Lifecycle.StopComponent(world, entity, type);
         component.Remove(world, entity);
         MarkEdited();
     }

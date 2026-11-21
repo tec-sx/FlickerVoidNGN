@@ -1,11 +1,14 @@
 <Solution>
   <Folder Name="/Engine/">
     <Project Path="../../Source/Tools/Builder/FlickerVoid.Tools.Builder.csproj" />
+    <Project Path="../../Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
+    <Project Path="../../Source/Engine/Interaction/FlickerVoid.Engine.Interaction.csproj" />
     <Project Path="../../Source/Engine/Debug/FlickerVoid.Engine.Debug.csproj" />
     <Project Path="../../Source/Editor/Assets/FlickerVoid.Editor.Assets.csproj" />
     <Project Path="../../Source/Editor/Core/FlickerVoid.Editor.Core.csproj" />
     <Project Path="../../Source/Editor/Persistence/FlickerVoid.Editor.Persistence.csproj" />
     <Project Path="../../Source/Editor/Shell/FlickerVoid.Editor.csproj" />
+    <Project Path="../../Source/Engine/Flow/FlickerVoid.Engine.Flow.csproj" />
     <Project Path="../../Source/Engine/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
     <Project Path="../../Source/Engine/Graphics/FlickerVoid.Engine.Graphics.csproj" />
     <Project Path="../../Source/Engine/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
@@ -18,6 +21,7 @@
   </Folder>
   <Folder Name="/Source/">
     <Project Path="Source/Gameplay/FlickerVoid.Gameplay.csproj" />
+    <Project Path="Source/Launcher/FlickerVoid.Launcher.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/Gameplay/FlickerVoid.Gameplay.Tests.csproj" />

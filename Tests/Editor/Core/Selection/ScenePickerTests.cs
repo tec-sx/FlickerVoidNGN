@@ -2,7 +2,7 @@ using System.Numerics;
 
 using Arch.Core;
 
-using FlickerVoid.Editor.Core.Geometry;
+using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Editor.Core.Selection;
 
 namespace FlickerVoid.Editor.Core.Tests.Selection;

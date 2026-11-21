@@ -3,7 +3,10 @@ using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Data;
 
 namespace FlickerVoid.Editor.Assets;
 
@@ -19,9 +22,29 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     private readonly IContentManager _content;
     private readonly List<AssetCatalog> _catalogs;
 
-    public AssetBrowserViewModel(IContentManager content)
+    /// <summary>Browses the content; <paramref name="data"/> lists the data asset and table types it can create.</summary>
+    public AssetBrowserViewModel(IContentManager content, DataTypes? data = null)
     {
         _content = content;
+        List<AssetChoice> dataChoices = [];
+        List<AssetChoice> tableChoices = [];
+        if (data is not null)
+        {
+            foreach (string type in data.AssetTypes.Keys)
+            {
+                RelayCommand create = new(() => CreateData(type));
+                dataChoices.Add(new AssetChoice(type, create));
+            }
+
+            foreach (string type in data.RowTypes.Keys)
+            {
+                RelayCommand create = new(() => CreateTable(type));
+                tableChoices.Add(new AssetChoice(type, create));
+            }
+        }
+
+        DataChoices = dataChoices;
+        TableChoices = tableChoices;
         _catalogs = AssetCatalog.ForContent(content);
         List<AssetFilter> filters = [new AssetFilter("All", null)];
         foreach (AssetKind kind in Enum.GetValues<AssetKind>())
@@ -43,6 +66,12 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     public event Action<AssetEntry>? Opened;
 
     public IReadOnlyList<AssetFilter> Filters { get; }
+
+    /// <summary>The data asset types New Data Asset offers, by the names files give them.</summary>
+    public IReadOnlyList<AssetChoice> DataChoices { get; }
+
+    /// <summary>The row types New Table offers.</summary>
+    public IReadOnlyList<AssetChoice> TableChoices { get; }
 
     /// <summary>The roots of the tree: the game's source folders in a development build, else the content folder.</summary>
     [ObservableProperty]
@@ -168,6 +197,26 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     public void CreateMood()
     {
         CreateFile("New Mood", ".fvmood", "mood", null);
+    }
+
+    [RelayCommand]
+    public void CreateFlow()
+    {
+        CreateFile("New Flow", FlowGraph.Extension, "flow", "\"nodes\": [ { \"$type\": \"start\", \"id\": \"start\" } ],\n  \"links\": []");
+    }
+
+    /// <summary>Creates a data asset of the type registered under <paramref name="type"/>, with its default values.</summary>
+    public void CreateData(string type)
+    {
+        string name = DisplayNames.FromIdentifier(type);
+        CreateFile($"New {name}", DataAssets.AssetExtension, "data", $"\"type\": \"{type}\"");
+    }
+
+    /// <summary>Creates an empty data table of the row type registered under <paramref name="type"/>.</summary>
+    public void CreateTable(string type)
+    {
+        string name = DisplayNames.FromIdentifier(type);
+        CreateFile($"New {name} Table", DataAssets.TableExtension, "table", $"\"type\": \"{type}\",\n  \"rows\": {{}}");
     }
 
     /// <summary>Renames the selected file, keeping its extensions, or the selected folder when no file is selected.</summary>

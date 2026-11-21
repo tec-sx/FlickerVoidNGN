@@ -6,6 +6,7 @@ using Avalonia.Threading;
 
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Projects;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Editor.Inspector;
@@ -15,6 +16,7 @@ using FlickerVoid.Editor.Scenes;
 using FlickerVoid.Editor.Viewports;
 
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Loop;
 
 using Microsoft.Extensions.Logging;
 
@@ -73,8 +75,27 @@ public sealed partial class App : Application
     private Window CreateEditor(string content, string? scene, string? game)
     {
         UnsavedContent unsaved = new(new ContentManager(content));
-        _scene = new EditorScene(_loggerFactory!, unsaved);
+        IReadOnlyList<IGameModule> modules = [];
+        string? codeProblem = null;
+        if (game is not null)
+        {
+            try
+            {
+                modules = GameCode.Load(game);
+            }
+            catch (Exception exception) when (exception is IOException or BadImageFormatException or TypeLoadException or MissingMethodException)
+            {
+                codeProblem = $"Can't load the game's code from {game}: {exception.Message}";
+            }
+        }
+
+        _scene = new EditorScene(_loggerFactory!, unsaved, modules);
         ViewportViewModel viewport = new(_scene, Options.Validation);
+        if (codeProblem is not null)
+        {
+            viewport.Status = codeProblem;
+        }
+
         if (scene is not null)
         {
             try

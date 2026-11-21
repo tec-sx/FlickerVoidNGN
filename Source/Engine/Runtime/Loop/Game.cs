@@ -1,8 +1,13 @@
 using Arch.Core;
 using Arch.System;
 
+using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Debugging;
+using FlickerVoid.Engine.Runtime.Entities;
+using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 using FlickerVoid.Engine.Runtime.Services;
@@ -17,7 +22,7 @@ public sealed partial class Game : IDisposable
     private readonly ILogger _logger;
     private bool _initialized;
 
-    /// <summary>Creates the world and registers it, the logger factory, the scene spawner and the debug console as services.</summary>
+    /// <summary>Creates the world and registers it, the logger factory, the scene spawner, the debug console, the events and the facts as services.</summary>
     public Game(ILoggerFactory loggerFactory)
     {
         LoggerFactory = loggerFactory;
@@ -30,7 +35,16 @@ public sealed partial class Game : IDisposable
         Spawner.Register("transform", RuntimeJsonContext.Default.Transform);
         Services.AddService(Spawner);
         Schemas.Add("scene", Spawner.GetSchema);
+        Schemas.Add("entity", Spawner.GetTemplateSchema);
+        Data.AddResolver(GameplayJsonContext.Default);
+        Data.RegisterDerived<Condition, FactCondition>("fact");
+        Data.RegisterDerived<Condition, GroupCondition>("group");
+        Data.RegisterDerived<Effect, FactEffect>("fact");
+        Schemas.Add("data", Data.GetAssetSchema);
+        Schemas.Add("table", Data.GetTableSchema);
         Services.AddService(DebugConsole);
+        Services.AddService(Events);
+        Services.AddService(Facts);
 
         Loop.FixedUpdate += HandleFixedUpdate;
         Loop.Update += HandleUpdate;
@@ -45,8 +59,20 @@ public sealed partial class Game : IDisposable
     /// <summary>The schemas of the game's text content; modules add the file kinds they read.</summary>
     public ContentSchemas Schemas { get; } = new();
 
+    /// <summary>The types data asset and table files hold; modules register theirs, with the source-generated contexts that read them.</summary>
+    public DataTypes Data { get; } = new();
+
     /// <summary>Spawns scene files into the world; modules register their components on it.</summary>
     public ISceneSpawner Spawner { get; } = new SceneSpawner();
+
+    /// <summary>Starts and stops entities; systems add their components' hooks to it. It is the spawner's, so scenes start what they spawn.</summary>
+    public EntityLifecycle Lifecycle => Spawner.Lifecycle;
+
+    /// <summary>The game's facts, the saved state rules read and effects change.</summary>
+    public IFactDatabase Facts { get; } = new FactDatabase(new FactSettings());
+
+    /// <summary>Events systems send and handle, dispatched after each group of systems runs.</summary>
+    public EventBus Events { get; } = new();
 
     /// <summary>Debugging commands and variables; modules add theirs to it.</summary>
     public IDebugConsole DebugConsole { get; } = new DebugConsole();
@@ -81,16 +107,18 @@ public sealed partial class Game : IDisposable
     {
         Loop.FixedUpdate -= HandleFixedUpdate;
         Loop.Update -= HandleUpdate;
+        Lifecycle.StopAll(World);
         FrameSystems.Dispose();
         FixedSystems.Dispose();
         World.Destroy(World);
     }
 
-    private static void Run(Group<GameTime> systems, GameTime time)
+    private void Run(Group<GameTime> systems, GameTime time)
     {
         systems.BeforeUpdate(in time);
         systems.Update(in time);
         systems.AfterUpdate(in time);
+        Events.Dispatch();
     }
 
     private void HandleFixedUpdate(GameTime time)
