@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 
 using FlickerVoid.Engine.Inventory.Inventories;
 using FlickerVoid.Engine.Inventory.Items;
+using FlickerVoid.Engine.Inventory.Loot;
 using FlickerVoid.Engine.Inventory.Outfits;
 using FlickerVoid.Engine.Inventory.Pickups;
 using FlickerVoid.Engine.Inventory.Rules;
@@ -18,6 +19,8 @@ namespace FlickerVoid.Engine.Inventory.Serialization;
 [JsonSerializable(typeof(EquippableFragment))]
 [JsonSerializable(typeof(ContainerFragment))]
 [JsonSerializable(typeof(IsWearingCondition))]
+[JsonSerializable(typeof(LootTableDefinition))]
+[JsonSerializable(typeof(GiveLootEffect))]
 [JsonSerializable(typeof(HasItemCondition))]
 [JsonSerializable(typeof(HasItemWithTagCondition))]
 [JsonSerializable(typeof(HasMoneyCondition))]
@@ -30,4 +33,5 @@ namespace FlickerVoid.Engine.Inventory.Serialization;
 [JsonSerializable(typeof(Inventories.Inventory))]
 [JsonSerializable(typeof(Pickup))]
 [JsonSerializable(typeof(Equipment))]
+[JsonSerializable(typeof(Lootable))]
 public sealed partial class InventoryJsonContext : JsonSerializerContext;
