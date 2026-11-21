@@ -78,4 +78,3 @@ Each step is one pull request or a short stack, and ends in something to try in 
 ## Open decisions
 
 - Game UI technology for `Ui`, decided before step 8.
-- Whether `Abilities` is an engine module (recommended, as GAS is engine in Unreal) or project code.
