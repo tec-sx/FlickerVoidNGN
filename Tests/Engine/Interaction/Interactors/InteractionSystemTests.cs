@@ -174,6 +174,30 @@ public sealed class InteractionSystemTests : IDisposable
         actions.Should().ContainSingle().Which.Interactor.Should().Be(spawned[1]);
     }
 
+    [Fact]
+    public void APressDoesTheHeaviestOfferForItsInputThatCanBeDone()
+    {
+        _builder.WithFile("Lever.fvdata", """
+            {
+              "type": "interactable",
+              "offers": [
+                { "input": "Input.Use", "action": "Interaction.Action.Pull" },
+                { "input": "Input.Use", "action": "Interaction.Action.Oil", "weight": 2,
+                  "conditions": { "conditions": [ { "$type": "fact", "fact": "Lever.Rusty" } ] } }
+              ]
+            }
+            """).Build();
+        (Entity hero, Entity lever) = SpawnHeroAndLever(1);
+        List<InteractionActionEvent> actions = _builder.Collect<InteractionActionEvent>();
+        _builder.Send(new FocusCommand(hero, lever));
+
+        _builder.Send(new InteractionInput(hero, Use, InputPhase.Pressed));
+        _builder.Game.Facts.SetFact(new Tag("Lever.Rusty"), 1);
+        _builder.Send(new InteractionInput(hero, Use, InputPhase.Pressed));
+
+        actions.Select(action => action.Action.Name).Should().Equal("Interaction.Action.Pull", "Interaction.Action.Oil");
+    }
+
     private (Entity Hero, Entity Lever) SpawnHeroAndLever(float distance)
     {
         string lever = $$"""{ "name": "Lever", "components": { "transform": { "position": [{{distance}}, 0, 0] }, "interactable": { "definition": "Lever.fvdata" } } }""";

@@ -6,7 +6,7 @@ namespace FlickerVoid.Engine.Interaction.Interactables;
 /// <summary>What can be done with a kind of interactable (a door, a lever, a chest), by whom, and how long it rests between uses.</summary>
 public sealed class InteractableDefinition : Definition
 {
-    /// <summary>At most three, one per input.</summary>
+    /// <summary>At most three; offers sharing an input are tried heaviest first, so one click unlocks a locked door and opens an unlocked one.</summary>
     public List<InteractionOffer> Offers { get; set; } = [];
 
     /// <summary>Whether the interface lists the offers while it is focused.</summary>

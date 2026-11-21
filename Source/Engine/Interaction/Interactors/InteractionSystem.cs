@@ -244,8 +244,8 @@ public sealed partial class InteractionSystem : BaseSystem<World, GameTime>
             return;
         }
 
-        int index = active.Definition.Offers.FindIndex(offer => offer.IsValid && offer.Input == input);
-        if (index < 0 || !CanExecute(interactor, target, active, index))
+        int index = FindOffer(interactor, target, active, input);
+        if (index < 0)
         {
             return;
         }
@@ -258,6 +258,24 @@ public sealed partial class InteractionSystem : BaseSystem<World, GameTime>
         World.Add(interactor, new InteractionCommit(target, index, input, offer.Action, gesture));
         _events.Send(new InteractionStartedEvent(interactor, target, offer.Action));
         Advance(interactor, 0);
+    }
+
+    /// <summary>The heaviest offer for the input that can be done now, the first of equal weight; -1 when none can.</summary>
+    private int FindOffer(Entity interactor, Entity target, in ActiveInteractable active, Tag input)
+    {
+        List<InteractionOffer> offers = active.Definition.Offers;
+        int best = -1;
+        for (int index = 0; index < offers.Count; index++)
+        {
+            InteractionOffer offer = offers[index];
+            bool heavier = best < 0 || offer.Weight > offers[best].Weight;
+            if (offer.IsValid && offer.Input == input && heavier && CanExecute(interactor, target, active, index))
+            {
+                best = index;
+            }
+        }
+
+        return best;
     }
 
     private void Advance(Entity interactor, float seconds)
