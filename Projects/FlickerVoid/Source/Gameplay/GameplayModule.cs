@@ -62,6 +62,13 @@ public sealed class GameplayModule : IGameModule
             game.Services.AddService(picker);
             _ = new ClickControlSystem(game.World, game.Events, picker, dialogue);
         }
+
+        InputActions? actions = game.Services.GetService<InputActions>();
+        if (actions is not null)
+        {
+            WalkControlSystem walk = new(game.World, game.Events, actions, dialogue);
+            game.FrameSystems.Add(walk);
+        }
     }
 
     /// <summary>Makes the protagonist the player that quests and knowledge apply their rules for while it is active.</summary>

@@ -3,6 +3,8 @@
   "type": "inputMap",
   "actions": [
     { "id": "Input.Use", "bindings": [ { "button": "Left" } ] },
+    { "id": "Input.Move", "bindings": [
+      { "key": "W", "value": [0, 1] }, { "key": "S", "value": [0, -1] }, { "key": "A", "value": [-1, 0] }, { "key": "D", "value": [1, 0] } ] },
     { "id": "Input.Hub", "bindings": [ { "key": "Tab" } ] },
     { "id": "Input.NextPage", "bindings": [ { "key": "E" } ] },
     { "id": "Input.PreviousPage", "bindings": [ { "key": "Q" } ] }

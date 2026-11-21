@@ -84,4 +84,62 @@ public sealed class CharacterMovementSystemTests : IDisposable
 
         _builder.Game.World.Get<Transform>(entities[0]).Position.Y.Should().BeApproximately(0.2f, 1e-3f);
     }
+
+    [Fact]
+    public void WalksAlongASteeredDirectionUntilSteeredToStandStill()
+    {
+        _builder.Build();
+        Entity hero = _builder.Spawn(Walker)[0];
+        List<ArrivedEvent> arrived = [];
+        EventBus events = _builder.Game.Events;
+        events.Handle((in ArrivedEvent sent) => arrived.Add(sent));
+        events.Send(new SteerCommand(hero, new Vector3(0, 0, -1)));
+
+        _builder.Run(1);
+        events.Send(new SteerCommand(hero, Vector3.Zero));
+        _builder.Run(0.1f);
+        Vector3 stopped = _builder.Game.World.Get<Transform>(hero).Position;
+        _builder.Run(1);
+
+        stopped.Z.Should().BeApproximately(-2, 0.1f);
+        _builder.Game.World.Get<Transform>(hero).Position.Should().Be(stopped);
+        Vector3 forward = Vector3.Transform(Vector3.UnitZ, _builder.Game.World.Get<Transform>(hero).Rotation);
+        forward.Z.Should().BeApproximately(-1, 1e-3f);
+        arrived.Should().BeEmpty();
+        _builder.Game.World.Has<Heading>(hero).Should().BeFalse();
+    }
+
+    [Fact]
+    public void SteeringReplacesTheDestinationAndAMoveReplacesTheSteering()
+    {
+        _builder.Build();
+        Entity hero = _builder.Spawn(Walker)[0];
+        EventBus events = _builder.Game.Events;
+        events.Send(new MoveCommand(hero, new Vector3(10, 0, 0)));
+        _builder.Run(0.1f);
+
+        events.Send(new SteerCommand(hero, new Vector3(0, 0, 1)));
+        _builder.Run(0.1f);
+        bool destinationAfterSteer = _builder.Game.World.Has<Destination>(hero);
+        events.Send(new MoveCommand(hero, new Vector3(0, 0, 5)));
+        _builder.Run(0.1f);
+
+        destinationAfterSteer.Should().BeFalse();
+        _builder.Game.World.Has<Heading>(hero).Should().BeFalse();
+        _builder.Game.World.Has<Destination>(hero).Should().BeTrue();
+    }
+
+    [Fact]
+    public void AStopEndsTheSteering()
+    {
+        _builder.Build();
+        Entity hero = _builder.Spawn(Walker)[0];
+        _builder.Game.Events.Send(new SteerCommand(hero, new Vector3(1, 0, 0)));
+        _builder.Run(0.1f);
+
+        _builder.Game.Events.Send(new StopCommand(hero));
+        _builder.Run(0.1f);
+
+        _builder.Game.World.Has<Heading>(hero).Should().BeFalse();
+    }
 }
