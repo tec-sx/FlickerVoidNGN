@@ -5,6 +5,7 @@ using Arch.System;
 
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Entities;
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Data;
@@ -45,6 +46,9 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
         _events = game.Events;
         _logger = game.LoggerFactory.CreateLogger<QuestSystem>();
     }
+
+    /// <summary>Who quest rules are checked for and effects applied to, as their instigator: the player, which the game sets.</summary>
+    public IEntityView? Player { get; set; }
 
     public QuestState GetState(Tag quest)
     {
@@ -362,7 +366,7 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
         }
     }
 
-    private ConditionContext CreateContext() => new(_facts) { Services = _services };
+    private ConditionContext CreateContext() => new(_facts) { Services = _services, Instigator = Player };
 
     private void HandleFactChanged(Tag tag, int oldValue, int newValue) => Evaluate();
 

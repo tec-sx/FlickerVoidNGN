@@ -6,13 +6,6 @@
   "offers": [
     {
       "input": "Input.Use",
-      "action": "Interaction.Action.Unlock",
-      "weight": 1,
-      "display": { "name": "Unlock" },
-      "conditions": { "conditions": [ { "$type": "locked" } ] }
-    },
-    {
-      "input": "Input.Use",
       "action": "Interaction.Action.Toggle",
       "display": { "name": "Open" }
     }
