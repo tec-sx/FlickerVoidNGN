@@ -608,4 +608,35 @@ public sealed class SceneRendererTests : IDisposable
         (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
         red.Should().BeInRange((byte)(expectedRed - 2), (byte)Math.Min(expectedRed + 2, 255));
     }
+
+    [Fact]
+    public void DrawsALineOfTheOutlineColorAroundOutlinedMeshes()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb" }, "outline": { "color": [0, 1, 0] } } }""");
+        _builder.WithTargetSize(8);
+
+        uint[] pixels = _builder.Render();
+
+        uint green = SceneRendererTestsBuilder.Rgba(0, 255, 0, 255);
+        int row = 3 * 8;
+        pixels[row].Should().Be(green, "the line is two pixels wide");
+        pixels[row + 1].Should().Be(green);
+        pixels[row + 3].Should().Be(RedPixel, "the mesh itself keeps its look");
+        pixels[row + 6].Should().Be(green);
+        pixels[0].Should().Be(BlackPixel, "the corner is further than two pixels from the mesh");
+    }
+
+    [Fact]
+    public void LeavesMeshesWithoutAnOutlineUnlined()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithTargetSize(8);
+
+        uint[] pixels = _builder.Render();
+
+        pixels[3 * 8].Should().Be(BlackPixel);
+        pixels[(3 * 8) + 1].Should().Be(BlackPixel);
+    }
 }

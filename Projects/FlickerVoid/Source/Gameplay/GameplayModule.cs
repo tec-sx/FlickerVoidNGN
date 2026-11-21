@@ -28,7 +28,7 @@ namespace FlickerVoid.Gameplay;
 
 /// <summary>
 /// FlickerVoid's gameplay: physics, point and click characters, interaction, attributes and abilities, possessions, quests and knowledge for the protagonist,
-/// conversations, and doors that keys open and lockpicks pick; the click control only where there is a window to click in.
+/// conversations, doors that keys open and lockpicks pick, and outlines on what the protagonist can use nearby; the click control only where there is a window to click in.
 /// </summary>
 public sealed class GameplayModule : IGameModule
 {
@@ -46,6 +46,7 @@ public sealed class GameplayModule : IGameModule
         game.Spawner.Register("protagonist", FlickerVoidJsonContext.Default.Protagonist);
         AddPlayer(game);
         game.Spawner.Register("doorSwing", FlickerVoidJsonContext.Default.DoorSwing);
+        game.Spawner.Register("interactableHighlight", FlickerVoidJsonContext.Default.InteractableHighlight);
 
         // Keys hear a blocked door before lockpicks, and both before the door rattles.
         _ = new KeySystem(game.World, game.Events, inventories);
@@ -53,6 +54,8 @@ public sealed class GameplayModule : IGameModule
         _ = new LockpickSystem(game.World, game.Events, abilities, checks, game.Facts, game.Services);
         DoorSwingSystem doors = new(game);
         game.FixedSystems.Add(doors);
+        InteractableHighlightSystem highlights = new(game.World);
+        game.FrameSystems.Add(highlights);
 
         IGameWindow? window = game.Services.GetService<IGameWindow>();
         IInputState? input = game.Services.GetService<IInputState>();

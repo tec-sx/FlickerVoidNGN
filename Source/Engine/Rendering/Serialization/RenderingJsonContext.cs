@@ -6,6 +6,7 @@ using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Engine.Rendering.Serialization;
@@ -27,6 +28,7 @@ namespace FlickerVoid.Engine.Rendering.Serialization;
 [JsonSerializable(typeof(IrradianceVolume))]
 [JsonSerializable(typeof(LightingMood))]
 [JsonSerializable(typeof(SceneMood))]
+[JsonSerializable(typeof(Outline))]
 [JsonSerializable(typeof(ShaderParameters))]
 [JsonSerializable(typeof(MaterialFile))]
 public sealed partial class RenderingJsonContext : JsonSerializerContext;

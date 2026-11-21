@@ -466,6 +466,12 @@ void DepthMain()
 {
 }
 
+// The outline pass draws outlined meshes' silhouettes in their outline's color, which it passes as the base color.
+float4 OutlineMain(VertexOutput input) : SV_Target
+{
+    return float4(Scene.BaseColor.rgb, 1);
+}
+
 float4 PixelMain(VertexOutput input) : SV_Target
 {
     FrameData frame = LoadFrame(Scene.Frame);

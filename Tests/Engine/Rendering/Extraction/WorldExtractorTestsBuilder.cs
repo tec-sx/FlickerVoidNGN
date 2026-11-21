@@ -7,6 +7,7 @@ using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Rendering.Tests.Extraction;
@@ -28,6 +29,13 @@ internal sealed class WorldExtractorTestsBuilder : IDisposable
     {
         MeshRenderer renderer = new() { Mesh = mesh };
         _world.Create(renderer, transform);
+        return this;
+    }
+
+    public WorldExtractorTestsBuilder WithMesh(string mesh, Transform transform, Outline outline)
+    {
+        MeshRenderer renderer = new() { Mesh = mesh };
+        _world.Create(renderer, transform, outline);
         return this;
     }
 

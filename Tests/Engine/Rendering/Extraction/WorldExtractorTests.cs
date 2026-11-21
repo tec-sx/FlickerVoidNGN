@@ -5,6 +5,7 @@ using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Rendering.Tests.Extraction;
@@ -38,6 +39,20 @@ public sealed class WorldExtractorTests : IDisposable
         scene.Meshes[0].Mesh.Should().Be("Cube.glb");
         scene.Meshes[0].World.Should().Be(expected);
         scene.Meshes[0].Animator.Should().BeNull();
+    }
+
+    [Fact]
+    public void CopiesTheOutlineOfOutlinedMeshes()
+    {
+        Outline outline = new() { Color = new Vector3(0, 1, 0) };
+
+        RenderScene scene = _builder.WithMesh("Cube.glb", new Transform(), outline).WithMesh("Plain.glb", new Transform()).Extract();
+
+        scene.Meshes.Should().HaveCount(2);
+        RenderMesh outlined = scene.Meshes.Single(mesh => mesh.Mesh == "Cube.glb");
+        RenderMesh plain = scene.Meshes.Single(mesh => mesh.Mesh == "Plain.glb");
+        outlined.Outline!.Value.Color.Should().Be(new Vector3(0, 1, 0));
+        plain.Outline.Should().BeNull();
     }
 
     [Fact]
