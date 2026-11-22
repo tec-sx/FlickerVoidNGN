@@ -19,7 +19,7 @@ Samples are a solution of their own that references the engine:
 dotnet build Samples/FlickerVoid.Samples.slnx
 ```
 
-The game, [Bleeders](https://github.com/tec-sx/Bleeders), lives in its own repository and holds this engine as a git submodule.
+The game, [Bleeders](https://github.com/tec-sx/Bleeders), lives in its own repository and builds against the engine `FLICKERVOID_ENGINE` names.
 
 A project outside this repository finds the engine through the `FLICKERVOID_ENGINE` environment variable. On Windows, `setx FLICKERVOID_ENGINE C:\path\to\FlickerVoidNGN` sets it for new terminals and IDEs.
 
