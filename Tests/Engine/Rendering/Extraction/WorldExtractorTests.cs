@@ -28,6 +28,37 @@ public sealed class WorldExtractorTests : IDisposable
     }
 
     [Fact]
+    public void PutsTheActiveCameraFirstAtItsPosedView()
+    {
+        Camera still = new() { OrthographicHeight = 7 };
+        Camera directed = new() { OrthographicHeight = 3 };
+        Camera posedLens = new() { OrthographicHeight = 5 };
+        Transform pose = new() { Position = new Vector3(4, 5, 6) };
+        ActiveCamera active = new() { Lens = posedLens, Pose = pose };
+
+        RenderScene scene = _builder.WithCamera(still, Vector3.Zero).WithActiveCamera(directed, Vector3.One, active).Extract();
+
+        scene.Cameras.Should().HaveCount(2);
+        scene.Cameras[0].Camera.OrthographicHeight.Should().Be(5);
+        scene.Cameras[0].Transform.Position.Should().Be(new Vector3(4, 5, 6));
+        scene.Cameras[1].Camera.OrthographicHeight.Should().Be(7);
+    }
+
+    [Fact]
+    public void FindsTheActiveCameraElseTheFirst()
+    {
+        Camera still = new() { OrthographicHeight = 7 };
+        RenderCamera? first = _builder.WithCamera(still, Vector3.Zero).FindCamera();
+        Transform pose = new() { Position = new Vector3(4, 5, 6) };
+        ActiveCamera active = new() { Lens = still, Pose = pose };
+
+        RenderCamera? directed = _builder.WithActiveCamera(still, Vector3.One, active).FindCamera();
+
+        first!.Value.Transform.Position.Should().Be(Vector3.Zero);
+        directed!.Value.Transform.Position.Should().Be(new Vector3(4, 5, 6));
+    }
+
+    [Fact]
     public void CopiesStaticMeshesWithTheirWorldMatrix()
     {
         Transform transform = new() { Position = new Vector3(1, 0, 0), Scale = new Vector3(2) };

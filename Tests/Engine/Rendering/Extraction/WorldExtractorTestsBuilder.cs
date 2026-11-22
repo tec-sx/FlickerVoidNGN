@@ -25,6 +25,13 @@ internal sealed class WorldExtractorTestsBuilder : IDisposable
         return this;
     }
 
+    public WorldExtractorTestsBuilder WithActiveCamera(Camera camera, Vector3 position, ActiveCamera active)
+    {
+        Transform transform = new() { Position = position };
+        _world.Create(camera, transform, active);
+        return this;
+    }
+
     public WorldExtractorTestsBuilder WithMesh(string mesh, Transform transform)
     {
         MeshRenderer renderer = new() { Mesh = mesh };
@@ -74,6 +81,8 @@ internal sealed class WorldExtractorTestsBuilder : IDisposable
         extractor.Extract(_world, _scene);
         return _scene;
     }
+
+    public RenderCamera? FindCamera() => ActiveCamera.Find(_world);
 
     public void Dispose()
     {
