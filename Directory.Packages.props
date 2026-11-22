@@ -5,6 +5,7 @@
   <ItemGroup Label="Runtime">
     <PackageVersion Include="Arch" Version="2.1.0" />
     <PackageVersion Include="Arch.System" Version="1.1.0" />
+    <PackageVersion Include="HotAvalonia" Version="3.1.5" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
   </ItemGroup>
   <ItemGroup Label="Physics">
