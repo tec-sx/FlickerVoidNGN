@@ -12,6 +12,8 @@ using FlickerVoid.Engine.Dialogue;
 using FlickerVoid.Engine.Dialogue.Conversations;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Interaction;
+using FlickerVoid.Engine.Maps;
+using FlickerVoid.Engine.Maps.Navigation;
 using FlickerVoid.Engine.Inventory;
 using FlickerVoid.Engine.Inventory.Inventories;
 using FlickerVoid.Engine.Physics;
@@ -32,7 +34,7 @@ namespace FlickerVoid.Gameplay;
 
 /// <summary>
 /// FlickerVoid's gameplay: physics, point and click characters, interaction, attributes and abilities, possessions, quests and knowledge for the protagonist,
-/// conversations, doors that keys open and lockpicks pick, and residents who wander, watch and listen; the click control only where
+/// conversations, doors that keys open and lockpicks pick, residents who wander, watch and listen, and maps with their markers; the click control only where
 /// there is a window to click in.
 /// </summary>
 public sealed class GameplayModule : IGameModule
@@ -59,6 +61,8 @@ public sealed class GameplayModule : IGameModule
         _ = new LockpickSystem(game.World, game.Events, abilities, checks, game.Facts, game.Services);
         DoorSwingSystem doors = new(game);
         game.FixedSystems.Add(doors);
+
+        game.AddMaps(new MapSettings { WaypointMarker = "Markers/Waypoint.fvdata" });
 
         game.Spawner.Register("resident", FlickerVoidJsonContext.Default.Resident);
         PerceptionSystem perception = game.Services.GetService<PerceptionSystem>()!;
