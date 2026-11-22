@@ -1,0 +1,7 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "map",
+  "id": "Map.Inn",
+  "display": { "name": "The Gilded Fox" },
+  "layers": [ { "name": "Hall", "displayName": "Hall", "min": [-5, -5], "max": [5, 5] } ]
+}

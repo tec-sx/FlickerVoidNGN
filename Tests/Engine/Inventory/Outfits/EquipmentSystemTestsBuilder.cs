@@ -8,6 +8,7 @@ using FlickerVoid.Engine.Inventory.Outfits;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 
@@ -15,12 +16,16 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlickerVoid.Engine.Inventory.Tests.Outfits;
 
-/// <summary>Builds a playing game with clothes, a bracelet and a backpack as item files, and a hero who carries and wears what a test gives.</summary>
+/// <summary>
+/// Builds a playing game with saves, clothes, a bracelet and a backpack as item files, and a saveable hero who carries and wears what a
+/// test gives.
+/// </summary>
 internal sealed class EquipmentSystemTestsBuilder : IDisposable
 {
     private readonly string _folder;
     private readonly InventorySettings _settings = new() { EnforceWeight = false, EnforceSpace = false };
     private DataAssets? _data;
+    private int _spawned;
 
     public EquipmentSystemTestsBuilder()
     {
@@ -44,6 +49,8 @@ internal sealed class EquipmentSystemTestsBuilder : IDisposable
     public InventorySystem Inventories { get; private set; } = null!;
 
     public EquipmentSystem Equipment => Game.Services.GetService<EquipmentSystem>()!;
+
+    public SaveSystem Saves { get; private set; } = null!;
 
     public Entity Hero { get; private set; }
 
@@ -74,6 +81,8 @@ internal sealed class EquipmentSystemTestsBuilder : IDisposable
         _data = new DataAssets(content, Game.Data);
         Game.Services.AddService(_data);
         Inventories = Game.AddInventory(_settings);
+        string saves = Path.Combine(_folder, "Saves");
+        Saves = Game.AddSaves(new SaveSettings { Folder = saves });
         Game.Lifecycle.Play(Game.World);
         Hero = Spawn(carried, equipment);
         return this;
@@ -87,7 +96,7 @@ internal sealed class EquipmentSystemTestsBuilder : IDisposable
             .Select(static parts => $$"""{ "item": "Items/{{parts[0]}}.fvdata", "quantity": {{parts[1]}} }""");
         string items = string.Join(", ", entries);
         string json = $$"""
-            { "entities": [ { "components": { "inventory": { "items": [ {{items}} ] }, "equipment": { {{equipment}} } } } ] }
+            { "entities": [ { "components": { "saveable": { "id": "Hero{{_spawned++}}" }, "inventory": { "items": [ {{items}} ] }, "equipment": { {{equipment}} } } } ] }
             """;
         SceneData scene = JsonSerializer.Deserialize(json, RuntimeJsonContext.Default.SceneData)!;
         IReadOnlyList<Entity> spawned = Game.Spawner.Spawn(scene, Game.World);

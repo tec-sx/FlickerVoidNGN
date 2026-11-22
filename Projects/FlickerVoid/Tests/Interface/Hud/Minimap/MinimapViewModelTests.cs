@@ -47,6 +47,33 @@ public sealed class MinimapViewModelTests : IDisposable
     }
 
     [Fact]
+    public void ShowsMarkersAroundTheProtagonistAtTheMapsScale()
+    {
+        MinimapViewModel minimap = _builder.WithMarker(new Vector3(2, 0, -1)).WithCamera(yawDegrees: 0).WithProtagonist(Vector3.Zero, yawDegrees: 0).Build();
+
+        minimap.Update();
+
+        MinimapMarkerViewModel marker = minimap.Markers.Should().ContainSingle().Subject;
+        marker.X.Should().BeApproximately(2 * MinimapViewModel.PixelsPerMetre, 0.01);
+        marker.Y.Should().BeApproximately(-1 * MinimapViewModel.PixelsPerMetre, 0.01);
+        marker.IsTracked.Should().BeFalse();
+    }
+
+    [Fact]
+    public void PinsTheTrackedMarkerToTheEdgeOfTheMinimap()
+    {
+        MinimapViewModel minimap = _builder.WithMarker(new Vector3(0, 0, -40)).WithCamera(yawDegrees: 0).WithProtagonist(Vector3.Zero, yawDegrees: 0)
+            .Tracking(0).Build();
+
+        minimap.Update();
+
+        MinimapMarkerViewModel marker = minimap.Markers.Should().ContainSingle().Subject;
+        marker.X.Should().BeApproximately(0, 0.01);
+        marker.Y.Should().BeApproximately(-MinimapViewModel.Radius, 0.01);
+        marker.IsTracked.Should().BeTrue();
+    }
+
+    [Fact]
     public void HidesWithoutAProtagonist()
     {
         MinimapViewModel minimap = _builder.WithCamera(yawDegrees: 0).Build();

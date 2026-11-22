@@ -2,6 +2,9 @@ using Arch.Core;
 
 using FlickerVoid.Engine.Abilities;
 using FlickerVoid.Engine.Abilities.Activation;
+using FlickerVoid.Engine.Ai;
+using FlickerVoid.Engine.Ai.Paths;
+using FlickerVoid.Engine.Ai.Senses;
 using FlickerVoid.Engine.Attributes;
 using FlickerVoid.Engine.Attributes.Checks;
 using FlickerVoid.Engine.Characters;
@@ -9,6 +12,8 @@ using FlickerVoid.Engine.Dialogue;
 using FlickerVoid.Engine.Dialogue.Conversations;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Interaction;
+using FlickerVoid.Engine.Maps;
+using FlickerVoid.Engine.Maps.Navigation;
 using FlickerVoid.Engine.Inventory;
 using FlickerVoid.Engine.Inventory.Inventories;
 using FlickerVoid.Engine.Physics;
@@ -20,15 +25,18 @@ using FlickerVoid.Engine.Story;
 using FlickerVoid.Engine.Story.Knowledge;
 using FlickerVoid.Engine.Story.Quests;
 using FlickerVoid.Gameplay.Protagonist.Control;
+using FlickerVoid.Gameplay.Protagonist.Resources.Knowledge.Scanning;
 using FlickerVoid.Gameplay.Protagonist.Resources.Possessions;
 using FlickerVoid.Gameplay.Serialization;
 using FlickerVoid.Gameplay.World.Objects.Doors;
+using FlickerVoid.Gameplay.World.Society.Residents;
 
 namespace FlickerVoid.Gameplay;
 
 /// <summary>
 /// FlickerVoid's gameplay: physics, point and click characters, interaction, attributes and abilities, possessions, quests and knowledge for the protagonist,
-/// conversations, doors that keys open and lockpicks pick, and outlines on what the protagonist can use nearby; the click control only where there is a window to click in.
+/// conversations, doors that keys open and lockpicks pick, residents who wander, watch and listen, maps with their markers, and outlines on what the
+/// protagonist can use nearby; the click control and the scanner only where there is a window to click in.
 /// </summary>
 public sealed class GameplayModule : IGameModule
 {
@@ -36,6 +44,7 @@ public sealed class GameplayModule : IGameModule
     {
         IPhysicsSystem physics = game.AddPhysics();
         game.AddCharacters();
+        PathSystem paths = game.AddAi();
         game.AddInteraction();
         game.AddAttributes();
         AbilitySystem abilities = game.AddAbilities();
@@ -46,6 +55,10 @@ public sealed class GameplayModule : IGameModule
         game.Spawner.Register("protagonist", FlickerVoidJsonContext.Default.Protagonist);
         AddPlayer(game);
         game.Spawner.Register("doorSwing", FlickerVoidJsonContext.Default.DoorSwing);
+        game.Data.AddResolver(FlickerVoidJsonContext.Default);
+        game.Data.Register<ScanDefinition>("scan");
+        game.Spawner.Register("scanner", FlickerVoidJsonContext.Default.Scanner);
+        game.Spawner.Register("scannable", FlickerVoidJsonContext.Default.Scannable);
         game.Spawner.Register("interactableHighlight", FlickerVoidJsonContext.Default.InteractableHighlight);
 
         // Keys hear a blocked door before lockpicks, and both before the door rattles.
@@ -57,6 +70,13 @@ public sealed class GameplayModule : IGameModule
         InteractableHighlightSystem highlights = new(game.World);
         game.FrameSystems.Add(highlights);
 
+        game.AddMaps(new MapSettings { WaypointMarker = "Markers/Waypoint.fvdata" });
+
+        game.Spawner.Register("resident", FlickerVoidJsonContext.Default.Resident);
+        PerceptionSystem perception = game.Services.GetService<PerceptionSystem>()!;
+        ResidentSystem residents = new(game, paths, perception, dialogue, Random.Shared);
+        game.FixedSystems.Add(residents);
+
         IGameWindow? window = game.Services.GetService<IGameWindow>();
         IInputState? input = game.Services.GetService<IInputState>();
         if (window is not null && input is not null)
@@ -64,6 +84,7 @@ public sealed class GameplayModule : IGameModule
             PointerPicker picker = new(game.World, input, window, physics);
             game.Services.AddService(picker);
             _ = new ClickControlSystem(game.World, game.Events, picker, dialogue);
+            AddScanner(game, physics, picker);
         }
 
         InputActions? actions = game.Services.GetService<InputActions>();
@@ -72,6 +93,14 @@ public sealed class GameplayModule : IGameModule
             WalkControlSystem walk = new(game.World, game.Events, actions, dialogue);
             game.FrameSystems.Add(walk);
         }
+    }
+
+    /// <summary>Adds the scanner, which focuses what the pointer is on.</summary>
+    private static void AddScanner(Game game, IPhysicsSystem physics, PointerPicker picker)
+    {
+        ScannerSystem scanner = new(game, physics, picker);
+        game.FixedSystems.Add(scanner);
+        game.Services.AddService(scanner);
     }
 
     /// <summary>Makes the protagonist the player that quests and knowledge apply their rules for while it is active.</summary>

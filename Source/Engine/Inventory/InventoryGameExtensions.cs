@@ -10,7 +10,7 @@ using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Inventory;
 
-/// <summary>Adds inventories to a game: the <c>item</c> and <c>lootTable</c> data asset types and the item fragments, the inventory conditions and effects, the <c>inventory</c>, <c>pickup</c>, <c>equipment</c> and <c>lootable</c> components, and the systems that run them.</summary>
+/// <summary>Adds inventories to a game: the <c>item</c> and <c>lootTable</c> data asset types and the item fragments, the inventory conditions and effects, the <c>inventory</c>, <c>pickup</c>, <c>equipment</c> and <c>lootable</c> components, the systems that run them, and what saves keep of them.</summary>
 public static class InventoryGameExtensions
 {
     public static InventorySystem AddInventory(this Game game, InventorySettings? settings = null, Random? random = null)
@@ -38,6 +38,9 @@ public static class InventoryGameExtensions
         game.Spawner.Register("pickup", InventoryJsonContext.Default.Pickup);
         game.Spawner.Register("equipment", InventoryJsonContext.Default.Equipment);
         game.Spawner.Register("lootable", InventoryJsonContext.Default.Lootable);
+        game.Data.RegisterDerived<ItemInstanceData, Stolen>("stolen");
+        game.Data.RegisterDerived<ItemInstanceData, ChargesLeft>("chargesLeft");
+        game.SaveStates.AddComponent("lootable", InventoryJsonContext.Default.Lootable);
 
         InventorySystem inventories = new(game, settings ?? new InventorySettings());
         game.Services.AddService(inventories);
