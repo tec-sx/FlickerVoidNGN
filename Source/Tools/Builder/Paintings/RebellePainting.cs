@@ -11,12 +11,18 @@ namespace FlickerVoid.Tools.Builder.Paintings;
 /// <summary>
 /// Reads a Rebelle painting (<c>.reb</c>): a zip of <c>artwork.xml</c>, which gives the canvas size and lists the layers
 /// top first, and a PNG per layer holding its paint in straight-alpha RGBA, cropped to where it was painted and placed on
-/// the canvas by an <c>offset</c> text chunk ("x y"). Alpha is how much paint lies there.
+/// the canvas by an <c>offset</c> text chunk ("x y"). Alpha is how much paint lies there. A layer's impasto, how high its
+/// paint stands, is in <c>layerN_structure.dat</c>: "BBOX", six big-endian uint32s (the box's inclusive corners x0 y0 x1 y1,
+/// then the canvas's width and height), "UI_2", a uint32 count and that many big-endian uint16 heights; a layer without
+/// impasto writes "ZERO" instead.
 /// </summary>
 public sealed class RebellePainting : IDisposable
 {
     private const string ArtworkEntry = "artwork.xml";
     private const string OffsetKey = "offset";
+
+    /// <summary>The impasto height the relief's brightest texel stands for; thick oils reach about 5000.</summary>
+    public const float ReliefRange = 8192;
 
     private readonly ZipArchive _zip;
 
@@ -91,9 +97,105 @@ public sealed class RebellePainting : IDisposable
         return rgba;
     }
 
+    /// <summary>
+    /// Stacks the visible layers' impasto at their opacity, as a share of <see cref="ReliefRange"/> in grey RGBA of the whole
+    /// canvas, rows from the top; null when no visible layer has any.
+    /// </summary>
+    public byte[]? CompositeRelief()
+    {
+        float[] heights = new float[Width * Height];
+        bool raised = false;
+        foreach (PaintingLayer layer in Layers)
+        {
+            if (layer.Visible && layer.Opacity > 0)
+            {
+                raised |= Raise(heights, layer);
+            }
+        }
+
+        if (!raised)
+        {
+            return null;
+        }
+
+        byte[] rgba = new byte[heights.Length * 4];
+        for (int index = 0; index < heights.Length; index++)
+        {
+            float value = MathF.Round(heights[index] / ReliefRange * 255);
+            byte grey = (byte)Math.Clamp(value, 0, 255);
+            rgba[index * 4] = grey;
+            rgba[index * 4 + 1] = grey;
+            rgba[index * 4 + 2] = grey;
+            rgba[index * 4 + 3] = 255;
+        }
+
+        return rgba;
+    }
+
     public void Dispose()
     {
         _zip.Dispose();
+    }
+
+    /// <summary>Adds the layer's impasto to the heights; false when it has none.</summary>
+    private bool Raise(float[] heights, PaintingLayer layer)
+    {
+        ZipArchiveEntry? entry = _zip.GetEntry($"{layer.FileName}_structure.dat");
+        if (entry is null)
+        {
+            return false;
+        }
+
+        byte[] data;
+        using (Stream stream = entry.Open())
+        using (MemoryStream memory = new())
+        {
+            stream.CopyTo(memory);
+            data = memory.ToArray();
+        }
+
+        const int headerSize = 4 + 6 * 4 + 4 + 4;
+        if (data.Length < headerSize || Encoding.ASCII.GetString(data, 0, 4) != "BBOX" || Encoding.ASCII.GetString(data, 28, 4) != "UI_2")
+        {
+            return false;
+        }
+
+        Span<byte> header = data.AsSpan(4);
+        int x0 = BinaryPrimitives.ReadInt32BigEndian(header);
+        int y0 = BinaryPrimitives.ReadInt32BigEndian(header[4..]);
+        int x1 = BinaryPrimitives.ReadInt32BigEndian(header[8..]);
+        int y1 = BinaryPrimitives.ReadInt32BigEndian(header[12..]);
+        int count = BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(32));
+        int boxWidth = x1 - x0 + 1;
+        int boxHeight = y1 - y0 + 1;
+        if (boxWidth <= 0 || boxHeight <= 0 || count != boxWidth * boxHeight || data.Length < headerSize + count * 2)
+        {
+            throw new InvalidDataException($"The impasto of layer '{layer.FileName}' doesn't fit its box.");
+        }
+
+        for (int row = 0; row < boxHeight; row++)
+        {
+            int y = y0 + row;
+            if (y < 0 || y >= Height)
+            {
+                continue;
+            }
+
+            for (int column = 0; column < boxWidth; column++)
+            {
+                int x = x0 + column;
+                if (x < 0 || x >= Width)
+                {
+                    continue;
+                }
+
+                int source = headerSize + (row * boxWidth + column) * 2;
+                ushort height = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(source));
+                heights[y * Width + x] += height * layer.Opacity;
+            }
+        }
+
+        return true;
     }
 
     private void Paint(float[] canvas, PaintingLayer layer)

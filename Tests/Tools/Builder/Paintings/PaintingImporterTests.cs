@@ -75,6 +75,52 @@ public sealed class PaintingImporterTests : IDisposable
     }
 
     [Fact]
+    public void WritesTheImpastoAsAReliefBeside()
+    {
+        _files.WithLayer(new byte[2 * 4]).WithRelief([0, 4096]).WritePainting("Wall.reb");
+        AssetBuilder builder = _files.Build();
+
+        BuildReport report = _files.BuildAll(builder);
+
+        report.Failed.Should().BeEmpty();
+        DdsImage relief = _files.ReadOutput("Wall.relief.dds");
+        relief.Format.Should().Be(PixelFormat.Bc7UNorm);
+        ColorRgba32[] texels = DecodeTop(relief);
+        texels[0].r.Should().BeInRange(0, 5);
+        texels[1].r.Should().BeInRange(122, 133);
+    }
+
+    [Fact]
+    public void StacksTheImpastoOfTheVisibleLayersAtTheirOpacityInTheirBoxes()
+    {
+        _files.WithCanvas(4, 1)
+            .WithLayer(new byte[4 * 4]).WithRelief([2048, 2048, 2048, 2048])
+            .WithLayer(new byte[4 * 4], visible: false).WithRelief([8192, 8192, 8192, 8192])
+            .WithLayer(new byte[4], opacity: 0.5f, x: 2, width: 1, height: 1).WithRelief([4096], x: 2, width: 1, height: 1)
+            .WritePainting("Wall.reb");
+        AssetBuilder builder = _files.Build();
+
+        BuildReport report = _files.BuildAll(builder);
+
+        report.Failed.Should().BeEmpty();
+        ColorRgba32[] texels = DecodeTop(_files.ReadOutput("Wall.relief.dds"), 4);
+        texels[1].r.Should().BeInRange(59, 69);
+        texels[2].r.Should().BeInRange(122, 133);
+    }
+
+    [Fact]
+    public void WritesNoReliefForAPaintingWithoutImpasto()
+    {
+        _files.WithLayer(new byte[2 * 4]).WritePainting("Wall.reb");
+        AssetBuilder builder = _files.Build();
+
+        BuildReport report = _files.BuildAll(builder);
+
+        report.Failed.Should().BeEmpty();
+        _files.HasOutput("Wall.relief.dds").Should().BeFalse();
+    }
+
+    [Fact]
     public void RoundsACanvasSizedInPrintUnitsToWholeTexels()
     {
         _files.WithCanvas(3, 2, "width='2.6' height='1.5'").WithLayer(new byte[3 * 2 * 4]).WritePainting("Wall.reb");

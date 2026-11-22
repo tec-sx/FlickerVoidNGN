@@ -17,6 +17,7 @@ internal sealed class PaintingImporterTestsBuilder : IDisposable
 {
     private readonly AssetBuilderTestsBuilder _files = new();
     private readonly List<(string Xml, string FileName, byte[] Image)> _layers = [];
+    private readonly Dictionary<string, byte[]> _structures = [];
     private int _width = 2;
     private int _height = 1;
     private string _canvas = "width='2.000000' height='1.000000'";
@@ -48,6 +49,35 @@ internal sealed class PaintingImporterTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Gives the last layer added its impasto: 16-bit heights in a box at the given place on the canvas, written as Rebelle's
+    /// <c>layerN_structure.dat</c> ("BBOX", the box's inclusive corners and the canvas size, "UI_2", the count, the heights, all big-endian).
+    /// </summary>
+    public PaintingImporterTestsBuilder WithRelief(ushort[] heights, int x = 0, int y = 0, int width = 0, int height = 0)
+    {
+        if (width == 0)
+        {
+            width = _width;
+            height = _height;
+        }
+
+        using MemoryStream data = new();
+        data.Write(Encoding.ASCII.GetBytes("BBOX"));
+        WriteNumbers(data, [x, y, x + width - 1, y + height - 1, _width, _height]);
+        data.Write(Encoding.ASCII.GetBytes("UI_2"));
+        WriteNumbers(data, [heights.Length]);
+        Span<byte> number = stackalloc byte[2];
+        foreach (ushort value in heights)
+        {
+            BinaryPrimitives.WriteUInt16BigEndian(number, value);
+            data.Write(number);
+        }
+
+        string fileName = _layers[^1].FileName;
+        _structures[fileName] = data.ToArray();
+        return this;
+    }
+
     /// <summary>Writes the painting with the layers added so far as <paramref name="path"/>.</summary>
     public PaintingImporterTestsBuilder WritePainting(string path)
     {
@@ -66,6 +96,8 @@ internal sealed class PaintingImporterTestsBuilder : IDisposable
         foreach ((_, string fileName, byte[] image) in _layers)
         {
             WriteEntry(zip, $"{fileName}.png", image);
+            byte[] structure = _structures.GetValueOrDefault(fileName) ?? EmptyStructure();
+            WriteEntry(zip, $"{fileName}_structure.dat", structure);
         }
 
         return this;
@@ -80,6 +112,8 @@ internal sealed class PaintingImporterTestsBuilder : IDisposable
     public AssetBuilder Build() => new([new PaintingImporter()]);
 
     public BuildReport BuildAll(AssetBuilder builder) => _files.BuildAll(builder);
+
+    public bool HasOutput(string path) => File.Exists(Path.Combine(_files.OutputDirectory, path));
 
     public DdsImage ReadOutput(string path)
     {
@@ -98,6 +132,25 @@ internal sealed class PaintingImporterTestsBuilder : IDisposable
         ZipArchiveEntry entry = zip.CreateEntry(name);
         using Stream stream = entry.Open();
         stream.Write(data);
+    }
+
+    /// <summary>A layer without impasto, as Rebelle writes it: "ZERO" and a size.</summary>
+    private static byte[] EmptyStructure()
+    {
+        using MemoryStream data = new();
+        data.Write(Encoding.ASCII.GetBytes("ZERO"));
+        WriteNumbers(data, [0]);
+        return data.ToArray();
+    }
+
+    private static void WriteNumbers(Stream stream, int[] numbers)
+    {
+        Span<byte> number = stackalloc byte[4];
+        foreach (int value in numbers)
+        {
+            BinaryPrimitives.WriteInt32BigEndian(number, value);
+            stream.Write(number);
+        }
     }
 
     /// <summary>An 8-bit RGBA PNG with an <c>offset</c> text chunk, rows unfiltered.</summary>
