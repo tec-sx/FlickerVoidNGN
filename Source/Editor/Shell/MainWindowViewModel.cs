@@ -68,7 +68,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Viewport = viewport;
         Inspector = inspector;
         SceneTree = new SceneTreeViewModel(viewport.Scene);
-        ViewSettings = new ViewSettingsViewModel(viewport.Mood);
+        ContentFileFinder files = new(content);
+        ViewSettings = new ViewSettingsViewModel(viewport.Mood, files.Find);
         Assets = new AssetBrowserViewModel(viewport.Scene.Content, viewport.Scene.Game.Data, codeFolder);
         Assets.Opened += OpenAsset;
         viewport.Scene.Opened += HandleSceneOpened;
@@ -431,7 +432,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        ViewSettingsViewModel settings = new(_mood.Mood);
+        ContentFileFinder files = new(_content);
+        ViewSettingsViewModel settings = new(_mood.Mood, files.Find);
         settings.Edited += _mood.Hold;
         Viewport.Mood = _mood.Mood;
         ViewSettings = settings;
@@ -504,7 +506,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         _mood = null;
         Viewport.Mood = new LightingMood();
-        ViewSettings = new ViewSettingsViewModel(Viewport.Mood);
+        ContentFileFinder files = new(_content);
+        ViewSettings = new ViewSettingsViewModel(Viewport.Mood, files.Find);
         OnPropertyChanged(nameof(MoodHeading));
     }
 

@@ -93,7 +93,7 @@ public sealed record LightingMood
     /// The paper everything is painted on: an image file in the content folder laid under the screen at one texel per pixel,
     /// unlit, showing where nothing is painted and through paint as thin as its alpha says.
     /// </summary>
-    [ContentFile(".png", ".jpg", ".jpeg", ".tga", ".bmp")]
+    [ContentFile(".png", ".jpg", ".jpeg", ".tga", ".bmp", ".reb")]
     public string? Paper { get; set; }
 
     /// <summary>How much the paper's grain decides where thin paint lies: it pools in the dark valleys and leaves the light peaks bare.</summary>
