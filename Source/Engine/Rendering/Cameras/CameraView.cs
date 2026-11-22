@@ -10,13 +10,6 @@ public readonly record struct CameraView(Matrix4x4 View, Matrix4x4 Projection)
 {
     public Matrix4x4 ViewProjection => View * Projection;
 
-    /// <summary>The ray from the camera through a point of the viewport given in pixels from its top left, such as where the player clicked.</summary>
-    public Ray GetRay(Vector2 pixel, int width, int height)
-    {
-        Matrix4x4 viewProjection = ViewProjection;
-        return Ray.FromViewProjection(viewProjection, pixel, width, height);
-    }
-
     /// <summary>
     /// Creates the view from the camera's transform, ignoring its scale. An orthographic view moves in whole pixels, so the
     /// scene doesn't shimmer as the camera glides.

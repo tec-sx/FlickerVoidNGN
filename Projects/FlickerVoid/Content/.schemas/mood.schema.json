@@ -85,6 +85,9 @@
         "string",
         "null"
       ]
+    },
+    "paperGrain": {
+      "type": "number"
     }
   },
   "additionalProperties": false

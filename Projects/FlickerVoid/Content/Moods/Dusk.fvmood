@@ -1,16 +1,36 @@
-// Dusk: a low orange sun, hazy air, a glow around the lights and a warm, softer grade.
 {
   "$schema": "../.schemas/mood.schema.json",
-  "sunDirection": [-0.9, -0.25, -0.35],
+  "sunDirection": [
+    -0.9,
+    -0.25,
+    -0.35
+  ],
   "ambient": 0.25,
+  "sunShadowDistance": 30,
   "fogDensity": 0.15,
-  "fogColor": [1, 0.75, 0.55],
+  "fogColor": [
+    1,
+    0.75,
+    0.55
+  ],
+  "fogAnisotropy": 0.3,
+  "fogHeight": 0,
   "fogHeightFalloff": 1.5,
+  "ambientOcclusion": 1,
+  "ambientOcclusionRadius": 0.5,
+  "contactShadowLength": 0.3,
   "bloom": 0.2,
   "exposure": 1.15,
   "contrast": 0.95,
   "saturation": 1.15,
-  "tint": [1.1, 0.88, 0.72],
+  "tint": [
+    1.1,
+    0.88,
+    0.72
+  ],
+  "tonemapper": "Uncharted2",
+  "whitePoint": 11.2,
   "grain": 0.02,
-  "paper": "Paper.png"
+  "paper": "Paper.png",
+  "paperGrain": 0.3
 }

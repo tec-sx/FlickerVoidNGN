@@ -24,6 +24,7 @@ public sealed class PointerPicker(World world, IInputState input, IGameWindow wi
     {
         hit = default;
         Entity camera = Entity.Null;
+
         world.Query(in Cameras, (Entity entity) =>
         {
             if (camera == Entity.Null)
@@ -31,16 +32,17 @@ public sealed class PointerPicker(World world, IInputState input, IGameWindow wi
                 camera = entity;
             }
         });
-        Vector2D<int> size = window.Size;
-        if (camera == Entity.Null || size.X <= 0 || size.Y <= 0)
+
+        if (camera == Entity.Null || window.Size.X <= 0 || window.Size.Y <= 0)
         {
             return false;
         }
 
         Camera lens = world.Get<Camera>(camera);
         Transform place = world.Get<Transform>(camera);
-        CameraView view = CameraView.Create(lens, place, size.X, size.Y);
-        Ray ray = view.GetRay(input.MousePosition, size.X, size.Y);
+        CameraView view = CameraView.Create(lens, place, window.Size.X, window.Size.Y);
+        Ray ray = Ray.FromViewProjection(view.ViewProjection, input.MousePosition, window.Size.X, window.Size.Y);
+
         return physics.RayCast(ray, MaxDistance, out hit);
     }
 }

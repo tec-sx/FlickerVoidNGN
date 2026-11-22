@@ -32,6 +32,7 @@ public sealed class GameInterface : ISystem<GameTime>
     {
         _picker = game.Services.GetService<PointerPicker>();
         _actions = game.Services.GetService<InputActions>();
+
         Hud = new HudViewModel(game);
         Hub = new HubViewModel(game);
         _hudView = new HudView { DataContext = Hud };
