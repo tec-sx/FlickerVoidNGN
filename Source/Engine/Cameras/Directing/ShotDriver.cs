@@ -171,26 +171,16 @@ internal sealed class ShotDriver
         }
 
         Transform transform = _world.Get<Transform>(shot);
-        Matrix4x4 shotWorld = transform.ToMatrix();
-        Vector3 position = Vector3.Transform(local.Position, shotWorld);
-        Quaternion rotation = Quaternion.Concatenate(local.Rotation, transform.Rotation);
+        Camera lens = GetLens(shot);
+        RenderCamera view = local.ToWorld(transform, lens);
         if (data.LookAtTarget && TryFindTarget(data, out Vector3 aim))
         {
-            rotation = LookAt(position, aim, rotation);
+            Transform pose = view.Transform;
+            pose.Rotation = ShotPose.LookAt(pose.Position, aim, pose.Rotation);
+            view = new RenderCamera(view.Camera, pose);
         }
 
-        Camera lens = GetLens(shot);
-        if (lens.Projection == CameraProjection.Perspective)
-        {
-            lens.FieldOfView = local.Zoom;
-        }
-        else
-        {
-            lens.OrthographicHeight = local.Zoom;
-        }
-
-        Transform pose = new() { Position = position, Rotation = rotation };
-        return new RenderCamera(lens, pose);
+        return view;
     }
 
     private void Advance(Entity shot, ShotPlayback playback, float seconds)
@@ -306,26 +296,6 @@ internal sealed class ShotDriver
         }
 
         return true;
-    }
-
-    /// <summary>The rotation looking from a point at another with +Y up, or the fallback when they meet or the look is straight up or down.</summary>
-    private static Quaternion LookAt(Vector3 from, Vector3 to, Quaternion fallback)
-    {
-        Vector3 toTarget = to - from;
-        if (toTarget.LengthSquared() < 1e-8f)
-        {
-            return fallback;
-        }
-
-        Vector3 forward = Vector3.Normalize(toTarget);
-        float upright = MathF.Abs(Vector3.Dot(forward, Vector3.UnitY));
-        if (upright > 0.9999f)
-        {
-            return fallback;
-        }
-
-        Matrix4x4 world = Matrix4x4.CreateWorld(Vector3.Zero, forward, Vector3.UnitY);
-        return Quaternion.CreateFromRotationMatrix(world);
     }
 
     private Camera GetLens(Entity shot)

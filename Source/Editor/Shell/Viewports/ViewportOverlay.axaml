@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:shell="using:FlickerVoid.Editor"
              xmlns:viewports="using:FlickerVoid.Editor.Viewports"
+             xmlns:shots="using:FlickerVoid.Editor.Shots"
              x:Class="FlickerVoid.Editor.Viewports.ViewportOverlay"
              x:DataType="viewports:ViewportViewModel">
   <Panel>
@@ -58,6 +59,25 @@
         </StackPanel>
       </Border>
     </StackPanel>
+    <!-- The selected shot's timeline, left of the camera preview in the bottom right corner. -->
+    <Grid ColumnDefinitions="3*,*" VerticalAlignment="Bottom" IsVisible="{Binding Timeline.HasShot}">
+      <Border Classes="viewportBar" Margin="4,4,8,12">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button Classes="icon" Command="{Binding AddShotKeyCommand}"
+                    ToolTip.Tip="Add a key where the view stands, at the scrubbed time.">
+              <PathIcon Data="{x:Static shell:MaterialIcons.Add}" />
+            </Button>
+            <Button Classes="icon delete" Command="{Binding Timeline.DeleteSelectedKeyCommand}" ToolTip.Tip="Delete the selected key.">
+              <PathIcon Data="{x:Static shell:MaterialIcons.Remove}" />
+            </Button>
+          </StackPanel>
+          <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0" MinWidth="48" TextAlignment="Right"
+                     Text="{Binding Timeline.ScrubTime, StringFormat={}{0:0.00} s}" />
+          <shots:ShotTimelineStrip Timeline="{Binding Timeline}" Height="28" />
+        </DockPanel>
+      </Border>
+    </Grid>
     <StackPanel Margin="4" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Top">
       <viewports:NavigationGizmo Width="80" Height="80" Camera="{Binding Camera}" />
       <viewports:CameraDragButton Classes="viewportRound" Drag="Pan" Camera="{Binding Camera}"

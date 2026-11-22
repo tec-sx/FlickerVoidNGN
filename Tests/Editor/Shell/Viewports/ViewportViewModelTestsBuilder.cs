@@ -6,6 +6,8 @@ using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Editor.Scenes;
 using FlickerVoid.Editor.Viewports;
+using FlickerVoid.Engine.Cameras.Shots;
+using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 
@@ -41,6 +43,17 @@ internal sealed class ViewportViewModelTestsBuilder : IDisposable
     {
         Transform transform = new() { Position = position };
         return World.Create(transform, new PointLight());
+    }
+
+    /// <summary>A shot at the origin with keys at the origin at 0 seconds and two metres along X at 2, selected.</summary>
+    public Entity AddSelectedShot()
+    {
+        ShotKey first = new() { Time = 0 };
+        ShotKey second = new() { Position = new Vector3(2, 0, 0), Time = 2 };
+        Shot shot = new() { Keys = [first, second] };
+        Entity entity = World.Create(new Transform(), new Camera(), shot);
+        ViewModel.Selection.Select(entity);
+        return entity;
     }
 
     /// <summary>Opens a scene file holding one entity, Lamp, and returns it.</summary>
