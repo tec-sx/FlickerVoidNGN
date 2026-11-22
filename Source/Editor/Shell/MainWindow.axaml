@@ -30,6 +30,9 @@
           <PathIcon Classes="logo" Data="{x:Static shell:MaterialIcons.Logo}" />
           <TextBlock Text="{Binding Title}" Classes="windowTitle" IsHitTestVisible="False" />
           <Separator />
+          <Button Classes="icon" Click="HandleOpenProjectClick" ToolTip.Tip="Open another project; the editor reopens on it.">
+            <PathIcon Data="{x:Static shell:MaterialIcons.FolderOpen}" />
+          </Button>
           <Button Classes="icon save" Command="{Binding Viewport.SaveCommand}" ToolTip.Tip="Save the scene (Ctrl+S).">
             <PathIcon Data="{x:Static shell:MaterialIcons.Save}" />
           </Button>
