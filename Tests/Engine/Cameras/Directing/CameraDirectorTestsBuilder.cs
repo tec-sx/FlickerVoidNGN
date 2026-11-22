@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text.Json;
 
 using Arch.Core;
@@ -6,6 +7,7 @@ using FlickerVoid.Engine.Cameras.Directing;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
@@ -46,6 +48,21 @@ internal sealed class CameraDirectorTestsBuilder : IDisposable
               "shot": { "start": {{startJson}}, "keys": [ {{keys}} ] {{extra}} } } }
             """;
         return Spawn(json);
+    }
+
+    /// <summary>An entity cameras can follow and look at, named and placed.</summary>
+    public Entity SpawnTarget(string name, Vector3 position)
+    {
+        string json = $$"""
+            { "name": "{{name}}", "components": { "transform": { "position": [{{position.X}}, {{position.Y}}, {{position.Z}}] }, "cameraTarget": {} } }
+            """;
+        return Spawn(json);
+    }
+
+    public void MoveTo(Entity entity, Vector3 position)
+    {
+        ref Transform transform = ref Game.World.Get<Transform>(entity);
+        transform.Position = position;
     }
 
     public void Run(float seconds)

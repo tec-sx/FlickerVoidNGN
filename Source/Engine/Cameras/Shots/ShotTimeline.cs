@@ -68,6 +68,52 @@ public sealed class ShotTimeline
         return PoseAt(segment, eased);
     }
 
+    /// <summary>The pose at a distance along the rail, turned and zoomed in proportion to the distance between its keys.</summary>
+    public ShotPose EvaluateAtDistance(float distance)
+    {
+        int segment = FindSegmentAtDistance(distance, out float fraction);
+        return PoseAt(segment, fraction);
+    }
+
+    /// <summary>The time of the timeline at a distance along the rail, in proportion to the distance between its keys.</summary>
+    public float GetTimeAtDistance(float distance)
+    {
+        int segment = FindSegmentAtDistance(distance, out float fraction);
+        if (_keys.Length == 1)
+        {
+            return _keys[0].Time;
+        }
+
+        return float.Lerp(_keys[segment].Time, _keys[segment + 1].Time, fraction);
+    }
+
+    /// <summary>The segment holding a distance along the rail, and how far through it the distance is.</summary>
+    private int FindSegmentAtDistance(float distance, out float fraction)
+    {
+        fraction = 0;
+        if (_keys.Length == 1)
+        {
+            return 0;
+        }
+
+        int segment = 0;
+        while (segment < _keys.Length - 2 && distance > Rail.GetPointDistance(segment + 1))
+        {
+            segment++;
+        }
+
+        float start = Rail.GetPointDistance(segment);
+        float span = Rail.GetPointDistance(segment + 1) - start;
+        fraction = 1;
+        if (span > 0)
+        {
+            float along = (distance - start) / span;
+            fraction = Math.Clamp(along, 0, 1);
+        }
+
+        return segment;
+    }
+
     /// <summary>The segment from a key to the next that holds the time, or -1 when the timeline has one key or the time is before it starts.</summary>
     private int FindSegmentAtTime(float time)
     {

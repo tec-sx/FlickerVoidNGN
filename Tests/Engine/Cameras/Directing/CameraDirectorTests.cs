@@ -14,6 +14,9 @@ public sealed class CameraDirectorTests : IDisposable
     private const float Precision = 1e-3f;
     private const string Line = """{ "position": [0, 0, 0], "time": 0 }, { "position": [10, 0, 0], "time": 2 }, { "position": [20, 0, 0], "time": 4 }""";
 
+    private const string Corridor = """{ "position": [0, 0, 0], "time": 0 }, { "position": [10, 0, 0], "time": 10 }""";
+    private const string TrackedFox = """, "drive": "Tracked", "smoothing": 0""";
+
     private readonly CameraDirectorTestsBuilder _builder = new();
 
     public void Dispose() => _builder.Dispose();
@@ -255,5 +258,141 @@ public sealed class CameraDirectorTests : IDisposable
         _builder.Run(1 / 60f);
 
         director.Live.Should().Be(cellar);
+    }
+
+    [Fact]
+    public void ATrackedShotFollowsItsTargetAlongTheRail()
+    {
+        _builder.Build();
+        _builder.SpawnShot("Corridor", Corridor, extra: TrackedFox);
+        Entity fox = _builder.SpawnTarget("Fox", new Vector3(4, 0, 3));
+        _builder.Run(1 / 60f);
+        float first = _builder.Drawn().Transform.Position.X;
+
+        _builder.MoveTo(fox, new Vector3(8, 0, -2));
+        _builder.Run(1 / 60f);
+        float further = _builder.Drawn().Transform.Position.X;
+        _builder.MoveTo(fox, new Vector3(2, 0, 0));
+        _builder.Run(1 / 60f);
+
+        first.Should().BeApproximately(4, Precision);
+        further.Should().BeApproximately(8, Precision);
+        _builder.Drawn().Transform.Position.X.Should().BeApproximately(2, Precision);
+    }
+
+    [Fact]
+    public void ATrackedShotSetsItsPlaceOnTheTimeline()
+    {
+        CameraDirector director = _builder.Build();
+        Entity corridor = _builder.SpawnShot("Corridor", Corridor, extra: TrackedFox);
+        _builder.SpawnTarget("Fox", new Vector3(5, 0, 0));
+
+        _builder.Run(1 / 60f);
+
+        director.GetTime(corridor).Should().BeApproximately(5, Precision);
+    }
+
+    [Fact]
+    public void TracksTheNamedTargetElseTheFirstCameraTarget()
+    {
+        _builder.Build();
+        _builder.SpawnShot("Corridor", Corridor, extra: """, "drive": "Tracked", "smoothing": 0, "target": "Cat" """);
+        _builder.SpawnTarget("Fox", new Vector3(3, 0, 0));
+        _builder.SpawnTarget("Cat", new Vector3(7, 0, 0));
+
+        _builder.Run(1 / 60f);
+
+        _builder.Drawn().Transform.Position.X.Should().BeApproximately(7, Precision);
+    }
+
+    [Fact]
+    public void SmoothsTheTrackedPoint()
+    {
+        _builder.Build();
+        _builder.SpawnShot("Corridor", Corridor, extra: """, "drive": "Tracked", "smoothing": 0.5 """);
+        Entity fox = _builder.SpawnTarget("Fox", Vector3.Zero);
+        _builder.Run(1 / 60f);
+
+        _builder.MoveTo(fox, new Vector3(10, 0, 0));
+        _builder.Run(1 / 60f);
+        float soon = _builder.Drawn().Transform.Position.X;
+        _builder.Run(5);
+
+        soon.Should().BeInRange(0.01f, 1);
+        _builder.Drawn().Transform.Position.X.Should().BeApproximately(10, Precision);
+    }
+
+    [Fact]
+    public void WalkingAlongACorridorFiresItsEndMarkerOnce()
+    {
+        _builder.Build();
+        string keys = """{ "position": [0, 0, 0], "time": 0 }, { "position": [10, 0, 0], "time": 10, "marker": "Marker.CorridorEnd" }""";
+        Entity corridor = _builder.SpawnShot("Corridor", keys, extra: TrackedFox);
+        Entity fox = _builder.SpawnTarget("Fox", Vector3.Zero);
+        List<ShotMarkerEvent> markers = _builder.Collect<ShotMarkerEvent>();
+
+        for (float x = 0; x <= 12; x += 0.5f)
+        {
+            _builder.MoveTo(fox, new Vector3(x, 0, 0));
+            _builder.Run(1 / 60f);
+        }
+
+        _builder.Run(1);
+
+        ShotMarkerEvent marker = markers.Should().ContainSingle().Subject;
+        marker.Shot.Should().Be(corridor);
+        marker.Marker.Name.Should().Be("Marker.CorridorEnd");
+        marker.Key.Should().Be(1);
+    }
+
+    [Fact]
+    public void PlayingFiresTheMarkersOfTheKeysItPasses()
+    {
+        CameraDirector director = _builder.Build();
+        string keys = """
+            { "position": [0, 0, 0], "time": 0, "marker": "Marker.Start" },
+            { "position": [10, 0, 0], "time": 1, "marker": "Marker.Middle" },
+            { "position": [20, 0, 0], "time": 2, "marker": "Marker.End" }
+            """;
+        Entity hall = _builder.SpawnShot("Hall", keys);
+        List<ShotMarkerEvent> markers = _builder.Collect<ShotMarkerEvent>();
+        _builder.Run(1 / 60f);
+
+        director.Play(hall);
+        _builder.Run(3);
+
+        markers.Select(marker => marker.Marker.Name).Should().Equal("Marker.Middle", "Marker.End");
+    }
+
+    [Fact]
+    public void LooksAtItsTarget()
+    {
+        _builder.Build();
+        _builder.SpawnShot("Watcher", """{ "position": [0, 0, 0] }""", extra: """, "lookAtTarget": true""");
+        Entity fox = _builder.SpawnTarget("Fox", new Vector3(0, 0, -5));
+        _builder.Run(1 / 60f);
+        Quaternion ahead = _builder.Drawn().Transform.Rotation;
+
+        _builder.MoveTo(fox, new Vector3(5, 0, 0));
+        _builder.Run(1 / 60f);
+        Quaternion turned = _builder.Drawn().Transform.Rotation;
+
+        MathF.Abs(Quaternion.Dot(ahead, Quaternion.Identity)).Should().BeGreaterThan(0.999f);
+        Vector3 forward = Vector3.Transform(-Vector3.UnitZ, turned);
+        Vector3.Distance(forward, Vector3.UnitX).Should().BeLessThan(Precision);
+    }
+
+    [Fact]
+    public void LooksAtTheTargetsAimHeight()
+    {
+        _builder.Build();
+        _builder.SpawnShot("Watcher", """{ "position": [0, 0, 0] }""", extra: """, "lookAtTarget": true""");
+        _builder.Spawn("""{ "name": "Fox", "components": { "transform": { "position": [0, 0, -5] }, "cameraTarget": { "height": 5 } } }""");
+
+        _builder.Run(1 / 60f);
+
+        Vector3 forward = Vector3.Transform(-Vector3.UnitZ, _builder.Drawn().Transform.Rotation);
+        Vector3 expected = Vector3.Normalize(new Vector3(0, 5, -5));
+        Vector3.Distance(forward, expected).Should().BeLessThan(Precision);
     }
 }

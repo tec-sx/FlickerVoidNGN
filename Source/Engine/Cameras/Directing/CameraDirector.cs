@@ -13,12 +13,18 @@ namespace FlickerVoid.Engine.Cameras.Directing;
 
 /// <summary>
 /// Directs the camera each frame, a frame system and service: keeps one shot live (the scene's starting shot until told otherwise),
-/// switches shots with a transition, keeps a stack of shots to return to, plays timed shots to their keys and writes the live shot's
+/// switches shots with a transition, keeps a stack of shots to return to, plays timed shots to their keys, moves tracked shots
+/// with their target, sends the markers of keys passed, turns shots that look at their target and writes the live shot's
 /// posed lens and world pose into its <see cref="ActiveCamera"/>, which the renderer draws from.
 /// </summary>
 public sealed class CameraDirector : BaseSystem<World, GameTime>
 {
+    /// <summary>How close in metres a tracked shot comes to its target's point before it stops easing and settles there.</summary>
+    private const float SnapDistance = 1e-3f;
+
     private static readonly QueryDescription Shots = new QueryDescription().WithAll<Shot, Transform>();
+    private static readonly QueryDescription Targets = new QueryDescription().WithAll<CameraTarget, Transform>();
+    private static readonly QueryDescription Named = new QueryDescription().WithAll<EntityName, Transform>();
 
     private readonly EventBus _events;
     private readonly Dictionary<Entity, ShotPlayback> _playbacks = [];
@@ -133,12 +139,119 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         float seconds = (float)t.Elapsed.TotalSeconds;
         Entity live = Live;
         ShotPlayback playback = GetPlayback(live);
-        if (playback.Playing)
+        float previousTime = playback.Time;
+        Shot shot = World.Get<Shot>(live);
+        if (shot.Drive == ShotDrive.Tracked)
+        {
+            Track(live, shot, playback, seconds);
+        }
+        else if (playback.Playing)
         {
             Advance(live, playback, seconds);
         }
 
+        SendMarkers(live, previousTime, playback.Time);
         Pose(live, playback);
+    }
+
+    /// <summary>Moves a tracked shot towards its target's nearest point on the rail, smoothed, and sets its time from there.</summary>
+    private void Track(Entity live, in Shot shot, ShotPlayback playback, float seconds)
+    {
+        if (!TryFindTarget(shot, out Vector3 aim))
+        {
+            return;
+        }
+
+        ShotTimeline timeline = GetTimeline(live);
+        Transform transform = World.Get<Transform>(live);
+        Matrix4x4 shotWorld = transform.ToMatrix();
+        Matrix4x4.Invert(shotWorld, out Matrix4x4 toShot);
+        Vector3 local = Vector3.Transform(aim, toShot);
+        float nearest = timeline.Rail.FindNearest(local);
+        float distance = nearest;
+        if (!playback.Snap && shot.Smoothing > 0)
+        {
+            float exponent = -3 * seconds / shot.Smoothing;
+            float follow = 1 - MathF.Exp(exponent);
+            distance = float.Lerp(playback.Distance, nearest, follow);
+            if (MathF.Abs(nearest - distance) < SnapDistance)
+            {
+                distance = nearest;
+            }
+        }
+
+        playback.Snap = false;
+        playback.Distance = distance;
+        playback.Time = timeline.GetTimeAtDistance(distance);
+    }
+
+    /// <summary>Sends the markers of the keys whose times the shot passed, going either way.</summary>
+    private void SendMarkers(Entity live, float from, float to)
+    {
+        if (from == to)
+        {
+            return;
+        }
+
+        ShotTimeline timeline = GetTimeline(live);
+        IReadOnlyList<ShotKey> keys = timeline.Keys;
+        for (int index = 0; index < keys.Count; index++)
+        {
+            int key = index;
+            if (to < from)
+            {
+                key = keys.Count - 1 - index;
+            }
+
+            float time = keys[key].Time;
+            bool forward = from < time && time <= to;
+            bool back = to <= time && time < from;
+            if ((forward || back) && keys[key].Marker.IsValid)
+            {
+                _events.Send(new ShotMarkerEvent(live, keys[key].Marker, key));
+            }
+        }
+    }
+
+    /// <summary>Where the shot's target is aimed at: the named entity, else the first camera target, at its aim height.</summary>
+    private bool TryFindTarget(in Shot shot, out Vector3 aim)
+    {
+        Entity target = Entity.Null;
+        string name = shot.Target;
+        if (string.IsNullOrEmpty(name))
+        {
+            World.Query(in Targets, (Entity entity) =>
+            {
+                if (target == Entity.Null || entity.Id < target.Id)
+                {
+                    target = entity;
+                }
+            });
+        }
+        else
+        {
+            World.Query(in Named, (Entity entity, ref EntityName entityName) =>
+            {
+                if (target == Entity.Null && entityName.Value == name)
+                {
+                    target = entity;
+                }
+            });
+        }
+
+        aim = Vector3.Zero;
+        if (target == Entity.Null)
+        {
+            return false;
+        }
+
+        aim = World.Get<Transform>(target).Position;
+        if (World.TryGet(target, out CameraTarget cameraTarget))
+        {
+            aim.Y += cameraTarget.Height;
+        }
+
+        return true;
     }
 
     private void Advance(Entity shot, ShotPlayback playback, float seconds)
@@ -159,11 +272,22 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
     private void Pose(Entity shot, ShotPlayback playback)
     {
         ShotTimeline timeline = GetTimeline(shot);
+        Shot data = World.Get<Shot>(shot);
         ShotPose local = timeline.Evaluate(playback.Time);
+        if (data.Drive == ShotDrive.Tracked)
+        {
+            local = timeline.EvaluateAtDistance(playback.Distance);
+        }
+
         Transform transform = World.Get<Transform>(shot);
         Matrix4x4 shotWorld = transform.ToMatrix();
         Vector3 position = Vector3.Transform(local.Position, shotWorld);
         Quaternion rotation = Quaternion.Concatenate(local.Rotation, transform.Rotation);
+        if (data.LookAtTarget && TryFindTarget(data, out Vector3 aim))
+        {
+            rotation = LookAt(position, aim, rotation);
+        }
+
         Camera lens = GetLens(shot);
         if (lens.Projection == CameraProjection.Perspective)
         {
@@ -186,6 +310,26 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         }
     }
 
+    /// <summary>The rotation looking from a point at another with +Y up, or the fallback when they meet or the look is straight up or down.</summary>
+    private static Quaternion LookAt(Vector3 from, Vector3 to, Quaternion fallback)
+    {
+        Vector3 toTarget = to - from;
+        if (toTarget.LengthSquared() < 1e-8f)
+        {
+            return fallback;
+        }
+
+        Vector3 forward = Vector3.Normalize(toTarget);
+        float upright = MathF.Abs(Vector3.Dot(forward, Vector3.UnitY));
+        if (upright > 0.9999f)
+        {
+            return fallback;
+        }
+
+        Matrix4x4 world = Matrix4x4.CreateWorld(Vector3.Zero, forward, Vector3.UnitY);
+        return Quaternion.CreateFromRotationMatrix(world);
+    }
+
     private void GoLive(Entity shot)
     {
         Entity previous = Live;
@@ -206,6 +350,7 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
 
         Live = shot;
         ShotPlayback playback = GetPlayback(shot);
+        playback.Snap = true;
         Pose(shot, playback);
         _events.Send(new ShotChangedEvent(previous, shot));
     }
@@ -293,6 +438,12 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         public float Target { get; set; }
 
         public bool Playing { get; set; }
+
+        /// <summary>How far along its rail a tracked shot is.</summary>
+        public float Distance { get; set; }
+
+        /// <summary>Whether a tracked shot jumps to its target's point instead of easing there, as when it goes live.</summary>
+        public bool Snap { get; set; }
 
         public ShotTimeline? Timeline { get; set; }
 

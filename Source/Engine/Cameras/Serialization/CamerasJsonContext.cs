@@ -14,4 +14,5 @@ namespace FlickerVoid.Engine.Cameras.Serialization;
     UseStringEnumConverter = true,
     Converters = [typeof(Vector3JsonConverter), typeof(QuaternionJsonConverter), typeof(TagJsonConverter)])]
 [JsonSerializable(typeof(Shot))]
+[JsonSerializable(typeof(CameraTarget))]
 public sealed partial class CamerasJsonContext : JsonSerializerContext;
