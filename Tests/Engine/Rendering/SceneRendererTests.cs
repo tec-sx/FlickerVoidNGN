@@ -446,7 +446,7 @@ public sealed class SceneRendererTests : IDisposable
     {
         uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
         _builder.WithTexture("Paper.tga", 1, 1, [grey]);
-        _builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga", "grain": 0 }""");
+        _builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga" }""");
         _builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas" });
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
         _builder.WithScene(Camera, Quad);
@@ -508,17 +508,35 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
-    public void TurnsThePaperWithTheCameraLikeASkySphere()
+    public void KeepsThePaperStillWhenTheCameraTurnsInPlace()
     {
         const string turned = """
-            { "name": "Camera", "components": { "transform": { "position": [0, 0, 5], "rotation": [0, 0.38268343, 0, 0.9238795] }, "camera": { "orthographicHeight": 2 } } }
+            { "name": "Camera", "components": { "transform": { "position": [0, 0, 0], "rotation": [0, 0.38268343, 0, 0.9238795] }, "camera": { "orthographicHeight": 2 } } }
             """;
         using SceneRendererTestsBuilder other = new();
 
-        uint[] ahead = RenderPaper(_builder, Camera);
+        const string Ahead = """
+            { "name": "Camera", "components": { "transform": { "position": [0, 0, 0] }, "camera": { "orthographicHeight": 2 } } }
+            """;
+
+        uint[] ahead = RenderPaper(_builder, Ahead);
         uint[] aside = RenderPaper(other, turned);
 
-        aside.Should().NotEqual(ahead, "turning the camera turns the paper around it");
+        aside.Should().Equal(ahead, "the canvas is flat, so a camera turning where it stands leaves it where it is");
+    }
+
+    [Fact]
+    public void ScalesThePaperWithAnOrthographicZoom()
+    {
+        const string zoomed = """
+            { "name": "Camera", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 3 } } }
+            """;
+        using SceneRendererTestsBuilder other = new();
+
+        uint[] near = RenderPaper(_builder, Camera);
+        uint[] far = RenderPaper(other, zoomed);
+
+        far.Should().NotEqual(near, "the canvas grows and shrinks with the world as the camera zooms");
     }
 
     [Fact]
@@ -781,7 +799,7 @@ public sealed class SceneRendererTests : IDisposable
         }
 
         builder.WithTexture("Paper.tga", 4, 4, texels, mips: true);
-        builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga", "grain": 0 }""");
+        builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga" }""");
         builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas" });
         builder.WithScene(entities);
         return builder.Render();

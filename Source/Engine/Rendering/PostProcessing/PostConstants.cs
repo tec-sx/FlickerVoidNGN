@@ -19,8 +19,8 @@ internal readonly record struct PostConstants(
     uint WrapSampler,
     uint Tonemapper,
     float WhitePoint,
-    float CanvasGrain,
-    CanvasView CanvasView,
+    float CanvasImageHeight,
     Vector3 CanvasTint,
-    float CanvasTiling);
+    float CanvasPanRight,
+    float CanvasPanUp);
 

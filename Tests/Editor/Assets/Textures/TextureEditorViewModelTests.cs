@@ -74,7 +74,7 @@ public sealed class TextureEditorViewModelTests : IDisposable
 
         TextureEditorViewModel editor = _builder.Build("Paper.fvcanvas");
 
-        editor.Fields.Select(static field => field.Label).Should().Contain(["Image", "Tiling", "Tint", "Grain", "Curvature"]);
+        editor.Fields.Select(static field => field.Label).Should().Equal("Image", "Tiling", "Tint");
         TextureEditorViewModelTestsBuilder.PixelAt(editor, 10, 10).Should().Be(((byte)255, (byte)0, (byte)0));
         TextureEditorViewModelTestsBuilder.PixelAt(editor, 74, 10).Should().Be(((byte)0, (byte)0, (byte)255), "the image repeats twice across the preview's height, and so as often across its width");
         TextureEditorViewModelTestsBuilder.PixelAt(editor, 138, 10).Should().Be(((byte)255, (byte)0, (byte)0));

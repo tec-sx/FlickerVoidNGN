@@ -37,7 +37,7 @@ internal sealed class PostProcessPass : IRenderPass
             image = context.Textures.Get(file.Image);
         }
 
-        CanvasView view = CanvasView.From(context.View, context.Camera, context.Height, file.Curvature);
+        CanvasView view = CanvasView.From(context.View, context.Camera, context.Height, file.Tiling);
         PostCanvas canvas = new(file, image, view);
         _post.Run(context.Commands, context.Targets, context.ColorTarget, context.Mood, canvas, context.ClampSampler, context.Sampler);
     }

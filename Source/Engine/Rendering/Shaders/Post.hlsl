@@ -2,7 +2,7 @@
 // curve, then lays it over the canvas, then grain. The scene's alpha is how much paint lies there (0 to 1) plus how thick it
 // stands (0 to 1, from a painting's impasto): bare canvas shows where there is none, and the canvas's weave shows through
 // paint that isn't thick, so everything looks painted on it; only thick impasto hides it. The
-// canvas lies on a sphere around the camera like a sky, so it turns as the camera turns, and slides with an orthographic pan.
+// canvas is flat and moves with the world as an orthographic camera pans and zooms.
 // Draws one triangle that covers the target.
 
 Texture2D Textures[] : register(t0, space1);
@@ -23,15 +23,10 @@ struct PostConstants
     uint WrapSampler;
     uint Tonemapper;
     float WhitePoint;
-    float CanvasGrain;
-    float3 CanvasRight;
-    float CanvasPanRight;
-    float3 CanvasUp;
-    float CanvasPanUp;
-    float3 CanvasForward;
-    float CanvasLensHalfHeight;
+    float CanvasImageHeight;
     float3 CanvasTint;
-    float CanvasTiling;
+    float CanvasPanRight;
+    float CanvasPanUp;
 };
 
 [[vk::push_constant]] ConstantBuffer<PostConstants> Post : register(b0, space0);
@@ -41,28 +36,13 @@ static const uint None = 0xFFFFFFFF;
 // The bloom levels the upsampling summed, which averaging divides back out.
 static const float BloomLevels = 5;
 
-static const float Pi = 3.14159265;
-
-// Where the pixel's ray meets the canvas's sphere, in image uvs: longitude across and latitude down, the image repeated a whole
-// number of times around so it meets itself and Tiling times up the screen's height, then slid by the camera's pan. An
-// orthographic camera's rays are all parallel, so the sphere is looked at as through a lens of the canvas's own width.
-float2 CanvasUv(float2 pixel, float2 size, float2 canvasSize)
+// Where the pixel lies on the flat canvas, in image uvs: the image CanvasImageHeight pixels high, slid by the camera's pan so
+// the canvas moves with the world.
+float2 CanvasUv(float2 pixel, float2 canvasSize)
 {
-    float2 clip = pixel / size * 2 - 1;
-    float halfHeight = Post.CanvasLensHalfHeight;
-    float aspect = size.x / size.y;
-    float halfWidth = halfHeight * aspect;
-    float3 ray = normalize(Post.CanvasForward + Post.CanvasRight * (clip.x * halfWidth) - Post.CanvasUp * (clip.y * halfHeight));
-    float longitude = atan2(ray.x, -ray.z) + Pi;
-    float latitude = acos(clamp(ray.y, -1, 1));
-    float fieldOfView = 2 * atan(halfHeight);
-    float imageHeight = fieldOfView / Post.CanvasTiling;
-    float imageWidth = imageHeight * canvasSize.x / canvasSize.y;
-    float repeats = max(round(2 * Pi / imageWidth), 1);
-    float2 uv = float2(longitude / (2 * Pi) * repeats, latitude / imageHeight);
-    float pixelsHigh = size.y / Post.CanvasTiling;
-    float pixelsWide = pixelsHigh * canvasSize.x / canvasSize.y;
-    return uv + float2(Post.CanvasPanRight / pixelsWide, -Post.CanvasPanUp / pixelsHigh);
+    float2 imagePixels = float2(Post.CanvasImageHeight * canvasSize.x / canvasSize.y, Post.CanvasImageHeight);
+    float2 panned = pixel + float2(Post.CanvasPanRight, -Post.CanvasPanUp);
+    return panned / imagePixels;
 }
 
 // Linear middle grey, which contrast pivots on.
@@ -146,10 +126,7 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
         uint height;
         uint levels;
         canvas.GetDimensions(0, width, height, levels);
-        uint targetWidth;
-        uint targetHeight;
-        scene.GetDimensions(targetWidth, targetHeight);
-        float2 uv = CanvasUv(position.xy, float2(targetWidth, targetHeight), float2(width, height));
+        float2 uv = CanvasUv(position.xy, float2(width, height));
         float3 canvasColor = canvas.SampleLevel(Samplers[Post.WrapSampler], uv, 0).rgb * Post.CanvasTint;
         float3 averageCanvas = canvas.SampleLevel(Samplers[Post.WrapSampler], uv, levels - 1).rgb * Post.CanvasTint;
         float3 toLuminance = float3(0.2126, 0.7152, 0.0722);
@@ -161,12 +138,7 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
         float3 weave = canvasColor / averageLuminance;
         float3 painted = lerp(color * weave, color, thickness);
 
-        // Thin paint fills the canvas's valleys (darker than the canvas's average) first and leaves its peaks bare; bare canvas
-        // and fully painted canvas stay as they are.
-        float grain = dot(averageCanvas - canvasColor, toLuminance) / averageLuminance;
-        float paint = coverage;
-        float covered = saturate(paint + grain * Post.CanvasGrain * 4 * paint * (1 - paint));
-        color = lerp(canvasColor, painted, covered);
+        color = lerp(canvasColor, painted, coverage);
         coverage = 1;
     }
 

@@ -76,10 +76,10 @@ internal sealed class PostProcessor : IDisposable
             wrap.BindlessIndex,
             (uint)mood.Tonemapper,
             mood.WhitePoint,
-            canvas.File.Grain,
-            canvas.View,
+            canvas.View.ImageHeight,
             canvas.File.Tint,
-            canvas.File.Tiling);
+            canvas.View.PanRight,
+            canvas.View.PanUp);
         commands.PushConstants(constants);
         commands.Draw(3);
         commands.EndRendering();

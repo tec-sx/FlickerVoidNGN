@@ -22,12 +22,6 @@
       "items": {
         "type": "number"
       }
-    },
-    "grain": {
-      "type": "number"
-    },
-    "curvature": {
-      "type": "number"
     }
   },
   "additionalProperties": false
