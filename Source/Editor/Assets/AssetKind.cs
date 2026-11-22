@@ -9,6 +9,7 @@ public enum AssetKind
     Material,
     Texture,
     Mood,
+    Canvas,
     Shader,
     Data,
     Table,

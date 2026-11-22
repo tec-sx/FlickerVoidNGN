@@ -482,8 +482,9 @@ float4 OutlineMain(VertexOutput input) : SV_Target
 
 // Tilts the normal by the slope of a painting's relief, so its impasto catches the light without tangents: the relief's
 // slope across the uvs, turned into the screen's by the uvs' derivatives, bends the normal by Mikkelsen's surface gradient
-// over the position's derivatives. The derivatives come from the caller, outside the branch that reads the relief.
-float3 RaiseRelief(Material material, float2 uv, float2 uvX, float2 uvY, float3 positionX, float3 positionY, float3 normal)
+// over the position's derivatives. The derivatives come from the caller, outside the branch that reads the relief. Gives how
+// high the paint stands there too.
+float RaiseRelief(Material material, float2 uv, float2 uvX, float2 uvY, float3 positionX, float3 positionY, inout float3 normal)
 {
     Texture2D relief = Textures[material.Relief];
     SamplerState sampler = Samplers[Scene.Sampler];
@@ -499,6 +500,7 @@ float3 RaiseRelief(Material material, float2 uv, float2 uvX, float2 uvY, float3 
     float right = relief.SampleLevel(sampler, uv + float2(step.x, 0), level).r;
     float up = relief.SampleLevel(sampler, uv - float2(0, step.y), level).r;
     float down = relief.SampleLevel(sampler, uv + float2(0, step.y), level).r;
+    float centre = relief.SampleLevel(sampler, uv, level).r;
     float2 slope = float2(right - left, down - up) / (2 * step) * material.ReliefDepth;
     float heightX = dot(slope, uvX);
     float heightY = dot(slope, uvY);
@@ -506,8 +508,16 @@ float3 RaiseRelief(Material material, float2 uv, float2 uvX, float2 uvY, float3 
     float3 acrossX = cross(normal, positionX);
     float determinant = dot(positionX, acrossY);
     float3 gradient = sign(determinant) * (heightX * acrossY + heightY * acrossX);
-    return normalize(abs(determinant) * normal - gradient);
+    if (material.ReliefDepth > 0)
+    {
+        normal = normalize(abs(determinant) * normal - gradient);
+    }
+
+    return centre;
 }
+
+// The relief's height (a share of the painting's impasto range) at which paint stands thick enough to hide the canvas.
+static const float ImpastoCover = 0.1;
 
 float4 PixelMain(VertexOutput input) : SV_Target
 {
@@ -528,9 +538,11 @@ float4 PixelMain(VertexOutput input) : SV_Target
     float2 uvY = ddy(uv);
     float3 positionX = ddx(input.WorldPosition);
     float3 positionY = ddy(input.WorldPosition);
-    if (material.Texture != None && material.Relief != None && material.ReliefDepth > 0)
+    float impasto = 0;
+    if (material.Texture != None && material.Relief != None)
     {
-        normal = RaiseRelief(material, uv, uvX, uvY, positionX, positionY, normal);
+        float height = RaiseRelief(material, uv, uvX, uvY, positionX, positionY, normal);
+        impasto = saturate(height / ImpastoCover);
     }
 
     float3 toCamera = ToCamera(frame, input.WorldPosition);
@@ -562,5 +574,5 @@ float4 PixelMain(VertexOutput input) : SV_Target
         color = color * fog.a + fog.rgb;
     }
 
-    return float4(color, albedo.a);
+    return float4(color, albedo.a + impasto * albedo.a);
 }

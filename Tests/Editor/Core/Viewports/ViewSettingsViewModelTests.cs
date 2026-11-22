@@ -64,4 +64,15 @@ public sealed class ViewSettingsViewModelTests
         NumberFieldViewModel exposure = settings.Fields.OfType<NumberFieldViewModel>().Single(field => field.Label == "Exposure");
         exposure.Maximum.Should().Be(8);
     }
+
+    [Fact]
+    public void PicksTheCanvasAmongTheCanvasFiles()
+    {
+        ViewSettingsViewModel settings = _builder.WithFiles("Paper.png", "Canvases/Paper.fvcanvas", "Canvases/Linen.fvcanvas", "Moods/Day.fvmood").Build();
+
+        AssetFieldViewModel canvas = settings.Fields.OfType<AssetFieldViewModel>().Single(field => field.Label == "Canvas");
+        canvas.Picker.IsOpen = true;
+
+        canvas.Picker.Matches.Should().BeEquivalentTo("Canvases/Paper.fvcanvas", "Canvases/Linen.fvcanvas");
+    }
 }

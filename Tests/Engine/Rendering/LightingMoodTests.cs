@@ -12,12 +12,12 @@ public sealed class LightingMoodTests : IDisposable
     public void LoadsAFileThatNamesOnlyWhatItChanges()
     {
         LightingMood mood = _builder
-            .WithFile("Dusk.fvmood", """{ "exposure": 1.4, "tint": [1, 0.8, 0.6], "paper": "Paper.png" }""")
+            .WithFile("Dusk.fvmood", """{ "exposure": 1.4, "tint": [1, 0.8, 0.6], "canvas": "Paper.fvcanvas" }""")
             .Load("Dusk.fvmood");
 
         mood.Exposure.Should().Be(1.4f);
         mood.Tint.Should().Be(new Vector3(1, 0.8f, 0.6f));
-        mood.Paper.Should().Be("Paper.png");
+        mood.Canvas.Should().Be("Paper.fvcanvas");
         mood.Ambient.Should().Be(new LightingMood().Ambient);
     }
 
@@ -34,15 +34,14 @@ public sealed class LightingMoodTests : IDisposable
     [Fact]
     public void BlendsEverySettingBetweenTwoMoods()
     {
-        LightingMood day = new() { Exposure = 1, Tint = Vector3.One, FogDensity = 0, PaperGrain = 0 };
-        LightingMood night = new() { Exposure = 0.5f, Tint = new Vector3(0.5f, 0.5f, 1), FogDensity = 0.2f, PaperGrain = 1 };
+        LightingMood day = new() { Exposure = 1, Tint = Vector3.One, FogDensity = 0 };
+        LightingMood night = new() { Exposure = 0.5f, Tint = new Vector3(0.5f, 0.5f, 1), FogDensity = 0.2f };
 
         LightingMood blended = LightingMood.Lerp(day, night, 0.5f);
 
         blended.Exposure.Should().BeApproximately(0.75f, 1e-6f);
         blended.Tint.Should().Be(new Vector3(0.75f, 0.75f, 1));
         blended.FogDensity.Should().BeApproximately(0.1f, 1e-6f);
-        blended.PaperGrain.Should().BeApproximately(0.5f, 1e-6f);
     }
 
     [Fact]
@@ -61,13 +60,13 @@ public sealed class LightingMoodTests : IDisposable
     public void SwapsThePaperHalfwayThroughABlend()
     {
         LightingMood plain = new();
-        LightingMood paper = new() { Paper = "Paper.png" };
+        LightingMood paper = new() { Canvas = "Paper.fvcanvas" };
 
         LightingMood early = LightingMood.Lerp(plain, paper, 0.4f);
         LightingMood late = LightingMood.Lerp(plain, paper, 0.6f);
 
-        early.Paper.Should().BeNull();
-        late.Paper.Should().Be("Paper.png");
+        early.Canvas.Should().BeNull();
+        late.Canvas.Should().Be("Paper.fvcanvas");
     }
 
     public void Dispose()

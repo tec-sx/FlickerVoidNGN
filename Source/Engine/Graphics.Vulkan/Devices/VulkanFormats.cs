@@ -222,6 +222,13 @@ internal static class VulkanFormats
                 state.SrcAlphaBlendFactor = BlendFactor.One;
                 state.DstAlphaBlendFactor = BlendFactor.One;
                 return state;
+            case BlendMode.Multiply:
+                state.BlendEnable = true;
+                state.SrcColorBlendFactor = BlendFactor.DstColor;
+                state.DstColorBlendFactor = BlendFactor.Zero;
+                state.SrcAlphaBlendFactor = BlendFactor.Zero;
+                state.DstAlphaBlendFactor = BlendFactor.One;
+                return state;
             default:
                 throw new ArgumentOutOfRangeException(nameof(blend), blend, null);
         }

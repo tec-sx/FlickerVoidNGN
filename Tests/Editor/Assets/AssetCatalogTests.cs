@@ -15,6 +15,7 @@ public sealed class AssetCatalogTests : IDisposable
     [InlineData("Mesh.hlsl", AssetKind.Shader)]
     [InlineData("Mesh.fvshader", AssetKind.Shader)]
     [InlineData("Moods/Night.fvmood", AssetKind.Mood)]
+    [InlineData("Canvases/Paper.fvcanvas", AssetKind.Canvas)]
     [InlineData("Notes.txt", AssetKind.Other)]
     public void TellsTheKindOfAnAssetFromItsName(string path, AssetKind kind)
     {
@@ -23,6 +24,16 @@ public sealed class AssetCatalogTests : IDisposable
         IReadOnlyList<AssetEntry> assets = catalog.Find("", recursive: true, kind: null, text: "");
 
         assets.Should().ContainSingle().Which.Kind.Should().Be(kind);
+    }
+
+    [Fact]
+    public void ListsAnImagesSettingsAsPartOfTheImage()
+    {
+        AssetCatalog catalog = _builder.WithFile("Paper.png").WithFile("Paper.png.fvtexture").Build();
+
+        IReadOnlyList<AssetEntry> assets = catalog.Find("", recursive: true, kind: null, text: "");
+
+        assets.Should().ContainSingle().Which.Path.Should().Be("Paper.png");
     }
 
     [Fact]

@@ -2,17 +2,21 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Pipeline;
+using FlickerVoid.Engine.Rendering.Serialization;
+using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Engine.Rendering.PostProcessing;
 
-/// <summary>Blooms and grades the HDR scene into the output over the mood's paper, as the mood says.</summary>
+/// <summary>Blooms and grades the HDR scene into the output over the mood's canvas, as the mood says.</summary>
 internal sealed class PostProcessPass : IRenderPass
 {
     private readonly PostProcessor _post;
+    private readonly IContentManager _content;
 
-    public PostProcessPass(IGraphicsDevice device, ShaderLibrary shaders, PixelFormat outputFormat)
+    public PostProcessPass(IGraphicsDevice device, ShaderLibrary shaders, PixelFormat outputFormat, IContentManager content)
     {
         _post = new PostProcessor(device, shaders, outputFormat);
+        _content = content;
     }
 
     public void Prepare(RenderContext context)
@@ -21,13 +25,21 @@ internal sealed class PostProcessPass : IRenderPass
 
     public void Execute(RenderContext context)
     {
-        ITexture? paper = null;
-        if (context.Mood.Paper is not null)
+        CanvasFile file = new();
+        ITexture? image = null;
+        if (context.Mood.Canvas is not null)
         {
-            paper = context.Textures.Get(context.Mood.Paper);
+            file = _content.Load(context.Mood.Canvas, RenderingJsonContext.Default.CanvasFile);
         }
 
-        _post.Run(context.Commands, context.Targets, context.ColorTarget, context.Mood, paper, context.ClampSampler, context.Sampler);
+        if (file.Image is not null)
+        {
+            image = context.Textures.Get(file.Image);
+        }
+
+        CanvasView view = CanvasView.From(context.View, context.Camera, context.Height, file.Tiling);
+        PostCanvas canvas = new(file, image, view);
+        _post.Run(context.Commands, context.Targets, context.ColorTarget, context.Mood, canvas, context.ClampSampler, context.Sampler);
     }
 
     public void Dispose()

@@ -36,6 +36,7 @@ internal sealed class SkyPassTestsBuilder : IDisposable
     private readonly Game _game;
     private IGraphicsDevice? _device;
     private SceneRenderer? _renderer;
+    private string? _paper;
 
     public SkyPassTestsBuilder()
     {
@@ -48,6 +49,23 @@ internal sealed class SkyPassTestsBuilder : IDisposable
     }
 
     public EditorCamera Camera { get; } = new();
+
+    /// <summary>Lays a paper of one grey under the scene, as a mood with paper does.</summary>
+    public SkyPassTestsBuilder WithPaper(byte grey)
+    {
+        uint texel = (uint)(grey | grey << 8 | grey << 16 | 255 << 24);
+        byte[] data = BitConverter.GetBytes(texel);
+        DdsImage image = new(1, 1, PixelFormat.Rgba8UNormSrgb, 1, data);
+        string fullPath = Path.Combine(_contentFolder, "Paper.dds");
+        using (FileStream stream = File.Create(fullPath))
+        {
+            image.Write(stream);
+        }
+
+        File.WriteAllText(Path.Combine(_contentFolder, "Paper.fvcanvas"), """{ "image": "Paper.tga" }""");
+        _paper = "Paper.fvcanvas";
+        return this;
+    }
 
     /// <summary>The pass under test, once the first render has built it.</summary>
     public SkyPass? Sky { get; private set; }
@@ -109,7 +127,7 @@ internal sealed class SkyPassTestsBuilder : IDisposable
     private SceneRenderer BuildRenderer(IGraphicsDevice device)
     {
         ContentManager content = new(_contentFolder);
-        LightingMood mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0, Tonemapper = Tonemapper.None };
+        LightingMood mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0, Tonemapper = Tonemapper.None, Canvas = _paper };
         SceneRenderer renderer = new(device, content, Format) { Mood = mood };
         ShaderLibrary shaders = ShaderLibrary.ForEngine("Editor");
         Sky = new SkyPass(device, shaders, Format);

@@ -1,0 +1,11 @@
+{
+  "$schema": "../.schemas/canvas.schema.json",
+  "image": "Canvases/LinenCanvasWarm.png",
+  "tiling": 3,
+  "intensity": 1,
+  "tint": [
+    1,
+    1,
+    1
+  ]
+}

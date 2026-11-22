@@ -30,7 +30,5 @@
   ],
   "tonemapper": "Uncharted2",
   "whitePoint": 11.2,
-  "grain": 0.02,
-  "paper": "Paper.png",
-  "paperGrain": 0.3
+  "canvas": "Canvases/LinenCanvas.fvcanvas"
 }

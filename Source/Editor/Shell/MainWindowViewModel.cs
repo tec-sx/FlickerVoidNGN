@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
@@ -12,6 +13,7 @@ using FlickerVoid.Editor.Assets.Data;
 using FlickerVoid.Editor.Assets.Flows;
 using FlickerVoid.Editor.Assets.Materials;
 using FlickerVoid.Editor.Assets.Moods;
+using FlickerVoid.Editor.Assets.Textures;
 using FlickerVoid.Editor.Core.Data;
 using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Core.Inspector;
@@ -68,7 +70,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Viewport = viewport;
         Inspector = inspector;
         SceneTree = new SceneTreeViewModel(viewport.Scene);
-        ViewSettings = new ViewSettingsViewModel(viewport.Mood);
+        ContentFileFinder files = new(content);
+        ViewSettings = new ViewSettingsViewModel(viewport.Mood, files.Find);
         Assets = new AssetBrowserViewModel(viewport.Scene.Content, viewport.Scene.Game.Data, codeFolder);
         Assets.Opened += OpenAsset;
         viewport.Scene.Opened += HandleSceneOpened;
@@ -82,6 +85,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     /// <summary>Raised to show a material in the material editor, by its path in the content folder.</summary>
     public event Action<string>? MaterialRequested;
+
+    /// <summary>Raised to show an image's or a canvas's settings in a texture editor window.</summary>
+    public event Action<TextureEditorViewModel>? TextureRequested;
 
     /// <summary>
     /// Asks what to do with the listed unsaved files before an action would lose their edits: save them, discard them, or
@@ -160,7 +166,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         string status = "";
         try
         {
-            preview = new MaterialPreview(scene.Game.LoggerFactory);
+            preview = new MaterialPreview(scene.Game.LoggerFactory, _content.RootDirectory);
         }
         catch (GraphicsUnavailableException exception)
         {
@@ -317,6 +323,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             case AssetKind.Mood:
                 OpenMood(asset.Path);
                 break;
+            case AssetKind.Texture:
+            case AssetKind.Canvas:
+                OpenTexture(asset.Path);
+                break;
             case AssetKind.Data:
                 OpenData(asset.Path);
                 break;
@@ -330,6 +340,30 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 OpenCode(asset);
                 break;
         }
+    }
+
+    /// <summary>Edits an image's settings or a canvas in a texture editor window, previewed from the source images.</summary>
+    private void OpenTexture(string path)
+    {
+        if (path.EndsWith(".dds", StringComparison.OrdinalIgnoreCase))
+        {
+            Viewport.Status = $"{path} is built; open its source image instead.";
+            return;
+        }
+
+        ContentFileFinder files = new(_content);
+        TextureEditorViewModel editor;
+        try
+        {
+            editor = new TextureEditorViewModel(_content, path, Assets.GetSourcePath, files.Find);
+        }
+        catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
+        {
+            Viewport.Status = $"Can't open {path}: {exception.Message}";
+            return;
+        }
+
+        TextureRequested?.Invoke(editor);
     }
 
     /// <summary>Opens a code file in the program the system opens it with, the IDE.</summary>
@@ -431,7 +465,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        ViewSettingsViewModel settings = new(_mood.Mood);
+        ContentFileFinder files = new(_content);
+        ViewSettingsViewModel settings = new(_mood.Mood, files.Find);
         settings.Edited += _mood.Hold;
         Viewport.Mood = _mood.Mood;
         ViewSettings = settings;
@@ -504,7 +539,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         _mood = null;
         Viewport.Mood = new LightingMood();
-        ViewSettings = new ViewSettingsViewModel(Viewport.Mood);
+        ContentFileFinder files = new(_content);
+        ViewSettings = new ViewSettingsViewModel(Viewport.Mood, files.Find);
         OnPropertyChanged(nameof(MoodHeading));
     }
 

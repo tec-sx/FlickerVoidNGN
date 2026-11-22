@@ -147,12 +147,6 @@ public sealed class RenderingWindow : DebugWindow
             {
                 mood.Tint = tint;
             }
-
-            float grain = mood.Grain;
-            if (ImGui.SliderFloat("Grain", ref grain, 0, 0.2f))
-            {
-                mood.Grain = grain;
-            }
         }
     }
 }

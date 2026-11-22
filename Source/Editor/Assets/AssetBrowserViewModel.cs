@@ -7,6 +7,7 @@ using FlickerVoid.Editor.Assets.Flows;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Engine.Flow.Graphs;
+using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 
@@ -45,6 +46,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
             new("Scene", CreateScene, Icon: "Scene"),
             new("Material", CreateMaterial, LookGroup, "Materials"),
             new("Mood", CreateMood, LookGroup, "Mood"),
+            new("Canvas", CreateCanvas, LookGroup, "Canvas"),
             new("Flow Graph", CreateFlow, FlowGroup, "Flow"),
         ];
         if (codeFolder is not null)
@@ -259,6 +261,12 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     }
 
     [RelayCommand]
+    public void CreateCanvas()
+    {
+        CreateFile("New Canvas", ".fvcanvas", "canvas", null);
+    }
+
+    [RelayCommand]
     public void CreateFlow()
     {
         CreateFile("New Flow", FlowGraph.Extension, "flow", "\"nodes\": [ { \"$type\": \"start\", \"id\": \"start\" } ],\n  \"links\": []");
@@ -339,6 +347,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         {
             _content.Delete(asset.Path);
             _imports.Remove(asset.Path);
+            DeleteSettings(asset.Path);
             SelectedAsset = null;
             if (asset.Kind == AssetKind.Folder)
             {
@@ -424,6 +433,13 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     }
 
     /// <summary>The full path of a file or folder the browser shows, in the content or the code.</summary>
+    /// <summary>The full path of a content file's source, which is the content folder's own file without a build.</summary>
+    public string GetSourcePath(string path)
+    {
+        AssetCatalog catalog = FindCatalog(path);
+        return catalog.GetFullPath(path);
+    }
+
     public string GetFullPath(AssetEntry entry)
     {
         AssetCatalog catalog = FindCatalog(entry.Path);
@@ -617,7 +633,24 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
         _content.Move(path, newPath);
         _imports.Move(path, newPath);
+        string settings = TextureSettings.GetPath(path);
+        if (File.Exists(_content.GetFullPath(settings)))
+        {
+            string newSettings = TextureSettings.GetPath(newPath);
+            _content.Move(settings, newSettings);
+        }
+
         return true;
+    }
+
+    /// <summary>Deletes an image's settings with it, as they are listed as part of it.</summary>
+    private void DeleteSettings(string path)
+    {
+        string settings = TextureSettings.GetPath(path);
+        if (File.Exists(_content.GetFullPath(settings)))
+        {
+            _content.Delete(settings);
+        }
     }
 
     private bool Exists(string path)

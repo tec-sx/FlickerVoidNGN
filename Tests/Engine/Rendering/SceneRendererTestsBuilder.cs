@@ -81,10 +81,23 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     /// Writes Rgba8 pixels, top row first, as the content build leaves a texture named <paramref name="path"/>: an sRGB DDS
     /// with the .dds extension, uncompressed so the pixels stay exact.
     /// </summary>
-    public SceneRendererTestsBuilder WithTexture(string path, int width, int height, uint[] pixels, PixelFormat format = PixelFormat.Rgba8UNormSrgb)
+    public SceneRendererTestsBuilder WithTexture(string path, int width, int height, uint[] pixels, PixelFormat format = PixelFormat.Rgba8UNormSrgb, bool mips = false)
     {
-        byte[] data = MemoryMarshal.AsBytes(pixels.AsSpan()).ToArray();
-        DdsImage image = new(width, height, format, 1, data);
+        List<byte> data = [.. MemoryMarshal.AsBytes(pixels.AsSpan()).ToArray()];
+        int levels = 1;
+        uint[] level = pixels;
+        int levelWidth = width;
+        int levelHeight = height;
+        while (mips && (levelWidth > 1 || levelHeight > 1))
+        {
+            level = HalveLevel(level, levelWidth, levelHeight);
+            levelWidth = Math.Max(levelWidth / 2, 1);
+            levelHeight = Math.Max(levelHeight / 2, 1);
+            data.AddRange(MemoryMarshal.AsBytes(level.AsSpan()).ToArray());
+            levels++;
+        }
+
+        DdsImage image = new(width, height, format, levels, [.. data]);
         string builtPath = Path.ChangeExtension(path, ".dds");
         string fullPath = Path.Combine(_contentFolder, builtPath);
         using FileStream stream = File.Create(fullPath);
@@ -202,6 +215,42 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     public World World => _game.World;
 
     /// <summary>A pixel as Rgba8UNorm bytes read back little-endian.</summary>
+    /// <summary>The next mip level of RGBA8 texels: each texel the average of the two by two below it.</summary>
+    private static uint[] HalveLevel(uint[] texels, int width, int height)
+    {
+        int halfWidth = Math.Max(width / 2, 1);
+        int halfHeight = Math.Max(height / 2, 1);
+        uint[] half = new uint[halfWidth * halfHeight];
+        for (int y = 0; y < halfHeight; y++)
+        {
+            for (int x = 0; x < halfWidth; x++)
+            {
+                uint packed = 0;
+                for (int channel = 0; channel < 4; channel++)
+                {
+                    int sum = 0;
+                    int count = 0;
+                    for (int dy = 0; dy < 2 && y * 2 + dy < height; dy++)
+                    {
+                        for (int dx = 0; dx < 2 && x * 2 + dx < width; dx++)
+                        {
+                            uint texel = texels[(y * 2 + dy) * width + x * 2 + dx];
+                            sum += (int)((texel >> (channel * 8)) & 0xFF);
+                            count++;
+                        }
+                    }
+
+                    uint average = (uint)(sum / count);
+                    packed |= average << (channel * 8);
+                }
+
+                half[y * halfWidth + x] = packed;
+            }
+        }
+
+        return half;
+    }
+
     public static uint Rgba(byte r, byte g, byte b, byte a) => (uint)(r | g << 8 | b << 16 | a << 24);
 
     public static (byte Red, byte Green, byte Blue) Channels(uint pixel) => ((byte)pixel, (byte)(pixel >> 8), (byte)(pixel >> 16));

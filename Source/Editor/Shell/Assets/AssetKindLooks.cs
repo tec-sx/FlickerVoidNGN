@@ -46,6 +46,8 @@ public static class AssetKindLooks
                 return MaterialIcons.Texture;
             case AssetKind.Mood:
                 return MaterialIcons.Mood;
+            case AssetKind.Canvas:
+                return MaterialIcons.Canvas;
             case AssetKind.Shader:
                 return MaterialIcons.Shader;
             case AssetKind.Data:
@@ -77,6 +79,8 @@ public static class AssetKindLooks
                 return new SolidColorBrush(Color.Parse("#C8553D"));
             case AssetKind.Mood:
                 return new SolidColorBrush(Color.Parse("#E0AC2C"));
+            case AssetKind.Canvas:
+                return new SolidColorBrush(Color.Parse("#E8DCC0"));
             case AssetKind.Shader:
                 return new SolidColorBrush(Color.Parse("#B9C5CF"));
             case AssetKind.Data:

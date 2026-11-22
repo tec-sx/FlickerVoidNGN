@@ -1,5 +1,8 @@
 // Turns the lit scene into the final image: adds bloom, then exposure, contrast, saturation and tint, then the tonemapper's
-// curve, then lays it over the paper, which shows where the scene's alpha (how thick the paint is) is low, then grain.
+// curve, then lays it over the canvas. The scene's alpha is how much paint lies there (0 to 1) plus how thick it
+// stands (0 to 1, from a painting's impasto): bare canvas shows where there is none, and the canvas's weave shows through
+// paint that isn't thick, so everything looks painted on it; only thick impasto hides it. The
+// canvas is flat and moves with the world as an orthographic camera pans and zooms.
 // Draws one triangle that covers the target.
 
 Texture2D Textures[] : register(t0, space1);
@@ -12,15 +15,18 @@ struct PostConstants
     float Contrast;
     float Saturation;
     float Bloom;
-    float Grain;
+    float CanvasIntensity;
     uint Scene;
     uint BloomTexture;
-    uint Paper;
+    uint Canvas;
     uint ClampSampler;
     uint WrapSampler;
     uint Tonemapper;
     float WhitePoint;
-    float PaperGrain;
+    float CanvasImageHeight;
+    float3 CanvasTint;
+    float CanvasPanRight;
+    float CanvasPanUp;
 };
 
 [[vk::push_constant]] ConstantBuffer<PostConstants> Post : register(b0, space0);
@@ -29,6 +35,15 @@ static const uint None = 0xFFFFFFFF;
 
 // The bloom levels the upsampling summed, which averaging divides back out.
 static const float BloomLevels = 5;
+
+// Where the pixel lies on the flat canvas, in image uvs: the image CanvasImageHeight pixels high, slid by the camera's pan so
+// the canvas moves with the world.
+float2 CanvasUv(float2 pixel, float2 canvasSize)
+{
+    float2 imagePixels = float2(Post.CanvasImageHeight * canvasSize.x / canvasSize.y, Post.CanvasImageHeight);
+    float2 panned = pixel + float2(Post.CanvasPanRight, -Post.CanvasPanUp);
+    return panned / imagePixels;
+}
 
 // Linear middle grey, which contrast pivots on.
 static const float MiddleGrey = 0.18;
@@ -76,11 +91,6 @@ float3 Tonemap(float3 color)
     }
 }
 
-float PixelNoise(float2 pixel)
-{
-    return frac(52.9829189 * frac(dot(pixel, float2(0.06711056, 0.00583715))));
-}
-
 float4 PixelMain(float4 position : SV_Position) : SV_Target
 {
     Texture2D scene = Textures[Post.Scene];
@@ -103,31 +113,35 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
     color *= Post.Tint;
     color = Tonemap(color);
 
-    float coverage = sceneColor.a;
-    if (Post.Paper != None)
+    float coverage = saturate(sceneColor.a);
+    if (Post.Canvas != None)
     {
-        Texture2D paper = Textures[Post.Paper];
+        Texture2D canvas = Textures[Post.Canvas];
         uint width;
         uint height;
         uint levels;
-        paper.GetDimensions(0, width, height, levels);
-        float2 uv = position.xy / float2(width, height);
-        float3 paperColor = paper.SampleLevel(Samplers[Post.WrapSampler], uv, 0).rgb;
-        float3 averagePaper = paper.SampleLevel(Samplers[Post.WrapSampler], uv, levels - 1).rgb;
+        canvas.GetDimensions(0, width, height, levels);
+        float2 uv = CanvasUv(position.xy, float2(width, height));
+        // Sampled through its mips, so a small window shows the weave softened rather than broken into aliased specks.
+        float3 sampled = canvas.Sample(Samplers[Post.WrapSampler], uv).rgb * Post.CanvasTint;
+        float3 averageCanvas = canvas.SampleLevel(Samplers[Post.WrapSampler], uv, levels - 1).rgb * Post.CanvasTint;
 
-        // Thin paint fills the paper's valleys (darker than the paper's average) first and leaves its peaks bare; bare paper
-        // and thick paint stay as they are.
+        // Intensity scales how far the canvas strays from its average colour: its texture fades, or grows stronger.
+        float3 canvasColor = max(lerp(averageCanvas, sampled, Post.CanvasIntensity), 0);
         float3 toLuminance = float3(0.2126, 0.7152, 0.0722);
-        float grain = dot(averagePaper - paperColor, toLuminance) / max(dot(averagePaper, toLuminance), 1e-3);
-        float paint = sceneColor.a;
-        float thickness = saturate(paint + grain * Post.PaperGrain * 4 * paint * (1 - paint));
-        color = lerp(paperColor, color, thickness);
+        float averageLuminance = max(dot(averageCanvas, toLuminance), 1e-3);
+
+        // Paint that isn't thick lets the canvas's weave through: the canvas over its own average brightness, so it keeps the
+        // painted colour's light and takes the canvas's texture and hue.
+        float thickness = saturate(sceneColor.a - 1);
+        float3 weave = canvasColor / averageLuminance;
+        float3 painted = lerp(color * weave, color, thickness);
+
+        color = lerp(canvasColor, painted, coverage);
         coverage = 1;
     }
 
-    color += (PixelNoise(position.xy) - 0.5) * Post.Grain;
-
-    // Coverage: 0 where nothing was drawn and there is no paper, so a stage's image shows over the interface; light added
+    // Coverage: 0 where nothing was drawn and there is no canvas, so a stage's image shows over the interface; light added
     // there (bloom) stays additive.
     return float4(color, coverage);
 }

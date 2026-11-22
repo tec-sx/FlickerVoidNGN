@@ -446,7 +446,8 @@ public sealed class SceneRendererTests : IDisposable
     {
         uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
         _builder.WithTexture("Paper.tga", 1, 1, [grey]);
-        _builder.WithMood(static mood => mood with { Paper = "Paper.tga", PaperGrain = 0 });
+        _builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga" }""");
+        _builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas" });
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
         _builder.WithScene(Camera, Quad);
 
@@ -467,7 +468,8 @@ public sealed class SceneRendererTests : IDisposable
     {
         uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
         _builder.WithTexture("Paper.tga", 1, 1, [grey]);
-        _builder.WithMood(static mood => mood with { Paper = "Paper.tga", Exposure = 3 });
+        _builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga" }""");
+        _builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas", Exposure = 3 });
         _builder.WithScene(Camera);
 
         uint[] pixels = _builder.Render();
@@ -479,15 +481,84 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
-    public void LaysGrainOverTheImage()
+    public void ShowsTheCanvasThroughPlainPaint()
     {
-        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
-        _builder.WithScene(Camera, Quad);
-        _builder.WithMood(static mood => mood with { Paper = null, Grain = 0.2f });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0.3f, 0.3f, 0.3f, 1)));
 
-        uint[] grain = _builder.Render();
+        uint[] pixels = RenderPaper(_builder, Camera, Quad);
 
-        grain.Distinct().Should().HaveCountGreaterThan(1, "grain varies from pixel to pixel");
+        uint[] painted = [pixels[5], pixels[6], pixels[9], pixels[10]];
+        painted.Distinct().Should().HaveCountGreaterThan(1, "the canvas's weave shows through paint without impasto");
+    }
+
+    [Fact]
+    public void CoversTheCanvasWithThickImpasto()
+    {
+        uint white = SceneRendererTestsBuilder.Rgba(255, 255, 255, 255);
+        uint[] high = [white, white, white, white];
+        _builder.WithTexture("Wall.reb", 1, 1, [SceneRendererTestsBuilder.Rgba(255, 0, 0, 255)]);
+        _builder.WithTexture("Wall.relief.dds", 2, 2, high, PixelFormat.Rgba8UNorm);
+        _builder.WithFile("Wall.fvmat", """{ "parameters": { "texture": "Wall.reb", "reliefDepth": 0 } }""");
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Vector4.One));
+
+        uint[] pixels = RenderPaper(_builder, Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Wall.fvmat"] } } }""");
+
+        uint[] painted = [pixels[5], pixels[6], pixels[9], pixels[10]];
+        painted.Should().AllBeEquivalentTo(RedPixel, "thick impasto hides the canvas");
+    }
+
+    [Fact]
+    public void KeepsThePaperStillWhenTheCameraTurnsInPlace()
+    {
+        const string turned = """
+            { "name": "Camera", "components": { "transform": { "position": [0, 0, 0], "rotation": [0, 0.38268343, 0, 0.9238795] }, "camera": { "orthographicHeight": 2 } } }
+            """;
+        using SceneRendererTestsBuilder other = new();
+
+        const string Ahead = """
+            { "name": "Camera", "components": { "transform": { "position": [0, 0, 0] }, "camera": { "orthographicHeight": 2 } } }
+            """;
+
+        uint[] ahead = RenderPaper(_builder, Ahead);
+        uint[] aside = RenderPaper(other, turned);
+
+        aside.Should().Equal(ahead, "the canvas is flat, so a camera turning where it stands leaves it where it is");
+    }
+
+    [Fact]
+    public void ScalesThePaperWithAnOrthographicZoom()
+    {
+        const string zoomed = """
+            { "name": "Camera", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 3 } } }
+            """;
+        using SceneRendererTestsBuilder other = new();
+
+        uint[] near = RenderPaper(_builder, Camera);
+        uint[] far = RenderPaper(other, zoomed);
+
+        far.Should().NotEqual(near, "the canvas grows and shrinks with the world as the camera zooms");
+    }
+
+    [Fact]
+    public void MovesThePaperWithAnOrthographicPan()
+    {
+        const string panned = """
+            { "name": "Camera", "components": { "transform": { "position": [0.5, 0, 5] }, "camera": { "orthographicHeight": 2 } } }
+            """;
+        using SceneRendererTestsBuilder other = new();
+
+        uint[] still = RenderPaper(_builder, Camera);
+        uint[] moved = RenderPaper(other, panned);
+
+        moved.Should().NotEqual(still, "the paper slides with the world as the camera pans");
+    }
+
+    [Fact]
+    public void FlattensTheCanvasToItsAverageAtNoIntensity()
+    {
+        uint[] flat = RenderCanvas(_builder, """{ "image": "Paper.tga", "intensity": 0 }""", Camera);
+
+        flat.Distinct().Should().ContainSingle("without intensity the canvas is its average colour alone");
     }
 
     [Fact]
@@ -711,5 +782,28 @@ public sealed class SceneRendererTests : IDisposable
 
         pixels[3 * 8].Should().Be(EmptyPixel);
         pixels[(3 * 8) + 1].Should().Be(EmptyPixel);
+    }
+
+    /// <summary>A paper of sixteen different greys under the entities, a camera first.</summary>
+    private static uint[] RenderPaper(SceneRendererTestsBuilder builder, params string[] entities)
+    {
+        return RenderCanvas(builder, """{ "image": "Paper.tga" }""", entities);
+    }
+
+    /// <summary>A paper of sixteen different greys, set up by the canvas file, under the entities, a camera first.</summary>
+    private static uint[] RenderCanvas(SceneRendererTestsBuilder builder, string canvas, params string[] entities)
+    {
+        uint[] texels = new uint[16];
+        for (int index = 0; index < texels.Length; index++)
+        {
+            byte value = (byte)(40 + index * 13);
+            texels[index] = SceneRendererTestsBuilder.Rgba(value, value, value, 255);
+        }
+
+        builder.WithTexture("Paper.tga", 4, 4, texels, mips: true);
+        builder.WithFile("Paper.fvcanvas", canvas);
+        builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas" });
+        builder.WithScene(entities);
+        return builder.Render();
     }
 }

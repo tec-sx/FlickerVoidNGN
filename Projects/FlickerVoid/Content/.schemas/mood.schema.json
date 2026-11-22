@@ -77,17 +77,11 @@
     "whitePoint": {
       "type": "number"
     },
-    "grain": {
-      "type": "number"
-    },
-    "paper": {
+    "canvas": {
       "type": [
         "string",
         "null"
       ]
-    },
-    "paperGrain": {
-      "type": "number"
     }
   },
   "additionalProperties": false

@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Editor.Assets;
@@ -19,6 +20,7 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
         (".fvmat", AssetKind.Material),
         (".fvshader", AssetKind.Shader),
         (".fvmood", AssetKind.Mood),
+        (".fvcanvas", AssetKind.Canvas),
         (".fvdata", AssetKind.Data),
         (".fvtable", AssetKind.Table),
         (".fvflow", AssetKind.Flow),
@@ -160,7 +162,7 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
     {
         foreach (string fullPath in Directory.EnumerateFiles(fullFolder))
         {
-            if (IsHidden(fullPath))
+            if (IsHidden(fullPath) || fullPath.EndsWith(TextureSettings.Extension, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }

@@ -79,7 +79,7 @@ public sealed class SceneRenderer : IDisposable
         Pipeline.Add(new DepthPrepass(device, shaders));
         Pipeline.Add(new ScreenShadowPass(device, shaders));
         Pipeline.Add(new OpaquePass(device, shaders));
-        Pipeline.Add(new PostProcessPass(device, shaders, colorFormat));
+        Pipeline.Add(new PostProcessPass(device, shaders, colorFormat, content));
         Pipeline.Add(new OutlinePass(device, shaders, colorFormat));
     }
 

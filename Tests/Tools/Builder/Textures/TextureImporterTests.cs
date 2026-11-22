@@ -48,6 +48,72 @@ public sealed class TextureImporterTests : IDisposable
     }
 
     [Fact]
+    public void CropsTheImageToThePartItsSettingsKeep()
+    {
+        _files.WithImage("Paint.tga", 8, 4, HalfRedHalfBlue());
+        _files.WithSource("Paint.tga.fvtexture", """{ "cropX": 4, "cropWidth": 4 }""");
+
+        DdsImage image = BuildOne();
+
+        image.Width.Should().Be(4);
+        image.Height.Should().Be(4);
+        ColorRgba32[] top = Decode(image);
+        top.Should().OnlyContain(static texel => texel.b > 250 && texel.r < 5, "only the blue half is kept");
+    }
+
+    [Fact]
+    public void HalvesTheImageUntilItFitsTheSizeLimit()
+    {
+        _files.WithImage("Paint.tga", 8, 4, HalfRedHalfBlue());
+        _files.WithSource("Paint.tga.fvtexture", """{ "maxSize": 3 }""");
+
+        DdsImage image = BuildOne();
+
+        image.Width.Should().Be(2);
+        image.Height.Should().Be(1);
+    }
+
+    [Fact]
+    public void TintsTheImage()
+    {
+        _files.WithImage("Paint.tga", 8, 4, HalfRedHalfBlue());
+        _files.WithSource("Paint.tga.fvtexture", """{ "tint": [0.5, 1, 1], "compression": "None" }""");
+
+        DdsImage image = BuildOne();
+
+        image.Data[0].Should().BeInRange(126, 129, "red is halved");
+        image.Data[2].Should().Be(0);
+    }
+
+    [Fact]
+    public void KeepsEveryTexelWhenUncompressed()
+    {
+        _files.WithImage("Paint.tga", 8, 4, HalfRedHalfBlue());
+        _files.WithSource("Paint.tga.fvtexture", """{ "compression": "None" }""");
+
+        DdsImage image = BuildOne();
+
+        image.Format.Should().Be(PixelFormat.Rgba8UNormSrgb);
+        image.MipLevels.Should().Be(4);
+        image.Data[..4].Should().Equal(255, 0, 0, 255);
+        image.Data[28..32].Should().Equal(0, 0, 255, 255);
+    }
+
+    [Fact]
+    public void BuildsTheImageAgainWhenItsSettingsChange()
+    {
+        _files.WithImage("Paint.tga", 8, 4, HalfRedHalfBlue());
+        AssetBuilder builder = _files.Build();
+        _files.BuildAll(builder);
+        _files.WithSource("Paint.tga.fvtexture", """{ "maxSize": 4 }""");
+
+        BuildReport report = _files.BuildAll(builder);
+
+        report.Built.Should().Contain("Paint.tga");
+        _files.ReadOutput("Paint.dds").Width.Should().Be(4);
+    }
+
+    [Fact]
     public void AFileThatIsNotAnImageFails()
     {
         _files.WithSource("Broken.png", "not an image");
@@ -56,5 +122,36 @@ public sealed class TextureImporterTests : IDisposable
         BuildReport report = _files.BuildAll(builder);
 
         report.Failed.Should().ContainSingle().Which.Path.Should().Be("Broken.png");
+    }
+
+    /// <summary>An 8 by 4 image, its left half red and its right half blue.</summary>
+    private static byte[] HalfRedHalfBlue()
+    {
+        byte[] rgba = new byte[8 * 4 * 4];
+        for (int texel = 0; texel < 32; texel++)
+        {
+            bool left = texel % 8 < 4;
+            rgba[texel * 4] = left ? (byte)255 : (byte)0;
+            rgba[texel * 4 + 2] = left ? (byte)0 : (byte)255;
+            rgba[texel * 4 + 3] = 255;
+        }
+
+        return rgba;
+    }
+
+    private DdsImage BuildOne()
+    {
+        AssetBuilder builder = _files.Build();
+        BuildReport report = _files.BuildAll(builder);
+        report.Failed.Should().BeEmpty();
+        return _files.ReadOutput("Paint.dds");
+    }
+
+    private static ColorRgba32[] Decode(DdsImage image)
+    {
+        int size = image.Width * image.Height;
+        byte[] topLevel = image.Data[..size];
+        BcDecoder decoder = new();
+        return decoder.DecodeRaw(topLevel, image.Width, image.Height, CompressionFormat.Bc7);
     }
 }

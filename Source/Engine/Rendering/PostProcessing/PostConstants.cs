@@ -11,13 +11,16 @@ internal readonly record struct PostConstants(
     float Contrast,
     float Saturation,
     float Bloom,
-    float Grain,
+    float CanvasIntensity,
     uint Scene,
     uint BloomTexture,
-    uint Paper,
+    uint Canvas,
     uint ClampSampler,
     uint WrapSampler,
     uint Tonemapper,
     float WhitePoint,
-    float PaperGrain);
+    float CanvasImageHeight,
+    Vector3 CanvasTint,
+    float CanvasPanRight,
+    float CanvasPanUp);
 
