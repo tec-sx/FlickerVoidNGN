@@ -40,7 +40,7 @@ internal sealed class SkinningPass : IRenderPass
                 posed = _skinner.Pose(mesh.Id, model, animator);
             }
 
-            AddDraws(context.Draws, mesh, model, posed);
+            AddDraws(context, mesh, model, posed);
         }
     }
 
@@ -56,7 +56,7 @@ internal sealed class SkinningPass : IRenderPass
         _meshes.Dispose();
     }
 
-    private void AddDraws(List<MeshDraw> draws, RenderMesh mesh, GpuModel model, IBuffer[]? posed)
+    private void AddDraws(RenderContext context, RenderMesh mesh, GpuModel model, IBuffer[]? posed)
     {
         for (int index = 0; index < model.Parts.Count; index++)
         {
@@ -73,8 +73,8 @@ internal sealed class SkinningPass : IRenderPass
                 materialPath = materials[index];
             }
 
-            IBuffer material = _materials.Get(materialPath);
-            draws.Add(new MeshDraw(mesh.World, part, vertices, material, mesh.Outline));
+            IBuffer material = _materials.Get(materialPath, context.Textures);
+            context.Draws.Add(new MeshDraw(mesh.World, part, vertices, material, mesh.Outline));
         }
     }
 }

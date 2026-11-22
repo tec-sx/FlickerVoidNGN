@@ -89,9 +89,16 @@ public sealed record LightingMood
     [Range(0, 0.5)]
     public float Grain { get; set; }
 
-    /// <summary>An image file in the content folder laid over the screen at one texel per pixel and multiplied in, such as paper.</summary>
+    /// <summary>
+    /// The paper everything is painted on: an image file in the content folder laid under the screen at one texel per pixel,
+    /// unlit, showing where nothing is painted and through paint as thin as its alpha says.
+    /// </summary>
     [ContentFile(".png", ".jpg", ".jpeg", ".tga", ".bmp")]
     public string? Paper { get; set; }
+
+    /// <summary>How much the paper's grain decides where thin paint lies: it pools in the dark valleys and leaves the light peaks bare.</summary>
+    [Range(0, 1)]
+    public float PaperGrain { get; set; } = 0.3f;
 
     /// <summary>
     /// The mood <paramref name="amount"/> of the way from <paramref name="from"/> to <paramref name="to"/>: numbers and
@@ -139,6 +146,7 @@ public sealed record LightingMood
             WhitePoint = float.Lerp(from.WhitePoint, to.WhitePoint, amount),
             Grain = float.Lerp(from.Grain, to.Grain, amount),
             Paper = paper,
+            PaperGrain = float.Lerp(from.PaperGrain, to.PaperGrain, amount),
         };
     }
 

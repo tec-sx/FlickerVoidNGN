@@ -9,7 +9,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 
 namespace FlickerVoid.Engine.Rendering.PostProcessing;
 
-/// <summary>Blurs the lit scene into bloom and grades it into the output target, as the mood says.</summary>
+/// <summary>Blurs the lit scene into bloom and grades it into the output target over the mood's paper, as the mood says.</summary>
 internal sealed class PostProcessor : IDisposable
 {
     private const string BloomShader = "Bloom";
@@ -75,7 +75,8 @@ internal sealed class PostProcessor : IDisposable
             clamp.BindlessIndex,
             wrap.BindlessIndex,
             (uint)mood.Tonemapper,
-            mood.WhitePoint);
+            mood.WhitePoint,
+            mood.PaperGrain);
         commands.PushConstants(constants);
         commands.Draw(3);
         commands.EndRendering();

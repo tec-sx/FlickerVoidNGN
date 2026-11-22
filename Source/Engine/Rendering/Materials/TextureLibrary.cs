@@ -22,9 +22,15 @@ internal sealed class TextureLibrary : IDisposable
         _content.Changed += HandleChanged;
     }
 
+    /// <summary>The file the content build makes of a texture's source image.</summary>
+    public static string GetBuiltPath(string path)
+    {
+        return Path.ChangeExtension(path, ".dds");
+    }
+
     public ITexture Get(string path)
     {
-        string builtPath = Path.ChangeExtension(path, ".dds");
+        string builtPath = GetBuiltPath(path);
         string fullPath = _content.GetFullPath(builtPath);
         if (_textures.TryGetValue(fullPath, out ITexture? loaded))
         {

@@ -11,6 +11,7 @@ public sealed class AssetCatalogTests : IDisposable
     [InlineData("Room.glb", AssetKind.Model)]
     [InlineData("Paint/Wall.fvmat", AssetKind.Material)]
     [InlineData("Paper.png", AssetKind.Texture)]
+    [InlineData("Wall.reb", AssetKind.Texture)]
     [InlineData("Mesh.hlsl", AssetKind.Shader)]
     [InlineData("Mesh.fvshader", AssetKind.Shader)]
     [InlineData("Moods/Night.fvmood", AssetKind.Mood)]

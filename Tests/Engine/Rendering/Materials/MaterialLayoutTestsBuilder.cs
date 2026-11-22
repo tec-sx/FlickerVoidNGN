@@ -12,7 +12,8 @@ internal sealed class MaterialLayoutTestsBuilder
         {
           "parameters": [
             { "name": "wrap", "type": "float", "default": 0.25 },
-            { "name": "emissive", "type": "color", "default": [0, 0, 0] }
+            { "name": "emissive", "type": "color", "default": [0, 0, 0] },
+            { "name": "texture", "type": "texture" }
           ]
         }
         """;

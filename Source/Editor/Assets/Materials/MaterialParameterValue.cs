@@ -12,6 +12,9 @@ namespace FlickerVoid.Editor.Assets.Materials;
 /// <summary>One parameter the shader declares, read from and written to the material being edited.</summary>
 public sealed class MaterialParameterValue(MaterialDocument document, ShaderParameter parameter) : IEditableValue
 {
+    /// <summary>The source files the content build turns into textures: images, and Rebelle paintings.</summary>
+    private static readonly ContentFileAttribute TextureFiles = new(".png", ".jpg", ".jpeg", ".tga", ".bmp", ".reb");
+
     public string Label { get; } = DisplayNames.FromIdentifier(parameter.Name);
 
     public Type Type
@@ -23,18 +26,29 @@ public sealed class MaterialParameterValue(MaterialDocument document, ShaderPara
                 return typeof(Vector3);
             }
 
+            if (parameter.Type == ShaderParameterType.Texture)
+            {
+                return typeof(string);
+            }
+
             return typeof(float);
         }
     }
 
     public bool CanWrite => true;
 
-    public bool AcceptsNull => false;
+    /// <summary>A texture may be unset, leaving the mesh part's own.</summary>
+    public bool AcceptsNull => parameter.Type == ShaderParameterType.Texture;
 
-    /// <summary>A range from the declared limits, and a colour mark on colours.</summary>
+    /// <summary>A range from the declared limits, a colour mark on colours, and the texture files a texture can name.</summary>
     public TAttribute? GetAttribute<TAttribute>()
         where TAttribute : Attribute
     {
+        if (typeof(TAttribute) == typeof(ContentFileAttribute) && parameter.Type == ShaderParameterType.Texture)
+        {
+            return TextureFiles as TAttribute;
+        }
+
         if (typeof(TAttribute) == typeof(ColorAttribute) && parameter.Type == ShaderParameterType.Color)
         {
             return new ColorAttribute() as TAttribute;
@@ -56,6 +70,16 @@ public sealed class MaterialParameterValue(MaterialDocument document, ShaderPara
             value = set;
         }
 
+        if (parameter.Type == ShaderParameterType.Texture)
+        {
+            if (value.ValueKind == JsonValueKind.String)
+            {
+                return value.GetString();
+            }
+
+            return null;
+        }
+
         if (parameter.Type == ShaderParameterType.Color)
         {
             float x = value[0].GetSingle();
@@ -70,7 +94,16 @@ public sealed class MaterialParameterValue(MaterialDocument document, ShaderPara
     public void Set(object? value)
     {
         string json;
-        if (value is Vector3 vector)
+        if (parameter.Type == ShaderParameterType.Texture)
+        {
+            json = "null";
+            if (value is string { Length: > 0 } path)
+            {
+                JsonEncodedText encoded = JsonEncodedText.Encode(path);
+                json = $"\"{encoded}\"";
+            }
+        }
+        else if (value is Vector3 vector)
         {
             json = string.Create(CultureInfo.InvariantCulture, $"[{vector.X}, {vector.Y}, {vector.Z}]");
         }

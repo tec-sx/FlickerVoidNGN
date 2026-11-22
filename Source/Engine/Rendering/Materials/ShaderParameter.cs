@@ -4,7 +4,7 @@ namespace FlickerVoid.Engine.Rendering.Materials;
 
 /// <summary>
 /// A value a shader lets materials set, declared in its <c>Name.fvshader</c>: a float is written as a number, a colour as
-/// an array of three; the optional limits are for editors.
+/// an array of three, a texture as its content path (none by default); the optional limits are for editors.
 /// </summary>
 public sealed record ShaderParameter(string Name, ShaderParameterType Type, JsonElement Default)
 {
@@ -12,7 +12,7 @@ public sealed record ShaderParameter(string Name, ShaderParameterType Type, Json
 
     public float? Maximum { get; init; }
 
-    /// <summary>How many floats the parameter takes in the material's buffer.</summary>
+    /// <summary>How many 32-bit values the parameter takes in the material's buffer.</summary>
     public int Components
     {
         get

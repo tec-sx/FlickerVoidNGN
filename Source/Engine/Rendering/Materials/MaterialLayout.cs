@@ -5,11 +5,16 @@ namespace FlickerVoid.Engine.Rendering.Materials;
 
 /// <summary>
 /// Packs a material's values into the bytes its shader reads: each declared parameter in order, as tightly packed floats,
-/// matching an HLSL struct of the same fields loaded from a ByteAddressBuffer.
+/// and textures as the uint index they load as (<see cref="NoTexture"/> when unset), matching an HLSL struct of the same
+/// fields loaded from a ByteAddressBuffer.
 /// </summary>
 public static class MaterialLayout
 {
-    public static byte[] Pack(IReadOnlyList<ShaderParameter> parameters, MaterialFile? material)
+    /// <summary>The index of an unset texture, the shaders' <c>None</c>.</summary>
+    public const uint NoTexture = uint.MaxValue;
+
+    /// <summary>Packs the values; <paramref name="loadTexture"/> loads a texture by its content path and gives its index.</summary>
+    public static byte[] Pack(IReadOnlyList<ShaderParameter> parameters, MaterialFile? material, Func<string, uint>? loadTexture = null)
     {
         if (material is not null)
         {
@@ -23,6 +28,13 @@ public static class MaterialLayout
             if (material is not null && material.Parameters.TryGetValue(parameter.Name, out JsonElement set))
             {
                 value = set;
+            }
+
+            if (parameter.Type == ShaderParameterType.Texture)
+            {
+                uint index = LoadTexture(parameter, value, loadTexture);
+                values.Add(BitConverter.UInt32BitsToSingle(index));
+                continue;
             }
 
             AddValue(values, parameter, value);
@@ -42,6 +54,27 @@ public static class MaterialLayout
                 throw new InvalidDataException($"The shader has no material parameter named '{name}'.");
             }
         }
+    }
+
+    private static uint LoadTexture(ShaderParameter parameter, JsonElement value, Func<string, uint>? loadTexture)
+    {
+        if (value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+        {
+            return NoTexture;
+        }
+
+        if (value.ValueKind != JsonValueKind.String)
+        {
+            throw new InvalidDataException($"The material parameter '{parameter.Name}' needs a texture's path.");
+        }
+
+        string? path = value.GetString();
+        if (string.IsNullOrEmpty(path) || loadTexture is null)
+        {
+            return NoTexture;
+        }
+
+        return loadTexture(path);
     }
 
     private static void AddValue(List<float> values, ShaderParameter parameter, JsonElement value)

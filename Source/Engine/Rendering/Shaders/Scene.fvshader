@@ -13,6 +13,8 @@
     { "name": "specular", "type": "float", "default": 0, "minimum": 0, "maximum": 4 },
     { "name": "glossiness", "type": "float", "default": 0.5, "minimum": 0, "maximum": 1 },
     { "name": "emissive", "type": "color", "default": [0, 0, 0] },
-    { "name": "emissiveIntensity", "type": "float", "default": 1, "minimum": 0, "maximum": 16 }
+    { "name": "emissiveIntensity", "type": "float", "default": 1, "minimum": 0, "maximum": 16 },
+    // A painting or image used in place of the mesh part's own texture; its alpha is how thick the paint is.
+    { "name": "texture", "type": "texture", "default": null }
   ]
 }

@@ -32,6 +32,7 @@ struct Material
     float Glossiness;
     float3 Emissive;
     float EmissiveIntensity;
+    uint Texture;
 };
 
 struct Light
@@ -119,6 +120,7 @@ Material LoadMaterial()
     material.Glossiness = buffer.Load<float>(56);
     material.Emissive = buffer.Load<float3>(60);
     material.EmissiveIntensity = buffer.Load<float>(72);
+    material.Texture = buffer.Load<uint>(76);
     return material;
 }
 
@@ -476,7 +478,13 @@ float4 PixelMain(VertexOutput input) : SV_Target
 {
     FrameData frame = LoadFrame(Scene.Frame);
     Material material = LoadMaterial();
-    float4 albedo = Textures[Scene.Texture].Sample(Samplers[Scene.Sampler], input.Uv) * Scene.BaseColor;
+    uint texture = Scene.Texture;
+    if (material.Texture != None)
+    {
+        texture = material.Texture;
+    }
+
+    float4 albedo = Textures[texture].Sample(Samplers[Scene.Sampler], input.Uv) * Scene.BaseColor;
     albedo.rgb *= material.Tint;
     float3 normal = normalize(input.Normal);
     float3 toCamera = ToCamera(frame, input.WorldPosition);

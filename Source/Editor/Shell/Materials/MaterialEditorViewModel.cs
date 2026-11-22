@@ -25,6 +25,7 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
 
     private readonly UnsavedContent _content;
     private readonly IMaterialPreview? _preview;
+    private readonly ContentFileFinder _files;
     private readonly MaterialBrowser _browser;
     private readonly IReadOnlyList<ShaderParameter> _declared;
     private MaterialDocument? _document;
@@ -35,6 +36,7 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
         _content = content;
         _preview = preview;
         _browser = new MaterialBrowser(content);
+        _files = new ContentFileFinder(content);
         ShaderLibrary shaders = ShaderLibrary.ForEngine("Rendering");
         _declared = ShaderParameters.Load(shaders, "Scene").Parameters;
         _content.Changed += HandleContentChanged;
@@ -215,7 +217,7 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
         foreach (ShaderParameter parameter in _declared)
         {
             MaterialParameterValue value = new(_document, parameter);
-            FieldViewModel field = FieldFactory.Create(value);
+            FieldViewModel field = FieldFactory.Create(value, _files.Find);
             fields.Add(field);
         }
 
