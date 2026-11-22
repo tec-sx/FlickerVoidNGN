@@ -6,6 +6,8 @@ using FlickerVoid.Engine.Characters.Movement;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Events;
 
+using NSubstitute;
+
 namespace FlickerVoid.Engine.Characters.Tests.Movement;
 
 public sealed class CharacterMovementSystemTests : IDisposable
@@ -83,5 +85,49 @@ public sealed class CharacterMovementSystemTests : IDisposable
         _builder.Run(2);
 
         _builder.Game.World.Get<Transform>(entities[0]).Position.Y.Should().BeApproximately(0.2f, 1e-3f);
+    }
+
+    [Fact]
+    public void FollowsThePathItsPathFinderGivesCornerByCorner()
+    {
+        IPathFinder paths = Substitute.For<IPathFinder>();
+        Vector3 door = new(4, 0, 0);
+        paths.TryFindPath(Arg.Any<Vector3>(), door, Arg.Any<List<Vector3>>()).Returns(call =>
+        {
+            List<Vector3> corners = call.ArgAt<List<Vector3>>(2);
+            corners.Add(new Vector3(0, 0, 2));
+            corners.Add(new Vector3(4, 0, 2));
+            return true;
+        });
+        _builder.WithPathFinder(paths).Build();
+        Entity hero = _builder.Spawn(Walker)[0];
+        List<ArrivedEvent> arrived = [];
+        _builder.Game.Events.Handle((in ArrivedEvent sent) => arrived.Add(sent));
+        _builder.Game.Events.Send(new MoveCommand(hero, door));
+
+        _builder.Run(1);
+        Vector3 atCorner = _builder.Game.World.Get<Transform>(hero).Position;
+        _builder.Run(2.2f);
+
+        atCorner.X.Should().BeApproximately(0, 0.06f);
+        atCorner.Z.Should().BeApproximately(2, 0.1f);
+        Vector3 end = _builder.Game.World.Get<Transform>(hero).Position;
+        end.X.Should().BeApproximately(4, 0.06f);
+        end.Z.Should().BeApproximately(2, 0.06f);
+        arrived.Should().ContainSingle().Which.Point.Should().Be(new Vector3(4, 0, 2));
+    }
+
+    [Fact]
+    public void StaysWhereItIsWhenThePathFinderFindsNoWay()
+    {
+        IPathFinder paths = Substitute.For<IPathFinder>();
+        _builder.WithPathFinder(paths).Build();
+        Entity hero = _builder.Spawn(Walker)[0];
+        _builder.Game.Events.Send(new MoveCommand(hero, new Vector3(4, 0, 0)));
+
+        _builder.Run(1);
+
+        _builder.Game.World.Get<Transform>(hero).Position.Should().Be(Vector3.Zero);
+        _builder.Game.World.Has<Destination>(hero).Should().BeFalse();
     }
 }

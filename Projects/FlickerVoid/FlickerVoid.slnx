@@ -2,6 +2,7 @@
   <Folder Name="/Engine/">
     <Project Path="../../Source/Tools/Builder/FlickerVoid.Tools.Builder.csproj" />
     <Project Path="../../Source/Engine/Abilities/FlickerVoid.Engine.Abilities.csproj" />
+    <Project Path="../../Source/Engine/Ai/FlickerVoid.Engine.Ai.csproj" />
     <Project Path="../../Source/Engine/Attributes/FlickerVoid.Engine.Attributes.csproj" />
     <Project Path="../../Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
     <Project Path="../../Source/Engine/Interaction/FlickerVoid.Engine.Interaction.csproj" />
