@@ -9,6 +9,7 @@ using Avalonia.VisualTree;
 using FlickerVoid.Editor.Controls;
 using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Core.Menus;
+using FlickerVoid.Editor.Core.Undo;
 
 namespace FlickerVoid.Editor.Flows;
 
@@ -39,7 +40,11 @@ public partial class FlowEditorWindow : Window
         Surface.PointerWheelChanged += HandleWheel;
         AddHandler(KeyDownEvent, HandleKeyDown, RoutingStrategies.Tunnel);
         Opened += HandleOpened;
+        UndoShortcuts.Attach(this, () => History);
     }
+
+    /// <summary>The graph file's undo and redo steps.</summary>
+    public UndoHistory? History { get; set; }
 
     private FlowGraphViewModel? Graph => DataContext as FlowGraphViewModel;
 
@@ -148,6 +153,7 @@ public partial class FlowEditorWindow : Window
             if (pressed.IsLeftButtonPressed)
             {
                 _dragged = node;
+                History?.BeginGroup($"Move {node.Title}");
                 _dragStart = point;
                 _nodeStart = new FlowPoint(node.X, node.Y);
                 e.Pointer.Capture(Surface);
@@ -245,6 +251,11 @@ public partial class FlowEditorWindow : Window
         }
 
         _wiring = null;
+        if (_dragged is not null)
+        {
+            History?.EndGroup();
+        }
+
         _dragged = null;
         e.Pointer.Capture(null);
     }

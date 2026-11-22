@@ -1,10 +1,13 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.VisualTree;
 
 using FlickerVoid.Editor.Assets.Materials;
 using FlickerVoid.Editor.Assets.Textures;
 using FlickerVoid.Editor.Core.Flows;
+using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Flows;
 using FlickerVoid.Editor.Inspector;
 using FlickerVoid.Editor.Materials;
@@ -18,6 +21,7 @@ namespace FlickerVoid.Editor;
 /// <summary>The editor's main window: a toolbar, the scene view, the asset browser, the inspector and a status bar; opens the material editor.</summary>
 public sealed partial class MainWindow : Window
 {
+    private readonly Dictionary<string, FlowEditorWindow> _flows = new(StringComparer.OrdinalIgnoreCase);
     private MaterialEditorWindow? _materials;
     private bool _closingDecided;
 
@@ -28,6 +32,20 @@ public sealed partial class MainWindow : Window
     {
         AvaloniaXamlLoader.Load(this);
         this.GetControl<SceneTreeView>("SceneTree").DeleteRequested += HandleOutlineDelete;
+        UndoShortcuts.Attach(this, FindHistory);
+    }
+
+    /// <summary>The history of what the keyboard is in: the View or Data tab's file, else the scene.</summary>
+    private UndoHistory? FindHistory()
+    {
+        if (DataContext is not MainWindowViewModel main)
+        {
+            return null;
+        }
+
+        TabControl side = this.GetControl<TabControl>("SidePanel");
+        bool sideFocused = FocusManager?.GetFocusedElement() is Visual focused && side.IsVisualAncestorOf(focused);
+        return main.GetHistory(sideFocused);
     }
 
     private void HandleOutlineDelete()
@@ -157,10 +175,29 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void ShowFlow(FlowGraphViewModel graph)
+    /// <summary>Shows the graph in its file's editor window, opening one unless the file has one already.</summary>
+    private void ShowFlow(string path, FlowGraphViewModel graph)
     {
-        FlowEditorWindow window = new() { DataContext = graph };
+        if (_flows.TryGetValue(path, out FlowEditorWindow? open))
+        {
+            open.DataContext = graph;
+            open.Activate();
+            return;
+        }
+
+        if (DataContext is not MainWindowViewModel main)
+        {
+            return;
+        }
+
+        FlowEditorWindow window = new() { DataContext = graph, History = main.GetFlowHistory(path) };
         window.AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
+        window.Closed += (_, _) =>
+        {
+            _flows.Remove(path);
+            main.CloseFlow(path);
+        };
+        _flows.Add(path, window);
         window.Show(this);
     }
 
@@ -168,6 +205,8 @@ public sealed partial class MainWindow : Window
     {
         TextureEditorWindow window = new() { DataContext = editor };
         window.AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
+        UndoShortcuts.Attach(window, () => editor.History);
+        window.Closed += (_, _) => editor.Dispose();
         window.Show(this);
     }
 

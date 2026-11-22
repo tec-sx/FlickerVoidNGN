@@ -41,6 +41,9 @@ public sealed class UndoHistory
     /// <summary>Raised when a step is recorded, undone or redone, or the history is cleared.</summary>
     public event Action? Changed;
 
+    /// <summary>Raised after a step was undone or redone, for views that show what it changed.</summary>
+    public event Action? Applied;
+
     public void Record(UndoStep step)
     {
         if (IsApplying)
@@ -103,6 +106,7 @@ public sealed class UndoHistory
         Apply(step.Undo);
         _redo.Push(step);
         Changed?.Invoke();
+        Applied?.Invoke();
         return true;
     }
 
@@ -117,6 +121,7 @@ public sealed class UndoHistory
         _undo.AddLast(step);
         _bytes += step.Size;
         Changed?.Invoke();
+        Applied?.Invoke();
         return true;
     }
 

@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Assets.Materials;
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Runtime.Content;
@@ -41,6 +42,7 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
         _declared = ShaderParameters.Load(shaders, "Scene").Parameters;
         _content.Changed += HandleContentChanged;
         _content.UnsavedChanged += HandleUnsavedChanged;
+        _content.Restored += HandleRestored;
         FindMaterials();
     }
 
@@ -80,6 +82,20 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
     public partial string Status { get; set; } = "";
 
     /// <summary>Whether the open material has edits that are not saved.</summary>
+    /// <summary>The open material's undo and redo steps, or null with none open.</summary>
+    public UndoHistory? History
+    {
+        get
+        {
+            if (SelectedMaterial is null)
+            {
+                return null;
+            }
+
+            return _content.GetHistory(SelectedMaterial);
+        }
+    }
+
     public bool IsUnsaved => SelectedMaterial is not null && _content.IsUnsaved(SelectedMaterial);
 
     /// <summary>The open material's path, marked with an asterisk when it has unsaved edits.</summary>
@@ -105,6 +121,7 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
     public void Dispose()
     {
         _content.Changed -= HandleContentChanged;
+        _content.Restored -= HandleRestored;
         _content.UnsavedChanged -= HandleUnsavedChanged;
         if (_document is not null)
         {
@@ -168,6 +185,21 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
     private void HandleContentChanged(string fullPath)
     {
         if (SelectedMaterial is null || _content.IsUnsaved(SelectedMaterial))
+        {
+            return;
+        }
+
+        string open = _content.GetFullPath(SelectedMaterial);
+        if (ContentManager.PathComparer.Equals(open, fullPath))
+        {
+            Open(SelectedMaterial);
+        }
+    }
+
+    /// <summary>Shows the open material again after an undo or redo changed it.</summary>
+    private void HandleRestored(string fullPath)
+    {
+        if (SelectedMaterial is null)
         {
             return;
         }

@@ -28,6 +28,7 @@ public sealed partial class InspectorViewModel : ObservableObject
         _scene = scene;
         _files = files;
         _scene.Selection.Changed += Rebuild;
+        _scene.History.Applied += Rebuild;
         Rebuild();
     }
 
