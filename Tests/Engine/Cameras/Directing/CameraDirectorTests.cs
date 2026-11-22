@@ -591,4 +591,19 @@ public sealed class CameraDirectorTests : IDisposable
         _builder.Run(2);
         director.GetTime(cellar).Should().Be(2);
     }
+
+    [Fact]
+    public void PushingTheLiveShotKeepsItOffTheStack()
+    {
+        CameraDirector director = _builder.Build();
+        Entity hall = _builder.SpawnShot("Hall", """{ "position": [1, 0, 0] }""", start: true);
+        Entity cutscene = _builder.SpawnShot("Cutscene", """{ "position": [2, 0, 0] }""");
+        _builder.Run(1 / 60f);
+        director.Push(cutscene, ShotTransition.Cut);
+
+        director.Push(cutscene, ShotTransition.Cut);
+        director.Return(ShotTransition.Cut);
+
+        director.Live.Should().Be(hall);
+    }
 }

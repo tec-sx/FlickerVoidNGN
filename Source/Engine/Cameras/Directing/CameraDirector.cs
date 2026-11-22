@@ -220,7 +220,7 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         }
     }
 
-    /// <summary>Makes another shot live, keeping the live one to <see cref="Return"/> to, as a cutscene does.</summary>
+    /// <summary>Makes another shot live, keeping the live one to <see cref="Return"/> to, as a cutscene does; pushing the live shot keeps nothing.</summary>
     public void Push(Entity shot, ShotTransition transition)
     {
         if (!IsShot(shot))
@@ -228,7 +228,7 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
             return;
         }
 
-        if (Live != Entity.Null)
+        if (Live != Entity.Null && Live != shot)
         {
             _stack.Add(Live);
         }

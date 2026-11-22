@@ -7,6 +7,8 @@ using FlickerVoid.Engine.Ai.Paths;
 using FlickerVoid.Engine.Ai.Senses;
 using FlickerVoid.Engine.Attributes;
 using FlickerVoid.Engine.Attributes.Checks;
+using FlickerVoid.Engine.Cameras;
+using FlickerVoid.Engine.Cameras.Directing;
 using FlickerVoid.Engine.Characters;
 using FlickerVoid.Engine.Dialogue;
 using FlickerVoid.Engine.Dialogue.Conversations;
@@ -34,9 +36,9 @@ using FlickerVoid.Gameplay.World.Society.Residents;
 namespace FlickerVoid.Gameplay;
 
 /// <summary>
-/// FlickerVoid's gameplay: physics, point and click characters, interaction, attributes and abilities, possessions, quests and knowledge for the protagonist,
+/// FlickerVoid's gameplay: physics, point and click characters, directed cameras, interaction, attributes and abilities, possessions, quests and knowledge for the protagonist,
 /// conversations, doors that keys open and lockpicks pick, residents who wander, watch and listen, maps with their markers, and outlines on what the
-/// protagonist can use nearby; the click control and the scanner only where there is a window to click in.
+/// protagonist can use nearby; the click control, the camera control and the scanner only where there is a window to click in.
 /// </summary>
 public sealed class GameplayModule : IGameModule
 {
@@ -44,6 +46,7 @@ public sealed class GameplayModule : IGameModule
     {
         IPhysicsSystem physics = game.AddPhysics();
         game.AddCharacters();
+        CameraDirector cameras = game.AddCameras();
         PathSystem paths = game.AddAi();
         game.AddInteraction();
         game.AddAttributes();
@@ -93,6 +96,12 @@ public sealed class GameplayModule : IGameModule
         {
             WalkControlSystem walk = new(game.World, game.Events, actions, dialogue);
             game.FrameSystems.Add(walk);
+        }
+
+        if (actions is not null && window is not null && input is not null)
+        {
+            CameraControlSystem cameraControl = new(game.World, actions, input, window, cameras);
+            game.FrameSystems.Add(cameraControl);
         }
     }
 

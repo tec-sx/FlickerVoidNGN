@@ -3,6 +3,7 @@
   "type": "quest",
   "id": "Quest.Cellar",
   "display": { "name": "The cellar key", "shortDescription": "The innkeeper lost the key to the cellar." },
+  "flow": "Quests/Cellar.fvflow",
   "objectives": [
     {
       "fact": "Quest.Cellar.FoundKey",

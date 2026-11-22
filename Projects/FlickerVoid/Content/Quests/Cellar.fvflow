@@ -1,0 +1,20 @@
+{
+  "$schema": "../.schemas/flow.schema.json",
+  "nodes": [
+    { "$type": "start", "id": "start", "x": 0, "y": 0 },
+    { "$type": "waitForConditions", "id": "found", "x": 220, "y": 0, "conditions": { "conditions": [
+      { "$type": "fact", "fact": "Found.CellarKey" },
+      { "$type": "fact", "fact": "Cutscene.KeyFound", "compare": "Undefined" } ] } },
+    { "$type": "switchShot", "id": "reveal", "x": 440, "y": 0, "shot": "Key Reveal", "mode": "Push", "transition": { "kind": "CrossFade", "duration": 0.5 } },
+    { "$type": "playShot", "id": "glide", "x": 660, "y": 0, "shot": "Key Reveal", "layers": false },
+    { "$type": "applyEffects", "id": "seen", "x": 880, "y": 0, "effects": { "effects": [ { "$type": "fact", "fact": "Cutscene.KeyFound" } ] } },
+    { "$type": "switchShot", "id": "back", "x": 1100, "y": 0, "mode": "Return", "transition": { "kind": "Blend", "duration": 1 } }
+  ],
+  "links": [
+    { "from": "start", "to": "found" },
+    { "from": "found", "to": "reveal" },
+    { "from": "reveal", "to": "glide" },
+    { "from": "glide", "to": "seen" },
+    { "from": "seen", "to": "back" }
+  ]
+}
