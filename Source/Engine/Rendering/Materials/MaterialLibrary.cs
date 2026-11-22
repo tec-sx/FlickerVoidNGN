@@ -48,10 +48,13 @@ internal sealed class MaterialLibrary : IDisposable
         byte[] packed = MaterialLayout.Pack(_parameters, material, texturePath =>
         {
             string builtPath = TextureLibrary.GetBuiltPath(texturePath);
-            string textureFullPath = _content.GetFullPath(builtPath);
-            AddTextureUser(textureFullPath, fullPath);
-            ITexture texture = textures.Get(texturePath);
-            return texture.BindlessIndex;
+            string reliefPath = TextureLibrary.GetReliefPath(texturePath);
+            AddTextureUser(builtPath, fullPath);
+            AddTextureUser(reliefPath, fullPath);
+            ITexture image = textures.Get(texturePath);
+            ITexture? relief = textures.GetRelief(texturePath);
+            uint reliefIndex = relief?.BindlessIndex ?? MaterialLayout.NoTexture;
+            return new MaterialTexture(image.BindlessIndex, reliefIndex);
         });
         IBuffer buffer = Upload(packed, path);
         _materials.Add(fullPath, buffer);
@@ -76,8 +79,9 @@ internal sealed class MaterialLibrary : IDisposable
         return _device.CreateBuffer(description, packed);
     }
 
-    private void AddTextureUser(string textureFullPath, string materialFullPath)
+    private void AddTextureUser(string texturePath, string materialFullPath)
     {
+        string textureFullPath = _content.GetFullPath(texturePath);
         if (!_textureUsers.TryGetValue(textureFullPath, out List<string>? users))
         {
             users = [];

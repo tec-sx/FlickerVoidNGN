@@ -33,7 +33,9 @@ struct Material
     float3 Emissive;
     float EmissiveIntensity;
     uint Texture;
+    uint Relief;
     float TextureScale;
+    float ReliefDepth;
 };
 
 struct Light
@@ -122,7 +124,9 @@ Material LoadMaterial()
     material.Emissive = buffer.Load<float3>(60);
     material.EmissiveIntensity = buffer.Load<float>(72);
     material.Texture = buffer.Load<uint>(76);
-    material.TextureScale = buffer.Load<float>(80);
+    material.Relief = buffer.Load<uint>(80);
+    material.TextureScale = buffer.Load<float>(84);
+    material.ReliefDepth = buffer.Load<float>(88);
     return material;
 }
 
@@ -476,6 +480,35 @@ float4 OutlineMain(VertexOutput input) : SV_Target
     return float4(Scene.BaseColor.rgb, 1);
 }
 
+// Tilts the normal by the slope of a painting's relief, so its impasto catches the light without tangents: the relief's
+// slope across the uvs, turned into the screen's by the uvs' derivatives, bends the normal by Mikkelsen's surface gradient
+// over the position's derivatives. The derivatives come from the caller, outside the branch that reads the relief.
+float3 RaiseRelief(Material material, float2 uv, float2 uvX, float2 uvY, float3 positionX, float3 positionY, float3 normal)
+{
+    Texture2D relief = Textures[material.Relief];
+    SamplerState sampler = Samplers[Scene.Sampler];
+    float width;
+    float height;
+    relief.GetDimensions(width, height);
+    float2 size = float2(width, height);
+    float2 texelsX = uvX * size;
+    float2 texelsY = uvY * size;
+    float level = max(0.5 * log2(max(dot(texelsX, texelsX), dot(texelsY, texelsY))), 0);
+    float2 step = exp2(level) / size;
+    float left = relief.SampleLevel(sampler, uv - float2(step.x, 0), level).r;
+    float right = relief.SampleLevel(sampler, uv + float2(step.x, 0), level).r;
+    float up = relief.SampleLevel(sampler, uv - float2(0, step.y), level).r;
+    float down = relief.SampleLevel(sampler, uv + float2(0, step.y), level).r;
+    float2 slope = float2(right - left, down - up) / (2 * step) * material.ReliefDepth;
+    float heightX = dot(slope, uvX);
+    float heightY = dot(slope, uvY);
+    float3 acrossY = cross(positionY, normal);
+    float3 acrossX = cross(normal, positionX);
+    float determinant = dot(positionX, acrossY);
+    float3 gradient = sign(determinant) * (heightX * acrossY + heightY * acrossX);
+    return normalize(abs(determinant) * normal - gradient);
+}
+
 float4 PixelMain(VertexOutput input) : SV_Target
 {
     FrameData frame = LoadFrame(Scene.Frame);
@@ -491,6 +524,15 @@ float4 PixelMain(VertexOutput input) : SV_Target
     float4 albedo = Textures[texture].Sample(Samplers[Scene.Sampler], uv) * Scene.BaseColor;
     albedo.rgb *= material.Tint;
     float3 normal = normalize(input.Normal);
+    float2 uvX = ddx(uv);
+    float2 uvY = ddy(uv);
+    float3 positionX = ddx(input.WorldPosition);
+    float3 positionY = ddy(input.WorldPosition);
+    if (material.Texture != None && material.Relief != None && material.ReliefDepth > 0)
+    {
+        normal = RaiseRelief(material, uv, uvX, uvY, positionX, positionY, normal);
+    }
+
     float3 toCamera = ToCamera(frame, input.WorldPosition);
     float2 screenShadows = BlurScreenShadows(frame, input.Position.xy);
     float3 toSun = -normalize(frame.SunDirection);

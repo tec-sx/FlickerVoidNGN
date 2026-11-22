@@ -17,12 +17,15 @@ public sealed record ShaderParameter(string Name, ShaderParameterType Type, Json
     {
         get
         {
-            if (Type == ShaderParameterType.Color)
+            switch (Type)
             {
-                return 3;
+                case ShaderParameterType.Color:
+                    return 3;
+                case ShaderParameterType.Texture:
+                    return 2;
+                default:
+                    return 1;
             }
-
-            return 1;
         }
     }
 }

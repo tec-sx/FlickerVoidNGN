@@ -14,7 +14,7 @@ public sealed class MaterialLayoutTests
         byte[] packed = MaterialLayout.Pack(_builder.Parameters, null);
 
         float[] values = MemoryMarshal.Cast<byte, float>(packed).ToArray();
-        values.Should().Equal(0.25f, 0, 0, 0, BitConverter.UInt32BitsToSingle(MaterialLayout.NoTexture));
+        values.Should().Equal(0.25f, 0, 0, 0, BitConverter.UInt32BitsToSingle(MaterialLayout.NoTexture), BitConverter.UInt32BitsToSingle(MaterialLayout.NoTexture));
     }
 
     [Fact]
@@ -25,11 +25,11 @@ public sealed class MaterialLayoutTests
         byte[] packed = MaterialLayout.Pack(_builder.Parameters, material);
 
         float[] values = MemoryMarshal.Cast<byte, float>(packed).ToArray();
-        values.Should().Equal(0.25f, 1, 0.5f, 0, BitConverter.UInt32BitsToSingle(MaterialLayout.NoTexture));
+        values.Should().Equal(0.25f, 1, 0.5f, 0, BitConverter.UInt32BitsToSingle(MaterialLayout.NoTexture), BitConverter.UInt32BitsToSingle(MaterialLayout.NoTexture));
     }
 
     [Fact]
-    public void PacksATextureAsTheIndexItLoadsAs()
+    public void PacksATextureAsTheIndicesOfItsImageAndRelief()
     {
         MaterialFile material = MaterialLayoutTestsBuilder.Material("""{ "parameters": { "texture": "Paintings/Wall.reb" } }""");
         List<string> loaded = [];
@@ -37,11 +37,11 @@ public sealed class MaterialLayoutTests
         byte[] packed = MaterialLayout.Pack(_builder.Parameters, material, path =>
         {
             loaded.Add(path);
-            return 7;
+            return new MaterialTexture(7, 9);
         });
 
         uint[] values = MemoryMarshal.Cast<byte, uint>(packed).ToArray();
-        values[^1].Should().Be(7);
+        values[^2..].Should().Equal(7u, 9u);
         loaded.Should().Equal("Paintings/Wall.reb");
     }
 
@@ -50,10 +50,10 @@ public sealed class MaterialLayoutTests
     {
         MaterialFile material = MaterialLayoutTestsBuilder.Material("""{ "parameters": { "texture": null } }""");
 
-        byte[] packed = MaterialLayout.Pack(_builder.Parameters, material, _ => 7);
+        byte[] packed = MaterialLayout.Pack(_builder.Parameters, material, _ => new MaterialTexture(7, 9));
 
         uint[] values = MemoryMarshal.Cast<byte, uint>(packed).ToArray();
-        values[^1].Should().Be(MaterialLayout.NoTexture);
+        values[^2..].Should().Equal(MaterialLayout.NoTexture, MaterialLayout.NoTexture);
     }
 
     [Fact]

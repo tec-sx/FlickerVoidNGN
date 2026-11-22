@@ -7,7 +7,7 @@ namespace FlickerVoid.Engine.Rendering.Materials;
 /// <summary>
 /// Loads each texture the first time it is used and keeps it on the GPU until its file changes on disk and the next use
 /// loads it again. A texture is named by its source image (Paper.png); the game loads what the content build made of it
-/// (Paper.dds).
+/// (Paper.dds), and a painting's relief, when its impasto was baked into one, beside it (Paper.relief.dds).
 /// </summary>
 internal sealed class TextureLibrary : IDisposable
 {
@@ -28,9 +28,33 @@ internal sealed class TextureLibrary : IDisposable
         return Path.ChangeExtension(path, ".dds");
     }
 
+    /// <summary>The file the content build makes of a painting's impasto, when it has any.</summary>
+    public static string GetReliefPath(string path)
+    {
+        return Path.ChangeExtension(path, ".relief.dds");
+    }
+
     public ITexture Get(string path)
     {
         string builtPath = GetBuiltPath(path);
+        return Load(builtPath, path);
+    }
+
+    /// <summary>The relief baked from a painting's impasto, or null when the build made none.</summary>
+    public ITexture? GetRelief(string path)
+    {
+        string reliefPath = GetReliefPath(path);
+        string fullPath = _content.GetFullPath(reliefPath);
+        if (!_textures.ContainsKey(fullPath) && !File.Exists(fullPath))
+        {
+            return null;
+        }
+
+        return Load(reliefPath, path + " relief");
+    }
+
+    private ITexture Load(string builtPath, string name)
+    {
         string fullPath = _content.GetFullPath(builtPath);
         if (_textures.TryGetValue(fullPath, out ITexture? loaded))
         {
@@ -43,7 +67,7 @@ internal sealed class TextureLibrary : IDisposable
             image = DdsImage.Read(stream);
         }
 
-        TextureDescription description = image.Describe(TextureUsage.ShaderRead) with { Name = path };
+        TextureDescription description = image.Describe(TextureUsage.ShaderRead) with { Name = name };
         ITexture texture = _device.CreateTexture(description, image.Data);
         _textures.Add(fullPath, texture);
         return texture;

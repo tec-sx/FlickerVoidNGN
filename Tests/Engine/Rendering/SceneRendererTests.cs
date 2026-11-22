@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 
@@ -503,6 +504,28 @@ public sealed class SceneRendererTests : IDisposable
         (byte red, _, byte blueChannel) = SceneRendererTestsBuilder.Channels(pixels[5]);
         red.Should().BeLessThan(10);
         blueChannel.Should().BeGreaterThan(200);
+    }
+
+    [Fact]
+    public void TiltsTheLightByAPaintingsRelief()
+    {
+        uint white = SceneRendererTestsBuilder.Rgba(255, 255, 255, 255);
+        uint[] rising = [SceneRendererTestsBuilder.Rgba(0, 0, 0, 255), SceneRendererTestsBuilder.Rgba(85, 85, 85, 255), SceneRendererTestsBuilder.Rgba(170, 170, 170, 255), white];
+        _builder.WithTexture("Wall.reb", 1, 1, [white]);
+        _builder.WithTexture("Wall.relief.dds", 4, 1, rising, PixelFormat.Rgba8UNorm);
+        _builder.WithFile("Wall.fvmat", """{ "parameters": { "texture": "Wall.reb", "reliefDepth": 0 } }""");
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Vector4.One));
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0);
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Wall.fvmat"] } } }""");
+        uint[] flat = _builder.Render();
+        _builder.WithFile("Wall.fvmat", """{ "parameters": { "texture": "Wall.reb", "reliefDepth": 0.1 } }""");
+        _builder.NotifyChanged("Wall.fvmat");
+
+        uint[] raised = _builder.Render();
+
+        (byte flatRed, _, _) = SceneRendererTestsBuilder.Channels(flat[5]);
+        (byte raisedRed, _, _) = SceneRendererTestsBuilder.Channels(raised[5]);
+        raisedRed.Should().BeLessThan((byte)(flatRed - 10), "the paint rises toward the sun, so its slope faces away from it");
     }
 
     [Fact]

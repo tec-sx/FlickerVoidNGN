@@ -5,7 +5,7 @@ namespace FlickerVoid.Engine.Rendering.Materials;
 
 /// <summary>
 /// Packs a material's values into the bytes its shader reads: each declared parameter in order, as tightly packed floats,
-/// and textures as the uint index they load as (<see cref="NoTexture"/> when unset), matching an HLSL struct of the same
+/// and textures as the uint indices of their image and relief (<see cref="MaterialTexture"/>, <see cref="NoTexture"/> when unset), matching an HLSL struct of the same
 /// fields loaded from a ByteAddressBuffer.
 /// </summary>
 public static class MaterialLayout
@@ -13,8 +13,8 @@ public static class MaterialLayout
     /// <summary>The index of an unset texture, the shaders' <c>None</c>.</summary>
     public const uint NoTexture = uint.MaxValue;
 
-    /// <summary>Packs the values; <paramref name="loadTexture"/> loads a texture by its content path and gives its index.</summary>
-    public static byte[] Pack(IReadOnlyList<ShaderParameter> parameters, MaterialFile? material, Func<string, uint>? loadTexture = null)
+    /// <summary>Packs the values; <paramref name="loadTexture"/> loads a texture by its content path and gives its indices.</summary>
+    public static byte[] Pack(IReadOnlyList<ShaderParameter> parameters, MaterialFile? material, Func<string, MaterialTexture>? loadTexture = null)
     {
         if (material is not null)
         {
@@ -32,8 +32,9 @@ public static class MaterialLayout
 
             if (parameter.Type == ShaderParameterType.Texture)
             {
-                uint index = LoadTexture(parameter, value, loadTexture);
-                values.Add(BitConverter.UInt32BitsToSingle(index));
+                MaterialTexture texture = LoadTexture(parameter, value, loadTexture);
+                values.Add(BitConverter.UInt32BitsToSingle(texture.Image));
+                values.Add(BitConverter.UInt32BitsToSingle(texture.Relief));
                 continue;
             }
 
@@ -56,11 +57,12 @@ public static class MaterialLayout
         }
     }
 
-    private static uint LoadTexture(ShaderParameter parameter, JsonElement value, Func<string, uint>? loadTexture)
+    private static MaterialTexture LoadTexture(ShaderParameter parameter, JsonElement value, Func<string, MaterialTexture>? loadTexture)
     {
+        MaterialTexture none = new(NoTexture, NoTexture);
         if (value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
         {
-            return NoTexture;
+            return none;
         }
 
         if (value.ValueKind != JsonValueKind.String)
@@ -71,7 +73,7 @@ public static class MaterialLayout
         string? path = value.GetString();
         if (string.IsNullOrEmpty(path) || loadTexture is null)
         {
-            return NoTexture;
+            return none;
         }
 
         return loadTexture(path);
