@@ -3,16 +3,22 @@ using System.Numerics;
 using Arch.Core;
 using Arch.System;
 
+using FlickerVoid.Engine.Ai.Senses;
+using FlickerVoid.Engine.Interaction.Locks;
 using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Gameplay.Serialization;
 
 namespace FlickerVoid.Gameplay.World.Objects.Doors;
 
 using World = Arch.Core.World;
 
-/// <summary>Swings doors toward open or shut as their toggles change, each fixed step, and rattles them when a lock blocks them.</summary>
+/// <summary>
+/// Swings doors toward open or shut as their toggles change, each fixed step, and rattles them, a noise whoever tried them made, when a
+/// lock blocks them and no key opens it; saves keep how far each saveable door is open.
+/// </summary>
 public sealed class DoorSwingSystem : BaseSystem<World, GameTime>
 {
     /// <summary>Seconds a blocked door rattles.</summary>
@@ -23,14 +29,18 @@ public sealed class DoorSwingSystem : BaseSystem<World, GameTime>
 
     private static readonly QueryDescription Doors = new QueryDescription().WithAll<DoorSwing, DoorHinge, Transform>();
 
+    private readonly EventBus _events;
+
     public DoorSwingSystem(Game game)
         : base(game.World)
     {
+        _events = game.Events;
         ArrayRegistry.Add<DoorHinge>();
         game.Lifecycle.OnActivate((Entity entity, ref DoorSwing swing) => Activate(entity, swing));
         game.Lifecycle.OnDeactivate((Entity entity, ref DoorSwing _) => Deactivate(entity));
         game.Events.Handle((in ToggledEvent toggled) => Swing(toggled.Target, toggled.Open));
-        game.Events.Handle((in ToggleBlockedEvent blocked) => Rattle(blocked.Target));
+        game.Events.Handle((in ToggleBlockedEvent blocked) => Rattle(blocked.Target, blocked.Instigator));
+        game.SaveStates.AddComponent("doorHinge", FlickerVoidJsonContext.Default.DoorHinge);
     }
 
     public override void Update(in GameTime t)
@@ -101,11 +111,19 @@ public sealed class DoorSwingSystem : BaseSystem<World, GameTime>
         }
     }
 
-    private void Rattle(Entity door)
+    private void Rattle(Entity door, Entity instigator)
     {
-        if (World.IsAlive(door) && World.Has<DoorHinge>(door))
+        if (!World.IsAlive(door) || (World.TryGet(door, out Lockable doorLock) && !doorLock.Locked))
+        {
+            // A key opened it before the door heard it was blocked.
+            return;
+        }
+
+        if (World.Has<DoorHinge>(door))
         {
             World.Get<DoorHinge>(door).Rattle = RattleTime;
+            World.TryGet(door, out Transform transform);
+            _events.Send(new NoiseEvent(instigator, transform.Position));
         }
     }
 }

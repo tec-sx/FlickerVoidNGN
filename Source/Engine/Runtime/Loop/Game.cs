@@ -8,6 +8,7 @@ using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Debugging;
 using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Events;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 using FlickerVoid.Engine.Runtime.Services;
@@ -28,11 +29,14 @@ public sealed partial class Game : IDisposable
         LoggerFactory = loggerFactory;
         _logger = LoggerFactory.CreateLogger<Game>();
         World = World.Create();
+        SaveStates = new SaveStates(World, Data);
 
         Services.AddService(LoggerFactory);
         Services.AddService(World);
 
         Spawner.Register("transform", RuntimeJsonContext.Default.Transform);
+        Spawner.Register("saveable", RuntimeJsonContext.Default.Saveable);
+        SaveStates.AddComponent("transform", RuntimeJsonContext.Default.Transform);
         Services.AddService(Spawner);
         Schemas.Add("scene", Spawner.GetSchema);
         Schemas.Add("entity", Spawner.GetTemplateSchema);
@@ -64,6 +68,9 @@ public sealed partial class Game : IDisposable
 
     /// <summary>Spawns scene files into the world; modules register their components on it.</summary>
     public ISceneSpawner Spawner { get; } = new SceneSpawner();
+
+    /// <summary>What saves keep of each saveable entity; modules add the state they need back.</summary>
+    public SaveStates SaveStates { get; }
 
     /// <summary>Starts and stops entities; systems add their components' hooks to it. It is the spawner's, so scenes start what they spawn.</summary>
     public EntityLifecycle Lifecycle => Spawner.Lifecycle;

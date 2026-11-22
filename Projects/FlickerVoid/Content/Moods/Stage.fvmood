@@ -1,0 +1,9 @@
+// Stage: an even studio light for models shown in the interface, with nothing screen-based to darken a lone model.
+{
+  "$schema": "../.schemas/mood.schema.json",
+  "sunDirection": [-0.4, -0.6, -0.7],
+  "ambient": 0.45,
+  "ambientOcclusion": 0,
+  "contactShadowLength": 0,
+  "exposure": 1.1
+}

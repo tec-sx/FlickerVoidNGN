@@ -74,7 +74,7 @@ internal sealed class SkinningPass : IRenderPass
             }
 
             IBuffer material = _materials.Get(materialPath);
-            draws.Add(new MeshDraw(mesh.World, part, vertices, material));
+            draws.Add(new MeshDraw(mesh.World, part, vertices, material, mesh.Outline));
         }
     }
 }

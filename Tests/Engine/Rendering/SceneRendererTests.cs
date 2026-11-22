@@ -17,6 +17,9 @@ public sealed class SceneRendererTests : IDisposable
     private static readonly uint RedPixel = SceneRendererTestsBuilder.Rgba(255, 0, 0, 255);
     private static readonly uint BlackPixel = SceneRendererTestsBuilder.Rgba(0, 0, 0, 255);
 
+    /// <summary>Where nothing was drawn: transparent, so a stage's image shows over the interface there.</summary>
+    private static readonly uint EmptyPixel = SceneRendererTestsBuilder.Rgba(0, 0, 0, 0);
+
     private readonly SceneRendererTestsBuilder _builder = new();
 
     public void Dispose() => _builder.Dispose();
@@ -31,10 +34,10 @@ public sealed class SceneRendererTests : IDisposable
 
         uint[] expected =
         [
-            BlackPixel, BlackPixel, BlackPixel, BlackPixel,
-            BlackPixel, RedPixel, RedPixel, BlackPixel,
-            BlackPixel, RedPixel, RedPixel, BlackPixel,
-            BlackPixel, BlackPixel, BlackPixel, BlackPixel,
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
+            EmptyPixel, RedPixel, RedPixel, EmptyPixel,
+            EmptyPixel, RedPixel, RedPixel, EmptyPixel,
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
         ];
         pixels.Should().Equal(expected);
     }
@@ -49,10 +52,10 @@ public sealed class SceneRendererTests : IDisposable
 
         uint[] expected =
         [
-            BlackPixel, BlackPixel, RedPixel, RedPixel,
-            BlackPixel, BlackPixel, RedPixel, RedPixel,
-            BlackPixel, BlackPixel, BlackPixel, BlackPixel,
-            BlackPixel, BlackPixel, BlackPixel, BlackPixel,
+            EmptyPixel, EmptyPixel, RedPixel, RedPixel,
+            EmptyPixel, EmptyPixel, RedPixel, RedPixel,
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
         ];
         pixels.Should().Equal(expected);
     }
@@ -70,17 +73,17 @@ public sealed class SceneRendererTests : IDisposable
 
         uint[] centered =
         [
-            BlackPixel, BlackPixel, BlackPixel, BlackPixel,
-            BlackPixel, RedPixel, RedPixel, BlackPixel,
-            BlackPixel, RedPixel, RedPixel, BlackPixel,
-            BlackPixel, BlackPixel, BlackPixel, BlackPixel,
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
+            EmptyPixel, RedPixel, RedPixel, EmptyPixel,
+            EmptyPixel, RedPixel, RedPixel, EmptyPixel,
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
         ];
         uint[] moved =
         [
-            BlackPixel, BlackPixel, RedPixel, RedPixel,
-            BlackPixel, BlackPixel, RedPixel, RedPixel,
-            BlackPixel, BlackPixel, BlackPixel, BlackPixel,
-            BlackPixel, BlackPixel, BlackPixel, BlackPixel,
+            EmptyPixel, EmptyPixel, RedPixel, RedPixel,
+            EmptyPixel, EmptyPixel, RedPixel, RedPixel,
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
         ];
         if (time == 0)
         {
@@ -100,7 +103,7 @@ public sealed class SceneRendererTests : IDisposable
 
         uint[] pixels = _builder.Render();
 
-        pixels.Should().AllBeEquivalentTo(BlackPixel);
+        pixels.Should().AllBeEquivalentTo(EmptyPixel);
     }
 
     [Fact]
@@ -412,7 +415,7 @@ public sealed class SceneRendererTests : IDisposable
         _builder.WithMood(static mood => mood with { Bloom = 0.3f });
         uint[] withBloom = _builder.Render();
 
-        withoutBloom[0].Should().Be(BlackPixel);
+        withoutBloom[0].Should().Be(EmptyPixel);
         (byte glow, _, _) = SceneRendererTestsBuilder.Channels(withBloom[0]);
         glow.Should().BeGreaterThan(0, "the bright quad glows onto the dark corner");
     }
@@ -607,5 +610,36 @@ public sealed class SceneRendererTests : IDisposable
 
         (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
         red.Should().BeInRange((byte)(expectedRed - 2), (byte)Math.Min(expectedRed + 2, 255));
+    }
+
+    [Fact]
+    public void DrawsALineOfTheOutlineColorAroundOutlinedMeshes()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb" }, "outline": { "color": [0, 1, 0] } } }""");
+        _builder.WithTargetSize(8);
+
+        uint[] pixels = _builder.Render();
+
+        uint green = SceneRendererTestsBuilder.Rgba(0, 255, 0, 255);
+        int row = 3 * 8;
+        pixels[row].Should().Be(green, "the line is two pixels wide");
+        pixels[row + 1].Should().Be(green);
+        pixels[row + 3].Should().Be(RedPixel, "the mesh itself keeps its look");
+        pixels[row + 6].Should().Be(green);
+        pixels[0].Should().Be(EmptyPixel, "the corner is further than two pixels from the mesh");
+    }
+
+    [Fact]
+    public void LeavesMeshesWithoutAnOutlineUnlined()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithTargetSize(8);
+
+        uint[] pixels = _builder.Render();
+
+        pixels[3 * 8].Should().Be(EmptyPixel);
+        pixels[(3 * 8) + 1].Should().Be(EmptyPixel);
     }
 }

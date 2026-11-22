@@ -1,0 +1,11 @@
+// The protagonist on the hub's stage: the fox turning slowly in a soft studio light, framed from a little above.
+{
+  "$schema": "../.schemas/scene.schema.json",
+  "entities": [
+    {"name": "Camera", "components": {"transform": {"position": [0, 1.15, 4.2], "rotation": [-0.0872, 0, 0, 0.9962]}, "camera": {"projection": "Perspective", "fieldOfView": 30, "nearPlane": 0.1, "farPlane": 20}}},
+    {"name": "Mood", "components": {"transform": {}, "sceneMood": {"mood": "Moods/Stage.fvmood"}}},
+    {"name": "Fox", "components": {"transform": {"position": [0, 0, 0], "rotation": [0, 0.3827, 0, 0.9239], "scale": [0.012, 0.012, 0.012]}, "meshRenderer": {"mesh": "Fox.glb"}, "meshAnimator": {"animation": "Survey"}, "turntable": {"speed": 12}}},
+    {"name": "Key Light", "components": {"transform": {"position": [2, 2.5, 2.5]}, "pointLight": {"color": [1, 0.92, 0.8], "intensity": 3, "range": 6}}},
+    {"name": "Rim Light", "components": {"transform": {"position": [-2, 2, -2.5]}, "pointLight": {"color": [0.7, 0.8, 1], "intensity": 2.5, "range": 6}}}
+  ]
+}

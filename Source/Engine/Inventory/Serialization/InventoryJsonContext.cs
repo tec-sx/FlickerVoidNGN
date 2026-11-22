@@ -10,7 +10,7 @@ using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Engine.Inventory.Serialization;
 
-/// <summary>Source-generated JSON for item definitions, their fragments, the inventory conditions and effects, and the components scenes hold.</summary>
+/// <summary>Source-generated JSON for item definitions, their fragments, the inventory conditions and effects, the components scenes hold and what saves keep.</summary>
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, UseStringEnumConverter = true, Converters = [typeof(TagJsonConverter)])]
 [JsonSerializable(typeof(ItemDefinition))]
 [JsonSerializable(typeof(UsableFragment))]
@@ -34,4 +34,9 @@ namespace FlickerVoid.Engine.Inventory.Serialization;
 [JsonSerializable(typeof(Pickup))]
 [JsonSerializable(typeof(Equipment))]
 [JsonSerializable(typeof(Lootable))]
+[JsonSerializable(typeof(Stolen))]
+[JsonSerializable(typeof(ChargesLeft))]
+[JsonSerializable(typeof(SavedInventory))]
+[JsonSerializable(typeof(SavedEquipment))]
+[JsonSerializable(typeof(SavedPickup))]
 public sealed partial class InventoryJsonContext : JsonSerializerContext;

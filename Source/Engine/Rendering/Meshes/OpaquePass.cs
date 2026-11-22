@@ -11,7 +11,8 @@ namespace FlickerVoid.Engine.Rendering.Meshes;
 /// <summary>Draws the lit scene into the HDR target over the prepass depth.</summary>
 internal sealed class OpaquePass : IRenderPass
 {
-    private static readonly Vector4 Background = new(0, 0, 0, 1);
+    /// <summary>Transparent where nothing is drawn, so post-processing passes coverage on (a stage shows over the interface there).</summary>
+    private static readonly Vector4 Background = new(0, 0, 0, 0);
 
     private readonly IPipeline _pipeline;
 

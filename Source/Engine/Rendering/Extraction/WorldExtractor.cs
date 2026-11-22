@@ -6,11 +6,12 @@ using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Rendering.Extraction;
 
-/// <summary>Extracts cameras, meshes, lights and irradiance volumes from entities with a transform.</summary>
+/// <summary>Extracts cameras, meshes with their outlines, lights and irradiance volumes from entities with a transform.</summary>
 public sealed class WorldExtractor : IRenderExtractor
 {
     private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>();
@@ -35,7 +36,8 @@ public sealed class WorldExtractor : IRenderExtractor
             }
 
             Matrix4x4 meshWorld = transform.ToMatrix();
-            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, null, renderer.Materials));
+            Outline? outline = FindOutline(world, entity);
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, null, renderer.Materials, outline));
         });
         world.Query(in AnimatedMeshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform, ref MeshAnimator animator) =>
         {
@@ -45,7 +47,8 @@ public sealed class WorldExtractor : IRenderExtractor
             }
 
             Matrix4x4 meshWorld = transform.ToMatrix();
-            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, animator, renderer.Materials));
+            Outline? outline = FindOutline(world, entity);
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, animator, renderer.Materials, outline));
         });
         world.Query(in PointLights, (ref PointLight light, ref Transform transform) =>
         {
@@ -59,5 +62,15 @@ public sealed class WorldExtractor : IRenderExtractor
         {
             scene.ProbeVolumes.Add(new RenderProbeVolume(volume, transform.Position));
         });
+    }
+
+    private static Outline? FindOutline(World world, Entity entity)
+    {
+        if (world.TryGet(entity, out Outline outline))
+        {
+            return outline;
+        }
+
+        return null;
     }
 }

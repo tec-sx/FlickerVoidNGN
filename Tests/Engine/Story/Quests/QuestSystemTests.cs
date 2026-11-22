@@ -1,3 +1,5 @@
+using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Entities;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Story.Quests;
 
@@ -259,5 +261,53 @@ public sealed class QuestSystemTests : IDisposable
         _builder.Quests.Start(new Tag("Quest.Starter"));
 
         _builder.Quests.GetState(Cellar).Should().Be(QuestState.Active);
+    }
+
+    [Fact]
+    public void ALoadRunsTheFlowsOfTheQuestsActiveInTheSave()
+    {
+        string flow = """
+            {
+              "nodes": [ { "$type": "start", "id": "start" }, { "$type": "waitForConditions", "id": "wait", "conditions": { "conditions": [ { "$type": "fact", "fact": "Fact.Never" } ] } } ],
+              "links": [ { "from": "start", "to": "wait" } ]
+            }
+            """;
+        _builder.WithFile("Quests/Cellar.fvflow", flow)
+            .WithFile("Quests/Later.fvflow", flow)
+            .WithQuest(Cellar.Name, """ "flow": "Quests/Cellar.fvflow" """)
+            .WithQuest("Quest.Later", """ "flow": "Quests/Later.fvflow" """)
+            .Build();
+        _builder.Quests.Start(Cellar);
+        _builder.Saves.Save("Slot");
+        _builder.Quests.Fail(Cellar);
+        _builder.Quests.Start(new Tag("Quest.Later"));
+
+        _builder.Saves.Load("Slot");
+
+        _builder.Quests.GetState(Cellar).Should().Be(QuestState.Active);
+        _builder.Quests.IsFlowRunning(Cellar).Should().BeTrue();
+        _builder.Quests.IsFlowRunning(new Tag("Quest.Later")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void QuestRulesAreAppliedForThePlayer()
+    {
+        _builder.WithQuest(Cellar.Name).Build();
+        IEntityView player = Substitute.For<IEntityView>();
+        CaptureEffect capture = new();
+        _builder.Data.Find<QuestDefinition>(Cellar)!.OnStarted.Effects.Add(capture);
+        _builder.Quests.Player = player;
+
+        _builder.Quests.Start(Cellar);
+
+        capture.Instigator.Should().BeSameAs(player);
+    }
+
+    /// <summary>Remembers who it was applied for.</summary>
+    private sealed class CaptureEffect : Effect
+    {
+        public IEntityView? Instigator { get; private set; }
+
+        public override void Apply(ConditionContext context) => Instigator = context.Instigator;
     }
 }

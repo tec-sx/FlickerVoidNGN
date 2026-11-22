@@ -8,7 +8,7 @@ using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Engine.Interaction.Serialization;
 
-/// <summary>Source-generated JSON for interactable definitions, the interaction conditions and the components scenes hold.</summary>
+/// <summary>Source-generated JSON for interactable definitions, the interaction conditions, the components scenes hold and what saves keep.</summary>
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, UseStringEnumConverter = true, Converters = [typeof(TagJsonConverter)])]
 [JsonSerializable(typeof(InteractableDefinition))]
 [JsonSerializable(typeof(InteractorTagsCondition))]
@@ -17,4 +17,5 @@ namespace FlickerVoid.Engine.Interaction.Serialization;
 [JsonSerializable(typeof(Interactor))]
 [JsonSerializable(typeof(Lockable))]
 [JsonSerializable(typeof(Toggle))]
+[JsonSerializable(typeof(SavedInteractable))]
 public sealed partial class InteractionJsonContext : JsonSerializerContext;

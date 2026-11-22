@@ -53,3 +53,9 @@ https://github.com/google/material-design-icons
 Used in: `Source/Editor/Icons/*.png`, the Rounded filled glyphs `lightbulb`, `highlight`, `videocam` and `blur_on`, rasterised to 64 px white PNGs.
 
 Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0), Copyright Google LLC.
+
+## Glitch Goblin and Rajdhani (fonts)
+
+Glitch Goblin by GGBotNet and Rajdhani by the Indian Type Foundry, both under the SIL Open Font License 1.1; the licence texts are beside the fonts.
+
+Used in: `Projects/FlickerVoid/Source/Interface/Assets/Fonts`

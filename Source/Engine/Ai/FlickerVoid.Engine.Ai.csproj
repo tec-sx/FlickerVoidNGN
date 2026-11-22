@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="DotRecast.Detour" />
+    <PackageReference Include="DotRecast.Recast" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Characters/FlickerVoid.Engine.Characters.csproj" />
+  </ItemGroup>
+</Project>

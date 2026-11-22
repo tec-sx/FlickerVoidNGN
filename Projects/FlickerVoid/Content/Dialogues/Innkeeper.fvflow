@@ -1,0 +1,33 @@
+{
+  "$schema": "../.schemas/flow.schema.json",
+  "nodes": [
+    { "$type": "start", "id": "start", "x": 0, "y": 0 },
+    { "$type": "line", "id": "greet", "x": 220, "y": 0, "text": "Evening, fox. Mind the floor, it's just been waxed." },
+    { "$type": "choice", "id": "ask", "x": 440, "y": 0, "options": [
+      { "text": "Anything I can do for you?",
+        "conditions": { "conditions": [ { "$type": "questState", "quest": "Quest.Cellar", "state": "NotStarted" } ] },
+        "onChosen": { "effects": [ { "$type": "setQuestState", "quest": "Quest.Cellar", "state": "Active" } ] } },
+      { "text": "I found your cellar key.",
+        "conditions": { "conditions": [ { "$type": "questState", "quest": "Quest.Cellar", "state": "Active" }, { "$type": "hasItem", "item": "Items/CellarKey.fvdata" } ] } },
+      { "text": "What's down in the cellar?",
+        "conditions": { "conditions": [ { "$type": "knows", "knowledge": "Knowledge.Topic.Cellar", "invert": true } ] },
+        "onChosen": { "effects": [ { "$type": "learn", "knowledge": "Knowledge.Topic.Cellar" } ] } }
+    ] },
+    { "$type": "line", "id": "job", "x": 700, "y": -120, "text": "I've lost the cellar key somewhere in this room. Find it and the wine's on me." },
+    { "$type": "completeObjective", "id": "returned", "x": 700, "y": 0, "objective": "Quest.Cellar.ReturnedKey" },
+    { "$type": "line", "id": "thanks", "x": 920, "y": 0, "text": "Keep it. Go on, open the cellar yourself." },
+    { "$type": "line", "id": "lore", "x": 700, "y": 120, "text": "Wine, mostly. And whatever the last owner left behind." },
+    { "$type": "finish", "id": "end", "x": 1140, "y": 0 }
+  ],
+  "links": [
+    { "from": "start", "to": "greet" },
+    { "from": "greet", "to": "ask" },
+    { "from": "ask", "output": "First", "to": "job" },
+    { "from": "ask", "output": "Second", "to": "returned" },
+    { "from": "ask", "output": "Third", "to": "lore" },
+    { "from": "job", "to": "end" },
+    { "from": "returned", "to": "thanks" },
+    { "from": "thanks", "to": "end" },
+    { "from": "lore", "to": "ask" }
+  ]
+}
