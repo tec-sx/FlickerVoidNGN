@@ -14,6 +14,7 @@ using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Services;
 
 namespace FlickerVoid.Engine.Maps.Navigation;
@@ -51,6 +52,8 @@ public sealed class MapSystem : BaseSystem<World, GameTime>
         game.Lifecycle.OnActivate((Entity entity, ref Navigator _) => SetNavigator(entity));
         game.Lifecycle.OnDeactivate((Entity entity, ref Navigator _) => ClearNavigator(entity));
         _facts.FactChanged += HandleFactChanged;
+        game.SaveStates.Add<SavedMarker>("mapMarker", SaveMarker, RestoreMarker);
+        game.SaveStates.AddGlobal<SavedNavigation>("navigation", SaveNavigation, RestoreNavigation);
     }
 
     /// <summary>The navigator the views follow; its entity is the instigator of marker conditions and the discoverer.</summary>
@@ -772,6 +775,76 @@ public sealed class MapSystem : BaseSystem<World, GameTime>
         ConditionContext context = MakeContext(Navigator, marker.Entity);
         marker.Visible = marker.Definition.VisibleWhen.Evaluate(context);
         return wasVisible != marker.Visible;
+    }
+
+    private SavedMarker? SaveMarker(Entity entity)
+    {
+        if (!_entityMarkers.TryGetValue(entity, out MarkerHandle handle) || !_markers.TryGetValue(handle.Id, out Marker? marker))
+        {
+            return null;
+        }
+
+        return new SavedMarker { Discovered = marker.Discovered };
+    }
+
+    private void RestoreMarker(Entity entity, SavedMarker saved)
+    {
+        if (!_entityMarkers.TryGetValue(entity, out MarkerHandle handle) || !_markers.TryGetValue(handle.Id, out Marker? marker))
+        {
+            return;
+        }
+
+        // A marker with a discovered fact follows the fact, which the save brought back already.
+        if (!marker.DiscoveredFact.IsValid)
+        {
+            marker.Discovered = saved.Discovered;
+        }
+    }
+
+    private SavedNavigation SaveNavigation()
+    {
+        SavedNavigation saved = new() { TrackingWaypoint = Tracked.IsValid && Tracked == Waypoint };
+        if (Waypoint.IsValid)
+        {
+            saved.Waypoint = GetLocation(Waypoint);
+        }
+
+        Entity tracked = GetEntity(Tracked);
+        if (tracked != Entity.Null && World.IsAlive(tracked) && World.TryGet(tracked, out Saveable saveable))
+        {
+            saved.Tracked = saveable.Id;
+        }
+
+        return saved;
+    }
+
+    private void RestoreNavigation(SavedNavigation saved)
+    {
+        ClearWaypoint();
+        Waypoint = MarkerHandle.None;
+        SetTracked(MarkerHandle.None);
+        if (saved.Waypoint is { } waypoint)
+        {
+            SetWaypoint(waypoint);
+            if (!saved.TrackingWaypoint)
+            {
+                SetTracked(MarkerHandle.None);
+            }
+        }
+
+        if (saved.Tracked.Length == 0)
+        {
+            return;
+        }
+
+        foreach ((Entity entity, MarkerHandle handle) in _entityMarkers)
+        {
+            if (World.IsAlive(entity) && World.TryGet(entity, out Saveable saveable) && saveable.Id == saved.Tracked)
+            {
+                SetTracked(handle);
+                return;
+            }
+        }
     }
 
     private bool ReadDiscovered(Marker marker)

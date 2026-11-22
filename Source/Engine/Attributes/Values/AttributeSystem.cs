@@ -13,7 +13,7 @@ namespace FlickerVoid.Engine.Attributes.Values;
 /// <summary>
 /// Holds entities' attributes while the game plays, in place of Gameplay Ability System attribute sets: base values, modifiers that
 /// add, multiply or override the current value and grant tags, and each value clamped by its <see cref="AttributeDefinition"/>.
-/// Changes of current values are sent as <see cref="AttributeChangedEvent"/>s.
+/// Changes of current values are sent as <see cref="AttributeChangedEvent"/>s, and saves keep the base values and the modifiers.
 /// </summary>
 public sealed class AttributeSystem
 {
@@ -30,6 +30,7 @@ public sealed class AttributeSystem
         ArrayRegistry.Add<OwnedTags>();
         game.Lifecycle.OnActivate((Entity entity, ref AttributeSet set) => Activate(entity, set));
         game.Lifecycle.OnDeactivate((Entity entity, ref AttributeSet _) => Deactivate(entity));
+        game.SaveStates.Add<SavedAttributes>("attributes", Save, Restore);
     }
 
     /// <summary>The definition whose id is <paramref name="attribute"/>; null when no data asset describes it.</summary>
@@ -103,8 +104,7 @@ public sealed class AttributeSystem
         }
 
         Guid handle = Guid.NewGuid();
-        set.Modifiers.Add(new AppliedModifier(handle, modifier));
-        Refresh(owner, modifier);
+        Apply(owner, set, modifier, handle);
         return handle;
     }
 
@@ -142,6 +142,73 @@ public sealed class AttributeSystem
         }
 
         return removed;
+    }
+
+    private void Apply(Entity owner, ActiveAttributeSet set, ModifierDefinition modifier, Guid handle)
+    {
+        set.Modifiers.Add(new AppliedModifier(handle, modifier));
+        Refresh(owner, modifier);
+    }
+
+    private SavedAttributes? Save(Entity entity)
+    {
+        DataAssets? data = _services.GetService<DataAssets>();
+        if (data is null || !TryGetSet(entity, out ActiveAttributeSet set))
+        {
+            return null;
+        }
+
+        SavedAttributes saved = new();
+        foreach ((Tag attribute, AttributeValue value) in set.Values)
+        {
+            saved.Values.Add(new AttributeEntry { Attribute = attribute, Value = value.Base });
+        }
+
+        foreach (AppliedModifier applied in set.Modifiers)
+        {
+            if (data.TryGetPath(applied.Modifier, out string path))
+            {
+                saved.Modifiers.Add(new SavedModifier { Handle = applied.Handle, Modifier = path });
+            }
+        }
+
+        return saved;
+    }
+
+    /// <summary>Sets the saved base values, then swaps the modifiers on the entity for the saved ones, keeping their handles.</summary>
+    private void Restore(Entity entity, SavedAttributes saved)
+    {
+        DataAssets? data = _services.GetService<DataAssets>();
+        if (data is null || !TryGetSet(entity, out ActiveAttributeSet set))
+        {
+            return;
+        }
+
+        foreach (AttributeEntry entry in saved.Values)
+        {
+            SetBaseValue(entity, entry.Attribute, entry.Value);
+        }
+
+        List<Guid> handles = set.Modifiers.Select(static applied => applied.Handle).ToList();
+        foreach (Guid handle in handles)
+        {
+            RemoveModifier(entity, handle);
+        }
+
+        foreach (SavedModifier savedModifier in saved.Modifiers)
+        {
+            ModifierDefinition modifier;
+            try
+            {
+                modifier = data.Load<ModifierDefinition>(savedModifier.Modifier);
+            }
+            catch (Exception exception) when (exception is InvalidDataException or IOException)
+            {
+                continue;
+            }
+
+            Apply(entity, set, modifier, savedModifier.Handle);
+        }
     }
 
     private void Activate(Entity entity, AttributeSet set)

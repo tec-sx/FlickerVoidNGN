@@ -12,6 +12,7 @@ using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 
@@ -36,6 +37,8 @@ internal sealed class DialogueSystemTestsBuilder : IDisposable
     public Game Game { get; } = new(NullLoggerFactory.Instance);
 
     public DialogueSystem Dialogue { get; private set; } = null!;
+
+    public SaveSystem Saves { get; private set; } = null!;
 
     public World World => Game.World;
 
@@ -62,6 +65,8 @@ internal sealed class DialogueSystemTestsBuilder : IDisposable
         Game.Services.AddService(new FlowGraphs(content, Game.Data));
         DialogueSettings settings = new() { MinLineDuration = 1, SecondsPerCharacter = 0.01f };
         Dialogue = Game.AddDialogue(settings, new Random(7));
+        string saves = Path.Combine(_folder, "Saves");
+        Saves = Game.AddSaves(new SaveSettings { Folder = saves });
         Game.Lifecycle.Play(Game.World);
         Game.Tick(TimeSpan.Zero);
         return this;

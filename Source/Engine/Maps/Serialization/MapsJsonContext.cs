@@ -7,11 +7,13 @@ using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Engine.Maps.Serialization;
 
-/// <summary>Source-generated JSON for map and marker definitions, their fragments and the components scenes hold.</summary>
+/// <summary>Source-generated JSON for map and marker definitions, their fragments, the components scenes hold and what saves keep.</summary>
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, UseStringEnumConverter = true,
-    Converters = [typeof(TagJsonConverter), typeof(Vector2JsonConverter)])]
+    Converters = [typeof(TagJsonConverter), typeof(Vector2JsonConverter), typeof(Vector3JsonConverter)])]
 [JsonSerializable(typeof(MapDefinition))]
 [JsonSerializable(typeof(MarkerDefinition))]
+[JsonSerializable(typeof(SavedMarker))]
+[JsonSerializable(typeof(SavedNavigation))]
 [JsonSerializable(typeof(MinimapFragment))]
 [JsonSerializable(typeof(CompassFragment))]
 [JsonSerializable(typeof(WorldMapFragment))]

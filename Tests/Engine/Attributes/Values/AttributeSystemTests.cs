@@ -16,6 +16,26 @@ public sealed class AttributeSystemTests : IDisposable
     public void Dispose() => _builder.Dispose();
 
     [Fact]
+    public void ASaveBringsBackTheBaseValuesAndTheModifiersWithTheirHandles()
+    {
+        _builder.Build(hero: """{ "attribute": "Attribute.Skill.Stealth", "value": 6 }""");
+        ModifierDefinition drunk = _builder.Load<ModifierDefinition>(AttributeSystemTestsBuilder.Drunk);
+        AttributeSystem attributes = _builder.Attributes;
+        attributes.SetBaseValue(_builder.Hero, AttributeSystemTestsBuilder.Stealth, 7);
+        Guid handle = attributes.ApplyModifier(_builder.Hero, drunk);
+        _builder.Saves.Save("Slot1");
+        attributes.RemoveModifier(_builder.Hero, handle);
+        attributes.SetBaseValue(_builder.Hero, AttributeSystemTestsBuilder.Stealth, 2);
+
+        _builder.Saves.Load("Slot1");
+
+        attributes.GetBaseValue(_builder.Hero, AttributeSystemTestsBuilder.Stealth).Should().Be(7);
+        attributes.GetValue(_builder.Hero, AttributeSystemTestsBuilder.Stealth).Should().Be(5);
+        attributes.GetModifiers(_builder.Hero).Should().ContainSingle().Which.Handle.Should().Be(handle);
+        _builder.Game.World.Get<OwnedTags>(_builder.Hero).HasMatchingTag(new Tag("Status.Drunk")).Should().BeTrue();
+    }
+
+    [Fact]
     public void StartingValuesAreClampedAndRoundedByTheirDefinitions()
     {
         _builder.Build(hero: """

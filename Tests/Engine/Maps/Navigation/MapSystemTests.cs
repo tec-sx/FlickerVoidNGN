@@ -125,6 +125,29 @@ public sealed class MapSystemTests : IDisposable
     }
 
     [Fact]
+    public void ASaveBringsBackTheWaypointAndTheTrackedMarker()
+    {
+        MapSystem maps = _builder.Build();
+        Entity shop = _builder.AddMarker("Shop", new Vector3(3, 0, 0));
+        MarkerHandle shopMarker = maps.FindMarker(shop);
+        maps.SetWaypoint(new Vector3(5, 0, 5));
+        _builder.Saves.Save("Waypoint");
+        maps.SetTracked(shopMarker);
+        maps.ClearWaypoint();
+        _builder.Saves.Save("Shop");
+
+        _builder.Saves.Load("Waypoint");
+        Vector3 waypoint = maps.GetLocation(maps.Waypoint);
+        bool trackingWaypoint = maps.Tracked == maps.Waypoint;
+        _builder.Saves.Load("Shop");
+
+        waypoint.Should().Be(new Vector3(5, 0, 5));
+        trackingWaypoint.Should().BeTrue();
+        maps.Waypoint.IsValid.Should().BeFalse();
+        maps.Tracked.Should().Be(shopMarker);
+    }
+
+    [Fact]
     public void AWaypointReplacesTheLastOneAndIsTracked()
     {
         MapSystem maps = _builder.Build();

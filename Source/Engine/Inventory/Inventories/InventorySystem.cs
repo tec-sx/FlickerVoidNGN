@@ -41,6 +41,7 @@ public sealed partial class InventorySystem
         ArrayRegistry.Add<ActiveInventory>();
         game.Lifecycle.OnActivate((Entity entity, ref Inventory inventory) => Activate(entity, inventory));
         game.Lifecycle.OnDeactivate((Entity entity, ref Inventory _) => Deactivate(entity));
+        game.SaveStates.Add<SavedInventory>("inventory", Save, Restore);
     }
 
     public InventorySettings Settings { get; }
@@ -746,6 +747,51 @@ public sealed partial class InventorySystem
 
         ActiveInventory active = new() { Stacks = stacks, Money = Math.Max(0, inventory.Money), ApplyCarryLimits = inventory.ApplyCarryLimits };
         _world.Add(entity, active);
+    }
+
+    private SavedInventory? Save(Entity entity)
+    {
+        DataAssets? data = _services.GetService<DataAssets>();
+        if (data is null || !_world.TryGet(entity, out ActiveInventory inventory))
+        {
+            return null;
+        }
+
+        SavedInventory saved = new() { Money = inventory.Money };
+        foreach (ItemStack stack in inventory.Stacks)
+        {
+            SavedStack? savedStack = SavedStack.From(stack, data);
+            if (savedStack is not null)
+            {
+                saved.Stacks.Add(savedStack);
+            }
+        }
+
+        return saved;
+    }
+
+    private void Restore(Entity entity, SavedInventory saved)
+    {
+        DataAssets? data = _services.GetService<DataAssets>();
+        if (data is null || !_world.Has<ActiveInventory>(entity))
+        {
+            return;
+        }
+
+        List<ItemStack> stacks = [];
+        foreach (SavedStack savedStack in saved.Stacks)
+        {
+            ItemStack? stack = savedStack.ToStack(data);
+            if (stack is not null)
+            {
+                stacks.Add(stack);
+            }
+        }
+
+        ref ActiveInventory inventory = ref _world.Get<ActiveInventory>(entity);
+        inventory.Stacks = stacks;
+        inventory.Money = saved.Money;
+        _events.Send(new CapacityChangedEvent(entity));
     }
 
     private void Deactivate(Entity entity)
