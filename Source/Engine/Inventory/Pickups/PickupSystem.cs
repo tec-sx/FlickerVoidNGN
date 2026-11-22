@@ -42,6 +42,7 @@ public sealed partial class PickupSystem
         game.Lifecycle.OnDeactivate((Entity entity, ref Pickup _) => Deactivate(entity));
         game.Events.Handle((in PickedUpEvent picked) => RemoveIfEmpty(picked.Pickup));
         game.Events.Handle((in UsedInPlaceEvent used) => RemoveIfEmpty(used.Pickup));
+        game.SaveStates.Add<SavedPickup>("pickup", Save, Restore);
     }
 
     /// <summary>Something is left and the picker has an inventory.</summary>
@@ -133,6 +134,38 @@ public sealed partial class PickupSystem
 
         ItemStack stack = new(item, pickup.Quantity);
         _world.Add(entity, new ActivePickup { Stack = stack, DestroyWhenEmpty = pickup.DestroyWhenEmpty });
+    }
+
+    private SavedPickup? Save(Entity entity)
+    {
+        DataAssets? data = _services.GetService<DataAssets>();
+        if (data is null || !_world.TryGet(entity, out ActivePickup pickup))
+        {
+            return null;
+        }
+
+        SavedStack? stack = SavedStack.From(pickup.Stack, data);
+        if (stack is null)
+        {
+            return null;
+        }
+
+        return new SavedPickup { Stack = stack };
+    }
+
+    private void Restore(Entity entity, SavedPickup saved)
+    {
+        DataAssets? data = _services.GetService<DataAssets>();
+        if (data is null || !_world.Has<ActivePickup>(entity))
+        {
+            return;
+        }
+
+        ItemStack? stack = saved.Stack.ToStack(data);
+        if (stack is not null)
+        {
+            _world.Get<ActivePickup>(entity).Stack = stack;
+        }
     }
 
     private void Deactivate(Entity entity)

@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
+             xmlns:assets="using:FlickerVoid.Editor.Assets"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
+             xmlns:shell="using:FlickerVoid.Editor"
+             x:Class="FlickerVoid.Editor.Inspector.AssetPickerView"
+             x:DataType="inspector:AssetPickerViewModel">
+  <!-- Like Unreal's asset picker: the current file with its kind's icon opens a searchable list of the files the value may
+       name, and the button beside it shows the file in the asset browser and opens it. -->
+  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="2">
+    <ToggleButton x:Name="Current" Classes="asset" IsChecked="{Binding IsOpen}" HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Stretch" ToolTip.Tip="{Binding Current}">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="4">
+        <PathIcon Width="12" Height="12" Data="{Binding Current, Converter={x:Static assets:AssetKindLooks.PathIcon}}"
+                  Foreground="{Binding Current, Converter={x:Static assets:AssetKindLooks.PathBrush}}" />
+        <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        <PathIcon Grid.Column="2" Width="10" Height="10" Data="{x:Static shell:MaterialIcons.Expand}" Opacity="0.7" />
+      </Grid>
+    </ToggleButton>
+    <Button Grid.Column="1" Classes="icon" ToolTip.Tip="Show in the asset browser and open" Click="HandleOpenClick"
+            IsEnabled="{Binding Current, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <PathIcon Data="{x:Static shell:MaterialIcons.Open}" />
+    </Button>
+    <Popup IsOpen="{Binding IsOpen}" PlacementTarget="{Binding #Current}" Placement="BottomEdgeAlignedLeft"
+           IsLightDismissEnabled="True" Opened="HandlePopupOpened">
+      <Border Classes="pickerPopup" Width="{Binding #Current.Bounds.Width}" MinWidth="240">
+        <DockPanel>
+          <controls:SearchBox x:Name="Search" DockPanel.Dock="Top" Margin="4" Text="{Binding Search}" KeyDown="HandleSearchKeyDown" />
+          <Button DockPanel.Dock="Top" Classes="pickerNone" Content="None" IsVisible="{Binding AcceptsNone}"
+                  Command="{Binding ChooseNoneCommand}" />
+          <ListBox x:Name="Rows" ItemsSource="{Binding Matches}" Classes="menuRows" SelectionChanged="HandleRowChosen"
+                   MaxHeight="{StaticResource EditorMenuMaxHeight}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding}">
+                  <PathIcon Width="12" Height="12" Data="{Binding Converter={x:Static assets:AssetKindLooks.PathIcon}}"
+                            Foreground="{Binding Converter={x:Static assets:AssetKindLooks.PathBrush}}" />
+                  <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+    </Popup>
+  </Grid>
+</UserControl>

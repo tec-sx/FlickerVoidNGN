@@ -14,6 +14,7 @@ using FlickerVoid.Engine.Rendering.Serialization;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
 
 using Microsoft.Extensions.Logging;
@@ -53,6 +54,10 @@ public sealed partial class SceneHost : IDisposable
         Game.AddFlow();
         Flows = new FlowGraphs(Content, Game.Data);
         Game.Services.AddService(Flows);
+        string localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string saveFolder = options.SaveFolder ?? Path.Combine(localData, "FlickerVoid", title, "Saves");
+        SaveSettings saveSettings = new() { Folder = saveFolder };
+        Saves = Game.AddSaves(saveSettings);
         ContentWatcher watcher = new(Content, Game.Schemas);
         Game.FrameSystems.Add(watcher);
         if (options.Mood is { } mood)
@@ -79,6 +84,9 @@ public sealed partial class SceneHost : IDisposable
 
     /// <summary>Reads the game's flow graphs and starts runs of them.</summary>
     public FlowGraphs Flows { get; }
+
+    /// <summary>Writes the game to save slots and reads it back.</summary>
+    public SaveSystem Saves { get; }
 
     /// <summary>The mood the renderer starts with: the options' mood file, else the one the scene names (<see cref="SceneMood"/>), else the default.</summary>
     public LightingMood Mood { get; set; } = new();

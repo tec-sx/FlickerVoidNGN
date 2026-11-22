@@ -1,0 +1,67 @@
+<!-- The minimap: the map grid, its markers and the view cone inside a round clip, turned so the camera's view points up, under the compass ring. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:minimap="using:FlickerVoid.Interface.Hud.Minimap"
+             x:Class="FlickerVoid.Interface.Hud.Minimap.MinimapView"
+             x:DataType="minimap:MinimapViewModel"
+             Width="220" Height="220" IsHitTestVisible="False">
+  <Grid>
+    <Border Margin="22" CornerRadius="999" ClipToBounds="True" Background="#E6020414">
+      <Grid>
+        <!-- Turned about the minimap's centre, which is where the protagonist stands. -->
+        <Panel RenderTransformOrigin="50%,50%">
+          <Panel.RenderTransform>
+            <RotateTransform Angle="{Binding RingAngle}" />
+          </Panel.RenderTransform>
+          <Rectangle Width="768" Height="768" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.85">
+            <Rectangle.Fill>
+              <ImageBrush Source="avares://FlickerVoid.Interface/Assets/Images/MapGrid.png" TileMode="Tile"
+                          DestinationRect="0,0,128,128" />
+            </Rectangle.Fill>
+            <Rectangle.RenderTransform>
+              <TranslateTransform X="{Binding MapX}" Y="{Binding MapY}" />
+            </Rectangle.RenderTransform>
+          </Rectangle>
+        </Panel>
+        <!-- Markers sit at their offset from the centre: dots, and a diamond for the one the player follows. -->
+        <ItemsControl ItemsSource="{Binding Markers}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <Grid />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="minimap:MinimapMarkerViewModel">
+              <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Panel.RenderTransform>
+                  <TranslateTransform X="{Binding X}" Y="{Binding Y}" />
+                </Panel.RenderTransform>
+                <Ellipse Width="7" Height="7" Fill="{DynamicResource HudTintBrush}" Stroke="#E6020414" StrokeThickness="1"
+                         IsVisible="{Binding !IsTracked}" />
+                <Path Data="M 0,-6 L 6,0 L 0,6 L -6,0 Z" Fill="{DynamicResource AccentBrush}" Stroke="#E6020414" StrokeThickness="1"
+                      Stretch="None" IsVisible="{Binding IsTracked}" />
+              </Panel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Image Source="avares://FlickerVoid.Interface/Assets/Images/EyeRange.png" Width="176" Height="176"
+               HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%">
+          <Image.RenderTransform>
+            <RotateTransform Angle="{Binding FacingAngle}" />
+          </Image.RenderTransform>
+        </Image>
+        <Path Data="M 0,-7 L 5,6 L 0,3 L -5,6 Z" Fill="{DynamicResource HudTintBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"
+              Stretch="None" RenderTransformOrigin="50%,50%">
+          <Path.RenderTransform>
+            <RotateTransform Angle="{Binding FacingAngle}" />
+          </Path.RenderTransform>
+        </Path>
+      </Grid>
+    </Border>
+    <Image Source="avares://FlickerVoid.Interface/Assets/Images/CompassRing.png" RenderTransformOrigin="50%,50%">
+      <Image.RenderTransform>
+        <RotateTransform Angle="{Binding RingAngle}" />
+      </Image.RenderTransform>
+    </Image>
+  </Grid>
+</UserControl>

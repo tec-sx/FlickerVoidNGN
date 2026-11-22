@@ -28,6 +28,9 @@ public sealed class InputActions : ISystem<GameTime>
     /// <summary>The actions read; changing it, such as after the map's file changed, takes effect on the next frame.</summary>
     public InputMap Map { get; set; }
 
+    /// <summary>Overlays that take the mouse's buttons: while any captures the pointer, button bindings read as up.</summary>
+    public List<IPointerCapture> PointerCaptures { get; } = [];
+
     public bool IsDown(Tag action) => _actions.TryGetValue(action, out ActionState state) && state.Down;
 
     public bool WasPressed(Tag action) => _actions.TryGetValue(action, out ActionState state) && state.Pressed;
@@ -70,9 +73,10 @@ public sealed class InputActions : ISystem<GameTime>
     public void Update(in GameTime t)
     {
         HashSet<Tag> read = [];
+        bool captured = PointerCaptures.Any(capture => capture.CapturesPointer);
         foreach (InputActionDefinition definition in Map.Actions)
         {
-            Read(definition);
+            Read(definition, captured);
             read.Add(definition.Id);
         }
 
@@ -90,12 +94,17 @@ public sealed class InputActions : ISystem<GameTime>
     {
     }
 
-    private void Read(InputActionDefinition definition)
+    private void Read(InputActionDefinition definition, bool pointerCaptured)
     {
         bool down = false;
         Vector2 value = Vector2.Zero;
         foreach (InputBinding binding in definition.Bindings)
         {
+            if (pointerCaptured && binding.Button is not null)
+            {
+                continue;
+            }
+
             down |= binding.IsDown(_input);
             value += binding.Read(_input);
         }

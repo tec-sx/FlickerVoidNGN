@@ -1,0 +1,9 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "attribute",
+  "id": "Attribute.Skill.Perception",
+  "display": { "name": "Perception", "shortDescription": "Noticing details, and the steady eye a lock needs." },
+  "category": "Attribute.Skill",
+  "max": 10,
+  "integer": true
+}

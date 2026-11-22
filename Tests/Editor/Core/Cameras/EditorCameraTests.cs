@@ -24,6 +24,33 @@ public sealed class EditorCameraTests
     }
 
     [Fact]
+    public void FramesASphereFromWhereItLooks()
+    {
+        EditorCamera camera = _builder.LookingAt(Vector3.Zero, 0.5f, -0.4f, 30).Build();
+        Vector3 center = new(4, 1, -2);
+
+        camera.Frame(center, 2);
+
+        Vector3.Distance(camera.Pivot, center).Should().BeLessThan(Precision);
+        camera.Yaw.Should().BeApproximately(0.5f, Precision);
+        camera.Pitch.Should().BeApproximately(-0.4f, Precision);
+        float halfAngle = float.DegreesToRadians(camera.FieldOfView) / 2;
+        camera.PivotDistance.Should().BeGreaterThanOrEqualTo(2 / MathF.Sin(halfAngle));
+    }
+
+    [Fact]
+    public void FramesASphereWholeInTheOrthographicView()
+    {
+        EditorCamera camera = _builder.LookingAt(Vector3.Zero, 0, -0.4f, 30).Build();
+        camera.Projection = CameraProjection.Orthographic;
+
+        camera.Frame(Vector3.Zero, 3);
+
+        camera.ViewHeight.Should().BeGreaterThanOrEqualTo(6);
+        camera.ViewHeight.Should().BeLessThan(9);
+    }
+
+    [Fact]
     public void TurnsInPlace()
     {
         EditorCamera camera = _builder.LookingAt(Vector3.Zero, 0, -0.3f, 10).Build();

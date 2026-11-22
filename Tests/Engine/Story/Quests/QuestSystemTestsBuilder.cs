@@ -3,6 +3,7 @@ using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Story.Quests;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,6 +27,10 @@ internal sealed class QuestSystemTestsBuilder : IDisposable
     public Game Game { get; } = new(NullLoggerFactory.Instance);
 
     public QuestSystem Quests { get; private set; } = null!;
+
+    public SaveSystem Saves { get; private set; } = null!;
+
+    public DataAssets Data => _data!;
 
     public QuestSystemTestsBuilder WithFile(string path, string json)
     {
@@ -52,6 +57,8 @@ internal sealed class QuestSystemTestsBuilder : IDisposable
         Game.Services.AddService(_data);
         Game.AddFlow();
         Game.Services.AddService(new FlowGraphs(content, Game.Data));
+        SaveSettings saves = new() { Folder = Path.Combine(_folder, ".saves") };
+        Saves = Game.AddSaves(saves);
         Game.AddStory();
         Quests = Game.Services.GetService<QuestSystem>()!;
         Game.Tick(TimeSpan.Zero);

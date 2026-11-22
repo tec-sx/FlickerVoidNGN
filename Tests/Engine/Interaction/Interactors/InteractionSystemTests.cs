@@ -77,6 +77,19 @@ public sealed class InteractionSystemTests : IDisposable
     }
 
     [Fact]
+    public void ListsTheOffersOfAnInteractableItIsNotFocusedOn()
+    {
+        _builder.WithFile("Lever.fvdata", Lever).Build();
+        (Entity hero, Entity lever) = SpawnHeroAndLever(1);
+
+        IReadOnlyList<OfferView> offers = _builder.Game.Services.GetService<InteractionSystem>()!.GetOffers(hero, lever);
+        IReadOnlyList<OfferView> focused = _builder.Game.Services.GetService<InteractionSystem>()!.GetOffers(hero);
+
+        offers.Should().ContainSingle();
+        focused.Should().BeEmpty();
+    }
+
+    [Fact]
     public void DoesNothingOutOfReach()
     {
         _builder.WithFile("Lever.fvdata", Lever).Build();

@@ -21,6 +21,7 @@
         </MenuFlyout>
       </DropDownButton.Flyout>
     </DropDownButton>
+    <Border Classes="well">
     <ScrollViewer>
       <ItemsControl ItemsSource="{Binding Components}" Margin="2,0,2,4">
         <ItemsControl.ItemTemplate>
@@ -59,5 +60,6 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </ScrollViewer>
+    </Border>
   </DockPanel>
 </UserControl>

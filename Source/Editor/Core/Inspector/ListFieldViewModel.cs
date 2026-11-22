@@ -4,8 +4,8 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace FlickerVoid.Editor.Core.Inspector;
 
-/// <summary>A string array property, such as a material per mesh part: an editable line per item, added and removed one by one; an empty optional list is null.</summary>
-public sealed partial class ListFieldViewModel(IEditableValue property, IReadOnlyList<string> suggestions) : FieldViewModel(property)
+/// <summary>A string array property, such as a material per mesh part: a line per item (an asset picker when the list names content files), added and removed one by one; an empty optional list is null.</summary>
+public sealed partial class ListFieldViewModel(IEditableValue property, Func<IReadOnlyList<string>>? find) : FieldViewModel(property)
 {
     private bool _showing;
 
@@ -14,7 +14,7 @@ public sealed partial class ListFieldViewModel(IEditableValue property, IReadOnl
     [RelayCommand]
     public void Add()
     {
-        ListItemViewModel item = new(this, "", suggestions);
+        ListItemViewModel item = new(this, "", find);
         Items.Add(item);
         WriteItems();
     }
@@ -61,7 +61,7 @@ public sealed partial class ListFieldViewModel(IEditableValue property, IReadOnl
             Items.Clear();
             foreach (string text in values)
             {
-                ListItemViewModel item = new(this, text, suggestions);
+                ListItemViewModel item = new(this, text, find);
                 Items.Add(item);
             }
         }

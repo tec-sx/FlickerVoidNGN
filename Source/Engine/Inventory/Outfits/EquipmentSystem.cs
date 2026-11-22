@@ -42,6 +42,7 @@ public sealed partial class EquipmentSystem
         game.Lifecycle.OnActivate((Entity entity, ref Equipment equipment) => Activate(entity, equipment));
         game.Lifecycle.OnDeactivate((Entity entity, ref Equipment _) => Deactivate(entity));
         game.Events.Handle((in StackChangedEvent changed) => TakeOffIfGone(changed.Owner, changed.Stack));
+        game.SaveStates.Add<SavedEquipment>("equipment", Save, Restore);
     }
 
     /// <summary>The distinct tags the worn items grant.</summary>
@@ -379,6 +380,57 @@ public sealed partial class EquipmentSystem
         return _inventories.FitsAfterChange(owner, weightLimitChange, cellChange);
     }
 
+    private SavedEquipment? Save(Entity entity)
+    {
+        DataAssets? data = _services.GetService<DataAssets>();
+        if (data is null || !_world.TryGet(entity, out ActiveEquipment equipment))
+        {
+            return null;
+        }
+
+        SavedEquipment saved = new();
+        foreach (EquippedItem worn in equipment.Items)
+        {
+            if (data.TryGetPath(worn.Item, out string path))
+            {
+                saved.Items.Add(new SavedEquippedItem { Slot = worn.Slot, Item = path, Stack = worn.Stack });
+            }
+        }
+
+        return saved;
+    }
+
+    /// <summary>Takes off what is worn and wears what the save says, slot by slot, so granted tags and capacity follow.</summary>
+    private void Restore(Entity entity, SavedEquipment saved)
+    {
+        DataAssets? data = _services.GetService<DataAssets>();
+        if (data is null || !_world.TryGet(entity, out ActiveEquipment equipment))
+        {
+            return;
+        }
+
+        List<Tag> worn = equipment.Items.Select(static item => item.Slot).ToList();
+        foreach (Tag slot in worn)
+        {
+            Apply(entity, slot, null, Guid.Empty, []);
+        }
+
+        foreach (SavedEquippedItem savedItem in saved.Items)
+        {
+            ItemDefinition item;
+            try
+            {
+                item = data.Load<ItemDefinition>(savedItem.Item);
+            }
+            catch (Exception exception) when (exception is InvalidDataException or IOException)
+            {
+                continue;
+            }
+
+            Apply(entity, savedItem.Slot, item, savedItem.Stack, []);
+        }
+    }
+
     private void Apply(Entity owner, Tag slot, ItemDefinition? item, Guid stack, List<Tag> removed)
     {
         List<EquippedItem> items = _world.Get<ActiveEquipment>(owner).Items;
@@ -417,33 +469,14 @@ public sealed partial class EquipmentSystem
         }
     }
 
-    /// <summary>Applies the difference between the granted tags and those applied before, keeping the entity's other owned tags.</summary>
+    /// <summary>Swaps the tags applied before for those the worn items grant now.</summary>
     private void RefreshGrantedTags(Entity owner)
     {
         ref ActiveEquipment equipment = ref _world.Get<ActiveEquipment>(owner);
         List<Tag> granted = GetGrantedTags(equipment);
-        List<Tag> owned = [];
-        if (_world.TryGet(owner, out OwnedTags current))
-        {
-            owned.AddRange(current.Tags);
-        }
-
-        foreach (Tag applied in equipment.AppliedTags)
-        {
-            owned.Remove(applied);
-        }
-
-        owned.AddRange(granted);
+        List<Tag> previous = equipment.AppliedTags;
         equipment.AppliedTags = granted;
-        OwnedTags updated = new(owned);
-        if (_world.Has<OwnedTags>(owner))
-        {
-            _world.Set(owner, updated);
-        }
-        else
-        {
-            _world.Add(owner, updated);
-        }
+        GrantedTags.Replace(_world, owner, previous, granted);
     }
 
     /// <summary>A worn stack that left the inventory comes off, or with items allowed without being carried, stays worn without its stack.</summary>

@@ -1,0 +1,10 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "check",
+  "display": { "name": "Lockpicking" },
+  "attribute": "Attribute.Skill.Perception",
+  "roll": "D6x2",
+  "modifiers": [
+    { "label": "Steady hands", "bonus": 1, "conditions": { "conditions": [ { "$type": "interactorTags", "blocked": [ "Status.Drunk" ] } ] } }
+  ]
+}

@@ -4,8 +4,17 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Gameplay/FlickerVoid.Engine.Gameplay.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Abilities/FlickerVoid.Engine.Abilities.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Ai/FlickerVoid.Engine.Ai.csproj" />
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Dialogue/FlickerVoid.Engine.Dialogue.csproj" />
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Interaction/FlickerVoid.Engine.Interaction.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Inventory/FlickerVoid.Engine.Inventory.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Maps/FlickerVoid.Engine.Maps.csproj" />
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Story/FlickerVoid.Engine.Story.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Flow/FlickerVoid.Engine.Flow.csproj" />
+    <!-- Registers the classes marked [FlowNodeType] (FlowNodeTypes.Register). -->
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Tools/Generators/FlickerVoid.Tools.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

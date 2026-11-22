@@ -10,6 +10,26 @@ public static class AssetKindLooks
 
     public static FuncValueConverter<AssetKind, IBrush> Brush { get; } = new(GetBrush);
 
+    /// <summary>A folder's icon in the tree: the code root and its folders look like code.</summary>
+    public static FuncValueConverter<AssetFolder, Geometry> FolderIcon { get; } = new(static folder => GetIcon(GetFolderKind(folder)));
+
+    public static FuncValueConverter<AssetFolder, IBrush> FolderBrush { get; } = new(static folder => GetBrush(GetFolderKind(folder)));
+
+    /// <summary>The icon of the file a content path names, by its extension, for fields that name files.</summary>
+    public static FuncValueConverter<string?, Geometry> PathIcon { get; } = new(static path => GetIcon(AssetCatalog.GetKind(path ?? "")));
+
+    public static FuncValueConverter<string?, IBrush> PathBrush { get; } = new(static path => GetBrush(AssetCatalog.GetKind(path ?? "")));
+
+    private static AssetKind GetFolderKind(AssetFolder? folder)
+    {
+        if (folder?.Path == AssetCatalog.CodePrefix)
+        {
+            return AssetKind.Code;
+        }
+
+        return AssetKind.Folder;
+    }
+
     private static Geometry GetIcon(AssetKind kind)
     {
         switch (kind)
@@ -34,6 +54,8 @@ public static class AssetKindLooks
                 return MaterialIcons.Table;
             case AssetKind.Flow:
                 return MaterialIcons.Flow;
+            case AssetKind.Code:
+                return MaterialIcons.Code;
             default:
                 return MaterialIcons.File;
         }
@@ -63,6 +85,8 @@ public static class AssetKindLooks
                 return new SolidColorBrush(Color.Parse("#7FA6C9"));
             case AssetKind.Flow:
                 return new SolidColorBrush(Color.Parse("#B48EC9"));
+            case AssetKind.Code:
+                return new SolidColorBrush(Color.Parse("#6FC2B0"));
             default:
                 return new SolidColorBrush(Color.Parse("#9C9A88"));
         }

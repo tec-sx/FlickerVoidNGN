@@ -22,7 +22,7 @@ The project's modules follow the ontology's first level: `Gameplay` (Protagonist
 | FVFramework: relevance (distance bands), world clock, easing, saveable | `Runtime` (`Relevance`, `Time`, `Saves`) | relevance system and bands, world clock, saves of components and facts | entity model |
 | FVFramework: input config, gestures, input component | `Platform` (`Input`) | input actions mapped from keys and pads, gestures (hold, double tap) | |
 | FVFramework: Flow nodes, flow context; Flow plugin | `Flow` | graph runtime, core nodes, `.fvflow`, then the graph editor | data assets |
-| FVFramework: UI layout, HUD, activatable widgets (CommonUI) | `Ui` | game UI layer | **decide** UI technology |
+| FVFramework: UI layout, HUD, activatable widgets (CommonUI) | `Ui` | game UI layer: Avalonia (AXAML and MVVM, like the editor) drawn into a texture over the scene (owner, 2026-11-21) | Hosting |
 | FVFramework: debug HUD, fact and relevance debug | `Debug` | ImGui panels | |
 | FVFramework: editor customizations, MaxEntries validator | `Editor` and `Builder` | inspector views, build-time validation | data assets |
 | FVFramework: highlight component | `Rendering` | outline pass | |
@@ -36,7 +36,7 @@ The project's modules follow the ontology's first level: `Gameplay` (Protagonist
 | FVNavigationSystem | `Maps` (not "Navigation", kept for AI paths) | map and marker definitions, markers, discovery, waypoint, tracking, minimap, world map and compass logic; widgets go to `Ui`; the map capture tool goes to the editor | Ui |
 | FVCharacter: movement handlers, traversal (Mover) | `Characters` | kinematic character on BepuPhysics, movement modes, traversal | input |
 | FVCharacter: anim instance, rig units, locomotion data | `Rendering` (`Animation`) | locomotion blending, procedural rig units | Characters |
-| FVAI: perception, StateTree AI; NavMesh | `Ai` | perception, behaviour states, paths through DotRecast (MIT) | Characters |
+| FVAI: perception, StateTree AI; NavMesh | `Ai` | perception, behaviour states, paths through DotRecast (zlib) | Characters |
 | FVCore: Flow triggers, physical material tags | `Physics` and `Flow` | trigger volumes, trigger Flow nodes, surface tags | Flow |
 | GameplayMessageRouter | `Runtime` | struct event queues of the entity model | entity model |
 | ToneMapFX | `Rendering` | done: tonemappers | |
@@ -49,7 +49,7 @@ The project's modules follow the ontology's first level: `Gameplay` (Protagonist
 | `Script/Gameplay/Protagonist/Identity/Personality` (skill attribute set) | `Gameplay/Protagonist/Identity/Personality` |
 | `Script/Gameplay/Protagonist/State/Physical` (physical attribute set), `FVIntoxicationComponent` | `Gameplay/Protagonist/State/Physical` |
 | `Source/FVGameplay/Items`, `Script/Items`, `Script/Items/Abilities`, `Script/Items/Trade` | `Gameplay/Protagonist/Resources/Possessions` (held, used, worn, given, thrown items; trade) and `Gameplay/World/Objects/Items` (world items, loot containers, money, readables) |
-| `Source/FVGameplay/Scanner` | `Gameplay/Protagonist/Resources/Knowledge/Scanner` |
+| `Source/FVGameplay/Scanner` | `Gameplay/Protagonist/Resources/Knowledge/Scanning` (done) |
 | `Source/FVGameplay/Abilities`, `Script/Abilities` (examine, talk, lockpick) | `Gameplay/Protagonist` abilities, beside what they act on |
 | `Script/World/Doors`, `Source/FVWorld`, `Script/Environment` | `Gameplay/World/Objects` (Door entity class and system, foliage) |
 | `Script/World/FVFaction.as` | `Gameplay/World/Society/Factions` |
@@ -73,9 +73,4 @@ Each step is one pull request or a short stack, and ends in something to try in 
 7. **Rules:** `Attributes` and `Abilities`, then the game's abilities and items.
 8. **Interface:** the `Ui` module, HUD and hub pages.
 9. **World:** `Maps`, `Ai` with residents, the scanner.
-10. **Saves** across every module, then the stage 7 gate: the basic story loop from the Unreal milestone plays in NGN.
-
-## Open decisions
-
-- Game UI technology for `Ui`, decided before step 8.
-- Whether `Abilities` is an engine module (recommended, as GAS is engine in Unreal) or project code.
+10. **Saves** across every module, then the stage 7 gate: the basic story loop from the Unreal milestone plays in NGN. Done (2026-11-22, `Tests/Gameplay/Story/StoryLoopTests`).

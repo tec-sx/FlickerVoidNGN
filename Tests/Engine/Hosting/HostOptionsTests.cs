@@ -7,15 +7,17 @@ namespace FlickerVoid.Engine.Hosting.Tests;
 public sealed class HostOptionsTests
 {
     [Fact]
-    public void ReadsTheSceneMoodFrameLimitAndValidation()
+    public void ReadsTheSceneMoodFrameLimitSavesValidationAndDebug()
     {
         HostOptions options = new HostOptionsTestsBuilder()
-            .WithArguments("--scene", "Scenes/Main.fvscene", "--mood", "Moods/Day.fvmood", "--frames", "3", "--validation")
+            .WithArguments("--scene", "Scenes/Main.fvscene", "--mood", "Moods/Day.fvmood", "--frames", "3", "--saves", "MySaves", "--validation", "--debug")
             .Build();
 
         options.Scene.Should().Be("Scenes/Main.fvscene");
         options.Mood.Should().Be("Moods/Day.fvmood");
         options.FrameLimit.Should().Be(3);
+        options.SaveFolder.Should().Be("MySaves");
+        options.Debug.Should().BeTrue();
         options.Validation.Should().BeTrue();
     }
 
@@ -28,6 +30,7 @@ public sealed class HostOptionsTests
         options.Mood.Should().BeNull();
         options.FrameLimit.Should().Be(0);
         options.Validation.Should().BeFalse();
+        options.SaveFolder.Should().BeNull();
         string expected = Path.Combine(AppContext.BaseDirectory, "Content");
         options.ContentFolder.Should().Be(expected);
     }

@@ -58,7 +58,7 @@ public sealed class EntityTemplates
             }
         }
 
-        return new EntityData { Name = data.Name, Template = template, Components = components };
+        return new EntityData { Name = data.Name, Template = template, Folder = data.Folder, Components = components };
     }
 
     /// <summary>The entity with only the components and values that differ from its template; the same data when it names none.</summary>
@@ -71,7 +71,7 @@ public sealed class EntityTemplates
 
         Dictionary<string, JsonElement> templateComponents = GetComponents(template);
         Dictionary<string, SceneComponent> registered = _spawner.Components.ToDictionary(static component => component.Name);
-        EntityData reduced = new() { Name = data.Name, Template = template };
+        EntityData reduced = new() { Name = data.Name, Template = template, Folder = data.Folder };
         foreach ((string name, JsonElement value) in data.Components)
         {
             if (!templateComponents.TryGetValue(name, out JsonElement under) || !registered.TryGetValue(name, out SceneComponent? component))

@@ -1,0 +1,14 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "interactable",
+  "id": "Interactable.Talk",
+  "display": { "name": "Person" },
+  "offers": [
+    {
+      "input": "Input.Use",
+      "action": "Interaction.Action.Talk",
+      "display": { "name": "Talk" },
+      "effects": { "effects": [ { "$type": "startConversation" } ] }
+    }
+  ]
+}

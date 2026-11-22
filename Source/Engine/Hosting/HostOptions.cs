@@ -18,8 +18,14 @@ public sealed class HostOptions
 
     public bool Validation { get; set; }
 
+    /// <summary>Starts with the debug interface shown, for games that have one.</summary>
+    public bool Debug { get; set; }
+
+    /// <summary>The folder save slots go to; none uses <c>FlickerVoid/&lt;title&gt;/Saves</c> in the user's local application data.</summary>
+    public string? SaveFolder { get; set; }
+
     /// <summary>
-    /// Reads <c>--scene &lt;file&gt;</c>, <c>--mood &lt;file&gt;</c>, <c>--frames &lt;count&gt;</c> and <c>--validation</c>, starting from
+    /// Reads <c>--scene &lt;file&gt;</c>, <c>--mood &lt;file&gt;</c>, <c>--frames &lt;count&gt;</c>, <c>--saves &lt;folder&gt;</c>, <c>--validation</c> and <c>--debug</c>, starting from
     /// <paramref name="startupScene"/>; throws <see cref="ArgumentException"/> for anything else.
     /// </summary>
     public static HostOptions Parse(IReadOnlyList<string> arguments, string? startupScene = null)
@@ -40,8 +46,14 @@ public sealed class HostOptions
                     string frames = ReadValue(arguments, ref index);
                     options.FrameLimit = int.Parse(frames, CultureInfo.InvariantCulture);
                     break;
+                case "--saves":
+                    options.SaveFolder = ReadValue(arguments, ref index);
+                    break;
                 case "--validation":
                     options.Validation = true;
+                    break;
+                case "--debug":
+                    options.Debug = true;
                     break;
                 default:
                     throw new ArgumentException($"Unknown option {argument}.", nameof(arguments));
