@@ -21,6 +21,9 @@ if (options.Project is not null)
     {
         DotnetProjectBuilder builder = new();
         EditorProject project = EditorProject.Open(options.Project, builder);
+        string recentFile = RecentProjects.GetDefaultFile();
+        RecentProjects recent = new(recentFile);
+        recent.Add(options.Project);
         string? scene = options.Scene ?? project.StartupScene;
         options = options with { Content = project.ContentFolder, Scene = scene, Game = project.Program, Code = project.CodeFolder };
     }
