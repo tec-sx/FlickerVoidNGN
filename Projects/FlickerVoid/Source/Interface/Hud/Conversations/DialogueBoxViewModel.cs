@@ -102,8 +102,6 @@ public sealed partial class DialogueBoxViewModel : ObservableObject
             return string.Empty;
         }
 
-        string name = participant.Speaker.Name;
-        int last = name.LastIndexOf('.');
-        return name[(last + 1)..];
+        return DisplayNames.Leaf(participant.Speaker);
     }
 }
