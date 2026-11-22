@@ -5,6 +5,8 @@
     { "id": "Input.Use", "bindings": [ { "button": "Left" } ] },
     { "id": "Input.Hub", "bindings": [ { "key": "Tab" } ] },
     { "id": "Input.NextPage", "bindings": [ { "key": "E" } ] },
-    { "id": "Input.PreviousPage", "bindings": [ { "key": "Q" } ] }
+    { "id": "Input.PreviousPage", "bindings": [ { "key": "Q" } ] },
+    { "id": "Input.ScanMode", "bindings": [ { "key": "F" } ] },
+    { "id": "Input.Scan", "bindings": [ { "button": "Right" } ] }
   ]
 }

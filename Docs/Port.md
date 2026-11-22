@@ -49,7 +49,7 @@ The project's modules follow the ontology's first level: `Gameplay` (Protagonist
 | `Script/Gameplay/Protagonist/Identity/Personality` (skill attribute set) | `Gameplay/Protagonist/Identity/Personality` |
 | `Script/Gameplay/Protagonist/State/Physical` (physical attribute set), `FVIntoxicationComponent` | `Gameplay/Protagonist/State/Physical` |
 | `Source/FVGameplay/Items`, `Script/Items`, `Script/Items/Abilities`, `Script/Items/Trade` | `Gameplay/Protagonist/Resources/Possessions` (held, used, worn, given, thrown items; trade) and `Gameplay/World/Objects/Items` (world items, loot containers, money, readables) |
-| `Source/FVGameplay/Scanner` | `Gameplay/Protagonist/Resources/Knowledge/Scanner` |
+| `Source/FVGameplay/Scanner` | `Gameplay/Protagonist/Resources/Knowledge/Scanning` (done) |
 | `Source/FVGameplay/Abilities`, `Script/Abilities` (examine, talk, lockpick) | `Gameplay/Protagonist` abilities, beside what they act on |
 | `Script/World/Doors`, `Source/FVWorld`, `Script/Environment` | `Gameplay/World/Objects` (Door entity class and system, foliage) |
 | `Script/World/FVFaction.as` | `Gameplay/World/Society/Factions` |
