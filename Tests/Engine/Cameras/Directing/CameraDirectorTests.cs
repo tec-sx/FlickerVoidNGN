@@ -516,4 +516,79 @@ public sealed class CameraDirectorTests : IDisposable
         _builder.Drawn().Transform.Position.X.Should().Be(20);
         _builder.Transition().IsVisible.Should().BeFalse();
     }
+
+    [Fact]
+    public void SkippingASkippableShotJumpsToItsLastKey()
+    {
+        CameraDirector director = _builder.Build();
+        Entity cutscene = _builder.SpawnShot("Cutscene", Line, extra: """, "skippable": true""");
+        List<ShotFinishedEvent> finished = _builder.Collect<ShotFinishedEvent>();
+        _builder.Run(1 / 60f);
+        director.Play(cutscene);
+        _builder.Run(0.5f);
+        bool couldSkip = director.CanSkip;
+
+        director.Skip();
+        _builder.Run(1 / 60f);
+
+        couldSkip.Should().BeTrue();
+        director.GetTime(cutscene).Should().Be(4);
+        _builder.Drawn().Transform.Position.X.Should().BeApproximately(20, Precision);
+        finished.Should().ContainSingle();
+        director.CanSkip.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AShotThatIsNotSkippableCannotBeSkipped()
+    {
+        CameraDirector director = _builder.Build();
+        Entity hall = _builder.SpawnShot("Hall", Line);
+        _builder.Run(1 / 60f);
+        director.Play(hall);
+        _builder.Run(0.5f);
+
+        director.Skip();
+        _builder.Run(1 / 60f);
+
+        director.CanSkip.Should().BeFalse();
+        director.GetTime(hall).Should().BeLessThan(1);
+    }
+
+    [Fact]
+    public void FindsShotsByName()
+    {
+        CameraDirector director = _builder.Build();
+        Entity cellar = _builder.SpawnShot("Cellar", Line);
+
+        director.FindShot("Cellar").Should().Be(cellar);
+        director.FindShot("Attic").Should().Be(Entity.Null);
+    }
+
+    [Fact]
+    public void ALoadedGameReturnsTheSameShotAndTime()
+    {
+        CameraDirector director = _builder.Build(saves: true);
+        Entity hall = _builder.SpawnShot("Hall", Line, start: true);
+        Entity cellar = _builder.SpawnShot("Cellar", Line);
+        _builder.Run(1 / 60f);
+        director.Push(cellar, ShotTransition.Cut);
+        director.Play(cellar, 1);
+        _builder.Run(1);
+        float savedTime = director.GetTime(cellar);
+        _builder.Saves.Save("Test").Should().BeTrue();
+
+        director.Return(ShotTransition.Cut);
+        director.Play(cellar);
+        director.FadeOut(0, Vector3.Zero);
+        _builder.Run(2);
+        _builder.Saves.Load("Test").Should().BeTrue();
+        _builder.Run(1 / 60f);
+
+        director.Live.Should().Be(cellar);
+        director.Stack.Should().Equal(hall);
+        director.GetTime(cellar).Should().BeApproximately(savedTime + (1 / 60f), 1e-4f, "it plays on towards its key after the load");
+        _builder.Transition().Fade.Should().Be(0);
+        _builder.Run(2);
+        director.GetTime(cellar).Should().Be(2);
+    }
 }

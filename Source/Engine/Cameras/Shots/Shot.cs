@@ -31,4 +31,7 @@ public struct Shot
     /// <summary>The camera rig (a <c>cameraRig</c> data asset) whose layers move the camera a little on top of the rail.</summary>
     [ContentFile(".fvdata")]
     public string Rig { get; set; } = string.Empty;
+
+    /// <summary>Whether the player may skip it while it plays, as a cutscene, jumping to where it plays to.</summary>
+    public bool Skippable { get; set; }
 }

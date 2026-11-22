@@ -9,6 +9,7 @@ using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 
@@ -21,12 +22,29 @@ internal sealed class CameraDirectorTestsBuilder : IDisposable
 {
     public static readonly TimeSpan Frame = GameLoop.DefaultFixedStep;
 
+    private readonly string _saveFolder;
+
+    public CameraDirectorTestsBuilder()
+    {
+        string tempPath = Path.GetTempPath();
+        string folderName = Path.GetRandomFileName();
+        _saveFolder = Path.Combine(tempPath, folderName);
+    }
+
     public Game Game { get; } = new(NullLoggerFactory.Instance);
 
-    public CameraDirector Build()
+    public SaveSystem Saves { get; private set; } = null!;
+
+    /// <summary>Starts the game, with saves in a temporary folder when asked.</summary>
+    public CameraDirector Build(bool saves = false)
     {
         Game.AddRendering();
         CameraDirector director = Game.AddCameras();
+        if (saves)
+        {
+            Saves = Game.AddSaves(new SaveSettings { Folder = _saveFolder });
+        }
+
         Game.Lifecycle.Play(Game.World);
         return director;
     }
@@ -100,5 +118,12 @@ internal sealed class CameraDirectorTestsBuilder : IDisposable
         return sent;
     }
 
-    public void Dispose() => Game.Dispose();
+    public void Dispose()
+    {
+        Game.Dispose();
+        if (Directory.Exists(_saveFolder))
+        {
+            Directory.Delete(_saveFolder, recursive: true);
+        }
+    }
 }
