@@ -14,7 +14,7 @@ namespace FlickerVoid.Engine.Characters.Movement;
 /// <summary>
 /// Walks characters to their destinations each fixed step: through the corners of the path the <see cref="PathFinder"/> finds (or in a
 /// straight line without one) at their speed, turning to face where they walk, standing on whatever physics finds below them, and
-/// sending an <see cref="ArrivedEvent"/> at the last corner.
+/// sending an <see cref="ArrivedEvent"/> at the last corner; and turns characters in place to face a point (<see cref="FaceCommand"/>).
 /// </summary>
 public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
 {
@@ -24,10 +24,12 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
     private const float GroundSearch = 2;
 
     private static readonly QueryDescription Walking = new QueryDescription().WithAll<CharacterMover, Destination, Transform>();
+    private static readonly QueryDescription Turning = new QueryDescription().WithAll<CharacterMover, Facing, Transform>();
 
     private readonly EventBus _events;
     private readonly IPhysicsSystem? _physics;
     private readonly List<(Entity Entity, Vector3 Point)> _arrived = [];
+    private readonly List<Entity> _faced = [];
 
     public CharacterMovementSystem(World world, EventBus events, IPhysicsSystem? physics)
         : base(world)
@@ -35,7 +37,9 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
         _events = events;
         _physics = physics;
         ArrayRegistry.Add<Destination>();
+        ArrayRegistry.Add<Facing>();
         events.Handle((in MoveCommand command) => Move(command));
+        events.Handle((in FaceCommand command) => Face(command));
         events.Handle((in StopCommand command) => Stop(command.Character));
     }
 
@@ -68,6 +72,23 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
         {
             World.Remove<Destination>(entity);
             _events.Send(new ArrivedEvent(entity, point));
+        }
+
+        _faced.Clear();
+        World.Query(in Turning, (Entity entity, ref CharacterMover mover, ref Facing facing, ref Transform transform) =>
+        {
+            Quaternion turned = Turn(transform.Rotation, facing.Direction, mover.TurnSpeed * seconds);
+            transform.Rotation = turned;
+            Quaternion target = Face(facing.Direction);
+            if (turned == target)
+            {
+                _faced.Add(entity);
+            }
+        });
+
+        foreach (Entity entity in _faced)
+        {
+            World.Remove<Facing>(entity);
         }
     }
 
@@ -113,8 +134,7 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
     /// <summary>Turns the yaw toward the direction by at most the given degrees; a character faces down its +Z axis, the front of a glTF model.</summary>
     private static Quaternion Turn(Quaternion rotation, Vector3 direction, float maxDegrees)
     {
-        float yaw = MathF.Atan2(direction.X, direction.Z);
-        Quaternion target = Quaternion.CreateFromAxisAngle(Vector3.UnitY, yaw);
+        Quaternion target = Face(direction);
         float dot = MathF.Abs(Quaternion.Dot(rotation, target));
         float angle = float.RadiansToDegrees(2 * MathF.Acos(MathF.Min(dot, 1)));
         if (angle <= maxDegrees)
@@ -123,6 +143,40 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
         }
 
         return Quaternion.Slerp(rotation, target, maxDegrees / angle);
+    }
+
+    /// <summary>The rotation whose +Z points down the direction on the ground plane.</summary>
+    private static Quaternion Face(Vector3 direction)
+    {
+        float yaw = MathF.Atan2(direction.X, direction.Z);
+        return Quaternion.CreateFromAxisAngle(Vector3.UnitY, yaw);
+    }
+
+    private void Face(in FaceCommand command)
+    {
+        Entity character = command.Character;
+        if (!World.IsAlive(character) || !World.Has<CharacterMover>(character) || !World.Has<Transform>(character))
+        {
+            return;
+        }
+
+        Stop(character);
+        Vector3 direction = command.Point - World.Get<Transform>(character).Position;
+        direction.Y = 0;
+        if (direction.LengthSquared() < 1e-6f)
+        {
+            return;
+        }
+
+        Facing facing = new() { Direction = Vector3.Normalize(direction) };
+        if (World.Has<Facing>(character))
+        {
+            World.Set(character, facing);
+        }
+        else
+        {
+            World.Add(character, facing);
+        }
     }
 
     private void Move(in MoveCommand command)
@@ -146,6 +200,11 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
                 Stop(character);
                 return;
             }
+        }
+
+        if (World.Has<Facing>(character))
+        {
+            World.Remove<Facing>(character);
         }
 
         Destination destination = new() { Point = command.Point, Corners = corners };

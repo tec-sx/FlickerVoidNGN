@@ -60,8 +60,31 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
 
     public bool RayCast(Ray ray, float maxDistance, out RayHit hit)
     {
-        hit = default;
         ClosestHitHandler handler = new();
+        return RayCast(ray, maxDistance, ref handler, out hit);
+    }
+
+    public bool RayCast(Ray ray, float maxDistance, Entity ignored, out RayHit hit)
+    {
+        ClosestHitHandler handler = new();
+        if (World.IsAlive(ignored) && World.TryGet(ignored, out StaticHandle staticHandle))
+        {
+            handler.Ignores = true;
+            handler.Ignored = new CollidableReference(staticHandle);
+        }
+        else if (World.IsAlive(ignored) && World.TryGet(ignored, out BodyHandle bodyHandle))
+        {
+            BodyReference body = Simulation.Bodies[bodyHandle];
+            handler.Ignores = true;
+            handler.Ignored = body.CollidableReference;
+        }
+
+        return RayCast(ray, maxDistance, ref handler, out hit);
+    }
+
+    private bool RayCast(Ray ray, float maxDistance, ref ClosestHitHandler handler, out RayHit hit)
+    {
+        hit = default;
         Simulation.RayCast(ray.Origin, ray.Direction, maxDistance, _pool, ref handler);
         if (!handler.Found)
         {

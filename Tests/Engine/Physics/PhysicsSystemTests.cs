@@ -75,6 +75,30 @@ public sealed class PhysicsSystemTests : IDisposable
     }
 
     [Fact]
+    public void RayCastsCanPassThroughTheBodyTheyStartIn()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Guard", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "box", "size": [1, 2, 1], "offset": [0, 1, 0] } } } },
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 1.5, 4] },
+                "rigidBody": { "kinematic": true, "collider": { "type": "box" } } } }
+            """);
+        Step();
+        Ray ahead = new(new Vector3(0, 1.5f, 0), Vector3.UnitZ);
+
+        bool hitSelf = _physics.RayCast(ahead, 100, out RayHit self);
+        bool hitCrate = _physics.RayCast(ahead, 100, entities[0], out RayHit crate);
+
+        hitSelf.Should().BeTrue();
+        self.Entity.Should().Be(entities[0]);
+        hitCrate.Should().BeTrue();
+        crate.Entity.Should().Be(entities[1]);
+        crate.Distance.Should().BeApproximately(3.5f, 1e-3f);
+    }
+
+    [Fact]
     public void BodiesComeToRestOnStaticBodies()
     {
         IReadOnlyList<Entity> entities = Spawn("""
