@@ -1,0 +1,14 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "scan",
+  "display": { "name": "Cellar door" },
+  "category": "Scan.Category.Object",
+  "scanDuration": 1.2,
+  "entries": [
+    { "label": "Lock", "text": "Old iron, the keyhole worn smooth by one key." },
+    { "label": "Scratches", "text": "Fresh marks round the keyhole: someone tried to pick it.",
+      "visibleWhen": { "conditions": [ { "$type": "attribute", "attribute": "Attribute.Skill.Perception", "value": 3 } ] } },
+    { "label": "Hinges", "text": "Oiled. It opens without a sound." }
+  ],
+  "onScanned": { "effects": [ { "$type": "fact", "fact": "Scan.CellarDoor" } ] }
+}

@@ -25,6 +25,7 @@ using FlickerVoid.Engine.Story;
 using FlickerVoid.Engine.Story.Knowledge;
 using FlickerVoid.Engine.Story.Quests;
 using FlickerVoid.Gameplay.Protagonist.Control;
+using FlickerVoid.Gameplay.Protagonist.Resources.Knowledge.Scanning;
 using FlickerVoid.Gameplay.Protagonist.Resources.Possessions;
 using FlickerVoid.Gameplay.Serialization;
 using FlickerVoid.Gameplay.World.Objects.Doors;
@@ -34,8 +35,8 @@ namespace FlickerVoid.Gameplay;
 
 /// <summary>
 /// FlickerVoid's gameplay: physics, point and click characters, interaction, attributes and abilities, possessions, quests and knowledge for the protagonist,
-/// conversations, doors that keys open and lockpicks pick, residents who wander, watch and listen, and maps with their markers; the click control only where
-/// there is a window to click in.
+/// conversations, doors that keys open and lockpicks pick, residents who wander, watch and listen, and maps with their markers; the click control and the scanner
+/// only where there is a window to click in.
 /// </summary>
 public sealed class GameplayModule : IGameModule
 {
@@ -54,6 +55,10 @@ public sealed class GameplayModule : IGameModule
         game.Spawner.Register("protagonist", FlickerVoidJsonContext.Default.Protagonist);
         AddPlayer(game);
         game.Spawner.Register("doorSwing", FlickerVoidJsonContext.Default.DoorSwing);
+        game.Data.AddResolver(FlickerVoidJsonContext.Default);
+        game.Data.Register<ScanDefinition>("scan");
+        game.Spawner.Register("scanner", FlickerVoidJsonContext.Default.Scanner);
+        game.Spawner.Register("scannable", FlickerVoidJsonContext.Default.Scannable);
 
         // Keys hear a blocked door before lockpicks, and both before the door rattles.
         _ = new KeySystem(game.World, game.Events, inventories);
@@ -76,7 +81,16 @@ public sealed class GameplayModule : IGameModule
             PointerPicker picker = new(game.World, input, window, physics);
             game.Services.AddService(picker);
             _ = new ClickControlSystem(game.World, game.Events, picker, dialogue);
+            AddScanner(game, physics, picker);
         }
+    }
+
+    /// <summary>Adds the scanner, which focuses what the pointer is on.</summary>
+    private static void AddScanner(Game game, IPhysicsSystem physics, PointerPicker picker)
+    {
+        ScannerSystem scanner = new(game, physics, picker);
+        game.FixedSystems.Add(scanner);
+        game.Services.AddService(scanner);
     }
 
     /// <summary>Makes the protagonist the player that quests and knowledge apply their rules for while it is active.</summary>
