@@ -1,18 +1,14 @@
 using FlickerVoid.Tools.Builder.Caching;
 using FlickerVoid.Tools.Builder.Importing;
-using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Tools.Builder;
 
 /// <summary>
 /// Builds a source content folder into an output folder: each file goes through the first importer that takes its extension,
-/// or is copied, and files whose inputs haven't changed since the last build are skipped.
+/// or is copied, and files whose inputs haven't changed since the last build are skipped. Hidden files are left out.
 /// </summary>
 public sealed class AssetBuilder(IReadOnlyList<IAssetImporter> importers)
 {
-    /// <summary>The schemas a development build writes into the source folder are for text editors, not the game.</summary>
-    private const string SchemaFolder = ContentSchemas.FolderName + "/";
-
     private readonly CopyImporter _copy = new();
 
     public BuildReport Build(string sourceDirectory, string outputDirectory)
@@ -58,6 +54,13 @@ public sealed class AssetBuilder(IReadOnlyList<IAssetImporter> importers)
         return new BuildReport(built, skipped, failed, removed);
     }
 
+    /// <summary>Files and folders whose names start with a dot (the schemas, the editor's import sources) are not content.</summary>
+    private static bool IsHidden(string path)
+    {
+        string[] names = path.Split('/');
+        return names.Any(static name => name.StartsWith('.'));
+    }
+
     private static List<string> FindSources(string source)
     {
         List<string> paths = [];
@@ -69,7 +72,7 @@ public sealed class AssetBuilder(IReadOnlyList<IAssetImporter> importers)
         foreach (string fullPath in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
             string path = AssetPaths.ToRelativePath(source, fullPath);
-            if (path.StartsWith(SchemaFolder, StringComparison.Ordinal))
+            if (IsHidden(path))
             {
                 continue;
             }

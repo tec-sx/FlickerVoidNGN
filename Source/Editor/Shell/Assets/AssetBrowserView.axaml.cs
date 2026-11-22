@@ -3,12 +3,14 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform.Storage;
 
 namespace FlickerVoid.Editor.Assets;
 
 /// <summary>
 /// The asset browser's folder tree and tiles. A double-click or Enter opens a file or folder, F2 renames and Delete deletes after
 /// asking; a tile dragged a few pixels can be dropped on a folder (a tile or in the tree) to move it there, or a model on the viewport.
+/// Files dropped from outside the editor, or picked with Import, are imported into the folder they land on or the selected one.
 /// </summary>
 public sealed partial class AssetBrowserView : UserControl
 {
@@ -118,6 +120,22 @@ public sealed partial class AssetBrowserView : UserControl
                 HandleDeleteFolderClick(sender, e);
                 e.Handled = true;
                 break;
+        }
+    }
+
+    private async void HandleImportClick(object? sender, RoutedEventArgs e)
+    {
+        if (Browser is not { } browser || TopLevel.GetTopLevel(this) is not { } top)
+        {
+            return;
+        }
+
+        FilePickerOpenOptions options = new() { Title = "Import", AllowMultiple = true };
+        IReadOnlyList<IStorageFile> files = await top.StorageProvider.OpenFilePickerAsync(options);
+        List<string> paths = GetLocalPaths(files);
+        if (paths.Count > 0)
+        {
+            browser.Import(paths);
         }
     }
 
@@ -266,6 +284,13 @@ public sealed partial class AssetBrowserView : UserControl
 
     private void HandleDragOver(object? sender, DragEventArgs e)
     {
+        if (e.DataTransfer.TryGetFiles() is { Length: > 0 })
+        {
+            e.DragEffects = DragDropEffects.Copy;
+            e.Handled = true;
+            return;
+        }
+
         AssetEntry? dragged = AssetDrag.GetEntry(e.DataTransfer);
         string? folder = GetDropFolder(e);
         bool moves = dragged is not null && folder is not null && folder != dragged.Path;
@@ -277,6 +302,15 @@ public sealed partial class AssetBrowserView : UserControl
     {
         AssetEntry? dragged = AssetDrag.GetEntry(e.DataTransfer);
         string? folder = GetDropFolder(e);
+        if (e.DataTransfer.TryGetFiles() is { Length: > 0 } files && Browser is { } importer)
+        {
+            List<string> paths = GetLocalPaths(files);
+            string into = folder ?? importer.SelectedFolder?.Path ?? "";
+            importer.Import(paths, into);
+            e.Handled = true;
+            return;
+        }
+
         if (dragged is null || folder is null || Browser is not { } browser)
         {
             return;
@@ -284,6 +318,21 @@ public sealed partial class AssetBrowserView : UserControl
 
         browser.MoveTo(dragged, folder);
         e.Handled = true;
+    }
+
+    /// <summary>The local paths of the files among the given storage items, leaving folders out.</summary>
+    private static List<string> GetLocalPaths(IEnumerable<IStorageItem> items)
+    {
+        List<string> paths = [];
+        foreach (IStorageItem item in items)
+        {
+            if (item is IStorageFile && item.TryGetLocalPath() is { } path)
+            {
+                paths.Add(path);
+            }
+        }
+
+        return paths;
     }
 
     /// <summary>The folder under the pointer: a folder tile or a folder in the tree.</summary>
