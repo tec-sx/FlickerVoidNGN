@@ -446,7 +446,8 @@ public sealed class SceneRendererTests : IDisposable
     {
         uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
         _builder.WithTexture("Paper.tga", 1, 1, [grey]);
-        _builder.WithMood(static mood => mood with { Paper = "Paper.tga", PaperGrain = 0 });
+        _builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga", "grain": 0 }""");
+        _builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas" });
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
         _builder.WithScene(Camera, Quad);
 
@@ -467,7 +468,8 @@ public sealed class SceneRendererTests : IDisposable
     {
         uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
         _builder.WithTexture("Paper.tga", 1, 1, [grey]);
-        _builder.WithMood(static mood => mood with { Paper = "Paper.tga", Exposure = 3 });
+        _builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga" }""");
+        _builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas", Exposure = 3 });
         _builder.WithScene(Camera);
 
         uint[] pixels = _builder.Render();
@@ -538,7 +540,7 @@ public sealed class SceneRendererTests : IDisposable
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
         _builder.WithScene(Camera, Quad);
-        _builder.WithMood(static mood => mood with { Paper = null, Grain = 0.2f });
+        _builder.WithMood(static mood => mood with { Canvas = null, Grain = 0.2f });
 
         uint[] grain = _builder.Render();
 
@@ -779,7 +781,8 @@ public sealed class SceneRendererTests : IDisposable
         }
 
         builder.WithTexture("Paper.tga", 4, 4, texels, mips: true);
-        builder.WithMood(static mood => mood with { Paper = "Paper.tga", PaperGrain = 0 });
+        builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga", "grain": 0 }""");
+        builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas" });
         builder.WithScene(entities);
         return builder.Render();
     }

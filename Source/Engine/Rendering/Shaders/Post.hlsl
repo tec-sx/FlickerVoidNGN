@@ -1,8 +1,8 @@
 // Turns the lit scene into the final image: adds bloom, then exposure, contrast, saturation and tint, then the tonemapper's
-// curve, then lays it over the paper, then grain. The scene's alpha is how much paint lies there (0 to 1) plus how thick it
-// stands (0 to 1, from a painting's impasto): bare paper shows where there is none, and the canvas's weave shows through
+// curve, then lays it over the canvas, then grain. The scene's alpha is how much paint lies there (0 to 1) plus how thick it
+// stands (0 to 1, from a painting's impasto): bare canvas shows where there is none, and the canvas's weave shows through
 // paint that isn't thick, so everything looks painted on it; only thick impasto hides it. The
-// paper lies on a sphere around the camera like a sky, so it turns as the camera turns, and slides with an orthographic pan.
+// canvas lies on a sphere around the camera like a sky, so it turns as the camera turns, and slides with an orthographic pan.
 // Draws one triangle that covers the target.
 
 Texture2D Textures[] : register(t0, space1);
@@ -18,18 +18,20 @@ struct PostConstants
     float Grain;
     uint Scene;
     uint BloomTexture;
-    uint Paper;
+    uint Canvas;
     uint ClampSampler;
     uint WrapSampler;
     uint Tonemapper;
     float WhitePoint;
-    float PaperGrain;
-    float3 PaperRight;
-    float PaperPanRight;
-    float3 PaperUp;
-    float PaperPanUp;
-    float3 PaperForward;
-    float PaperPadding;
+    float CanvasGrain;
+    float3 CanvasRight;
+    float CanvasPanRight;
+    float3 CanvasUp;
+    float CanvasPanUp;
+    float3 CanvasForward;
+    float CanvasLensHalfHeight;
+    float3 CanvasTint;
+    float CanvasTiling;
 };
 
 [[vk::push_constant]] ConstantBuffer<PostConstants> Post : register(b0, space0);
@@ -39,26 +41,28 @@ static const uint None = 0xFFFFFFFF;
 // The bloom levels the upsampling summed, which averaging divides back out.
 static const float BloomLevels = 5;
 
-// The field of view the paper's sphere is seen with, whatever the camera's projection: an orthographic camera's rays are all
-// parallel, so the sphere is looked at as through a lens of this width.
-static const float PaperFieldOfView = 1.0471976;
-
 static const float Pi = 3.14159265;
 
-// Where the pixel's ray meets the paper's sphere, in texels-sized uvs: longitude across and latitude down, the paper repeated
-// a whole number of times around so it meets itself, at about one texel a pixel, then slid by the camera's pan.
-float2 PaperUv(float2 pixel, float2 size, float2 paperSize)
+// Where the pixel's ray meets the canvas's sphere, in image uvs: longitude across and latitude down, the image repeated a whole
+// number of times around so it meets itself and Tiling times up the screen's height, then slid by the camera's pan. An
+// orthographic camera's rays are all parallel, so the sphere is looked at as through a lens of the canvas's own width.
+float2 CanvasUv(float2 pixel, float2 size, float2 canvasSize)
 {
     float2 clip = pixel / size * 2 - 1;
-    float halfHeight = tan(PaperFieldOfView * 0.5);
-    float halfWidth = halfHeight * size.x / size.y;
-    float3 ray = normalize(Post.PaperForward + Post.PaperRight * (clip.x * halfWidth) - Post.PaperUp * (clip.y * halfHeight));
-    float longitude = atan2(ray.x, -ray.z) / (2 * Pi) + 0.5;
-    float latitude = acos(clamp(ray.y, -1, 1)) / Pi;
-    float texelsAround = size.y * 2 * Pi / PaperFieldOfView;
-    float repeats = max(round(texelsAround / paperSize.x), 1);
-    float2 uv = float2(longitude * repeats, latitude * repeats * 0.5 * paperSize.x / paperSize.y);
-    return uv + float2(Post.PaperPanRight, -Post.PaperPanUp) / paperSize;
+    float halfHeight = Post.CanvasLensHalfHeight;
+    float aspect = size.x / size.y;
+    float halfWidth = halfHeight * aspect;
+    float3 ray = normalize(Post.CanvasForward + Post.CanvasRight * (clip.x * halfWidth) - Post.CanvasUp * (clip.y * halfHeight));
+    float longitude = atan2(ray.x, -ray.z) + Pi;
+    float latitude = acos(clamp(ray.y, -1, 1));
+    float fieldOfView = 2 * atan(halfHeight);
+    float imageHeight = fieldOfView / Post.CanvasTiling;
+    float imageWidth = imageHeight * canvasSize.x / canvasSize.y;
+    float repeats = max(round(2 * Pi / imageWidth), 1);
+    float2 uv = float2(longitude / (2 * Pi) * repeats, latitude / imageHeight);
+    float pixelsHigh = size.y / Post.CanvasTiling;
+    float pixelsWide = pixelsHigh * canvasSize.x / canvasSize.y;
+    return uv + float2(Post.CanvasPanRight / pixelsWide, -Post.CanvasPanUp / pixelsHigh);
 }
 
 // Linear middle grey, which contrast pivots on.
@@ -135,40 +139,40 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
     color = Tonemap(color);
 
     float coverage = saturate(sceneColor.a);
-    if (Post.Paper != None)
+    if (Post.Canvas != None)
     {
-        Texture2D paper = Textures[Post.Paper];
+        Texture2D canvas = Textures[Post.Canvas];
         uint width;
         uint height;
         uint levels;
-        paper.GetDimensions(0, width, height, levels);
+        canvas.GetDimensions(0, width, height, levels);
         uint targetWidth;
         uint targetHeight;
         scene.GetDimensions(targetWidth, targetHeight);
-        float2 uv = PaperUv(position.xy, float2(targetWidth, targetHeight), float2(width, height));
-        float3 paperColor = paper.SampleLevel(Samplers[Post.WrapSampler], uv, 0).rgb;
-        float3 averagePaper = paper.SampleLevel(Samplers[Post.WrapSampler], uv, levels - 1).rgb;
+        float2 uv = CanvasUv(position.xy, float2(targetWidth, targetHeight), float2(width, height));
+        float3 canvasColor = canvas.SampleLevel(Samplers[Post.WrapSampler], uv, 0).rgb * Post.CanvasTint;
+        float3 averageCanvas = canvas.SampleLevel(Samplers[Post.WrapSampler], uv, levels - 1).rgb * Post.CanvasTint;
         float3 toLuminance = float3(0.2126, 0.7152, 0.0722);
-        float averageLuminance = max(dot(averagePaper, toLuminance), 1e-3);
+        float averageLuminance = max(dot(averageCanvas, toLuminance), 1e-3);
 
-        // Paint that isn't thick lets the canvas's weave through: the paper over its own average brightness, so it keeps the
+        // Paint that isn't thick lets the canvas's weave through: the canvas over its own average brightness, so it keeps the
         // painted colour's light and takes the canvas's texture and hue.
         float thickness = saturate(sceneColor.a - 1);
-        float3 weave = paperColor / averageLuminance;
+        float3 weave = canvasColor / averageLuminance;
         float3 painted = lerp(color * weave, color, thickness);
 
-        // Thin paint fills the paper's valleys (darker than the paper's average) first and leaves its peaks bare; bare paper
-        // and fully painted paper stay as they are.
-        float grain = dot(averagePaper - paperColor, toLuminance) / averageLuminance;
+        // Thin paint fills the canvas's valleys (darker than the canvas's average) first and leaves its peaks bare; bare canvas
+        // and fully painted canvas stay as they are.
+        float grain = dot(averageCanvas - canvasColor, toLuminance) / averageLuminance;
         float paint = coverage;
-        float covered = saturate(paint + grain * Post.PaperGrain * 4 * paint * (1 - paint));
-        color = lerp(paperColor, painted, covered);
+        float covered = saturate(paint + grain * Post.CanvasGrain * 4 * paint * (1 - paint));
+        color = lerp(canvasColor, painted, covered);
         coverage = 1;
     }
 
     color += (PixelNoise(position.xy) - 0.5) * Post.Grain;
 
-    // Coverage: 0 where nothing was drawn and there is no paper, so a stage's image shows over the interface; light added
+    // Coverage: 0 where nothing was drawn and there is no canvas, so a stage's image shows over the interface; light added
     // there (bloom) stays additive.
     return float4(color, coverage);
 }

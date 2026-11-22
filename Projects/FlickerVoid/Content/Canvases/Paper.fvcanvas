@@ -1,0 +1,7 @@
+{
+  "$schema": "../.schemas/canvas.schema.json",
+  "image": "Paper.png",
+  "tiling": 1,
+  "grain": 0.3,
+  "curvature": 0.15
+}

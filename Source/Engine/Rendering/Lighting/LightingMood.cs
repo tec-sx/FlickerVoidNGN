@@ -89,16 +89,9 @@ public sealed record LightingMood
     [Range(0, 0.5)]
     public float Grain { get; set; }
 
-    /// <summary>
-    /// The paper everything is painted on: an image file in the content folder laid under the screen at one texel per pixel,
-    /// unlit, showing where nothing is painted and through paint as thin as its alpha says.
-    /// </summary>
-    [ContentFile(".png", ".jpg", ".jpeg", ".tga", ".bmp", ".reb")]
-    public string? Paper { get; set; }
-
-    /// <summary>How much the paper's grain decides where thin paint lies: it pools in the dark valleys and leaves the light peaks bare.</summary>
-    [Range(0, 1)]
-    public float PaperGrain { get; set; } = 0.3f;
+    /// <summary>The canvas everything is painted on, a <c>.fvcanvas</c> file; none paints on nothing.</summary>
+    [ContentFile(".fvcanvas")]
+    public string? Canvas { get; set; }
 
     /// <summary>
     /// The mood <paramref name="amount"/> of the way from <paramref name="from"/> to <paramref name="to"/>: numbers and
@@ -116,11 +109,11 @@ public sealed record LightingMood
             sunDirection = to.SunDirection;
         }
 
-        string? paper = from.Paper;
+        string? canvas = from.Canvas;
         Tonemapper tonemapper = from.Tonemapper;
         if (amount >= 0.5f)
         {
-            paper = to.Paper;
+            canvas = to.Canvas;
             tonemapper = to.Tonemapper;
         }
 
@@ -145,15 +138,14 @@ public sealed record LightingMood
             Tonemapper = tonemapper,
             WhitePoint = float.Lerp(from.WhitePoint, to.WhitePoint, amount),
             Grain = float.Lerp(from.Grain, to.Grain, amount),
-            Paper = paper,
-            PaperGrain = float.Lerp(from.PaperGrain, to.PaperGrain, amount),
+            Canvas = canvas,
         };
     }
 
     /// <summary>This mood with neutral post-processing, for captures that need the light as it is.</summary>
     public LightingMood WithoutPost()
     {
-        return this with { Bloom = 0, Exposure = 1, Contrast = 1, Saturation = 1, Tint = Vector3.One, Tonemapper = Tonemapper.None, Grain = 0, Paper = null };
+        return this with { Bloom = 0, Exposure = 1, Contrast = 1, Saturation = 1, Tint = Vector3.One, Tonemapper = Tonemapper.None, Grain = 0, Canvas = null };
     }
 }
 

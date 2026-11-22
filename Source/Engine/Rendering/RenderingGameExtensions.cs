@@ -24,11 +24,14 @@ public static class RenderingGameExtensions
         game.Spawner.Register("outline", RenderingJsonContext.Default.Outline);
         game.Schemas.Add("mood", CreateMoodSchema);
         game.Schemas.Add("material", CreateMaterialSchema);
+        game.Schemas.Add("canvas", CreateCanvasSchema);
         MeshAnimationSystem animation = new(game.World);
         game.FrameSystems.Add(animation);
     }
 
     private static JsonObject CreateMoodSchema() => JsonSchemas.CreateFile(RenderingJsonContext.Default.LightingMood);
+
+    private static JsonObject CreateCanvasSchema() => JsonSchemas.CreateFile(RenderingJsonContext.Default.CanvasFile);
 
     private static JsonObject CreateMaterialSchema() => JsonSchemas.CreateFile(RenderingJsonContext.Default.MaterialFile);
 }

@@ -12,5 +12,5 @@
   "saturation": 1.15,
   "tint": [1.1, 0.88, 0.72],
   "grain": 0.02,
-  "paper": "Paper.png"
+  "canvas": "Canvases/Paper.fvcanvas"
 }

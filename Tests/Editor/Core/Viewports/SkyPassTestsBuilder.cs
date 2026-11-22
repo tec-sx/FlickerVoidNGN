@@ -62,7 +62,8 @@ internal sealed class SkyPassTestsBuilder : IDisposable
             image.Write(stream);
         }
 
-        _paper = "Paper.tga";
+        File.WriteAllText(Path.Combine(_contentFolder, "Paper.fvcanvas"), """{ "image": "Paper.tga" }""");
+        _paper = "Paper.fvcanvas";
         return this;
     }
 
@@ -126,7 +127,7 @@ internal sealed class SkyPassTestsBuilder : IDisposable
     private SceneRenderer BuildRenderer(IGraphicsDevice device)
     {
         ContentManager content = new(_contentFolder);
-        LightingMood mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0, Tonemapper = Tonemapper.None, Paper = _paper };
+        LightingMood mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0, Tonemapper = Tonemapper.None, Canvas = _paper };
         SceneRenderer renderer = new(device, content, Format) { Mood = mood };
         ShaderLibrary shaders = ShaderLibrary.ForEngine("Editor");
         Sky = new SkyPass(device, shaders, Format);

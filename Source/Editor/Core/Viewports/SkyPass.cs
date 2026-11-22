@@ -56,7 +56,7 @@ public sealed class SkyPass : IRenderPass
         commands.BeginRendering([color], depth);
         commands.SetViewport(new Viewport(0, 0, context.Width, context.Height));
         commands.SetScissor(0, 0, context.Width, context.Height);
-        bool onPaper = context.Mood.Paper is not null;
+        bool onPaper = context.Mood.Canvas is not null;
         if (onPaper)
         {
             commands.SetPipeline(_wash);

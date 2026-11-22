@@ -38,7 +38,7 @@ internal sealed class PostProcessor : IDisposable
     }
 
     /// <summary>Leaves the output in the RenderTarget state.</summary>
-    public void Run(ICommandList commands, ScreenTargets targets, ITexture output, LightingMood mood, ITexture? paper, PaperView paperView, ISampler clamp, ISampler wrap)
+    public void Run(ICommandList commands, ScreenTargets targets, ITexture output, LightingMood mood, PostCanvas canvas, ISampler clamp, ISampler wrap)
     {
         commands.Barrier(targets.Hdr, ResourceState.ShaderRead);
         uint bloom = GpuLight.None;
@@ -48,10 +48,10 @@ internal sealed class PostProcessor : IDisposable
             bloom = targets.Bloom[0].BindlessIndex;
         }
 
-        uint paperIndex = GpuLight.None;
-        if (paper is not null)
+        uint canvasIndex = GpuLight.None;
+        if (canvas.Image is not null)
         {
-            paperIndex = paper.BindlessIndex;
+            canvasIndex = canvas.Image.BindlessIndex;
         }
 
         commands.Barrier(output, ResourceState.RenderTarget);
@@ -71,13 +71,15 @@ internal sealed class PostProcessor : IDisposable
             mood.Grain,
             targets.Hdr.BindlessIndex,
             bloom,
-            paperIndex,
+            canvasIndex,
             clamp.BindlessIndex,
             wrap.BindlessIndex,
             (uint)mood.Tonemapper,
             mood.WhitePoint,
-            mood.PaperGrain,
-            paperView);
+            canvas.File.Grain,
+            canvas.View,
+            canvas.File.Tint,
+            canvas.File.Tiling);
         commands.PushConstants(constants);
         commands.Draw(3);
         commands.EndRendering();

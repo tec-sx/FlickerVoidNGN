@@ -66,13 +66,13 @@ public sealed class ViewSettingsViewModelTests
     }
 
     [Fact]
-    public void PicksThePaperAmongTheImagesAndPaintings()
+    public void PicksTheCanvasAmongTheCanvasFiles()
     {
-        ViewSettingsViewModel settings = _builder.WithFiles("Paper.png", "Canvas_01.jpg", "Paintings/Wall.reb", "Moods/Day.fvmood").Build();
+        ViewSettingsViewModel settings = _builder.WithFiles("Paper.png", "Canvases/Paper.fvcanvas", "Canvases/Linen.fvcanvas", "Moods/Day.fvmood").Build();
 
-        AssetFieldViewModel paper = settings.Fields.OfType<AssetFieldViewModel>().Single(field => field.Label == "Paper");
-        paper.Picker.IsOpen = true;
+        AssetFieldViewModel canvas = settings.Fields.OfType<AssetFieldViewModel>().Single(field => field.Label == "Canvas");
+        canvas.Picker.IsOpen = true;
 
-        paper.Picker.Matches.Should().Equal("Paper.png", "Canvas_01.jpg", "Paintings/Wall.reb");
+        canvas.Picker.Matches.Should().BeEquivalentTo("Canvases/Paper.fvcanvas", "Canvases/Linen.fvcanvas");
     }
 }

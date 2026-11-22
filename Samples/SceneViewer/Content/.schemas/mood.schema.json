@@ -80,7 +80,7 @@
     "grain": {
       "type": "number"
     },
-    "paper": {
+    "canvas": {
       "type": [
         "string",
         "null"
