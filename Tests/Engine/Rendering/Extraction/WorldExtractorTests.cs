@@ -45,6 +45,30 @@ public sealed class WorldExtractorTests : IDisposable
     }
 
     [Fact]
+    public void CopiesTheTransitionTheActiveCameraLaysOver()
+    {
+        Camera lens = new() { OrthographicHeight = 3 };
+        Transform from = new() { Position = new Vector3(1, 2, 3) };
+        ActiveCamera active = new() { Lens = lens, Fade = 0.25f, FadeColor = Vector3.UnitX, Dissolve = 0.5f, DissolveLens = lens, DissolvePose = from };
+
+        RenderScene scene = _builder.WithActiveCamera(lens, Vector3.Zero, active).Extract();
+
+        scene.Transition.Fade.Should().Be(0.25f);
+        scene.Transition.FadeColor.Should().Be(Vector3.UnitX);
+        scene.Transition.Dissolve.Should().Be(0.5f);
+        scene.Transition.DissolveFrom.Transform.Position.Should().Be(new Vector3(1, 2, 3));
+        scene.Transition.IsVisible.Should().BeTrue();
+    }
+
+    [Fact]
+    public void LaysNothingOverWithoutADirector()
+    {
+        RenderScene scene = _builder.WithCamera(new Camera(), Vector3.Zero).Extract();
+
+        scene.Transition.IsVisible.Should().BeFalse();
+    }
+
+    [Fact]
     public void FindsTheActiveCameraElseTheFirst()
     {
         Camera still = new() { OrthographicHeight = 7 };

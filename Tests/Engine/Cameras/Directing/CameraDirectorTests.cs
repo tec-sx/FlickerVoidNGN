@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Engine.Cameras.Directing;
+using FlickerVoid.Engine.Cameras.Shots;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Components;
@@ -394,5 +395,125 @@ public sealed class CameraDirectorTests : IDisposable
         Vector3 forward = Vector3.Transform(-Vector3.UnitZ, _builder.Drawn().Transform.Rotation);
         Vector3 expected = Vector3.Normalize(new Vector3(0, 5, -5));
         Vector3.Distance(forward, expected).Should().BeLessThan(Precision);
+    }
+
+    [Fact]
+    public void AFadeDarkensTheWorldCutsAndBrightensIt()
+    {
+        CameraDirector director = _builder.Build();
+        _builder.SpawnShot("Hall", """{ "position": [1, 0, 0] }""", start: true);
+        Entity cellar = _builder.SpawnShot("Cellar", """{ "position": [2, 0, 0] }""");
+        _builder.Run(1 / 60f);
+        ShotTransition fade = new() { Kind = TransitionKind.Fade, Duration = 1, InDuration = 2, Color = Vector3.UnitX };
+
+        director.Switch(cellar, fade);
+        _builder.Run(0.5f);
+        RenderTransition halfOut = _builder.Transition();
+        float halfOutX = _builder.Drawn().Transform.Position.X;
+        _builder.Run(1.5f);
+        RenderTransition halfIn = _builder.Transition();
+        _builder.Run(1.1f);
+
+        halfOut.Fade.Should().BeApproximately(0.5f, 0.02f);
+        halfOut.FadeColor.Should().Be(Vector3.UnitX);
+        halfOutX.Should().Be(1, "the old shot stays until the world is dark");
+        halfIn.Fade.Should().BeApproximately(0.5f, 0.02f);
+        director.Live.Should().Be(cellar);
+        _builder.Transition().Fade.Should().Be(0);
+    }
+
+    [Fact]
+    public void FadeOutHoldsUntilFadeIn()
+    {
+        CameraDirector director = _builder.Build();
+        _builder.SpawnShot("Hall", """{ "position": [1, 0, 0] }""");
+        _builder.Run(1 / 60f);
+
+        director.FadeOut(1, Vector3.Zero);
+        _builder.Run(3);
+        float held = _builder.Transition().Fade;
+        director.FadeIn(0.5f);
+        _builder.Run(1);
+
+        held.Should().Be(1);
+        _builder.Transition().Fade.Should().Be(0);
+        director.IsFading.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ACrossFadeDissolvesTheOldShotsLiveViewAway()
+    {
+        CameraDirector director = _builder.Build();
+        Entity hall = _builder.SpawnShot("Hall", Line, start: true);
+        Entity cellar = _builder.SpawnShot("Cellar", """{ "position": [0, 0, 5] }""");
+        _builder.Run(1 / 60f);
+        director.Play(hall);
+        ShotTransition crossFade = new() { Kind = TransitionKind.CrossFade, Duration = 1 };
+
+        director.Switch(cellar, crossFade);
+        _builder.Run(0.5f);
+        RenderTransition halfway = _builder.Transition();
+        _builder.Run(0.6f);
+
+        director.Live.Should().Be(cellar);
+        halfway.Dissolve.Should().BeApproximately(0.5f, 0.02f);
+        halfway.DissolveFrom.Transform.Position.X.Should().BeApproximately(2.5f, 0.1f, "the old shot keeps playing under the dissolve");
+        _builder.Drawn().Transform.Position.Z.Should().Be(5);
+        _builder.Transition().Dissolve.Should().Be(0);
+    }
+
+    [Fact]
+    public void ABlendMovesFromTheDrawnPoseToTheNextRail()
+    {
+        CameraDirector director = _builder.Build();
+        _builder.SpawnShot("Hall", """{ "position": [0, 0, 0], "zoom": 4 }""", start: true);
+        Entity cellar = _builder.SpawnShot("Cellar", """{ "position": [10, 0, 0], "zoom": 8 }""");
+        List<ShotChangedEvent> changes = _builder.Collect<ShotChangedEvent>();
+        _builder.Run(1 / 60f);
+        ShotTransition blend = new() { Kind = TransitionKind.Blend, Duration = 2 };
+
+        director.Switch(cellar, blend);
+        _builder.Run(1);
+        RenderCamera halfway = _builder.Drawn();
+        _builder.Run(1.1f);
+
+        director.Live.Should().Be(cellar);
+        changes.Should().HaveCount(2);
+        halfway.Transform.Position.X.Should().BeApproximately(5, 0.1f);
+        halfway.Camera.OrthographicHeight.Should().BeApproximately(6, 0.1f);
+        _builder.Drawn().Transform.Position.X.Should().Be(10);
+    }
+
+    [Fact]
+    public void ABlendEasesAsItSays()
+    {
+        CameraDirector director = _builder.Build();
+        _builder.SpawnShot("Hall", """{ "position": [0, 0, 0] }""", start: true);
+        Entity cellar = _builder.SpawnShot("Cellar", """{ "position": [10, 0, 0] }""");
+        _builder.Run(1 / 60f);
+        ShotTransition blend = new() { Kind = TransitionKind.Blend, Duration = 2, Ease = ShotEase.EaseIn };
+
+        director.Switch(cellar, blend);
+        _builder.Run(1);
+
+        _builder.Drawn().Transform.Position.X.Should().BeApproximately(2.5f, 0.1f);
+    }
+
+    [Fact]
+    public void ACutDuringATransitionEndsIt()
+    {
+        CameraDirector director = _builder.Build();
+        _builder.SpawnShot("Hall", """{ "position": [0, 0, 0] }""", start: true);
+        Entity cellar = _builder.SpawnShot("Cellar", """{ "position": [10, 0, 0] }""");
+        Entity attic = _builder.SpawnShot("Attic", """{ "position": [20, 0, 0] }""");
+        _builder.Run(1 / 60f);
+        director.Switch(cellar, new ShotTransition { Kind = TransitionKind.CrossFade, Duration = 2 });
+        _builder.Run(0.5f);
+
+        director.Switch(attic, ShotTransition.Cut);
+        _builder.Run(1 / 60f);
+
+        _builder.Drawn().Transform.Position.X.Should().Be(20);
+        _builder.Transition().IsVisible.Should().BeFalse();
     }
 }

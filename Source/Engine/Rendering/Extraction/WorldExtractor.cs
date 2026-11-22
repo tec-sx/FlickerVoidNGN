@@ -31,6 +31,8 @@ public sealed class WorldExtractor : IRenderExtractor
         world.Query(in ActiveCameras, (ref ActiveCamera active) =>
         {
             scene.Cameras.Add(new RenderCamera(active.Lens, active.Pose));
+            RenderCamera dissolveFrom = new(active.DissolveLens, active.DissolvePose);
+            scene.Transition = new RenderTransition(active.Fade, active.FadeColor, active.Dissolve, dissolveFrom);
         });
         world.Query(in Cameras, (ref Camera camera, ref Transform transform) =>
         {

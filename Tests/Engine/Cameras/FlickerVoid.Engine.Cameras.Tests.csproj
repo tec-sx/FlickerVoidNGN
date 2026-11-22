@@ -1,5 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="../../../Source/Engine/Cameras/FlickerVoid.Engine.Cameras.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../Source/Engine/Cameras/FlickerVoid.Engine.Cameras.csproj" />
+    <ProjectReference Include="../../../Source/Engine/Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The rendering tests' model builder and error recorder, so transitions draw real meshes and fail on validation errors. -->
+    <Compile Include="../Rendering/TestModelBuilder.cs" Link="Transitions/TestModelBuilder.cs" />
+    <Compile Include="../Rendering/RecordingLoggerProvider.cs" Link="Transitions/RecordingLoggerProvider.cs" />
+  </ItemGroup>
+  <!-- Builds the engine's shaders into Content/Engine, where the renderer and the transition pass load them. -->
+  <Import Project="../../../Source/Tools/Builder/FlickerVoid.Tools.Builder.targets" />
 </Project>

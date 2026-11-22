@@ -5,6 +5,7 @@ using Arch.System;
 
 using FlickerVoid.Engine.Cameras.Shots;
 using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -13,27 +14,39 @@ namespace FlickerVoid.Engine.Cameras.Directing;
 
 /// <summary>
 /// Directs the camera each frame, a frame system and service: keeps one shot live (the scene's starting shot until told otherwise),
-/// switches shots with a transition, keeps a stack of shots to return to, plays timed shots to their keys, moves tracked shots
-/// with their target, sends the markers of keys passed, turns shots that look at their target and writes the live shot's
-/// posed lens and world pose into its <see cref="ActiveCamera"/>, which the renderer draws from.
+/// switches shots with a transition (cut, cross-fade, fade or blend), keeps a stack of shots to return to, drives the live shot
+/// along its rail, and writes its posed lens and world pose, with the transition laid over the frame, into its
+/// <see cref="ActiveCamera"/>, which the renderer draws from.
 /// </summary>
 public sealed class CameraDirector : BaseSystem<World, GameTime>
 {
-    /// <summary>How close in metres a tracked shot comes to its target's point before it stops easing and settles there.</summary>
-    private const float SnapDistance = 1e-3f;
-
     private static readonly QueryDescription Shots = new QueryDescription().WithAll<Shot, Transform>();
-    private static readonly QueryDescription Targets = new QueryDescription().WithAll<CameraTarget, Transform>();
-    private static readonly QueryDescription Named = new QueryDescription().WithAll<EntityName, Transform>();
 
     private readonly EventBus _events;
-    private readonly Dictionary<Entity, ShotPlayback> _playbacks = [];
+    private readonly ShotDriver _driver;
     private readonly List<Entity> _stack = [];
+
+    private float _fade;
+    private float _fadeTarget;
+    private float _fadeSpeed;
+    private Vector3 _fadeColor;
+    private Entity _pending = Entity.Null;
+    private float _fadeInAfter = -1;
+
+    private Entity _dissolveFrom = Entity.Null;
+    private float _dissolve;
+    private float _dissolveSpeed;
+
+    private RenderCamera _blendFrom;
+    private float _blend = 1;
+    private float _blendSpeed;
+    private ShotEase _blendEase;
 
     public CameraDirector(World world, EventBus events)
         : base(world)
     {
         _events = events;
+        _driver = new ShotDriver(world, events);
         ArrayRegistry.Add<ActiveCamera>();
     }
 
@@ -43,7 +56,13 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
     /// <summary>The shots <see cref="Return"/> goes back to, the latest last.</summary>
     public IReadOnlyList<Entity> Stack => _stack;
 
-    /// <summary>Makes another shot live.</summary>
+    /// <summary>Whether the world is fading, or a fade waits to cut to its shot.</summary>
+    public bool IsFading => _fade != _fadeTarget || _pending != Entity.Null;
+
+    /// <summary>Whether a cross-fade, blend or fade is still running.</summary>
+    public bool IsTransitioning => IsFading || _dissolve > 0 || _blend < 1;
+
+    /// <summary>Makes another shot live with the transition; a later request replaces one still waiting.</summary>
     public void Switch(Entity shot, ShotTransition transition)
     {
         if (!IsShot(shot))
@@ -51,7 +70,31 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
             return;
         }
 
-        GoLive(shot);
+        _pending = Entity.Null;
+        switch (transition.Kind)
+        {
+            case TransitionKind.Fade:
+                StartFade(transition);
+                _pending = shot;
+                if (_fade >= 1)
+                {
+                    FinishFadeOut();
+                }
+
+                break;
+            case TransitionKind.CrossFade:
+                StartCrossFade(transition.Duration);
+                GoLive(shot);
+                break;
+            case TransitionKind.Blend:
+                StartBlend(transition);
+                GoLive(shot);
+                break;
+            default:
+                EndMoves();
+                GoLive(shot);
+                break;
+        }
     }
 
     /// <summary>Makes another shot live, keeping the live one to <see cref="Return"/> to, as a cutscene does.</summary>
@@ -85,48 +128,43 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         }
     }
 
+    /// <summary>Fades the world to a colour over the duration and holds it there until <see cref="FadeIn"/>.</summary>
+    public void FadeOut(float duration, Vector3 color)
+    {
+        _pending = Entity.Null;
+        _fadeColor = color;
+        _fadeInAfter = -1;
+        SetFadeTarget(1, duration);
+    }
+
+    /// <summary>Fades the world back in from its colour over the duration.</summary>
+    public void FadeIn(float duration)
+    {
+        _pending = Entity.Null;
+        _fadeInAfter = -1;
+        SetFadeTarget(0, duration);
+    }
+
     /// <summary>Plays a shot's timeline from where it is to a key's time (forwards or back), or to the end without one.</summary>
     public void Play(Entity shot, int toKey = -1)
     {
-        if (!IsShot(shot))
+        if (IsShot(shot))
         {
-            return;
+            _driver.Play(shot, toKey);
         }
-
-        ShotPlayback playback = GetPlayback(shot);
-        ShotTimeline timeline = GetTimeline(shot);
-        float target = timeline.Duration;
-        if (toKey >= 0 && toKey < timeline.Keys.Count)
-        {
-            target = timeline.Keys[toKey].Time;
-        }
-
-        playback.Target = target;
-        playback.Playing = true;
     }
 
     /// <summary>Where a shot is on its timeline, in seconds.</summary>
-    public float GetTime(Entity shot)
-    {
-        if (_playbacks.TryGetValue(shot, out ShotPlayback? playback))
-        {
-            return playback.Time;
-        }
-
-        return 0;
-    }
+    public float GetTime(Entity shot) => _driver.GetTime(shot);
 
     /// <summary>Whether a shot is playing towards a key.</summary>
-    public bool IsPlaying(Entity shot)
-    {
-        return _playbacks.TryGetValue(shot, out ShotPlayback? playback) && playback.Playing;
-    }
+    public bool IsPlaying(Entity shot) => _driver.IsPlaying(shot);
 
     public override void Update(in GameTime t)
     {
         if (!IsShot(Live))
         {
-            _playbacks.Remove(Live);
+            _driver.Forget(Live);
             Entity start = FindStart();
             if (start == Entity.Null)
             {
@@ -137,197 +175,129 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         }
 
         float seconds = (float)t.Elapsed.TotalSeconds;
-        Entity live = Live;
-        ShotPlayback playback = GetPlayback(live);
-        float previousTime = playback.Time;
-        Shot shot = World.Get<Shot>(live);
-        if (shot.Drive == ShotDrive.Tracked)
-        {
-            Track(live, shot, playback, seconds);
-        }
-        else if (playback.Playing)
-        {
-            Advance(live, playback, seconds);
-        }
-
-        SendMarkers(live, previousTime, playback.Time);
-        Pose(live, playback);
+        UpdateFade(seconds);
+        _driver.Drive(Live, seconds, sendMarkers: true);
+        UpdateDissolve(seconds);
+        _blend = MathF.Min(_blend + (_blendSpeed * seconds), 1);
+        WriteView();
     }
 
-    /// <summary>Moves a tracked shot towards its target's nearest point on the rail, smoothed, and sets its time from there.</summary>
-    private void Track(Entity live, in Shot shot, ShotPlayback playback, float seconds)
+    private void StartFade(in ShotTransition transition)
     {
-        if (!TryFindTarget(shot, out Vector3 aim))
+        _fadeColor = transition.Color;
+        _fadeInAfter = MathF.Max(transition.InDuration, 0);
+        SetFadeTarget(1, transition.Duration);
+    }
+
+    private void SetFadeTarget(float target, float duration)
+    {
+        _fadeTarget = target;
+        _fadeSpeed = float.PositiveInfinity;
+        if (duration > 0)
+        {
+            _fadeSpeed = 1 / duration;
+        }
+
+        if (float.IsPositiveInfinity(_fadeSpeed))
+        {
+            _fade = target;
+        }
+    }
+
+    private void UpdateFade(float seconds)
+    {
+        float toTarget = _fadeTarget - _fade;
+        float step = _fadeSpeed * seconds;
+        if (toTarget != 0 && MathF.Abs(toTarget) <= step)
+        {
+            _fade = _fadeTarget;
+        }
+        else if (toTarget != 0)
+        {
+            _fade += MathF.Sign(toTarget) * step;
+        }
+
+        if (_fade >= 1 && _pending != Entity.Null)
+        {
+            FinishFadeOut();
+        }
+    }
+
+    /// <summary>Cuts to the shot the fade waited for while the world is dark, then starts fading back in.</summary>
+    private void FinishFadeOut()
+    {
+        Entity shot = _pending;
+        _pending = Entity.Null;
+        EndMoves();
+        if (IsShot(shot))
+        {
+            GoLive(shot);
+        }
+
+        if (_fadeInAfter >= 0)
+        {
+            SetFadeTarget(0, _fadeInAfter);
+            _fadeInAfter = -1;
+        }
+    }
+
+    private void StartCrossFade(float duration)
+    {
+        EndMoves();
+        if (duration <= 0 || !IsShot(Live))
         {
             return;
         }
 
-        ShotTimeline timeline = GetTimeline(live);
-        Transform transform = World.Get<Transform>(live);
-        Matrix4x4 shotWorld = transform.ToMatrix();
-        Matrix4x4.Invert(shotWorld, out Matrix4x4 toShot);
-        Vector3 local = Vector3.Transform(aim, toShot);
-        float nearest = timeline.Rail.FindNearest(local);
-        float distance = nearest;
-        if (!playback.Snap && shot.Smoothing > 0)
-        {
-            float exponent = -3 * seconds / shot.Smoothing;
-            float follow = 1 - MathF.Exp(exponent);
-            distance = float.Lerp(playback.Distance, nearest, follow);
-            if (MathF.Abs(nearest - distance) < SnapDistance)
-            {
-                distance = nearest;
-            }
-        }
-
-        playback.Snap = false;
-        playback.Distance = distance;
-        playback.Time = timeline.GetTimeAtDistance(distance);
+        _dissolveFrom = Live;
+        _dissolve = 1;
+        _dissolveSpeed = 1 / duration;
     }
 
-    /// <summary>Sends the markers of the keys whose times the shot passed, going either way.</summary>
-    private void SendMarkers(Entity live, float from, float to)
+    private void UpdateDissolve(float seconds)
     {
-        if (from == to)
+        if (_dissolve <= 0)
         {
             return;
         }
 
-        ShotTimeline timeline = GetTimeline(live);
-        IReadOnlyList<ShotKey> keys = timeline.Keys;
-        for (int index = 0; index < keys.Count; index++)
+        if (!IsShot(_dissolveFrom))
         {
-            int key = index;
-            if (to < from)
-            {
-                key = keys.Count - 1 - index;
-            }
-
-            float time = keys[key].Time;
-            bool forward = from < time && time <= to;
-            bool back = to <= time && time < from;
-            if ((forward || back) && keys[key].Marker.IsValid)
-            {
-                _events.Send(new ShotMarkerEvent(live, keys[key].Marker, key));
-            }
-        }
-    }
-
-    /// <summary>Where the shot's target is aimed at: the named entity, else the first camera target, at its aim height.</summary>
-    private bool TryFindTarget(in Shot shot, out Vector3 aim)
-    {
-        Entity target = Entity.Null;
-        string name = shot.Target;
-        if (string.IsNullOrEmpty(name))
-        {
-            World.Query(in Targets, (Entity entity) =>
-            {
-                if (target == Entity.Null || entity.Id < target.Id)
-                {
-                    target = entity;
-                }
-            });
-        }
-        else
-        {
-            World.Query(in Named, (Entity entity, ref EntityName entityName) =>
-            {
-                if (target == Entity.Null && entityName.Value == name)
-                {
-                    target = entity;
-                }
-            });
-        }
-
-        aim = Vector3.Zero;
-        if (target == Entity.Null)
-        {
-            return false;
-        }
-
-        aim = World.Get<Transform>(target).Position;
-        if (World.TryGet(target, out CameraTarget cameraTarget))
-        {
-            aim.Y += cameraTarget.Height;
-        }
-
-        return true;
-    }
-
-    private void Advance(Entity shot, ShotPlayback playback, float seconds)
-    {
-        float toTarget = playback.Target - playback.Time;
-        if (MathF.Abs(toTarget) <= seconds)
-        {
-            playback.Time = playback.Target;
-            playback.Playing = false;
-            _events.Send(new ShotFinishedEvent(shot));
+            _dissolve = 0;
             return;
         }
 
-        playback.Time += MathF.Sign(toTarget) * seconds;
+        _driver.Drive(_dissolveFrom, seconds, sendMarkers: false);
+        _dissolve = MathF.Max(_dissolve - (_dissolveSpeed * seconds), 0);
     }
 
-    /// <summary>Writes the shot's pose at its time, in world space, into its active camera.</summary>
-    private void Pose(Entity shot, ShotPlayback playback)
+    /// <summary>Starts moving from the view drawn now, which may itself be blending, to the next shot.</summary>
+    private void StartBlend(in ShotTransition transition)
     {
-        ShotTimeline timeline = GetTimeline(shot);
-        Shot data = World.Get<Shot>(shot);
-        ShotPose local = timeline.Evaluate(playback.Time);
-        if (data.Drive == ShotDrive.Tracked)
+        RenderCamera? drawn = null;
+        if (IsShot(Live) && World.TryGet(Live, out ActiveCamera active))
         {
-            local = timeline.EvaluateAtDistance(playback.Distance);
+            drawn = new RenderCamera(active.Lens, active.Pose);
         }
 
-        Transform transform = World.Get<Transform>(shot);
-        Matrix4x4 shotWorld = transform.ToMatrix();
-        Vector3 position = Vector3.Transform(local.Position, shotWorld);
-        Quaternion rotation = Quaternion.Concatenate(local.Rotation, transform.Rotation);
-        if (data.LookAtTarget && TryFindTarget(data, out Vector3 aim))
+        EndMoves();
+        if (transition.Duration <= 0 || drawn is null)
         {
-            rotation = LookAt(position, aim, rotation);
+            return;
         }
 
-        Camera lens = GetLens(shot);
-        if (lens.Projection == CameraProjection.Perspective)
-        {
-            lens.FieldOfView = local.Zoom;
-        }
-        else
-        {
-            lens.OrthographicHeight = local.Zoom;
-        }
-
-        Transform pose = new() { Position = position, Rotation = rotation };
-        ActiveCamera active = new() { Lens = lens, Pose = pose };
-        if (World.Has<ActiveCamera>(shot))
-        {
-            World.Set(shot, active);
-        }
-        else
-        {
-            World.Add(shot, active);
-        }
+        _blendFrom = drawn.Value;
+        _blend = 0;
+        _blendSpeed = 1 / transition.Duration;
+        _blendEase = transition.Ease;
     }
 
-    /// <summary>The rotation looking from a point at another with +Y up, or the fallback when they meet or the look is straight up or down.</summary>
-    private static Quaternion LookAt(Vector3 from, Vector3 to, Quaternion fallback)
+    /// <summary>Ends a cross-fade or blend, as a cut does.</summary>
+    private void EndMoves()
     {
-        Vector3 toTarget = to - from;
-        if (toTarget.LengthSquared() < 1e-8f)
-        {
-            return fallback;
-        }
-
-        Vector3 forward = Vector3.Normalize(toTarget);
-        float upright = MathF.Abs(Vector3.Dot(forward, Vector3.UnitY));
-        if (upright > 0.9999f)
-        {
-            return fallback;
-        }
-
-        Matrix4x4 world = Matrix4x4.CreateWorld(Vector3.Zero, forward, Vector3.UnitY);
-        return Quaternion.CreateFromRotationMatrix(world);
+        _dissolve = 0;
+        _dissolveFrom = Entity.Null;
+        _blend = 1;
     }
 
     private void GoLive(Entity shot)
@@ -349,10 +319,54 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         }
 
         Live = shot;
-        ShotPlayback playback = GetPlayback(shot);
-        playback.Snap = true;
-        Pose(shot, playback);
+        _driver.Snap(shot);
+        WriteView();
         _events.Send(new ShotChangedEvent(previous, shot));
+    }
+
+    /// <summary>Writes the live shot's view, blended when a blend runs, and the transition over it into its active camera.</summary>
+    private void WriteView()
+    {
+        RenderCamera view = _driver.Pose(Live);
+        if (_blend < 1)
+        {
+            float eased = _blendEase.Apply(_blend);
+            view = Mix(_blendFrom, view, eased);
+        }
+
+        ActiveCamera active = new() { Lens = view.Camera, Pose = view.Transform, Fade = _fade, FadeColor = _fadeColor };
+        if (_dissolve > 0)
+        {
+            RenderCamera from = _driver.Pose(_dissolveFrom);
+            active.Dissolve = _dissolve;
+            active.DissolveLens = from.Camera;
+            active.DissolvePose = from.Transform;
+        }
+
+        if (World.Has<ActiveCamera>(Live))
+        {
+            World.Set(Live, active);
+        }
+        else
+        {
+            World.Add(Live, active);
+        }
+    }
+
+    /// <summary>The view part of the way from one to another: moved, turned and, between lenses of one projection, zoomed.</summary>
+    private static RenderCamera Mix(in RenderCamera from, in RenderCamera to, float amount)
+    {
+        Vector3 position = Vector3.Lerp(from.Transform.Position, to.Transform.Position, amount);
+        Quaternion rotation = Quaternion.Slerp(from.Transform.Rotation, to.Transform.Rotation, amount);
+        Camera lens = to.Camera;
+        if (from.Camera.Projection == lens.Projection)
+        {
+            lens.OrthographicHeight = float.Lerp(from.Camera.OrthographicHeight, lens.OrthographicHeight, amount);
+            lens.FieldOfView = float.Lerp(from.Camera.FieldOfView, lens.FieldOfView, amount);
+        }
+
+        Transform pose = new() { Position = position, Rotation = rotation };
+        return new RenderCamera(lens, pose);
     }
 
     /// <summary>The earliest created shot marked to start, else the earliest created shot.</summary>
@@ -384,73 +398,5 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
     private bool IsShot(Entity shot)
     {
         return shot != Entity.Null && World.IsAlive(shot) && World.Has<Shot>(shot) && World.Has<Transform>(shot);
-    }
-
-    private Camera GetLens(Entity shot)
-    {
-        if (World.TryGet(shot, out Camera camera))
-        {
-            return camera;
-        }
-
-        return new Camera();
-    }
-
-    private ShotPlayback GetPlayback(Entity shot)
-    {
-        if (!_playbacks.TryGetValue(shot, out ShotPlayback? playback))
-        {
-            playback = new ShotPlayback();
-            _playbacks.Add(shot, playback);
-        }
-
-        return playback;
-    }
-
-    /// <summary>The shot's timeline, built again only when its keys or lens changed.</summary>
-    private ShotTimeline GetTimeline(Entity shot)
-    {
-        ShotPlayback playback = GetPlayback(shot);
-        List<ShotKey> keys = World.Get<Shot>(shot).Keys;
-        Camera lens = GetLens(shot);
-        float zoom = lens.OrthographicHeight;
-        if (lens.Projection == CameraProjection.Perspective)
-        {
-            zoom = lens.FieldOfView;
-        }
-
-        if (playback.Timeline is null || !ReferenceEquals(playback.Keys, keys) || playback.KeyCount != keys.Count || playback.DefaultZoom != zoom)
-        {
-            playback.Timeline = new ShotTimeline(keys, zoom);
-            playback.Keys = keys;
-            playback.KeyCount = keys.Count;
-            playback.DefaultZoom = zoom;
-        }
-
-        return playback.Timeline;
-    }
-
-    /// <summary>What the director keeps of a shot while the game runs.</summary>
-    private sealed class ShotPlayback
-    {
-        public float Time { get; set; }
-
-        public float Target { get; set; }
-
-        public bool Playing { get; set; }
-
-        /// <summary>How far along its rail a tracked shot is.</summary>
-        public float Distance { get; set; }
-
-        /// <summary>Whether a tracked shot jumps to its target's point instead of easing there, as when it goes live.</summary>
-        public bool Snap { get; set; }
-
-        public ShotTimeline? Timeline { get; set; }
-
-        public List<ShotKey>? Keys { get; set; }
-
-        public int KeyCount { get; set; }
-
-        public float DefaultZoom { get; set; }
     }
 }

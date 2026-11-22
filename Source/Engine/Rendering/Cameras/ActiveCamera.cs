@@ -1,3 +1,5 @@
+using System.Numerics;
+
 using Arch.Core;
 
 using FlickerVoid.Engine.Rendering.Extraction;
@@ -7,7 +9,8 @@ namespace FlickerVoid.Engine.Rendering.Cameras;
 
 /// <summary>
 /// Marks the camera a director has made live, with the lens and world pose it is drawn with this frame, so the camera's own
-/// transform stays as authored; the renderer draws it first. Set while playing, never saved in scenes.
+/// transform stays as authored, and the transition it lays over the frame; the renderer draws it first. Set while playing, never
+/// saved in scenes.
 /// </summary>
 public struct ActiveCamera
 {
@@ -17,6 +20,19 @@ public struct ActiveCamera
     public Camera Lens { get; set; }
 
     public Transform Pose { get; set; }
+
+    /// <summary>How far the world is faded to <see cref="FadeColor"/>, from 0 to 1.</summary>
+    public float Fade { get; set; }
+
+    /// <summary>The colour of the fade, in display (sRGB) values.</summary>
+    public Vector3 FadeColor { get; set; }
+
+    /// <summary>How much of the previous shot's live view still shows over this one, from 0 to 1.</summary>
+    public float Dissolve { get; set; }
+
+    public Camera DissolveLens { get; set; }
+
+    public Transform DissolvePose { get; set; }
 
     /// <summary>The view the world is drawn from: the active camera's pose, else the first camera's own, or null without a camera.</summary>
     public static RenderCamera? Find(World world)

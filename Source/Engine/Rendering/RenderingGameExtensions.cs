@@ -2,6 +2,7 @@
 using System.Text.Json.Nodes;
 
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Rendering.Serialization;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Serialization;
@@ -11,7 +12,7 @@ namespace FlickerVoid.Engine.Rendering;
 /// <summary>Adds rendering to a game.</summary>
 public static class RenderingGameExtensions
 {
-    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume", "sceneMood" and "outline" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, and the schemas of lighting mood and material files.</summary>
+    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume", "sceneMood" and "outline" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, the <see cref="SceneRendererSetup"/> service, and the schemas of lighting mood and material files.</summary>
     public static void AddRendering(this Game game)
     {
         game.Spawner.Register("camera", RenderingJsonContext.Default.Camera);
@@ -26,6 +27,7 @@ public static class RenderingGameExtensions
         game.Schemas.Add("material", CreateMaterialSchema);
         game.Schemas.Add("canvas", CreateCanvasSchema);
         game.Schemas.Add("texture", CreateTextureSchema);
+        game.Services.AddService(new SceneRendererSetup());
         MeshAnimationSystem animation = new(game.World);
         game.FrameSystems.Add(animation);
     }
