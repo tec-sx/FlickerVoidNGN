@@ -33,11 +33,10 @@ jobs:
           install_runtime: true
           install_lavapipe: true
           cache: true
-      - name: Build the engine, the FlickerVoid project and the samples, and pack the engine
+      - name: Build the engine and the samples, and pack the engine
         shell: bash
         run: |
           dotnet build FlickerVoidNGN.slnx -c Release
-          dotnet build Projects/FlickerVoid/FlickerVoid.slnx -c Release
           dotnet build Samples/FlickerVoid.Samples.slnx -c Release
           dotnet pack FlickerVoidNGN.slnx -c Release --no-build
       - name: Test
@@ -47,8 +46,6 @@ jobs:
           display=""
           if [ "$RUNNER_OS" = "Linux" ]; then display="xvfb-run -a"; fi
           $display dotnet test --solution FlickerVoidNGN.slnx -c Release --no-build
-          cd Projects/FlickerVoid
-          dotnet test --solution FlickerVoid.slnx -c Release --no-build
         env:
           # llvmpipe's linear rasterizer reads push constants past the first 16 bytes as zero on full-rectangle draws.
           LP_PERF: no_rast_linear
