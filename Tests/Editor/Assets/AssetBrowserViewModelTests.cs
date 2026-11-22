@@ -210,6 +210,19 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     }
 
     [Fact]
+    public void ListsTheDataTypesOfTheReloadedCode()
+    {
+        AssetBrowserViewModel browser = _builder.Build();
+        List<string> changed = [];
+        browser.PropertyChanged += (_, e) => changed.Add(e.PropertyName!);
+
+        browser.ListDataTypes(Data.BarrelJsonContext.CreateTypes());
+
+        browser.NewChoices.Should().ContainSingle(static choice => choice.Group == "Data Asset" && choice.Name == "Barrel");
+        changed.Should().Contain(nameof(AssetBrowserViewModel.NewChoices));
+    }
+
+    [Fact]
     public void GroupsWhatItCreatesSoFlowsSitTogether()
     {
         AssetBrowserViewModel browser = _builder.Build();

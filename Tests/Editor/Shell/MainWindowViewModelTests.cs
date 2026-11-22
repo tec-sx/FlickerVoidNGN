@@ -12,6 +12,12 @@ public sealed class MainWindowViewModelTests : IDisposable
     public void Dispose() => _builder.Dispose();
 
     [Fact]
+    public void CompilesOnlyWithAProjectOpen()
+    {
+        _builder.ViewModel.CompileCommand.CanExecute(null).Should().BeFalse("only a project has code to compile");
+    }
+
+    [Fact]
     public void StarsTheTitleWhileTheSceneHasUnsavedEdits()
     {
         string saved = _builder.ViewModel.Title;

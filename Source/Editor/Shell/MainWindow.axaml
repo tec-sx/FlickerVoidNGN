@@ -18,6 +18,7 @@
     <KeyBinding Gesture="Ctrl+S" Command="{Binding Viewport.SaveCommand}" />
     <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveAssetsCommand}" />
     <KeyBinding Gesture="F5" Command="{Binding PlayCommand}" />
+    <KeyBinding Gesture="Ctrl+Alt+F11" Command="{Binding CompileCommand}" />
     <KeyBinding Gesture="Ctrl+D" Command="{Binding Viewport.DuplicateSelectedCommand}" />
   </Window.KeyBindings>
   <DockPanel>
@@ -61,10 +62,16 @@
             <PathIcon Data="{x:Static shell:MaterialIcons.GameView}" />
           </ToggleButton>
         </StackPanel>
-        <Button Grid.Column="1" Classes="icon play" Command="{Binding PlayCommand}" VerticalAlignment="Center"
-                ToolTip.Tip="Play (F5): runs the project's game on the scene as it is now, without saving it. Needs an open project.">
-          <PathIcon Data="{x:Static shell:MaterialIcons.Play}" />
-        </Button>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Classes="icon" Command="{Binding CompileCommand}"
+                  ToolTip.Tip="Compile (Ctrl+Alt+F11): builds the project's code again and reloads it, keeping the scene's unsaved edits. Needs an open project.">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Code}" />
+          </Button>
+          <Button Classes="icon play" Command="{Binding PlayCommand}"
+                  ToolTip.Tip="Play (F5): runs the project's game on the scene as it is now, without saving it. Needs an open project.">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Play}" />
+          </Button>
+        </StackPanel>
       </Grid>
     </Border>
     <Border DockPanel.Dock="Bottom" Classes="statusbar">

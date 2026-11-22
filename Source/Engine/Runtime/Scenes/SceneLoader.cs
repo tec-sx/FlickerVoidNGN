@@ -39,16 +39,30 @@ public sealed partial class SceneLoader : IDisposable
     /// <summary>Spawns the scene file at <paramref name="path"/> and returns its entities as spawned.</summary>
     public IReadOnlyList<Entity> Load(string path)
     {
-        string fullPath = _content.GetFullPath(path);
-        if (_loaded.ContainsKey(fullPath))
+        string fullPath = GetUnloadedPath(path);
+        SceneData scene = Read(path);
+        return Spawn(path, fullPath, scene);
+    }
+
+    /// <summary>
+    /// Spawns the scene file at <paramref name="path"/> from <paramref name="contents"/> in place of the file, such as a
+    /// <see cref="Capture"/> holding edits not saved yet; it is saved to the file and follows it as if loaded from it.
+    /// </summary>
+    public IReadOnlyList<Entity> Load(string path, byte[] contents)
+    {
+        string fullPath = GetUnloadedPath(path);
+        SceneData file;
+        try
         {
-            throw new InvalidOperationException($"{path} is already loaded.");
+            file = JsonSerializer.Deserialize(contents, RuntimeJsonContext.Default.SceneData) ?? throw new InvalidDataException($"{path} is empty.");
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException($"{path} can't be read: {exception.Message}", exception);
         }
 
-        SceneData scene = Read(path);
-        IReadOnlyList<Entity> entities = _spawner.Spawn(scene, _world);
-        _loaded.Add(fullPath, new LoadedScene(path, scene, entities));
-        return entities;
+        SceneData scene = Expand(file);
+        return Spawn(path, fullPath, scene);
     }
 
     /// <summary>
@@ -189,7 +203,30 @@ public sealed partial class SceneLoader : IDisposable
     private SceneData Read(string path)
     {
         SceneData file = _content.Load(path, RuntimeJsonContext.Default.SceneData);
+        return Expand(file);
+    }
+
+    private SceneData Expand(SceneData file)
+    {
         return new SceneData { Schema = file.Schema, Entities = [.. file.Entities.Select(Templates.Expand)] };
+    }
+
+    private string GetUnloadedPath(string path)
+    {
+        string fullPath = _content.GetFullPath(path);
+        if (_loaded.ContainsKey(fullPath))
+        {
+            throw new InvalidOperationException($"{path} is already loaded.");
+        }
+
+        return fullPath;
+    }
+
+    private IReadOnlyList<Entity> Spawn(string path, string fullPath, SceneData scene)
+    {
+        IReadOnlyList<Entity> entities = _spawner.Spawn(scene, _world);
+        _loaded.Add(fullPath, new LoadedScene(path, scene, entities));
+        return entities;
     }
 
     private void Reload(string fullPath, LoadedScene loaded)

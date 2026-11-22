@@ -49,7 +49,7 @@ public sealed partial class App : Application
             }
             else
             {
-                desktop.MainWindow = CreateEditor(Options.Content, Options.Scene, Options.Game, Options.Code);
+                desktop.MainWindow = CreateEditor(Options.Content, Options.Scene, Options.Game, Options.GameProject, Options.Code);
             }
         }
 
@@ -64,7 +64,7 @@ public sealed partial class App : Application
         ProjectPickerWindow window = new() { DataContext = picker };
         picker.Opened += project =>
         {
-            Window editor = CreateEditor(project.ContentFolder, project.StartupScene, project.Program, project.CodeFolder);
+            Window editor = CreateEditor(project.ContentFolder, project.StartupScene, project.Program, project.Game, project.CodeFolder);
             desktop.MainWindow = editor;
             editor.Show();
             window.Close();
@@ -72,16 +72,18 @@ public sealed partial class App : Application
         return window;
     }
 
-    private Window CreateEditor(string content, string? scene, string? game, string? code)
+    private Window CreateEditor(string content, string? scene, string? game, string? gameProject, string? code)
     {
         UnsavedContent unsaved = new(new ContentManager(content));
         IReadOnlyList<IGameModule> modules = [];
+        GameCode? gameCode = null;
         string? codeProblem = null;
         if (game is not null)
         {
             try
             {
-                modules = GameCode.Load(game);
+                gameCode = GameCode.Load(game);
+                modules = gameCode.Modules;
             }
             catch (Exception exception) when (exception is IOException or BadImageFormatException or TypeLoadException or MissingMethodException)
             {
@@ -122,7 +124,13 @@ public sealed partial class App : Application
             codeFolder = code;
         }
 
-        MainWindowViewModel main = new(viewport, inspector, unsaved, player, codeFolder);
+        GameCompiler? compiler = null;
+        if (gameProject is not null)
+        {
+            compiler = new GameCompiler(_scene, gameProject, new DotnetProjectBuilder(), gameCode);
+        }
+
+        MainWindowViewModel main = new(viewport, inspector, unsaved, player, codeFolder, compiler);
         _poll = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, HandlePoll);
         _poll.Start();
         return new MainWindow { DataContext = main };
