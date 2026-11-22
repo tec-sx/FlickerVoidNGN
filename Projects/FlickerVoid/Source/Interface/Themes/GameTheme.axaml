@@ -1,59 +1,73 @@
-<!-- The game's look over Fluent: warm, dark, see-through panels with ink-coloured edges, and parchment text. -->
+<!-- The game's look over Fluent. HUD lines, text and icons are drawn in HudTint, white by default, so one colour tints them all;
+     panels are dark and see-through; the hub's accent is the yellow of its striped bar. Headings use Glitch Goblin, text Rajdhani
+     (both SIL OFL 1.1, licences beside the fonts). -->
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:FlickerVoid.Interface.Controls">
   <Styles.Resources>
-    <SolidColorBrush x:Key="PanelBrush" Color="#D8211A15" />
-    <SolidColorBrush x:Key="PanelEdgeBrush" Color="#806B5440" />
-    <SolidColorBrush x:Key="TextBrush" Color="#F2E6D2" />
-    <SolidColorBrush x:Key="MutedTextBrush" Color="#B8A88F" />
-    <SolidColorBrush x:Key="AccentBrush" Color="#F0B46A" />
-    <SolidColorBrush x:Key="LockedBrush" Color="#8C7F70" />
+    <Color x:Key="HudTint">#FFFFFF</Color>
+    <SolidColorBrush x:Key="HudTintBrush" Color="{StaticResource HudTint}" />
+    <SolidColorBrush x:Key="HudMutedBrush" Color="{StaticResource HudTint}" Opacity="0.62" />
+    <SolidColorBrush x:Key="HudFaintBrush" Color="{StaticResource HudTint}" Opacity="0.35" />
+    <SolidColorBrush x:Key="PanelBrush" Color="#C4080A10" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#E8A700" />
+    <SolidColorBrush x:Key="InkBrush" Color="#0B0B0D" />
+    <FontFamily x:Key="HeadingFont">avares://FlickerVoid.Interface/Assets/Fonts#Glitch Goblin</FontFamily>
+    <FontFamily x:Key="TextFont">avares://FlickerVoid.Interface/Assets/Fonts#Rajdhani</FontFamily>
   </Styles.Resources>
 
-  <Style Selector="Border.panel">
-    <Setter Property="Background" Value="{StaticResource PanelBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource PanelEdgeBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
+  <Style Selector="controls|HudFrame">
+    <Setter Property="Stroke" Value="{StaticResource HudFaintBrush}" />
+    <Setter Property="Fill" Value="{StaticResource PanelBrush}" />
     <Setter Property="Padding" Value="16,12" />
   </Style>
 
   <Style Selector="TextBlock">
-    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}" />
+    <Setter Property="Foreground" Value="{StaticResource HudTintBrush}" />
+    <Setter Property="FontSize" Value="17" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
   <Style Selector="TextBlock.heading">
-    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+    <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="LetterSpacing" Value="1" />
+  </Style>
+  <Style Selector="TextBlock.label">
     <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="FontSize" Value="16" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="LetterSpacing" Value="2" />
+    <Setter Property="Foreground" Value="{StaticResource HudMutedBrush}" />
   </Style>
   <Style Selector="TextBlock.muted">
-    <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
-    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{StaticResource HudMutedBrush}" />
+    <Setter Property="FontSize" Value="15" />
   </Style>
   <Style Selector="TextBlock.locked">
-    <Setter Property="Foreground" Value="{StaticResource LockedBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource HudFaintBrush}" />
   </Style>
 
-  <!-- Choices read as lines of text that light up, not as boxes. -->
+  <!-- Choices read as lines of text with a bar that lights up, not as boxes. -->
   <Style Selector="Button.choice">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Padding" Value="4,3" />
+    <Setter Property="BorderThickness" Value="2,0,0,0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="10,3" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Left" />
   </Style>
   <Style Selector="Button.choice:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="#33F0B46A" />
+    <Setter Property="Background" Value="#22FFFFFF" />
+    <Setter Property="BorderBrush" Value="{StaticResource HudTintBrush}" />
   </Style>
-  <Style Selector="Button.choice:pointerover TextBlock">
-    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-  </Style>
-  <Style Selector="Button.choice:disabled TextBlock">
-    <Setter Property="Foreground" Value="{StaticResource LockedBrush}" />
+  <Style Selector="Button.choice:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="#38FFFFFF" />
   </Style>
   <Style Selector="Button.choice:disabled /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.choice:disabled TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource HudFaintBrush}" />
   </Style>
 </Styles>

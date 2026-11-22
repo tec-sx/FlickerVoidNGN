@@ -12,7 +12,7 @@ namespace FlickerVoid.Interface;
 
 /// <summary>
 /// FlickerVoid's interface over a game: the HUD's view model and view, and a frame system that shows the prompt for what the
-/// pointer is over. Draw <see cref="View"/> with the engine's <c>GameUi</c>.
+/// pointer is over and turns the minimap. Draw <see cref="View"/> with the engine's <c>GameUi</c>.
 /// </summary>
 public sealed class GameInterface : ISystem<GameTime>
 {
@@ -46,6 +46,7 @@ public sealed class GameInterface : ISystem<GameTime>
         }
 
         Hud.Prompt.Update(hovered);
+        Hud.Minimap.Update();
     }
 
     public void AfterUpdate(in GameTime t)

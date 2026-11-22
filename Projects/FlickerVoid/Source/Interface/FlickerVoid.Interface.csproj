@@ -10,6 +10,9 @@
     <PackageReference Include="CommunityToolkit.Mvvm" />
   </ItemGroup>
   <ItemGroup>
+    <AvaloniaResource Include="Assets/**" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Ui/FlickerVoid.Engine.Ui.csproj" />
     <ProjectReference Include="../Gameplay/FlickerVoid.Gameplay.csproj" />
   </ItemGroup>
