@@ -7,6 +7,8 @@ using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Flows;
 using FlickerVoid.Editor.Inspector;
 using FlickerVoid.Editor.Materials;
+using FlickerVoid.Editor.Persistence.Projects;
+using FlickerVoid.Editor.Projects;
 using FlickerVoid.Editor.Scenes;
 
 namespace FlickerVoid.Editor;
@@ -16,6 +18,9 @@ public sealed partial class MainWindow : Window
 {
     private MaterialEditorWindow? _materials;
     private bool _closingDecided;
+
+    /// <summary>The project the editor reopens on once this window has closed, chosen with Open Project.</summary>
+    private string? _reopenProject;
 
     public MainWindow()
     {
@@ -51,6 +56,7 @@ public sealed partial class MainWindow : Window
                 main.DiscardAssets();
                 break;
             default:
+                _reopenProject = null;
                 return;
         }
 
@@ -68,6 +74,47 @@ public sealed partial class MainWindow : Window
             AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
             main.AskUnsaved = AskUnsaved;
         }
+    }
+
+    /// <summary>Starts the editor again on the project chosen with Open Project, as Unreal does, since a run loads one game's code.</summary>
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        if (_reopenProject is null)
+        {
+            return;
+        }
+
+        string editor = Environment.ProcessPath!;
+        if (Path.GetFileNameWithoutExtension(editor) == "dotnet")
+        {
+            editor = typeof(MainWindow).Assembly.Location;
+        }
+
+        ProcessGameLauncher launcher = new();
+        launcher.Launch(editor, [_reopenProject]);
+    }
+
+    /// <summary>Shows the project picker; the project it opens replaces this one after the unsaved prompt.</summary>
+    private async void HandleOpenProjectClick(object? sender, RoutedEventArgs e)
+    {
+        string folder = ProjectPickerViewModel.GetDefaultProjectsFolder();
+        ProjectPickerViewModel picker = new(folder, new DotnetProjectBuilder(), new TemplateProjectCreator());
+        ProjectPickerWindow window = new() { DataContext = picker };
+        string? chosen = null;
+        picker.Opened += project =>
+        {
+            chosen = project.File;
+            window.Close();
+        };
+        await window.ShowDialog(this);
+        if (chosen is null)
+        {
+            return;
+        }
+
+        _reopenProject = chosen;
+        Close();
     }
 
     private Task<UnsavedAssetsChoice?> AskUnsaved(IReadOnlyList<string> paths)
