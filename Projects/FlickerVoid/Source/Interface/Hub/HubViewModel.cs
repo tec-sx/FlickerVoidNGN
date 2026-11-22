@@ -41,10 +41,15 @@ public sealed partial class HubViewModel : ObservableObject
     public JournalPageViewModel Journal { get; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShownPage))]
     public partial bool IsOpen { get; private set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShownPage))]
     public partial HubPageViewModel SelectedPage { get; private set; }
+
+    /// <summary>The selected page while the hub is open, else none, so a closed hub holds no page view (nor a stage being drawn).</summary>
+    public HubPageViewModel? ShownPage => IsOpen ? SelectedPage : null;
 
     public void Toggle()
     {
