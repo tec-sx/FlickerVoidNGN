@@ -49,6 +49,23 @@ public sealed class PathSystem : IPathFinder
         return Mesh.TryFindPath(from, to, corners);
     }
 
+    /// <summary>A random point of the ground within the radius of a point, such as where a resident wanders next; false when there is none.</summary>
+    public bool TryFindRandomPoint(Vector3 around, float radius, Random random, out Vector3 point)
+    {
+        if (_dirty)
+        {
+            Build();
+        }
+
+        if (Mesh is null)
+        {
+            point = around;
+            return false;
+        }
+
+        return Mesh.TryFindRandomPoint(around, radius, random, out point);
+    }
+
     private void Build()
     {
         _dirty = false;

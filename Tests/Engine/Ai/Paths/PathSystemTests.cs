@@ -32,6 +32,36 @@ public sealed class PathSystemTests : IDisposable
     }
 
     [Fact]
+    public void FindsRandomPointsOnTheGroundWithinARadius()
+    {
+        PathSystem paths = _builder.WithFloor().WithWall().Build();
+        Random random = new(7);
+        List<Vector3> points = [];
+
+        for (int index = 0; index < 20; index++)
+        {
+            paths.TryFindRandomPoint(West, 1.5f, random, out Vector3 point).Should().BeTrue();
+            points.Add(point);
+        }
+
+        points.Should().AllSatisfy(point =>
+        {
+            Vector2 offset = new(point.X - West.X, point.Z - West.Z);
+            offset.Length().Should().BeLessThanOrEqualTo(1.5f);
+            point.Y.Should().BeApproximately(0, 0.2f);
+        });
+        points.Distinct().Should().HaveCountGreaterThan(10);
+    }
+
+    [Fact]
+    public void FindsNoRandomPointWithoutAnyGround()
+    {
+        PathSystem paths = _builder.Build();
+
+        paths.TryFindRandomPoint(West, 1.5f, new Random(7), out _).Should().BeFalse();
+    }
+
+    [Fact]
     public void GoesAroundAWallKeepingItsRadiusAway()
     {
         PathSystem paths = _builder.WithFloor().WithWall().Build();

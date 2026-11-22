@@ -3,6 +3,8 @@ using Arch.Core;
 using FlickerVoid.Engine.Abilities;
 using FlickerVoid.Engine.Abilities.Activation;
 using FlickerVoid.Engine.Ai;
+using FlickerVoid.Engine.Ai.Paths;
+using FlickerVoid.Engine.Ai.Senses;
 using FlickerVoid.Engine.Attributes;
 using FlickerVoid.Engine.Attributes.Checks;
 using FlickerVoid.Engine.Characters;
@@ -24,12 +26,14 @@ using FlickerVoid.Gameplay.Protagonist.Control;
 using FlickerVoid.Gameplay.Protagonist.Resources.Possessions;
 using FlickerVoid.Gameplay.Serialization;
 using FlickerVoid.Gameplay.World.Objects.Doors;
+using FlickerVoid.Gameplay.World.Society.Residents;
 
 namespace FlickerVoid.Gameplay;
 
 /// <summary>
 /// FlickerVoid's gameplay: physics, point and click characters, interaction, attributes and abilities, possessions, quests and knowledge for the protagonist,
-/// conversations, and doors that keys open and lockpicks pick; the click control only where there is a window to click in.
+/// conversations, doors that keys open and lockpicks pick, and residents who wander, watch and listen; the click control only where
+/// there is a window to click in.
 /// </summary>
 public sealed class GameplayModule : IGameModule
 {
@@ -37,7 +41,7 @@ public sealed class GameplayModule : IGameModule
     {
         IPhysicsSystem physics = game.AddPhysics();
         game.AddCharacters();
-        game.AddAi();
+        PathSystem paths = game.AddAi();
         game.AddInteraction();
         game.AddAttributes();
         AbilitySystem abilities = game.AddAbilities();
@@ -55,6 +59,11 @@ public sealed class GameplayModule : IGameModule
         _ = new LockpickSystem(game.World, game.Events, abilities, checks, game.Facts, game.Services);
         DoorSwingSystem doors = new(game);
         game.FixedSystems.Add(doors);
+
+        game.Spawner.Register("resident", FlickerVoidJsonContext.Default.Resident);
+        PerceptionSystem perception = game.Services.GetService<PerceptionSystem>()!;
+        ResidentSystem residents = new(game, paths, perception, dialogue, Random.Shared);
+        game.FixedSystems.Add(residents);
 
         IGameWindow? window = game.Services.GetService<IGameWindow>();
         IInputState? input = game.Services.GetService<IInputState>();
