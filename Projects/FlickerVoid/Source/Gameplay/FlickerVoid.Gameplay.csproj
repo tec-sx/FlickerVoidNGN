@@ -10,6 +10,7 @@
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Dialogue/FlickerVoid.Engine.Dialogue.csproj" />
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Interaction/FlickerVoid.Engine.Interaction.csproj" />
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Inventory/FlickerVoid.Engine.Inventory.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Maps/FlickerVoid.Engine.Maps.csproj" />
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Story/FlickerVoid.Engine.Story.csproj" />
   </ItemGroup>
