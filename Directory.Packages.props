@@ -10,6 +10,10 @@
   <ItemGroup Label="Physics">
     <PackageVersion Include="BepuPhysics" Version="2.5.0-beta.33" />
   </ItemGroup>
+  <ItemGroup Label="Ai">
+    <PackageVersion Include="DotRecast.Detour" Version="2026.3.1" />
+    <PackageVersion Include="DotRecast.Recast" Version="2026.3.1" />
+  </ItemGroup>
   <ItemGroup Label="Debug">
     <PackageVersion Include="Hexa.NET.ImGui" Version="2.2.9" />
   </ItemGroup>

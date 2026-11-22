@@ -139,7 +139,7 @@ public sealed class ClickControlSystemTests : IDisposable
         _builder.Run(2.5f);
 
         Vector3 position = _builder.Game.World.Get<Transform>(spawned[2]).Position;
-        position.X.Should().BeApproximately(1.125f, 0.06f);
+        position.X.Should().BeInRange(1.3f, 1.5f, "it stops within reach, its radius clear of the door's edge");
         _builder.Game.World.Get<Lockable>(door).Locked.Should().BeTrue();
         _builder.Game.World.Get<Toggle>(door).Open.Should().BeFalse();
         rattles.Should().ContainSingle().Which.Should().Be(DoorSwingSystem.RattleTime);

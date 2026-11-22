@@ -2,6 +2,7 @@ using Arch.Core;
 
 using FlickerVoid.Engine.Abilities;
 using FlickerVoid.Engine.Abilities.Activation;
+using FlickerVoid.Engine.Ai;
 using FlickerVoid.Engine.Attributes;
 using FlickerVoid.Engine.Attributes.Checks;
 using FlickerVoid.Engine.Characters;
@@ -36,6 +37,7 @@ public sealed class GameplayModule : IGameModule
     {
         IPhysicsSystem physics = game.AddPhysics();
         game.AddCharacters();
+        game.AddAi();
         game.AddInteraction();
         game.AddAttributes();
         AbilitySystem abilities = game.AddAbilities();
