@@ -1,0 +1,77 @@
+<!-- The inventory page: weight and money over the grid of carried stacks and the selected stack's details at the left, the stage for the
+     protagonist in the middle, and the outfit slots in two columns at the right. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:inventory="using:FlickerVoid.Interface.Hub.Inventory"
+             xmlns:controls="using:FlickerVoid.Interface.Controls"
+             x:Class="FlickerVoid.Interface.Hub.Inventory.InventoryPageView"
+             x:DataType="inventory:InventoryPageViewModel">
+  <Grid ColumnDefinitions="340,*,180">
+    <StackPanel Grid.Column="0" Spacing="18">
+      <StackPanel Orientation="Horizontal" Spacing="28">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Classes="label" Text="WEIGHT" VerticalAlignment="Center" />
+          <TextBlock Classes="value" Text="{Binding Weight}" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Classes="label" Text="MONEY" VerticalAlignment="Center" />
+          <TextBlock Classes="value" Text="{Binding Money}" />
+        </StackPanel>
+      </StackPanel>
+      <ItemsControl ItemsSource="{Binding Cells}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <UniformGrid Columns="4" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="inventory:InventoryCellViewModel">
+            <Button Classes="cell" Classes.selected="{Binding IsSelected}" Classes.worn="{Binding IsWorn}"
+                    Command="{Binding SelectCommand}" IsEnabled="{Binding !IsEmpty}">
+              <Grid>
+                <TextBlock Classes="cell" Text="{Binding Name}" />
+                <TextBlock Classes="count" Text="{Binding Quantity}" />
+              </Grid>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <controls:HudFrame IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="heading" Text="{Binding SelectedName}" />
+          <TextBlock Classes="muted" Text="{Binding SelectedDescription}" IsVisible="{Binding !!SelectedDescription.Length}" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Classes="action" Command="{Binding UseCommand}" IsVisible="{Binding CanUse}">
+              <TextBlock Classes="action" Text="Use" />
+            </Button>
+            <Button Classes="action" Command="{Binding ToggleWornCommand}" IsVisible="{Binding CanWear}">
+              <TextBlock Classes="action" Text="{Binding WearLabel}" />
+            </Button>
+          </StackPanel>
+        </StackPanel>
+      </controls:HudFrame>
+    </StackPanel>
+
+    <!-- The stage shows the protagonist here. -->
+    <Panel Grid.Column="1" />
+
+    <ItemsControl Grid.Column="2" ItemsSource="{Binding Slots}" VerticalAlignment="Top">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <UniformGrid Columns="2" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="inventory:OutfitSlotViewModel">
+          <StackPanel Spacing="4" Margin="3,0,3,10">
+            <Button Classes="slot" Classes.selected="{Binding IsSelected}" Classes.take="{Binding CanTake}"
+                    Classes.blocked="{Binding IsBlocked}" Command="{Binding SelectCommand}">
+              <TextBlock Classes="cell" Text="{Binding ItemName}" />
+            </Button>
+            <TextBlock Classes="slot" Text="{Binding Label}" />
+          </StackPanel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </Grid>
+</UserControl>
