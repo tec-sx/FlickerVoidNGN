@@ -12,21 +12,23 @@ namespace FlickerVoid.Editor.Core.Scenes;
 
 /// <summary>
 /// A kind of entity the editor can add: a name, the components it starts with, each with its defaults, and the group it is listed
-/// under in the Add menu (<see cref="EntityPresetGroup.Custom"/> when it names none). The entity is named uniquely in the scene,
+/// under in the Add menu, if any, and its icon there, named as in the shell's icon set. The entity is named uniquely in the scene,
 /// because changes to the scene file match entities by name.
 /// </summary>
 public sealed record EntityPreset(string Name, IReadOnlyList<string> Components, string? Group = null)
 {
     public static IReadOnlyList<EntityPreset> All { get; } =
     [
-        new("Empty", ["transform"], "Empty"),
-        new("Mesh", ["transform", "meshRenderer"], "Model"),
-        new("Point Light", ["transform", "pointLight"], "Light"),
-        new("Spot Light", ["transform", "spotLight"], "Light"),
-        new("Irradiance Volume", ["transform", "irradianceVolume"], "Light"),
-        new("Scene Mood", ["transform", "sceneMood"], "Light"),
-        new("Camera", ["transform", "camera"], "Camera"),
+        new("Empty", ["transform"], "Empty") { Icon = "Empty" },
+        new("Mesh", ["transform", "meshRenderer"], "Model") { Icon = "Model" },
+        new("Point Light", ["transform", "pointLight"], "Light") { Icon = "PointLight" },
+        new("Spot Light", ["transform", "spotLight"], "Light") { Icon = "SpotLight" },
+        new("Irradiance Volume", ["transform", "irradianceVolume"], "Light") { Icon = "Grid" },
+        new("Scene Mood", ["transform", "sceneMood"], "Light") { Icon = "Mood" },
+        new("Camera", ["transform", "camera"], "Camera") { Icon = "Camera" },
     ];
+
+    public string? Icon { get; init; }
 
     /// <summary>The starting JSON of this preset's components, over <see cref="Defaults"/>.</summary>
     public IReadOnlyDictionary<string, string> Values { get; init; } = new Dictionary<string, string>();
@@ -43,7 +45,7 @@ public sealed record EntityPreset(string Name, IReadOnlyList<string> Components,
         string name = Path.GetFileNameWithoutExtension(path);
         JsonEncodedText mesh = JsonEncodedText.Encode(path);
         Dictionary<string, string> values = new() { ["meshRenderer"] = $$"""{ "mesh": "{{mesh}}" }""" };
-        return new EntityPreset(name, ["transform", "meshRenderer"], "Model") { Values = values };
+        return new EntityPreset(name, ["transform", "meshRenderer"], "Model") { Values = values, Icon = "Model" };
     }
 
     /// <summary>The scene data of a new entity at <paramref name="position"/>, named apart from the entities in <paramref name="world"/>.</summary>

@@ -17,6 +17,9 @@ public sealed class EditorCamera
 
     public const float MinPivotDistance = 0.1f;
 
+    /// <summary>How much bigger than a framed sphere the view is.</summary>
+    private const float FrameRoom = 1.2f;
+
     /// <summary>How much of the distance to the pivot one step of dollying in keeps.</summary>
     private const float DollyPerStep = 0.85f;
 
@@ -60,6 +63,15 @@ public sealed class EditorCamera
         Pitch = Math.Clamp(pitch, -PitchLimit, PitchLimit);
         PivotDistance = Math.Max(distance, MinPivotDistance);
         Position = pivot - (Forward * PivotDistance);
+    }
+
+    /// <summary>Keeps looking the same way and moves so a sphere fills the view with a little room round it (F in the viewport).</summary>
+    public void Frame(Vector3 center, float radius)
+    {
+        float halfAngle = float.DegreesToRadians(FieldOfView) / 2;
+        float room = Math.Max(radius, MinPivotDistance) * FrameRoom;
+        float distance = room / MathF.Sin(halfAngle);
+        LookAt(center, Yaw, Pitch, distance);
     }
 
     public void Turn(float yaw, float pitch)

@@ -25,6 +25,7 @@ public sealed class SceneSpawner : ISceneSpawner
     {
         Lifecycle = lifecycle;
         ArrayRegistry.Add<EntityName>();
+        ArrayRegistry.Add<EntityFolder>();
     }
 
     public EntityLifecycle Lifecycle { get; }
@@ -54,6 +55,7 @@ public sealed class SceneSpawner : ISceneSpawner
         {
             ["name"] = new JsonObject { ["type"] = "string" },
             ["template"] = new JsonObject { ["type"] = "string" },
+            ["folder"] = new JsonObject { ["type"] = "string" },
             ["components"] = components,
         };
         JsonObject entity = new() { ["type"] = "object", ["properties"] = entityProperties, ["additionalProperties"] = false };
@@ -174,6 +176,11 @@ public sealed class SceneSpawner : ISceneSpawner
             data.Name = name.Value;
         }
 
+        if (world.TryGet(entity, out EntityFolder folder))
+        {
+            data.Folder = folder.Path;
+        }
+
         foreach ((string key, JsonElement old) in previous.Components)
         {
             SceneComponent component = _components[key];
@@ -266,6 +273,8 @@ public sealed class SceneSpawner : ISceneSpawner
                 world.Add(entity, in name);
             }
 
+            SetFolder(world, entity, data.Folder);
+
             foreach ((string key, JsonElement value) in data.Components)
             {
                 Write(world, entity, data, key, value);
@@ -280,8 +289,33 @@ public sealed class SceneSpawner : ISceneSpawner
         return entity;
     }
 
+    private static void SetFolder(World world, Entity entity, string? path)
+    {
+        bool has = world.Has<EntityFolder>(entity);
+        if (string.IsNullOrEmpty(path))
+        {
+            if (has)
+            {
+                world.Remove<EntityFolder>(entity);
+            }
+
+            return;
+        }
+
+        EntityFolder folder = new(path);
+        if (has)
+        {
+            world.Set(entity, folder);
+        }
+        else
+        {
+            world.Add(entity, in folder);
+        }
+    }
+
     private void PatchComponents(World world, Entity entity, EntityData previous, EntityData current)
     {
+        SetFolder(world, entity, current.Folder);
         foreach ((string key, JsonElement value) in current.Components)
         {
             bool unchanged = previous.Components.TryGetValue(key, out JsonElement old) && old.GetRawText() == value.GetRawText();

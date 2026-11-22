@@ -1,75 +1,90 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:assets="using:FlickerVoid.Editor.Assets"
+             xmlns:flows="using:FlickerVoid.Editor.Assets.Flows"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
              x:Class="FlickerVoid.Editor.Assets.AssetBrowserView"
              x:DataType="assets:AssetBrowserViewModel">
-  <UserControl.Resources>
-    <ControlTheme x:Key="ChoiceItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="assets:AssetChoice">
-      <Setter Property="Header" Value="{Binding Name}" />
-      <Setter Property="Command" Value="{Binding Command}" />
-    </ControlTheme>
-    <MenuFlyout x:Key="NewMenu">
-      <MenuItem Header="Folder" Command="{Binding CreateFolderCommand}" />
-      <MenuItem Header="Scene" Command="{Binding CreateSceneCommand}" />
-      <MenuItem Header="Material" Command="{Binding CreateMaterialCommand}" />
-      <MenuItem Header="Mood" Command="{Binding CreateMoodCommand}" />
-      <MenuItem Header="Flow" Command="{Binding CreateFlowCommand}" />
-      <MenuItem Header="Data Asset" ItemsSource="{Binding DataChoices}" IsEnabled="{Binding !!DataChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
-      <MenuItem Header="Table" ItemsSource="{Binding TableChoices}" IsEnabled="{Binding !!TableChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
-    </MenuFlyout>
-  </UserControl.Resources>
-  <Grid ColumnDefinitions="160,2,*">
-    <TreeView x:Name="FolderTree" ItemsSource="{Binding Folders}" SelectedItem="{Binding SelectedFolder}" DragDrop.AllowDrop="True">
-      <TreeView.ItemTemplate>
-        <TreeDataTemplate DataType="assets:AssetFolder" ItemsSource="{Binding Children}">
-          <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent">
-            <PathIcon Width="14" Height="14" Data="{x:Static shell:MaterialIcons.Folder}" Foreground="#DCBC98" />
-            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-          </StackPanel>
-        </TreeDataTemplate>
-      </TreeView.ItemTemplate>
-      <TreeView.ContextMenu>
-        <ContextMenu>
-          <MenuItem Header="New Folder" Command="{Binding CreateFolderCommand}" />
-          <MenuItem Header="New Scene" Command="{Binding CreateSceneCommand}" />
-          <MenuItem Header="New Material" Command="{Binding CreateMaterialCommand}" />
-          <MenuItem Header="New Mood" Command="{Binding CreateMoodCommand}" />
-          <MenuItem Header="New Flow" Command="{Binding CreateFlowCommand}" />
-          <MenuItem Header="New Data Asset" ItemsSource="{Binding DataChoices}" IsEnabled="{Binding !!DataChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
-          <MenuItem Header="New Table" ItemsSource="{Binding TableChoices}" IsEnabled="{Binding !!TableChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
-          <Separator />
-          <MenuItem Header="Rename Folder" Click="HandleRenameFolderClick" InputGesture="F2" />
-          <MenuItem Header="Delete Folder" Click="HandleDeleteFolderClick" />
-        </ContextMenu>
-      </TreeView.ContextMenu>
-    </TreeView>
+  <!-- The folder tree under its search box, a narrow column of kind filters, and the tiles; everything else is in the context
+       menus (right-click) and the New menu (Shift+A). -->
+  <Grid ColumnDefinitions="170,2,Auto,*" controls:EditorMenus.AddChoices="{Binding NewChoices}">
+    <DockPanel>
+      <controls:SearchBox DockPanel.Dock="Top" Margin="3" Text="{Binding SearchText}"
+                          ToolTip.Tip="Search every file below the selected folder." />
+      <Border Classes="well">
+      <TreeView x:Name="FolderTree" ItemsSource="{Binding Folders}" SelectedItem="{Binding SelectedFolder}" DragDrop.AllowDrop="True">
+        <TreeView.ItemTemplate>
+          <TreeDataTemplate DataType="assets:AssetFolder" ItemsSource="{Binding Children}">
+            <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent">
+              <PathIcon Width="14" Height="14" Data="{Binding Converter={x:Static assets:AssetKindLooks.FolderIcon}}"
+                        Foreground="{Binding Converter={x:Static assets:AssetKindLooks.FolderBrush}}" />
+              <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+            </StackPanel>
+          </TreeDataTemplate>
+        </TreeView.ItemTemplate>
+        <TreeView.ContextMenu>
+          <ContextMenu>
+            <MenuItem Header="New" ItemsSource="{Binding NewChoices, Converter={x:Static controls:MenuConverters.Separators}}"
+                      ItemContainerTheme="{StaticResource ChoiceMenuItem}" InputGesture="Shift+A">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Add}" /></MenuItem.Icon>
+            </MenuItem>
+            <Separator />
+            <MenuItem Header="Rename Folder" Click="HandleRenameFolderClick" InputGesture="F2">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Rename}" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Delete Folder" Click="HandleDeleteFolderClick" InputGesture="Delete">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Delete}" /></MenuItem.Icon>
+            </MenuItem>
+            <Separator />
+            <MenuItem Header="Refresh" Command="{Binding RefreshCommand}">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Refresh}" /></MenuItem.Icon>
+            </MenuItem>
+          </ContextMenu>
+        </TreeView.ContextMenu>
+      </TreeView>
+      </Border>
+    </DockPanel>
     <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-    <DockPanel Grid.Column="2">
-      <DockPanel DockPanel.Dock="Top" Margin="2,1">
-        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="2">
-          <Button Classes="icon" ToolTip.Tip="Up to the parent folder" Command="{Binding UpCommand}">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Collapse}" />
-          </Button>
-          <Button Classes="icon" ToolTip.Tip="New folder, scene, material or mood" Flyout="{StaticResource NewMenu}">
-            <PathIcon Data="{x:Static shell:MaterialIcons.New}" />
-          </Button>
-          <Button Classes="icon" Command="{Binding RefreshCommand}" ToolTip.Tip="Refresh">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Refresh}" />
-          </Button>
-          <ComboBox ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Width="100">
-            <ComboBox.ItemTemplate>
-              <DataTemplate DataType="assets:AssetFilter">
-                <TextBlock Text="{Binding Label}" />
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
-          <TextBox Text="{Binding SearchText}" PlaceholderText="Search" Width="160" />
-          <TextBlock Text="{Binding SelectedFolder.Path}" VerticalAlignment="Center" Margin="6,0" Opacity="0.6" />
-        </StackPanel>
-        <TextBlock Text="{Binding Status}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="6,0"
+    <Border Grid.Column="2" Classes="well">
+    <ListBox ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Classes="filters"
+             ToolTip.Tip="Show one kind of file, from every folder below the selected one.">
+      <ListBox.ItemTemplate>
+        <DataTemplate DataType="assets:AssetFilter">
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <Panel Width="12" Height="12">
+              <PathIcon Width="12" Height="12" Data="{Binding Kind, Converter={x:Static assets:AssetKindLooks.Icon}}"
+                        Foreground="{Binding Kind, Converter={x:Static assets:AssetKindLooks.Brush}}"
+                        IsVisible="{Binding Kind, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </Panel>
+            <TextBlock Text="{Binding Label}" Classes="small" VerticalAlignment="Center" />
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    </Border>
+    <DockPanel Grid.Column="3">
+      <DockPanel DockPanel.Dock="Top" Margin="6,2" Height="18">
+        <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" VerticalAlignment="Center" Margin="6,0"
                    Foreground="{StaticResource EditorDeleteBrush}" TextTrimming="CharacterEllipsis" />
+        <TextBlock Text="{Binding SelectedFolder.Path}" VerticalAlignment="Center" Opacity="0.6" TextTrimming="CharacterEllipsis" />
       </DockPanel>
+      <!-- Asks for a new flow node class's name and code folder; Enter creates it, Escape cancels. -->
+      <Border DockPanel.Dock="Top" Margin="6,2" Padding="8" CornerRadius="5" BorderBrush="{StaticResource EditorLineBrush}" BorderThickness="1"
+              IsVisible="{Binding Prompt, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <StackPanel x:DataType="flows:FlowNodePrompt" DataContext="{Binding Prompt}" Orientation="Horizontal" Spacing="6"
+                    KeyDown="HandlePromptKeyDown">
+          <PathIcon Width="14" Height="14" Data="{x:Static shell:MaterialIcons.Code}" Foreground="#B48EC9" />
+          <TextBlock Text="New Flow Node" VerticalAlignment="Center" FontWeight="SemiBold" />
+          <TextBox x:Name="PromptName" Width="180" Text="{Binding Name}" Watermark="Name, such as Open Gate" />
+          <TextBlock Text="in" VerticalAlignment="Center" Opacity="0.6" />
+          <ComboBox MinWidth="220" ItemsSource="{Binding Folders}" SelectedItem="{Binding Folder}"
+                    ToolTip.Tip="The code folder the class goes in; its namespace follows the folder." />
+          <Button Content="Create" Click="HandlePromptCreateClick" />
+          <Button Content="Cancel" Click="HandlePromptCancelClick" />
+        </StackPanel>
+      </Border>
+      <Border Classes="well">
       <ListBox x:Name="AssetList" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedAsset}" DragDrop.AllowDrop="True"
                DoubleTapped="HandleDoubleTapped" KeyDown="HandleKeyDown" Background="Transparent"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
@@ -97,20 +112,30 @@
         </ListBox.ItemTemplate>
         <ListBox.ContextMenu>
           <ContextMenu>
-            <MenuItem Header="Open" Command="{Binding OpenCommand}" CommandParameter="{Binding SelectedAsset}" InputGesture="Enter" />
-            <MenuItem Header="Rename" Click="HandleRenameClick" InputGesture="F2" />
-            <MenuItem Header="Delete" Click="HandleDeleteClick" InputGesture="Delete" />
+            <MenuItem Header="Open" Command="{Binding OpenCommand}" CommandParameter="{Binding SelectedAsset}" InputGesture="Enter">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Open}" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Rename" Click="HandleRenameClick" InputGesture="F2">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Rename}" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Delete" Click="HandleDeleteClick" InputGesture="Delete">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Delete}" /></MenuItem.Icon>
+            </MenuItem>
             <Separator />
-            <MenuItem Header="New Folder" Command="{Binding CreateFolderCommand}" />
-            <MenuItem Header="New Scene" Command="{Binding CreateSceneCommand}" />
-            <MenuItem Header="New Material" Command="{Binding CreateMaterialCommand}" />
-            <MenuItem Header="New Mood" Command="{Binding CreateMoodCommand}" />
-            <MenuItem Header="New Flow" Command="{Binding CreateFlowCommand}" />
-            <MenuItem Header="New Data Asset" ItemsSource="{Binding DataChoices}" IsEnabled="{Binding !!DataChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
-            <MenuItem Header="New Table" ItemsSource="{Binding TableChoices}" IsEnabled="{Binding !!TableChoices.Count}" ItemContainerTheme="{StaticResource ChoiceItem}" />
+            <MenuItem Header="New" ItemsSource="{Binding NewChoices, Converter={x:Static controls:MenuConverters.Submenus}}"
+                      ItemContainerTheme="{StaticResource ChoiceMenuItem}" InputGesture="Shift+A">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Add}" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Up" Command="{Binding UpCommand}" InputGesture="Back">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Up}" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Refresh" Command="{Binding RefreshCommand}">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Refresh}" /></MenuItem.Icon>
+            </MenuItem>
           </ContextMenu>
         </ListBox.ContextMenu>
       </ListBox>
+      </Border>
     </DockPanel>
   </Grid>
 </UserControl>

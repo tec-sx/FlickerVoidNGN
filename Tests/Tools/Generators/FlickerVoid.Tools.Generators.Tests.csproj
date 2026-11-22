@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../../Source/Tools/Generators/FlickerVoid.Tools.Generators.csproj" />
+    <ProjectReference Include="../../../Source/Engine/Flow/FlickerVoid.Engine.Flow.csproj" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+</Project>

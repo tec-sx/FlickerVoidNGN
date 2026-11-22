@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
@@ -14,6 +15,7 @@ using FlickerVoid.Editor.Assets.Moods;
 using FlickerVoid.Editor.Core.Data;
 using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Editor.Inspector;
@@ -48,9 +50,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     /// <summary>
     /// Shows the scene over <paramref name="content"/>, the scene's content with its unsaved edits; <paramref name="player"/>
-    /// plays it in the project's game, when a project is open.
+    /// plays it in the project's game, when a project is open, and the asset browser shows <paramref name="codeFolder"/>, the
+    /// project's source folder.
     /// </summary>
-    public MainWindowViewModel(ViewportViewModel viewport, InspectorViewModel inspector, UnsavedContent content, ScenePlayer? player = null)
+    public MainWindowViewModel(
+        ViewportViewModel viewport,
+        InspectorViewModel inspector,
+        UnsavedContent content,
+        ScenePlayer? player = null,
+        string? codeFolder = null)
     {
         _player = player;
         _content = content;
@@ -61,7 +69,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Inspector = inspector;
         SceneTree = new SceneTreeViewModel(viewport.Scene);
         ViewSettings = new ViewSettingsViewModel(viewport.Mood);
-        Assets = new AssetBrowserViewModel(viewport.Scene.Content, viewport.Scene.Game.Data);
+        Assets = new AssetBrowserViewModel(viewport.Scene.Content, viewport.Scene.Game.Data, codeFolder);
         Assets.Opened += OpenAsset;
         viewport.Scene.Opened += HandleSceneOpened;
         viewport.Scene.UnsavedChanged += HandleUnsavedChanged;
@@ -127,7 +135,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    /// <summary>The side panel's open tab: 0 scene, 1 inspector, 2 view, 3 data.</summary>
+    /// <summary>The index of the Data tab under the scene outliner.</summary>
+    public const int DataTab = 2;
+
+    /// <summary>The open tab under the scene outliner: 0 inspector, 1 view, 2 data.</summary>
     [ObservableProperty]
     public partial int SideTab { get; set; }
 
@@ -280,6 +291,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Viewport.Status = $"{path} changed on disk; its unsaved edits are kept. Save to overwrite it or discard to take the change.";
     }
 
+    /// <summary>Shows the content file in the asset browser and opens it as a double-click would; a missing file is reported.</summary>
+    public void OpenContentFile(string path)
+    {
+        AssetEntry? asset = Assets.Reveal(path);
+        if (asset is null)
+        {
+            Viewport.Status = $"{path} is not in the content folder.";
+            return;
+        }
+
+        OpenAsset(asset);
+    }
+
     private async void OpenAsset(AssetEntry asset)
     {
         switch (asset.Kind)
@@ -302,6 +326,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
             case AssetKind.Flow:
                 OpenFlow(asset.Path);
                 break;
+            case AssetKind.Code:
+                OpenCode(asset);
+                break;
+        }
+    }
+
+    /// <summary>Opens a code file in the program the system opens it with, the IDE.</summary>
+    private void OpenCode(AssetEntry asset)
+    {
+        string fullPath = Assets.GetFullPath(asset);
+        ProcessStartInfo start = new(fullPath) { UseShellExecute = true };
+        try
+        {
+            using Process? process = Process.Start(start);
+        }
+        catch (Win32Exception exception)
+        {
+            Viewport.Status = $"Can't open {fullPath}: {exception.Message}";
         }
     }
 
@@ -373,7 +415,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _dataPath = path;
         DataContent = content;
         OnPropertyChanged(nameof(DataHeading));
-        SideTab = 3;
+        SideTab = DataTab;
     }
 
     /// <summary>Draws the viewport with the mood file and edits it in the View tab; a file that can't be read leaves the view as it is.</summary>
@@ -482,12 +524,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    /// <summary>The kinds of entity the viewport's Add menu (Shift+A) offers, by group.</summary>
-    public IReadOnlyList<EntityPresetGroup> PresetGroups { get; } = EntityPresetGroup.From(EntityPreset.All);
+    /// <summary>The kinds of entity the viewport's Add menu (Shift+A) offers, each in its group.</summary>
+    public IReadOnlyList<MenuChoice> AddChoices => field ??= [.. EntityPreset.All.Select(ToChoice)];
 
     /// <summary>Adds an entity of the preset at the camera's pivot to the open scene and selects it.</summary>
-    [RelayCommand]
-    private void AddEntity(EntityPreset preset)
+    public void AddEntity(EntityPreset preset)
     {
         EditorScene scene = Viewport.Scene;
         if (scene.ScenePath is null)
@@ -500,5 +541,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Entity entity = scene.AddEntity(data);
         scene.Selection.Select(entity);
         Viewport.Status = $"Added {data.Name}.";
+    }
+
+    private MenuChoice ToChoice(EntityPreset preset)
+    {
+        return new MenuChoice(preset.Name, () => AddEntity(preset), preset.Group, preset.Icon);
     }
 }

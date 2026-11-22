@@ -3,7 +3,9 @@ using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using FlickerVoid.Editor.Assets.Flows;
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
@@ -14,38 +16,63 @@ namespace FlickerVoid.Editor.Assets;
 /// The asset browser: the content folder's tree, the files of the selected folder, and a kind filter and search that look
 /// through everything below it. Opening a file raises <see cref="Opened"/>, which the editor answers by kind. It creates,
 /// renames and deletes files and folders through the content manager, so their source files follow in a development build.
+/// Given the project's code folder, it shows it as a second root, Code, where it only writes new flow node classes.
 /// </summary>
 public sealed partial class AssetBrowserViewModel : ObservableObject
 {
     private const string SchemaFolder = ".schemas/";
+    private const string LookGroup = "Look";
+    private const string FlowGroup = "Flow";
+    private const string DataGroup = "Data Asset";
+    private const string TableGroup = "Table";
 
     private readonly IContentManager _content;
     private readonly List<AssetCatalog> _catalogs;
+    private readonly AssetCatalog? _code;
 
-    /// <summary>Browses the content; <paramref name="data"/> lists the data asset and table types it can create.</summary>
-    public AssetBrowserViewModel(IContentManager content, DataTypes? data = null)
+    /// <summary>
+    /// Browses the content; <paramref name="data"/> lists the data asset and table types it can create, and
+    /// <paramref name="codeFolder"/> is the project's source folder, where flow node classes go.
+    /// </summary>
+    public AssetBrowserViewModel(IContentManager content, DataTypes? data = null, string? codeFolder = null)
     {
         _content = content;
-        List<AssetChoice> dataChoices = [];
-        List<AssetChoice> tableChoices = [];
+        List<MenuChoice> choices =
+        [
+            new("Folder", CreateFolder, Icon: "NewFolder"),
+            new("Scene", CreateScene, Icon: "Scene"),
+            new("Material", CreateMaterial, LookGroup, "Materials"),
+            new("Mood", CreateMood, LookGroup, "Mood"),
+            new("Flow Graph", CreateFlow, FlowGroup, "Flow"),
+        ];
+        if (codeFolder is not null)
+        {
+            choices.Add(new MenuChoice("Flow Node", NewFlowNode, FlowGroup, "Code"));
+        }
+
         if (data is not null)
         {
             foreach (string type in data.AssetTypes.Keys)
             {
-                RelayCommand create = new(() => CreateData(type));
-                dataChoices.Add(new AssetChoice(type, create));
+                string name = DisplayNames.FromIdentifier(type);
+                choices.Add(new MenuChoice(name, () => CreateData(type), DataGroup, "Data"));
             }
 
             foreach (string type in data.RowTypes.Keys)
             {
-                RelayCommand create = new(() => CreateTable(type));
-                tableChoices.Add(new AssetChoice(type, create));
+                string name = DisplayNames.FromIdentifier(type);
+                choices.Add(new MenuChoice(name, () => CreateTable(type), TableGroup, "Table"));
             }
         }
 
-        DataChoices = dataChoices;
-        TableChoices = tableChoices;
+        NewChoices = choices;
         _catalogs = AssetCatalog.ForContent(content);
+        if (codeFolder is not null)
+        {
+            _code = AssetCatalog.ForCode(codeFolder);
+            _catalogs.Add(_code);
+        }
+
         List<AssetFilter> filters = [new AssetFilter("All", null)];
         foreach (AssetKind kind in Enum.GetValues<AssetKind>())
         {
@@ -67,11 +94,11 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
     public IReadOnlyList<AssetFilter> Filters { get; }
 
-    /// <summary>The data asset types New Data Asset offers, by the names files give them.</summary>
-    public IReadOnlyList<AssetChoice> DataChoices { get; }
-
-    /// <summary>The row types New Table offers.</summary>
-    public IReadOnlyList<AssetChoice> TableChoices { get; }
+    /// <summary>
+    /// What the browser can create in the selected folder, in groups: folders and scenes, then materials and moods, flows, a data
+    /// asset of each registered type and a table of each row type. Each menu showing them picks how to group them.
+    /// </summary>
+    public IReadOnlyList<MenuChoice> NewChoices { get; }
 
     /// <summary>The roots of the tree: the game's source folders in a development build, else the content folder.</summary>
     [ObservableProperty]
@@ -97,7 +124,11 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     [ObservableProperty]
     public partial AssetEntry? SelectedAsset { get; set; }
 
-    /// <summary>Why the last file operation was refused, or empty.</summary>
+    /// <summary>The name and folder of the flow node class being created, while the browser asks for them.</summary>
+    [ObservableProperty]
+    public partial FlowNodePrompt? Prompt { get; set; }
+
+    /// <summary>Why the last file operation was refused, or what it did when that isn't plain to see; else empty.</summary>
     [ObservableProperty]
     public partial string Status { get; set; } = "";
 
@@ -134,6 +165,20 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         Opened?.Invoke(asset);
     }
 
+    /// <summary>Shows the file's folder with the file selected, as Unreal's Browse to Asset does; null when there is no such file.</summary>
+    public AssetEntry? Reveal(string path)
+    {
+        string folder = GetFolder(path);
+        SelectFolder(folder);
+        AssetEntry? found = Items.FirstOrDefault(item => item.Path == path);
+        if (found is not null)
+        {
+            SelectedAsset = found;
+        }
+
+        return found;
+    }
+
     /// <summary>Shows the selected folder's parent; the roots stay where they are.</summary>
     [RelayCommand]
     public void Up()
@@ -151,6 +196,11 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     public void MoveTo(AssetEntry item, string folder)
     {
         Status = "";
+        if (RefuseCode(item.Path) || RefuseCode(folder))
+        {
+            return;
+        }
+
         bool intoItself = folder == item.Path || folder.StartsWith(item.Path + "/", StringComparison.Ordinal);
         if (item.Kind == AssetKind.Folder && intoItself)
         {
@@ -175,6 +225,12 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     [RelayCommand]
     public void CreateFolder()
     {
+        Status = "";
+        if (RefuseCode(SelectedFolder?.Path))
+        {
+            return;
+        }
+
         string path = FindFreePath("New Folder", "");
         _content.CreateFolder(path);
         Refresh();
@@ -224,6 +280,12 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     public void Rename(string? name)
     {
         Status = "";
+        string? path = SelectedAsset?.Path ?? SelectedFolder?.Path;
+        if (RefuseCode(path))
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(name) || name.IndexOfAny(['/', '\\']) >= 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
         {
             Status = $"'{name}' can't be a file name.";
@@ -264,6 +326,12 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     public void Delete()
     {
         Status = "";
+        string? path = SelectedAsset?.Path ?? SelectedFolder?.Path;
+        if (RefuseCode(path))
+        {
+            return;
+        }
+
         if (SelectedAsset is { } asset)
         {
             _content.Delete(asset.Path);
@@ -284,6 +352,93 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
             Refresh();
             SelectFolder(parent);
         }
+    }
+
+    /// <summary>The full path of a file or folder the browser shows, in the content or the code.</summary>
+    public string GetFullPath(AssetEntry entry)
+    {
+        AssetCatalog catalog = FindCatalog(entry.Path);
+        if (catalog.IsCode)
+        {
+            return catalog.GetFullPath(entry.Path);
+        }
+
+        return _content.GetFullPath(entry.Path);
+    }
+
+    /// <summary>
+    /// Asks for a new flow node class's name and folder: the selected folder in the code, or else the code folder whose path
+    /// ends most like the selected content folder's, or else the first folder holding a C# project.
+    /// </summary>
+    public void NewFlowNode()
+    {
+        if (_code is null)
+        {
+            return;
+        }
+
+        List<string> folders = [];
+        AssetFolder root = _code.GetFolders();
+        CollectFolders(root, folders);
+        if (folders.Count == 0)
+        {
+            Status = $"{_code.Root} has no folders to put a flow node in.";
+            return;
+        }
+
+        string selected = SelectedFolder?.Path ?? "";
+        string folder;
+        if (_code.Holds(selected) && selected != AssetCatalog.CodePrefix)
+        {
+            folder = _code.GetLocalPath(selected);
+        }
+        else
+        {
+            AssetCatalog catalog = FindCatalog(selected);
+            string local = catalog.GetLocalPath(selected);
+            folder = SuggestCodeFolder(folders, local);
+        }
+
+        Status = "";
+        Prompt = new FlowNodePrompt(folders, folder);
+    }
+
+    /// <summary>Writes the prompted flow node class and shows it; a class that can't be written keeps the prompt and says why.</summary>
+    [RelayCommand]
+    public void ConfirmPrompt()
+    {
+        if (Prompt is not { } prompt || _code is null)
+        {
+            return;
+        }
+
+        string codePath = Combine(AssetCatalog.CodePrefix, prompt.Folder);
+        string fullFolder = _code.GetFullPath(codePath);
+        string file;
+        try
+        {
+            file = FlowNodeSource.Create(fullFolder, prompt.Name);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            Status = exception.Message;
+            return;
+        }
+
+        Prompt = null;
+        string fileName = Path.GetFileName(file);
+        string path = Combine(codePath, fileName);
+        SearchText = "";
+        Refresh();
+        SelectFolder(codePath);
+        SelectedAsset = Assets.FirstOrDefault(entry => entry.Path == path);
+        Status = $"Wrote {fileName}. Build the project to add the node to flow graphs.";
+    }
+
+    [RelayCommand]
+    public void CancelPrompt()
+    {
+        Prompt = null;
     }
 
     partial void OnSelectedFolderChanged(AssetFolder? value) => FindAssets();
@@ -323,7 +478,13 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
     private void CreateFile(string name, string extension, string schema, string? body)
     {
+        Status = "";
         string folder = SelectedFolder?.Path ?? "";
+        if (RefuseCode(folder))
+        {
+            return;
+        }
+
         string path = FindFreePath(name, extension);
         AssetCatalog catalog = FindCatalog(folder);
         string local = folder[catalog.Prefix.Length..].TrimStart('/');
@@ -360,6 +521,18 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         return path;
     }
 
+    /// <summary>Refuses an operation on code, which the content manager doesn't hold; code is edited in the IDE.</summary>
+    private bool RefuseCode(string? path)
+    {
+        if (path is null || !FindCatalog(path).IsCode)
+        {
+            return false;
+        }
+
+        Status = "Edit code in your IDE: the browser only adds flow nodes to the code.";
+        return true;
+    }
+
     private bool Move(string path, string newPath)
     {
         if (Exists(newPath))
@@ -374,7 +547,8 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
     private bool Exists(string path)
     {
-        string fullPath = _content.GetFullPath(path);
+        AssetEntry entry = new(path, "", AssetKind.Other);
+        string fullPath = GetFullPath(entry);
         return File.Exists(fullPath) || Directory.Exists(fullPath);
     }
 
@@ -417,6 +591,58 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
         path.Append($"{SchemaFolder}{schema}.schema.json");
         return path.ToString();
+    }
+
+    private static void CollectFolders(AssetFolder folder, List<string> paths)
+    {
+        foreach (AssetFolder child in folder.Children)
+        {
+            string local = child.Path[(AssetCatalog.CodePrefix.Length + 1)..];
+            paths.Add(local);
+            CollectFolders(child, paths);
+        }
+    }
+
+    /// <summary>The code folder sharing the most trailing folder names with the content folder; with none, the first holding a C# project.</summary>
+    private string SuggestCodeFolder(List<string> folders, string contentFolder)
+    {
+        string[] content = contentFolder.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        string? best = null;
+        int bestScore = 0;
+        foreach (string folder in folders)
+        {
+            string[] code = folder.Split('/');
+            int score = 0;
+            while (score < content.Length && score < code.Length
+                && string.Equals(content[^(score + 1)], code[^(score + 1)], StringComparison.OrdinalIgnoreCase))
+            {
+                score++;
+            }
+
+            if (score > bestScore)
+            {
+                best = folder;
+                bestScore = score;
+            }
+        }
+
+        if (best is not null)
+        {
+            return best;
+        }
+
+        foreach (string folder in folders)
+        {
+            string codePath = Combine(AssetCatalog.CodePrefix, folder);
+            string fullFolder = _code!.GetFullPath(codePath);
+            bool hasProject = Directory.EnumerateFiles(fullFolder, "*.csproj").Any();
+            if (hasProject)
+            {
+                return folder;
+            }
+        }
+
+        return folders[0];
     }
 
     private static string GetFolder(string path)

@@ -38,6 +38,9 @@ public sealed partial class ViewportViewModel : ObservableObject
     private const int ConeEdges = 4;
     private const float FrustumAspect = 16f / 9f;
 
+    /// <summary>The radius framed round an entity without a mesh, such as a light.</summary>
+    private const float FramedPointRadius = 1;
+
     private static readonly Vector4 SelectionColor = EditorIcons.SelectedColor;
 
     private readonly EditorCameraController _controller;
@@ -218,20 +221,89 @@ public sealed partial class ViewportViewModel : ObservableObject
             case ViewportKey.Delete:
                 DeleteSelected();
                 break;
+            case ViewportKey.F:
+                FrameSelected();
+                break;
         }
     }
 
-    /// <summary>Adds a copy of the selected entity in the same place and selects it, to move it away with the gizmo.</summary>
+    /// <summary>
+    /// Moves the camera, still looking the same way, so the selection fills the view (F): meshes by their boxes, anything else
+    /// as a small sphere round its place. With nothing selected it frames every entity of the scene.
+    /// </summary>
     [RelayCommand]
-    public void DuplicateSelected()
+    public void FrameSelected()
     {
-        if (Scene.ScenePath is null || Scene.Selection.Selected is not { } entity || !Scene.Game.World.IsAlive(entity))
+        World world = Scene.Game.World;
+        IEnumerable<Entity> framed = Selection.Entities.Count > 0 ? Selection.Entities : Scene.Entities;
+        Vector3 min = new(float.MaxValue);
+        Vector3 max = new(float.MinValue);
+        bool any = false;
+        foreach (Entity entity in framed)
+        {
+            if (!world.IsAlive(entity) || !world.TryGet(entity, out Transform transform))
+            {
+                continue;
+            }
+
+            any = true;
+            if (Scene.Picker.TryGetBounds(world, entity, out Vector3 low, out Vector3 high))
+            {
+                Matrix4x4 matrix = transform.ToMatrix();
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    float x = (corner & 1) == 0 ? low.X : high.X;
+                    float y = (corner & 2) == 0 ? low.Y : high.Y;
+                    float z = (corner & 4) == 0 ? low.Z : high.Z;
+                    Vector3 point = Vector3.Transform(new Vector3(x, y, z), matrix);
+                    min = Vector3.Min(min, point);
+                    max = Vector3.Max(max, point);
+                }
+            }
+            else
+            {
+                Vector3 room = new(FramedPointRadius);
+                min = Vector3.Min(min, transform.Position - room);
+                max = Vector3.Max(max, transform.Position + room);
+            }
+        }
+
+        if (!any)
         {
             return;
         }
 
-        Entity copy = Scene.DuplicateEntity(entity);
-        Scene.Selection.Select(copy);
+        Vector3 center = (min + max) / 2;
+        float radius = Vector3.Distance(min, max) / 2;
+        Camera.Frame(center, radius);
+    }
+
+    /// <summary>Adds a copy of each selected entity in the same place and selects the copies, to move them away with the gizmo.</summary>
+    [RelayCommand]
+    public void DuplicateSelected()
+    {
+        World world = Scene.Game.World;
+        if (Scene.ScenePath is null)
+        {
+            return;
+        }
+
+        List<Entity> copies = [];
+        Entity? primary = null;
+        foreach (Entity entity in Selection.Entities.Where(world.IsAlive).ToList())
+        {
+            Entity copy = Scene.DuplicateEntity(entity);
+            copies.Add(copy);
+            if (entity == Selection.Selected)
+            {
+                primary = copy;
+            }
+        }
+
+        if (copies.Count > 0)
+        {
+            Selection.SelectAll(copies, primary);
+        }
     }
 
     /// <summary>
@@ -269,11 +341,11 @@ public sealed partial class ViewportViewModel : ObservableObject
         Status = $"Added {data.Name}.";
     }
 
-    /// <summary>Destroys the selected entity; the next save leaves it out of the scene file.</summary>
+    /// <summary>Destroys the selected entities; the next save leaves them out of the scene file.</summary>
     [RelayCommand]
     public void DeleteSelected()
     {
-        if (Scene.Selection.Selected is { } entity)
+        foreach (Entity entity in Selection.Entities.ToList())
         {
             Scene.DestroyEntity(entity);
         }
@@ -288,9 +360,7 @@ public sealed partial class ViewportViewModel : ObservableObject
         World world = Scene.Game.World;
         if (IsGameView)
         {
-            Ray gameRay = Camera.GetRay(pixel, width, height);
-            Entity? mesh = Scene.Picker.Pick(world, gameRay);
-            Selection.Select(mesh);
+            SelectAt(pixel, width, height);
             return;
         }
 
@@ -303,8 +373,20 @@ public sealed partial class ViewportViewModel : ObservableObject
             }
         }
 
-        Icons.Collect(world, Selection.Selected);
-        Entity? picked = Icons.HitTest(Camera, pixel, width, height);
+        SelectAt(pixel, width, height);
+    }
+
+    /// <summary>Selects what is under the mouse: an icon first, then a mesh, or nothing; the game view has no icons.</summary>
+    public void SelectAt(Vector2 pixel, int width, int height)
+    {
+        World world = Scene.Game.World;
+        Entity? picked = null;
+        if (!IsGameView)
+        {
+            Icons.Collect(world, Selection.Selected);
+            picked = Icons.HitTest(Camera, pixel, width, height);
+        }
+
         if (picked is null)
         {
             Ray ray = Camera.GetRay(pixel, width, height);
@@ -325,8 +407,10 @@ public sealed partial class ViewportViewModel : ObservableObject
 
         if (Gizmo.IsDragging)
         {
+            Transform before = world.Get<Transform>(selected);
             Transform dragged = Gizmo.Drag(Camera, pixel, width, height);
             Scene.SetComponent(selected, dragged);
+            MoveOthers(world, selected, before, dragged);
             return;
         }
 
@@ -337,6 +421,33 @@ public sealed partial class ViewportViewModel : ObservableObject
 
         Transform transform = world.Get<Transform>(selected);
         Gizmo.Hover(Camera, transform, pixel, width, height);
+    }
+
+    /// <summary>Moves the rest of the selection with the gizmo's entity: by its move, turned about it and scaled by its scaling.</summary>
+    private void MoveOthers(World world, Entity selected, in Transform before, in Transform after)
+    {
+        Quaternion turn = after.Rotation * Quaternion.Inverse(before.Rotation);
+        Vector3 scaling = Vector3.One;
+        if (before.Scale.X != 0 && before.Scale.Y != 0 && before.Scale.Z != 0)
+        {
+            scaling = after.Scale / before.Scale;
+        }
+
+        foreach (Entity other in Selection.Entities)
+        {
+            if (other == selected || !world.IsAlive(other) || !world.Has<Transform>(other))
+            {
+                continue;
+            }
+
+            Transform transform = world.Get<Transform>(other);
+            Vector3 offset = transform.Position - before.Position;
+            Vector3 turned = Vector3.Transform(offset * scaling, turn);
+            transform.Position = after.Position + turned;
+            transform.Rotation = Quaternion.Normalize(turn * transform.Rotation);
+            transform.Scale *= scaling;
+            Scene.SetComponent(other, transform);
+        }
     }
 
     public void PointerReleased()
@@ -360,13 +471,20 @@ public sealed partial class ViewportViewModel : ObservableObject
             overlay.AddIcon(icon.Position, icon.Icon, icon.Color);
         }
 
+        foreach (Entity entity in Selection.Entities)
+        {
+            if (world.IsAlive(entity) && world.TryGet(entity, out Transform shown))
+            {
+                DrawSelection(overlay, world, entity, shown);
+            }
+        }
+
         if (Selection.Selected is not { } selected || !world.IsAlive(selected))
         {
             return;
         }
 
         Transform transform = world.Get<Transform>(selected);
-        DrawSelection(overlay, world, selected, transform);
         Gizmo.Draw(overlay, Camera, transform, viewportHeight);
     }
 

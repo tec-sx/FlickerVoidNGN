@@ -13,5 +13,8 @@
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Maps/FlickerVoid.Engine.Maps.csproj" />
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
     <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Story/FlickerVoid.Engine.Story.csproj" />
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Engine/Flow/FlickerVoid.Engine.Flow.csproj" />
+    <!-- Registers the classes marked [FlowNodeType] (FlowNodeTypes.Register). -->
+    <ProjectReference Include="$(FlickerVoidEngine)Source/Tools/Generators/FlickerVoid.Tools.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

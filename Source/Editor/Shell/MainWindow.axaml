@@ -3,11 +3,11 @@
         xmlns:data="using:FlickerVoid.Editor.Data"
         xmlns:shell="using:FlickerVoid.Editor"
         xmlns:inspector="using:FlickerVoid.Editor.Inspector"
-xmlns:inspectorCore="using:FlickerVoid.Editor.Core.Inspector"
+        xmlns:inspectorCore="using:FlickerVoid.Editor.Core.Inspector"
         xmlns:assets="using:FlickerVoid.Editor.Assets"
         xmlns:viewports="using:FlickerVoid.Editor.Viewports"
         xmlns:scenes="using:FlickerVoid.Editor.Scenes"
-xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
+        xmlns:controls="using:FlickerVoid.Editor.Controls"
         x:Class="FlickerVoid.Editor.MainWindow"
         x:DataType="shell:MainWindowViewModel"
         xmlns:chrome="using:Avalonia.Controls.Chrome"
@@ -20,18 +20,6 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
     <KeyBinding Gesture="F5" Command="{Binding PlayCommand}" />
     <KeyBinding Gesture="Ctrl+D" Command="{Binding Viewport.DuplicateSelectedCommand}" />
   </Window.KeyBindings>
-  <Window.Resources>
-    <ControlTheme x:Key="PresetMenuItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="scenesCore:EntityPreset">
-      <Setter Property="Header" Value="{Binding Name}" />
-      <Setter Property="Command" Value="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddEntityCommand}" />
-      <Setter Property="CommandParameter" Value="{Binding}" />
-    </ControlTheme>
-    <ControlTheme x:Key="PresetGroupMenuItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="scenesCore:EntityPresetGroup">
-      <Setter Property="Header" Value="{Binding Name}" />
-      <Setter Property="ItemsSource" Value="{Binding Presets}" />
-      <Setter Property="ItemContainerTheme" Value="{StaticResource PresetMenuItem}" />
-    </ControlTheme>
-  </Window.Resources>
   <DockPanel>
     <!-- The title bar: the window's own buttons stay on the right, the editor's tools fill the rest, and the empty bar behind
          them drags the window. -->
@@ -83,52 +71,64 @@ xmlns:scenesCore="using:FlickerVoid.Editor.Core.Scenes"
                    ToolTip.Tip="Shift+A over the viewport adds an entity at the camera's pivot. Alt+left drag orbits, Alt+middle drag pans, Alt+right drag or the wheel zooms; hold the right button to look round and fly with WASD, Q and E." />
       </DockPanel>
     </Border>
-    <Border DockPanel.Dock="Right" Width="300" BorderThickness="1,0,0,0" BorderBrush="{StaticResource EditorLineBrush}">
-      <TabControl Padding="0" SelectedIndex="{Binding SideTab}">
-        <TabItem Header="Scene">
-          <scenes:SceneTreeView DataContext="{Binding SceneTree}" />
-        </TabItem>
-        <TabItem Header="Inspector">
-          <inspector:InspectorView DataContext="{Binding Inspector}" />
-        </TabItem>
-        <TabItem Header="View">
-          <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="{Binding MoodHeading}" Classes="heading"
-                       TextTrimming="CharacterEllipsis" ToolTip.Tip="The lighting mood the viewport draws with. Open a mood file in the content browser to edit it." />
-            <ScrollViewer>
-              <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" Margin="4,2">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate DataType="inspectorCore:FieldViewModel">
-                    <Grid ColumnDefinitions="104,*" Margin="0,1">
-                      <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                      <ContentControl Grid.Column="1" Content="{Binding}" />
-                    </Grid>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </ScrollViewer>
-          </DockPanel>
-        </TabItem>
-        <TabItem Header="Data">
-          <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="{Binding DataHeading}" Classes="heading" TextTrimming="CharacterEllipsis" />
-            <data:DataView DataContext="{Binding DataContent}" />
-          </DockPanel>
-        </TabItem>
-      </TabControl>
-    </Border>
-    <Grid RowDefinitions="*,2,160">
-      <Panel>
-        <viewports:ViewportControl DataContext="{Binding Viewport}">
-          <FlyoutBase.AttachedFlyout>
-            <MenuFlyout ItemsSource="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).PresetGroups}"
-                        ItemContainerTheme="{StaticResource PresetGroupMenuItem}" />
-          </FlyoutBase.AttachedFlyout>
-        </viewports:ViewportControl>
-        <viewports:ViewportOverlay DataContext="{Binding Viewport}" />
-      </Panel>
-      <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
-      <assets:AssetBrowserView Grid.Row="2" DataContext="{Binding Assets}" />
+    <!-- The viewport over the content browser, and the side panel beside them: the scene outliner over the inspector and the
+         View and Data tabs. Every splitter resizes. -->
+    <Grid ColumnDefinitions="*,2,300">
+      <Grid RowDefinitions="*,2,160">
+        <Border Classes="well viewport">
+        <Panel>
+          <viewports:ViewportControl DataContext="{Binding Viewport}"
+                                     controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
+          <viewports:ViewportOverlay DataContext="{Binding Viewport}" />
+        </Panel>
+        </Border>
+        <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+        <assets:AssetBrowserView Grid.Row="2" DataContext="{Binding Assets}" />
+      </Grid>
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+      <Grid Grid.Column="2" RowDefinitions="*,2,*" Classes="sidePanel">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="Scene" Classes="heading" />
+          <Border Classes="well">
+            <scenes:SceneTreeView x:Name="SceneTree" DataContext="{Binding SceneTree}"
+                                  controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
+          </Border>
+        </DockPanel>
+        <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+        <TabControl Grid.Row="2" Padding="0" SelectedIndex="{Binding SideTab}">
+          <TabItem Header="Inspector">
+            <inspector:InspectorView DataContext="{Binding Inspector}" />
+          </TabItem>
+          <TabItem Header="View">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Top" Text="{Binding MoodHeading}" Classes="heading"
+                         TextTrimming="CharacterEllipsis" ToolTip.Tip="The lighting mood the viewport draws with. Open a mood file in the content browser to edit it." />
+              <Border Classes="well">
+              <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" Margin="4,2">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="inspectorCore:FieldViewModel">
+                      <Grid ColumnDefinitions="104,*" Margin="0,1">
+                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <ContentControl Grid.Column="1" Content="{Binding}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+              </Border>
+            </DockPanel>
+          </TabItem>
+          <TabItem Header="Data">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Top" Text="{Binding DataHeading}" Classes="heading" TextTrimming="CharacterEllipsis" />
+              <Border Classes="well">
+                <data:DataView DataContext="{Binding DataContent}" />
+              </Border>
+            </DockPanel>
+          </TabItem>
+        </TabControl>
+      </Grid>
     </Grid>
   </DockPanel>
 </Window>

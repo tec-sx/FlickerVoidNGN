@@ -11,5 +11,6 @@ public enum ViewportKey
     E,
     R,
     G,
+    F,
     Delete,
 }

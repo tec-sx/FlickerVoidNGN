@@ -1,3 +1,4 @@
+using Avalonia.Data.Converters;
 using Avalonia.Media;
 
 namespace FlickerVoid.Editor;
@@ -84,6 +85,83 @@ public static class MaterialIcons
 
     /// <summary>A four-pointed star, the editor's mark until it has a logo.</summary>
     public static Avalonia.Media.Geometry Logo { get; } = Parse("M12,1 C12.9,8 16,11.1 23,12 C16,12.9 12.9,16 12,23 C11.1,16 8,12.9 1,12 C8,11.1 11.1,8 12,1 Z");
+
+    public static Avalonia.Media.Geometry Search => Zoom;
+
+    public static Avalonia.Media.Geometry Camera { get; } = Parse("M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z");
+
+    public static Avalonia.Media.Geometry PointLight => Bake;
+
+    public static Avalonia.Media.Geometry SpotLight { get; } = Parse("M6 14l3 3v5h6v-5l3-3V9H6zm5-12h2v3h-2zM3.5 5.88l1.41-1.41 2.12 2.12L5.62 8 3.5 5.88zm13.46.71l2.12-2.12 1.41 1.41L18.38 8l-1.42-1.41z");
+
+    public static Avalonia.Media.Geometry Empty { get; } = Parse("M3 5v4h2V5h4V3H5c-1.1 0-2 .9-2 2zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z");
+
+    public static Avalonia.Media.Geometry Entity { get; } = Parse("M12 2l-5.5 9h11L12 2zm0 3.84L13.93 9h-3.87L12 5.84zM17.5 13c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zM3 21.5h8v-8H3v8zm2-6h4v4H5v-4z");
+
+    public static Avalonia.Media.Geometry Character { get; } = Parse("M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z");
+
+    public static Avalonia.Media.Geometry FolderOpen { get; } = Parse("M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z");
+
+    public static Avalonia.Media.Geometry NewFolder { get; } = Parse("M20 6h-8l-2-2H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z");
+
+    public static Avalonia.Media.Geometry Open { get; } = Parse("M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z");
+
+    public static Avalonia.Media.Geometry Up { get; } = Parse("M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z");
+
+    public static Avalonia.Media.Geometry Back { get; } = Parse("M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z");
+
+    public static Avalonia.Media.Geometry Next { get; } = Parse("M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z");
+
+    public static Avalonia.Media.Geometry Code { get; } = Parse("M4 7v2c0 .55-.45 1-1 1H2v4h1c.55 0 1 .45 1 1v2c0 1.65 1.35 3 3 3h3v-2H7c-.55 0-1-.45-1-1v-2c0-1.3-.84-2.42-2-2.83v-.34C5.16 11.42 6 10.3 6 9V7c0-.55.45-1 1-1h3V4H7C5.35 4 4 5.35 4 7zM21 10c-.55 0-1-.45-1-1V7c0-1.65-1.35-3-3-3h-3v2h3c.55 0 1 .45 1 1v2c0 1.3.84 2.42 2 2.83v.34c-1.16.41-2 1.52-2 2.83v2c0 .55-.45 1-1 1h-3v2h3c1.65 0 3-1.35 3-3v-2c0-.55.45-1 1-1h1v-4h-1z");
+
+    /// <summary>Icons by name, for view models that name theirs without seeing Avalonia (menu choices, scene items).</summary>
+    public static FuncValueConverter<string?, Avalonia.Media.Geometry?> ByName { get; } = new(Find);
+
+    public static Avalonia.Media.Geometry? Find(string? name)
+    {
+        return name switch
+        {
+            nameof(Add) => Add,
+            nameof(Back) => Back,
+            nameof(Bake) => Bake,
+            nameof(Camera) => Camera,
+            nameof(Character) => Character,
+            nameof(Close) => Close,
+            nameof(Code) => Code,
+            nameof(Data) => Data,
+            nameof(Delete) => Delete,
+            nameof(Discard) => Discard,
+            nameof(Duplicate) => Duplicate,
+            nameof(Empty) => Empty,
+            nameof(Entity) => Entity,
+            nameof(File) => File,
+            nameof(Flow) => Flow,
+            nameof(Folder) => Folder,
+            nameof(FolderOpen) => FolderOpen,
+            nameof(Grid) => Grid,
+            nameof(Materials) => Materials,
+            nameof(Model) => Model,
+            nameof(Mood) => Mood,
+            nameof(New) => New,
+            nameof(NewFolder) => NewFolder,
+            nameof(Next) => Next,
+            nameof(Open) => Open,
+            nameof(Play) => Play,
+            nameof(PointLight) => PointLight,
+            nameof(Refresh) => Refresh,
+            nameof(Remove) => Remove,
+            nameof(Rename) => Rename,
+            nameof(Save) => Save,
+            nameof(Scene) => Scene,
+            nameof(Search) => Search,
+            nameof(Shader) => Shader,
+            nameof(SpotLight) => SpotLight,
+            nameof(Table) => Table,
+            nameof(Texture) => Texture,
+            nameof(Up) => Up,
+            _ => null,
+        };
+    }
 
     private static Avalonia.Media.Geometry Parse(string data) => StreamGeometry.Parse(data);
 }

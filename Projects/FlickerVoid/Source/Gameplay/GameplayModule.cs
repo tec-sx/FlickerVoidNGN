@@ -56,6 +56,7 @@ public sealed class GameplayModule : IGameModule
         AddPlayer(game);
         game.Spawner.Register("doorSwing", FlickerVoidJsonContext.Default.DoorSwing);
         game.Data.AddResolver(FlickerVoidJsonContext.Default);
+        FlowNodeTypes.Register(game.Data);
         game.Data.Register<ScanDefinition>("scan");
         game.Spawner.Register("scanner", FlickerVoidJsonContext.Default.Scanner);
         game.Spawner.Register("scannable", FlickerVoidJsonContext.Default.Scannable);

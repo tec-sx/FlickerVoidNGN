@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Core.Data;
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Runtime.Data;
 
@@ -25,6 +26,15 @@ public sealed partial class FlowGraphViewModel : ObservableObject
     private readonly Action _edited;
     private readonly FindContentFiles? _files;
     private readonly Dictionary<string, Type> _choices = [];
+
+    /// <summary>How near a pin, in canvas units, a press or a dropped wire still finds it.</summary>
+    public const double PinRadius = 14;
+
+    /// <summary>How near a pin, in canvas units, a press starts a wire from it rather than dragging its node.</summary>
+    public const double GrabRadius = 18;
+
+    /// <summary>How far outside a node, in canvas units, a dropped wire still lands on it.</summary>
+    public const double DropRadius = 32;
 
     public FlowGraphViewModel(string title, FlowGraph graph, DataTypes types, Action edited, FindContentFiles? files = null)
     {
@@ -67,6 +77,9 @@ public sealed partial class FlowGraphViewModel : ObservableObject
 
     public ObservableCollection<FlowNodeViewModel> Nodes { get; } = [];
 
+    /// <summary>The part of the endless canvas the window shows.</summary>
+    public FlowCanvasView View { get; } = new();
+
     public ObservableCollection<FlowLinkViewModel> Links { get; } = [];
 
     [ObservableProperty]
@@ -75,6 +88,83 @@ public sealed partial class FlowGraphViewModel : ObservableObject
     /// <summary>The selected node's values.</summary>
     [ObservableProperty]
     public partial DataObjectViewModel? SelectedForm { get; private set; }
+
+    /// <summary>
+    /// The Add menu's choices at a point of the canvas: a node of each registered type, grouped by the module that defines it. With
+    /// <paramref name="from"/>, the pin a wire was dragged from, only types with a pin to wire it to, and the new node is wired to it.
+    /// </summary>
+    public IReadOnlyList<MenuChoice> GetAddChoices(double x, double y, FlowPinViewModel? from = null)
+    {
+        List<MenuChoice> choices = [];
+        foreach ((string type, Type nodeType) in _choices)
+        {
+            if (from is not null && !HasPinFor(nodeType, from))
+            {
+                continue;
+            }
+
+            string name = DisplayNames.FromIdentifier(type);
+            string group = GetGroup(nodeType);
+            choices.Add(new MenuChoice(name, () => AddWired(type, x, y, from), group, "Flow"));
+        }
+
+        return choices;
+    }
+
+    /// <summary>The pin whose dot is within <paramref name="radius"/> of the point, nearest first, so pins are easy to hit.</summary>
+    public FlowPinViewModel? FindPin(double x, double y, double radius = PinRadius)
+    {
+        FlowPinViewModel? nearest = null;
+        double best = radius * radius;
+        foreach (FlowNodeViewModel node in Nodes)
+        {
+            foreach (FlowPinViewModel pin in node.Inputs.Concat(node.Outputs))
+            {
+                double dx = pin.Point.X - x;
+                double dy = pin.Point.Y - y;
+                double distance = (dx * dx) + (dy * dy);
+                if (distance <= best)
+                {
+                    best = distance;
+                    nearest = pin;
+                }
+            }
+        }
+
+        return nearest;
+    }
+
+    /// <summary>
+    /// Where a wire dragged from <paramref name="from"/> lands when dropped at the point: anywhere over a node, or within
+    /// <see cref="DropRadius"/> of it, picks that node's nearest pin that can take the wire; null on empty space.
+    /// </summary>
+    public FlowPinViewModel? FindDropTarget(double x, double y, FlowPinViewModel from)
+    {
+        FlowPinViewModel? nearest = null;
+        double best = double.MaxValue;
+        foreach (FlowNodeViewModel node in Nodes)
+        {
+            if (node == from.Node || !IsNear(node, x, y))
+            {
+                continue;
+            }
+
+            IReadOnlyList<FlowPinViewModel> pins = from.IsOutput ? node.Inputs : node.Outputs;
+            foreach (FlowPinViewModel pin in pins)
+            {
+                double dx = pin.Point.X - x;
+                double dy = pin.Point.Y - y;
+                double distance = (dx * dx) + (dy * dy);
+                if (distance < best)
+                {
+                    best = distance;
+                    nearest = pin;
+                }
+            }
+        }
+
+        return nearest;
+    }
 
     /// <summary>Adds a node of the type registered as <paramref name="type"/> at the point, named by its type and a free number.</summary>
     public FlowNodeViewModel AddNode(string type, double x, double y)
@@ -109,6 +199,31 @@ public sealed partial class FlowGraphViewModel : ObservableObject
         }
 
         _edited();
+    }
+
+    /// <summary>Frames the selected node, or every node when none is selected, in a view of the given size (F).</summary>
+    public void FrameSelected(double width, double height)
+    {
+        List<FlowNodeViewModel> framed = [];
+        if (Selected is { } selected)
+        {
+            framed.Add(selected);
+        }
+        else
+        {
+            framed.AddRange(Nodes);
+        }
+
+        if (framed.Count == 0)
+        {
+            return;
+        }
+
+        double minX = framed.Min(node => node.X);
+        double minY = framed.Min(node => node.Y);
+        double maxX = framed.Max(node => node.X + FlowNodeViewModel.Width);
+        double maxY = framed.Max(node => node.Y + node.Height);
+        View.Frame(minX, minY, maxX, maxY, width, height);
     }
 
     [RelayCommand]
@@ -195,6 +310,60 @@ public sealed partial class FlowGraphViewModel : ObservableObject
         node.IsSelected = true;
         JsonTypeInfo typeInfo = _types.Options.GetTypeInfo(node.Node.GetType());
         SelectedForm = new DataObjectViewModel(node.Title, node.Node, typeInfo, () => EditSelected(node), _files, CanvasProperties);
+    }
+
+    private static bool IsNear(FlowNodeViewModel node, double x, double y)
+    {
+        bool inX = x >= node.X - DropRadius && x <= node.X + FlowNodeViewModel.Width + DropRadius;
+        bool inY = y >= node.Y - DropRadius && y <= node.Y + node.Height + DropRadius;
+        return inX && inY;
+    }
+
+    private void AddWired(string type, double x, double y, FlowPinViewModel? from)
+    {
+        FlowNodeViewModel added = AddNode(type, x, y);
+        if (from is null)
+        {
+            return;
+        }
+
+        IReadOnlyList<FlowPinViewModel> pins = from.IsOutput ? added.Inputs : added.Outputs;
+        if (pins.Count > 0)
+        {
+            Connect(from, pins[0]);
+        }
+    }
+
+    private bool HasPinFor(Type nodeType, FlowPinViewModel from)
+    {
+        JsonTypeInfo typeInfo = _types.Options.GetTypeInfo(nodeType);
+        FlowNode sample = (FlowNode)typeInfo.CreateObject!();
+        IReadOnlyList<string> pins = from.IsOutput ? sample.Inputs : sample.Outputs;
+        return pins.Count > 0;
+    }
+
+    /// <summary>The module that defines a node type, from its namespace: Flow for <c>FlickerVoid.Engine.Flow.Nodes</c>.</summary>
+    private static string GetGroup(Type nodeType)
+    {
+        string space = nodeType.Namespace ?? "";
+        string[] parts = space.Split('.');
+        int index = 0;
+        if (index < parts.Length && parts[index] == "FlickerVoid")
+        {
+            index++;
+        }
+
+        if (index < parts.Length && parts[index] == "Engine")
+        {
+            index++;
+        }
+
+        if (index >= parts.Length)
+        {
+            return "Nodes";
+        }
+
+        return parts[index];
     }
 
     private void EditSelected(FlowNodeViewModel node)
