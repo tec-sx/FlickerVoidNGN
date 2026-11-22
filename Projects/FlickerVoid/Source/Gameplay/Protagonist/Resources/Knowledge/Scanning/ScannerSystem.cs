@@ -14,6 +14,7 @@ using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Gameplay.Protagonist.Control;
+using FlickerVoid.Gameplay.Serialization;
 
 using Microsoft.Extensions.Logging;
 
@@ -25,7 +26,7 @@ using World = Arch.Core.World;
 /// The protagonist's scanner, ported from the Unreal scanner for point and click: <see cref="ScanMode"/> turns scan mode on and off,
 /// which reveals the scannables within range whose conditions pass; the revealed one the pointer is on, in sight of the scanner, is
 /// focused, and holding <see cref="Scan"/> scans it over its definition's duration. The first completed scan applies its effects.
-/// A fixed system and a game service.
+/// Saves keep which scannables were scanned. A fixed system and a game service.
 /// </summary>
 public sealed partial class ScannerSystem : BaseSystem<World, GameTime>
 {
@@ -58,6 +59,7 @@ public sealed partial class ScannerSystem : BaseSystem<World, GameTime>
         game.Lifecycle.OnActivate((Entity entity, ref Scannable scannable) => Activate(entity, scannable));
         game.Lifecycle.OnDeactivate((Entity entity, ref Scannable _) => Deactivate(entity));
         _events.Handle((in InputActionEvent action) => HandleInput(action));
+        game.SaveStates.Add("scannable", FlickerVoidJsonContext.Default.SavedScannable, Save, Restore);
     }
 
     public bool IsActive(Entity scanner) => World.IsAlive(scanner) && World.TryGet(scanner, out ScannerState state) && state.Active;
@@ -381,6 +383,24 @@ public sealed partial class ScannerSystem : BaseSystem<World, GameTime>
         }
 
         World.Add(entity, new ActiveScannable { Definition = definition });
+    }
+
+    private SavedScannable? Save(Entity entity)
+    {
+        if (!World.TryGet(entity, out ActiveScannable active))
+        {
+            return null;
+        }
+
+        return new SavedScannable { Scanned = active.Scanned };
+    }
+
+    private void Restore(Entity entity, SavedScannable saved)
+    {
+        if (World.Has<ActiveScannable>(entity))
+        {
+            World.Get<ActiveScannable>(entity).Scanned = saved.Scanned;
+        }
     }
 
     private void Deactivate(Entity entity)

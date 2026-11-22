@@ -5,6 +5,7 @@ using Arch.Core;
 using FlickerVoid.Engine.Characters.Movement;
 using FlickerVoid.Engine.Physics;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 
@@ -12,13 +13,19 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlickerVoid.Engine.Characters.Tests.Movement;
 
-/// <summary>Builds a game with characters, and physics and a path finder when asked, spawning entities written as scene JSON and stepping its fixed updates.</summary>
+/// <summary>
+/// Builds a game with characters and saves in a temporary folder, and physics and a path finder when asked, spawning entities written as
+/// scene JSON and stepping its fixed updates.
+/// </summary>
 internal sealed class CharacterMovementSystemTestsBuilder : IDisposable
 {
     private bool _physics;
     private IPathFinder? _paths;
+    private readonly string _saves = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
 
     public Game Game { get; } = new(NullLoggerFactory.Instance);
+
+    public SaveSystem Saves { get; private set; } = null!;
 
     public CharacterMovementSystemTestsBuilder WithPhysics()
     {
@@ -41,6 +48,7 @@ internal sealed class CharacterMovementSystemTestsBuilder : IDisposable
 
         CharacterMovementSystem movement = Game.AddCharacters();
         movement.PathFinder = _paths;
+        Saves = Game.AddSaves(new SaveSettings { Folder = _saves });
         return Game;
     }
 
@@ -63,5 +71,9 @@ internal sealed class CharacterMovementSystemTestsBuilder : IDisposable
     public void Dispose()
     {
         Game.Dispose();
+        if (Directory.Exists(_saves))
+        {
+            Directory.Delete(_saves, recursive: true);
+        }
     }
 }

@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Interaction.Interactables;
 using FlickerVoid.Engine.Interaction.Locks;
 using FlickerVoid.Engine.Interaction.Toggles;
 
@@ -22,6 +23,24 @@ public sealed class DoorTests : IDisposable
 
         toggled.Select(sent => sent.Open).Should().Equal(true, false);
         _builder.World.Get<Toggle>(_builder.Door).Open.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ASaveKeepsTheLockTheToggleAndTheOffersUsesAsTheyWere()
+    {
+        _builder.Build();
+        _builder.Press("Input.Unlock");
+        _builder.Press("Input.Use");
+        _builder.Saves.Save("Slot1");
+        _builder.World.Get<Lockable>(_builder.Door).Locked = true;
+        _builder.World.Get<Toggle>(_builder.Door).Open = false;
+        _builder.World.Get<ActiveInteractable>(_builder.Door).State = InteractableState.Completed;
+
+        _builder.Saves.Load("Slot1");
+
+        _builder.World.Get<Lockable>(_builder.Door).Locked.Should().BeFalse();
+        _builder.World.Get<Toggle>(_builder.Door).Open.Should().BeTrue();
+        _builder.World.Get<ActiveInteractable>(_builder.Door).State.Should().Be(InteractableState.Awake);
     }
 
     [Fact]
