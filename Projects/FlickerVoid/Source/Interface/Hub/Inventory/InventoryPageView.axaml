@@ -4,6 +4,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:inventory="using:FlickerVoid.Interface.Hub.Inventory"
              xmlns:controls="using:FlickerVoid.Interface.Controls"
+             xmlns:stages="using:FlickerVoid.Engine.Ui.Stages"
              x:Class="FlickerVoid.Interface.Hub.Inventory.InventoryPageView"
              x:DataType="inventory:InventoryPageViewModel">
   <Grid ColumnDefinitions="340,*,180">
@@ -52,8 +53,7 @@
       </controls:HudFrame>
     </StackPanel>
 
-    <!-- The stage shows the protagonist here. -->
-    <Panel Grid.Column="1" />
+    <stages:StageView Grid.Column="1" Stage="{Binding Stage}" Margin="24,0" />
 
     <ItemsControl Grid.Column="2" ItemsSource="{Binding Slots}" VerticalAlignment="Top">
       <ItemsControl.ItemsPanel>

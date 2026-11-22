@@ -9,6 +9,7 @@ using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Story.Knowledge;
 using FlickerVoid.Engine.Story.Quests;
 using FlickerVoid.Engine.Ui;
+using FlickerVoid.Engine.Ui.Stages;
 using FlickerVoid.Engine.Ui.Surfaces;
 using FlickerVoid.Gameplay;
 using FlickerVoid.Interface;
@@ -34,6 +35,8 @@ using ILoggerFactory loggerFactory = LoggerFactory.Create(static logging => logg
 using SceneHost host = new(options, loggerFactory, "FlickerVoid");
 GameplayModule gameplay = new();
 gameplay.Add(host.Game);
+InterfaceModule ui = new();
+ui.Add(host.Game);
 host.Input.Map = host.Data.Load<InputMap>("Input/Controls.fvdata");
 host.Start(CreateOverlays);
 host.Run();
@@ -43,6 +46,7 @@ return 0;
 FrameOverlays CreateOverlays(PixelFormat format, SceneRenderer renderer)
 {
     UiPlatform.Start<InterfaceApplication>();
+    host.Game.AddStages(host.Device, host.Content);
     GameInterface gameInterface = new(host.Game);
     host.Game.FrameSystems.Add(gameInterface);
     GameUi gameUi = new(host.Device, host.Window, format, gameInterface.View);
