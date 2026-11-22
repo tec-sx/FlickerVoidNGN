@@ -41,6 +41,19 @@ public sealed class EditorIconsTests : IDisposable
     }
 
     [Fact]
+    public void ShowsCameraCuesByACameraAtTheirAreasCentre()
+    {
+        Entity cue = _builder.AddCameraCue(new Vector3(2, 0, 0));
+
+        _icons.Collect(_builder.World, null);
+
+        IconInstance icon = _icons.Icons.Should().ContainSingle().Subject;
+        icon.Entity.Should().Be(cue);
+        icon.Icon.Should().Be(EditorIcon.Camera);
+        icon.Position.Should().Be(new Vector3(2, 1, 0));
+    }
+
+    [Fact]
     public void ShowsTheSelectedIconInTheSelectionColour()
     {
         Entity light = _builder.AddPointLight(Vector3.Zero, Vector3.One);

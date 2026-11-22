@@ -436,6 +436,91 @@
                         {
                           "properties": {
                             "$type": {
+                              "const": "cutToShot"
+                            },
+                            "shot": {
+                              "type": "string"
+                            },
+                            "mode": {
+                              "enum": [
+                                "Switch",
+                                "Push",
+                                "Return"
+                              ]
+                            },
+                            "transition": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "enum": [
+                                    "Cut",
+                                    "CrossFade",
+                                    "Fade",
+                                    "Blend"
+                                  ]
+                                },
+                                "duration": {
+                                  "type": "number"
+                                },
+                                "inDuration": {
+                                  "type": "number"
+                                },
+                                "color": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "number"
+                                  },
+                                  "minItems": 3,
+                                  "maxItems": 3
+                                },
+                                "ease": {
+                                  "enum": [
+                                    "Linear",
+                                    "EaseIn",
+                                    "EaseOut",
+                                    "EaseInOut"
+                                  ]
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "properties": {
+                            "$type": {
+                              "const": "playShot"
+                            },
+                            "shot": {
+                              "type": "string"
+                            },
+                            "toKey": {
+                              "type": "integer"
+                            },
+                            "layers": {
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "properties": {
+                            "$type": {
+                              "const": "shakeCamera"
+                            },
+                            "strength": {
+                              "type": "number"
+                            },
+                            "duration": {
+                              "type": "number"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "properties": {
+                            "$type": {
                               "const": "modifyAttribute"
                             },
                             "attribute": {
@@ -719,6 +804,184 @@
                   }
                 },
                 "additionalProperties": false
+              },
+              "id": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "properties": {
+              "$type": {
+                "const": "switchShot"
+              },
+              "shot": {
+                "type": "string"
+              },
+              "mode": {
+                "enum": [
+                  "Switch",
+                  "Push",
+                  "Return"
+                ]
+              },
+              "transition": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "Cut",
+                      "CrossFade",
+                      "Fade",
+                      "Blend"
+                    ]
+                  },
+                  "duration": {
+                    "type": "number"
+                  },
+                  "inDuration": {
+                    "type": "number"
+                  },
+                  "color": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "ease": {
+                    "enum": [
+                      "Linear",
+                      "EaseIn",
+                      "EaseOut",
+                      "EaseInOut"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "wait": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "properties": {
+              "$type": {
+                "const": "playShot"
+              },
+              "shot": {
+                "type": "string"
+              },
+              "toKey": {
+                "type": "integer"
+              },
+              "layers": {
+                "type": "boolean"
+              },
+              "wait": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "properties": {
+              "$type": {
+                "const": "waitForShotMarker"
+              },
+              "shot": {
+                "type": "string"
+              },
+              "marker": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "properties": {
+              "$type": {
+                "const": "fade"
+              },
+              "direction": {
+                "enum": [
+                  "Out",
+                  "In"
+                ]
+              },
+              "duration": {
+                "type": "number"
+              },
+              "color": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "wait": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "properties": {
+              "$type": {
+                "const": "shakeCamera"
+              },
+              "strength": {
+                "type": "number"
+              },
+              "duration": {
+                "type": "number"
               },
               "id": {
                 "type": "string"

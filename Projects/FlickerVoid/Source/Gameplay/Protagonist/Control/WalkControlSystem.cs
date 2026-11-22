@@ -8,7 +8,7 @@ using FlickerVoid.Engine.Dialogue.Conversations;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Rendering.Cameras;
-using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Loop;
 
@@ -25,7 +25,6 @@ public sealed class WalkControlSystem : BaseSystem<World, GameTime>
     public static readonly Tag Move = new("Input.Move");
 
     private static readonly QueryDescription Protagonists = new QueryDescription().WithAll<Protagonist, CharacterMover>();
-    private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>();
 
     private readonly EventBus _events;
     private readonly InputActions _actions;
@@ -100,14 +99,14 @@ public sealed class WalkControlSystem : BaseSystem<World, GameTime>
 
     private bool TryFindCamera(out Quaternion rotation)
     {
-        Entity camera = FindFirst(Cameras);
-        if (camera == Entity.Null)
+        rotation = Quaternion.Identity;
+        RenderCamera? camera = ActiveCamera.Find(World);
+        if (camera is not { } drawn)
         {
-            rotation = Quaternion.Identity;
             return false;
         }
 
-        rotation = World.Get<Transform>(camera).Rotation;
+        rotation = drawn.Transform.Rotation;
         return true;
     }
 

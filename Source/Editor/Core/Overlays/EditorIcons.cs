@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Editor.Core.Cameras;
+using FlickerVoid.Engine.Cameras.Triggers;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
@@ -11,7 +12,8 @@ using FlickerVoid.Engine.Runtime.Components;
 namespace FlickerVoid.Editor.Core.Overlays;
 
 /// <summary>
-/// The icons that show and pick entities with nothing else to see: lights (in their colour), cameras and irradiance volumes. They
+/// The icons that show and pick entities with nothing else to see: lights (in their colour), cameras, irradiance volumes and camera
+/// cues (a camera at the centre of their trigger area). They
 /// keep their size on screen and are drawn over everything, so a light inside a wall can still be clicked.
 /// </summary>
 public sealed class EditorIcons
@@ -25,6 +27,7 @@ public sealed class EditorIcons
     private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>();
     private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>();
     private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
+    private static readonly QueryDescription Cues = new QueryDescription().WithAll<CameraCue, TriggerArea, Transform>();
 
     private readonly List<IconInstance> _icons = [];
 
@@ -51,6 +54,12 @@ public sealed class EditorIcons
         world.Query(in Volumes, (Entity entity, ref Transform transform) =>
         {
             Add(entity, transform.Position, EditorIcon.IrradianceVolume, PlainColor, selected);
+        });
+        world.Query(in Cues, (Entity entity, ref TriggerArea area, ref Transform transform) =>
+        {
+            Matrix4x4 matrix = transform.ToMatrix();
+            Vector3 centre = Vector3.Transform(area.Offset, matrix);
+            Add(entity, centre, EditorIcon.Camera, PlainColor, selected);
         });
     }
 

@@ -14,6 +14,9 @@ public sealed class RenderScene
 
     public List<RenderProbeVolume> ProbeVolumes { get; } = [];
 
+    /// <summary>What the first camera's director lays over the frame, if anything.</summary>
+    public RenderTransition Transition { get; set; }
+
     public void Clear()
     {
         Cameras.Clear();
@@ -21,5 +24,6 @@ public sealed class RenderScene
         PointLights.Clear();
         SpotLights.Clear();
         ProbeVolumes.Clear();
+        Transition = default;
     }
 }

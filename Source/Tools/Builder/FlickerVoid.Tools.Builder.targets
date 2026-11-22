@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <FlickerVoidEngineContent Include="$(MSBuildThisFileDirectory)../../Engine/Rendering/Shaders" Assembly="FlickerVoid.Engine.Rendering" OutputFolder="Engine/Rendering" />
+    <FlickerVoidEngineContent Include="$(MSBuildThisFileDirectory)../../Engine/Cameras/Shaders" Assembly="FlickerVoid.Engine.Cameras" OutputFolder="Engine/Cameras" />
     <FlickerVoidEngineContent Include="$(MSBuildThisFileDirectory)../../Engine/Debug/Shaders" Assembly="FlickerVoid.Engine.Debug" OutputFolder="Engine/Debug" />
     <FlickerVoidEngineContent Include="$(MSBuildThisFileDirectory)../../Engine/Ui/Shaders" Assembly="FlickerVoid.Engine.Ui" OutputFolder="Engine/Ui" />
   </ItemGroup>

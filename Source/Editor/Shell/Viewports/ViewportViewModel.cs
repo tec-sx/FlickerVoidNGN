@@ -10,6 +10,7 @@ using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Editor.Core.Gizmos;
 using FlickerVoid.Editor.Core.Overlays;
+using FlickerVoid.Editor.Core.Shots;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Selection;
 using FlickerVoid.Editor.Core.Viewports;
@@ -44,6 +45,7 @@ public sealed partial class ViewportViewModel : ObservableObject
     private static readonly Vector4 SelectionColor = EditorIcons.SelectedColor;
 
     private readonly EditorCameraController _controller;
+    private bool _draggingKey;
 
     public ViewportViewModel(EditorScene scene, bool validation)
     {
@@ -51,6 +53,7 @@ public sealed partial class ViewportViewModel : ObservableObject
         Validation = validation;
         Camera.LookAt(Vector3.Zero, MathF.PI / 4, -0.5f, 12);
         _controller = new EditorCameraController(Camera);
+        Timeline = new ShotTimelineViewModel(scene);
         Selection.Changed += HandleSelectionChanged;
     }
 
@@ -67,6 +70,9 @@ public sealed partial class ViewportViewModel : ObservableObject
     public TransformGizmo Gizmo { get; } = new();
 
     public EditorIcons Icons { get; } = new();
+
+    /// <summary>The selected shot's timeline and keys, shown under the viewport while a shot is selected.</summary>
+    public ShotTimelineViewModel Timeline { get; }
 
     /// <summary>Whether the viewport's renderer turns on the Vulkan validation layer.</summary>
     public bool Validation { get; }
@@ -371,6 +377,11 @@ public sealed partial class ViewportViewModel : ObservableObject
             return;
         }
 
+        if (PressShotKey(pixel, width, height))
+        {
+            return;
+        }
+
         if (Selection.Selected is { } selected && world.IsAlive(selected))
         {
             Transform transform = world.Get<Transform>(selected);
@@ -384,6 +395,36 @@ public sealed partial class ViewportViewModel : ObservableObject
         }
 
         SelectAt(pixel, width, height);
+    }
+
+    /// <summary>
+    /// With a shot selected, starts dragging the gizmo on its selected key, or selects the key under the mouse; true when the
+    /// press was the key's. Anything else leaves the shot's keys unselected.
+    /// </summary>
+    private bool PressShotKey(Vector2 pixel, int width, int height)
+    {
+        if (!Timeline.HasShot)
+        {
+            return false;
+        }
+
+        if (Timeline.TryGetKeyTransform(out Transform key) && Gizmo.BeginDrag(Camera, key, pixel, width, height))
+        {
+            _draggingKey = true;
+            return true;
+        }
+
+        int? hit = Timeline.HitTestKey(Camera, pixel, width, height);
+        Timeline.SelectKey(hit);
+        return hit is not null;
+    }
+
+    /// <summary>Adds a key to the selected shot where the editor's view stands, at the timeline's scrubbed time.</summary>
+    [RelayCommand]
+    public void AddShotKey()
+    {
+        Transform view = Camera.ToTransform();
+        Timeline.AddKey(view);
     }
 
     /// <summary>Selects what is under the mouse: an icon first, then a mesh, or nothing; the game view has no icons.</summary>
@@ -415,6 +456,13 @@ public sealed partial class ViewportViewModel : ObservableObject
             return;
         }
 
+        if (Gizmo.IsDragging && _draggingKey)
+        {
+            Transform draggedKey = Gizmo.Drag(Camera, pixel, width, height);
+            Timeline.SetKeyTransform(draggedKey);
+            return;
+        }
+
         if (Gizmo.IsDragging)
         {
             Transform before = world.Get<Transform>(selected);
@@ -430,6 +478,11 @@ public sealed partial class ViewportViewModel : ObservableObject
         }
 
         Transform transform = world.Get<Transform>(selected);
+        if (Timeline.TryGetKeyTransform(out Transform key))
+        {
+            transform = key;
+        }
+
         Gizmo.Hover(Camera, transform, pixel, width, height);
     }
 
@@ -468,6 +521,7 @@ public sealed partial class ViewportViewModel : ObservableObject
         }
 
         Gizmo.EndDrag();
+        _draggingKey = false;
     }
 
     /// <summary>An undo step's name for entities: "Move Lamp" for one, "Move 3 entities" for more.</summary>
@@ -506,22 +560,36 @@ public sealed partial class ViewportViewModel : ObservableObject
             }
         }
 
+        ShotOverlay.Draw(overlay, world, Timeline);
         if (Selection.Selected is not { } selected || !world.IsAlive(selected))
         {
             return;
         }
 
         Transform transform = world.Get<Transform>(selected);
+        if (Timeline.TryGetKeyTransform(out Transform key))
+        {
+            transform = key;
+        }
+
         Gizmo.Draw(overlay, Camera, transform, viewportHeight);
     }
 
-    /// <summary>The selected camera and where it looks from, shown live in a corner of the viewport; none in the game view.</summary>
+    /// <summary>
+    /// The selected camera and where it looks from, shown live in a corner of the viewport, a shot where its timeline is scrubbed;
+    /// none in the game view.
+    /// </summary>
     public RenderCamera? GetPreviewCamera()
     {
         World world = Scene.Game.World;
         if (IsGameView || Selection.Selected is not { } selected || !world.IsAlive(selected) || !world.Has<Camera, Transform>(selected))
         {
             return null;
+        }
+
+        if (Timeline.HasShot)
+        {
+            return Timeline.GetPreview();
         }
 
         Camera camera = world.Get<Camera>(selected);

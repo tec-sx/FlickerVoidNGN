@@ -2,6 +2,7 @@ using System.Numerics;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Cameras.Directing;
 using FlickerVoid.Engine.Dialogue.Conversations;
 using FlickerVoid.Engine.Flow;
 using FlickerVoid.Engine.Flow.Graphs;
@@ -10,6 +11,7 @@ using FlickerVoid.Engine.Maps.Navigation;
 using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Rendering;
+using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
@@ -27,7 +29,7 @@ namespace FlickerVoid.Gameplay.Tests.Story;
 
 /// <summary>
 /// Plays FlickerVoid's main scene from the project's own content, as the launcher does without drawing: a 100 by 100 pixel window
-/// with the mouse in its centre, clicks made by moving the camera straight over what is clicked, and saves in a temporary folder.
+/// with the mouse in its centre, clicks made by moving the live camera's drawn view straight over what is clicked, and saves in a temporary folder.
 /// It can start the game again over the same saves, as a player restarting it.
 /// </summary>
 internal sealed class StoryLoopTestsBuilder : IDisposable
@@ -105,10 +107,10 @@ internal sealed class StoryLoopTestsBuilder : IDisposable
         Transform place = Game.World.Get<Transform>(target);
         Vector3 turned = Vector3.Transform(offset, place.Rotation);
         Vector3 point = place.Position + turned;
-        Entity camera = Find("Camera");
-        ref Transform view = ref Game.World.Get<Transform>(camera);
-        view.Position = new Vector3(point.X, 10, point.Z);
-        view.Rotation = LookingDown;
+        CameraDirector cameras = Game.Services.GetService<CameraDirector>()!;
+        ref ActiveCamera view = ref Game.World.Get<ActiveCamera>(cameras.Live);
+        Vector3 above = new(point.X, 10, point.Z);
+        view.Pose = new Transform { Position = above, Rotation = LookingDown };
         Game.Events.Send(new InputActionEvent(ClickControlSystem.Use, InputPhase.Pressed));
         Game.Events.Dispatch();
         return RunUntil(done, seconds);
