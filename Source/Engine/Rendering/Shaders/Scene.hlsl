@@ -33,6 +33,7 @@ struct Material
     float3 Emissive;
     float EmissiveIntensity;
     uint Texture;
+    float TextureScale;
 };
 
 struct Light
@@ -121,6 +122,7 @@ Material LoadMaterial()
     material.Emissive = buffer.Load<float3>(60);
     material.EmissiveIntensity = buffer.Load<float>(72);
     material.Texture = buffer.Load<uint>(76);
+    material.TextureScale = buffer.Load<float>(80);
     return material;
 }
 
@@ -479,12 +481,14 @@ float4 PixelMain(VertexOutput input) : SV_Target
     FrameData frame = LoadFrame(Scene.Frame);
     Material material = LoadMaterial();
     uint texture = Scene.Texture;
+    float2 uv = input.Uv;
     if (material.Texture != None)
     {
         texture = material.Texture;
+        uv *= material.TextureScale;
     }
 
-    float4 albedo = Textures[texture].Sample(Samplers[Scene.Sampler], input.Uv) * Scene.BaseColor;
+    float4 albedo = Textures[texture].Sample(Samplers[Scene.Sampler], uv) * Scene.BaseColor;
     albedo.rgb *= material.Tint;
     float3 normal = normalize(input.Normal);
     float3 toCamera = ToCamera(frame, input.WorldPosition);
