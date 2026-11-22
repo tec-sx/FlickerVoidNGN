@@ -55,8 +55,19 @@ public sealed partial class InteractionSystem : BaseSystem<World, GameTime>
     /// <summary>The offers of the interactor's focus it can see, heaviest first: hidden ones whose conditions fail are left out.</summary>
     public IReadOnlyList<OfferView> GetOffers(Entity interactor)
     {
-        List<OfferView> offers = [];
         if (!TryGetFocus(interactor, out Entity target))
+        {
+            return [];
+        }
+
+        return GetOffers(interactor, target);
+    }
+
+    /// <summary>The offers of any interactable as the interactor sees them, such as the one under the mouse, heaviest first.</summary>
+    public IReadOnlyList<OfferView> GetOffers(Entity interactor, Entity target)
+    {
+        List<OfferView> offers = [];
+        if (!World.IsAlive(interactor) || !IsInteractable(target))
         {
             return offers;
         }

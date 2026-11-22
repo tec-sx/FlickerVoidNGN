@@ -26,12 +26,11 @@ public sealed unsafe class UiSurface : IPointerCapture, IDisposable
     private static readonly MouseButton[] Buttons = [MouseButton.Left, MouseButton.Right, MouseButton.Middle];
 
     private readonly Window _window;
-    private readonly Control _content;
     private Vector2 _pointer = new(-1, -1);
 
     public UiSurface(Control content, int width, int height)
     {
-        _content = content;
+        Content = content;
         _window = new Window
         {
             Width = width,
@@ -44,6 +43,9 @@ public sealed unsafe class UiSurface : IPointerCapture, IDisposable
         Width = width;
         Height = height;
     }
+
+    /// <summary>The controls it shows.</summary>
+    public Control Content { get; }
 
     public int Width { get; private set; }
 
@@ -149,7 +151,7 @@ public sealed unsafe class UiSurface : IPointerCapture, IDisposable
             return false;
         }
 
-        return visual != _content && _content.IsVisualAncestorOf(visual);
+        return visual != Content && Content.IsVisualAncestorOf(visual);
     }
 
     private static Avalonia.Input.MouseButton ToAvalonia(MouseButton button)
