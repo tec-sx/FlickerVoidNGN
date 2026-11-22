@@ -58,7 +58,9 @@ public sealed class GameplayModule : IGameModule
         IInputState? input = game.Services.GetService<IInputState>();
         if (window is not null && input is not null)
         {
-            _ = new ClickControlSystem(game.World, game.Events, input, window, physics, dialogue);
+            PointerPicker picker = new(game.World, input, window, physics);
+            game.Services.AddService(picker);
+            _ = new ClickControlSystem(game.World, game.Events, picker, dialogue);
         }
     }
 
