@@ -17,6 +17,31 @@ public sealed class EquipmentSystemTests : IDisposable
     public void Dispose() => _builder.Dispose();
 
     [Fact]
+    public void ASaveBringsBackWhatIsCarriedAndWornAndTheMoney()
+    {
+        _builder.Build("Coat 1, Apple 1");
+        Entity hero = _builder.Hero;
+        ItemStack coat = _builder.Inventories.GetStacks(hero)[0];
+        ItemStack apple = _builder.Inventories.GetStacks(hero)[1];
+        _builder.Inventories.SetInstanceData(hero, apple.Id, [new Stolen(new Tag("Faction.Inn"))]);
+        _builder.Inventories.AddMoney(hero, 7);
+        _builder.Equipment.EquipStack(hero, coat.Id);
+        _builder.Saves.Save("Slot1");
+        _builder.Equipment.Unequip(hero, EquipmentSystemTestsBuilder.Slot("Torso"));
+        _builder.Inventories.RemoveStack(hero, apple.Id);
+        _builder.Inventories.RemoveMoney(hero, 7);
+
+        _builder.Saves.Load("Slot1");
+
+        IReadOnlyList<ItemStack> stacks = _builder.Inventories.GetStacks(hero);
+        stacks.Select(stack => stack.Id).Should().Equal(coat.Id, apple.Id);
+        stacks[1].FindData<Stolen>().Should().Be(new Stolen(new Tag("Faction.Inn")));
+        _builder.Inventories.GetMoney(hero).Should().Be(7);
+        _builder.Equipment.GetEquippedStack(hero, EquipmentSystemTestsBuilder.Slot("Torso")).Should().Be(coat.Id);
+        _builder.Game.World.Get<OwnedTags>(hero).Tags.Should().Equal(new Tag("Disguise.Police"));
+    }
+
+    [Fact]
     public void WearingAnItemGrantsItsTags()
     {
         _builder.Build("Coat 1");

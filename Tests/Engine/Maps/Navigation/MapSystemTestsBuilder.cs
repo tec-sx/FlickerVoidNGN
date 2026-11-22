@@ -8,6 +8,7 @@ using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 
@@ -58,12 +59,16 @@ internal sealed class MapSystemTestsBuilder : IDisposable
 
     public Entity Navigator { get; private set; }
 
+    public SaveSystem Saves { get; private set; } = null!;
+
     public MapSystem Build()
     {
         ContentManager content = new(_folder);
         _data = new DataAssets(content, Game.Data);
         Game.Services.AddService(_data);
         MapSystem maps = Game.AddMaps(new MapSettings { WaypointMarker = "Markers/Waypoint.fvdata" });
+        string saves = Path.Combine(_folder, "Saves");
+        Saves = Game.AddSaves(new SaveSettings { Folder = saves });
         Game.Lifecycle.Play(Game.World);
         Navigator = Spawn("""
             { "name": "Fox", "components": { "transform": {}, "navigator": { "minimap": { "radius": 20, "minRadius": 5, "maxRadius": 50 } } } }
@@ -71,11 +76,12 @@ internal sealed class MapSystemTestsBuilder : IDisposable
         return maps;
     }
 
-    /// <summary>Puts a marker of the given kind on a new entity at a place, with the fact it sets once discovered.</summary>
+    /// <summary>Puts a marker of the given kind on a new entity at a place, with the fact it sets once discovered; the entity saves as its kind and label.</summary>
     public Entity AddMarker(string kind, Vector3 position, string label = "", string discoveredFact = "")
     {
         string json = $$"""
             { "name": "{{kind}}", "components": { "transform": { "position": [{{position.X}}, {{position.Y}}, {{position.Z}}] },
+              "saveable": { "id": "{{kind}}{{label}}" },
               "mapMarker": { "definition": "Markers/{{kind}}.fvdata", "label": "{{label}}", "discoveredFact": "{{discoveredFact}}" } } }
             """;
         return Spawn(json);

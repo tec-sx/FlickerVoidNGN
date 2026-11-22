@@ -14,7 +14,6 @@ using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Gameplay.Protagonist.Control;
-using FlickerVoid.Gameplay.Serialization;
 
 using Microsoft.Extensions.Logging;
 
@@ -59,7 +58,7 @@ public sealed partial class ScannerSystem : BaseSystem<World, GameTime>
         game.Lifecycle.OnActivate((Entity entity, ref Scannable scannable) => Activate(entity, scannable));
         game.Lifecycle.OnDeactivate((Entity entity, ref Scannable _) => Deactivate(entity));
         _events.Handle((in InputActionEvent action) => HandleInput(action));
-        game.SaveStates.Add("scannable", FlickerVoidJsonContext.Default.SavedScannable, Save, Restore);
+        game.SaveStates.Add<SavedScannable>("scannable", Save, Restore);
     }
 
     public bool IsActive(Entity scanner) => World.IsAlive(scanner) && World.TryGet(scanner, out ScannerState state) && state.Active;

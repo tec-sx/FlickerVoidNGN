@@ -31,9 +31,9 @@ public sealed class SaveSystemTests : IDisposable
     {
         string weather = "Rain";
         _builder.Build();
+        _builder.Game.Data.AddResolver(RuntimeJsonContext.Default);
         _builder.Game.SaveStates.AddGlobal(
             "weather",
-            RuntimeJsonContext.Default.JsonObject,
             () => new JsonObject { ["now"] = weather },
             saved => weather = saved["now"]!.GetValue<string>());
         _builder.Game.Facts.SetFact(Quest, 1);
@@ -89,9 +89,9 @@ public sealed class SaveSystemTests : IDisposable
     {
         Dictionary<Entity, string> labels = [];
         _builder.Build();
+        _builder.Game.Data.AddResolver(RuntimeJsonContext.Default);
         _builder.Game.SaveStates.Add(
             "label",
-            RuntimeJsonContext.Default.JsonObject,
             entity => labels.TryGetValue(entity, out string? label) ? new JsonObject { ["text"] = label } : null,
             (entity, saved) => labels[entity] = saved["text"]!.GetValue<string>());
         IReadOnlyList<Entity> entities = _builder.Spawn(Crates);

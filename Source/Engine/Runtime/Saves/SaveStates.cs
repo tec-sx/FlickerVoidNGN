@@ -4,13 +4,16 @@ using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Runtime.Data;
+
 namespace FlickerVoid.Engine.Runtime.Saves;
 
 /// <summary>
 /// What a save keeps: modules add their states by key, read back in the order they were added, of each <see cref="Saveable"/>
-/// entity (a component kept as it is, or state of their own) and of the game as a whole.
+/// entity (a component kept as it is, or state of their own) and of the game as a whole. A module's own state is written with the
+/// game's data types, so its type must be described by a resolver added to them, and polymorphic values (item instance data) work.
 /// </summary>
-public sealed class SaveStates(World world)
+public sealed class SaveStates(World world, DataTypes data)
 {
     private readonly List<SaveState> _states = [];
     private readonly List<GlobalSaveState> _globals = [];
@@ -20,10 +23,10 @@ public sealed class SaveStates(World world)
     public IReadOnlyList<GlobalSaveState> Globals => _globals;
 
     /// <summary>Saves game-wide state: what <paramref name="write"/> gives (null for nothing), handed to <paramref name="read"/> when a save holds it.</summary>
-    public void AddGlobal<TState>(string key, JsonTypeInfo<TState> info, Func<TState?> write, Action<TState> read)
+    public void AddGlobal<TState>(string key, Func<TState?> write, Action<TState> read)
         where TState : class
     {
-        _globals.Add(new GlobalSaveState(key, () => WriteState(Entity.Null, info, _ => write()), node => ReadState(Entity.Null, node, info, (_, state) => read(state))));
+        _globals.Add(new GlobalSaveState(key, () => WriteState(Entity.Null, _ => write()), node => ReadState<TState>(Entity.Null, node, (_, state) => read(state))));
     }
 
     /// <summary>Saves the component as it is; loading sets it back, or removes it from an entity that had none when saved.</summary>
@@ -34,13 +37,15 @@ public sealed class SaveStates(World world)
     }
 
     /// <summary>Saves what <paramref name="write"/> gives (null for nothing) and hands it to <paramref name="read"/> when a save holds it.</summary>
-    public void Add<TState>(string key, JsonTypeInfo<TState> info, Func<Entity, TState?> write, Action<Entity, TState> read)
+    public void Add<TState>(string key, Func<Entity, TState?> write, Action<Entity, TState> read)
         where TState : class
     {
-        _states.Add(new SaveState(key, entity => WriteState(entity, info, write), (entity, node) => ReadState(entity, node, info, read)));
+        _states.Add(new SaveState(key, entity => WriteState(entity, write), (entity, node) => ReadState(entity, node, read)));
     }
 
-    private static JsonNode? WriteState<TState>(Entity entity, JsonTypeInfo<TState> info, Func<Entity, TState?> write)
+    private JsonTypeInfo<TState> GetInfo<TState>() => (JsonTypeInfo<TState>)data.Options.GetTypeInfo(typeof(TState));
+
+    private JsonNode? WriteState<TState>(Entity entity, Func<Entity, TState?> write)
         where TState : class
     {
         TState? state = write(entity);
@@ -49,10 +54,11 @@ public sealed class SaveStates(World world)
             return null;
         }
 
+        JsonTypeInfo<TState> info = GetInfo<TState>();
         return JsonSerializer.SerializeToNode(state, info);
     }
 
-    private static void ReadState<TState>(Entity entity, JsonNode? node, JsonTypeInfo<TState> info, Action<Entity, TState> read)
+    private void ReadState<TState>(Entity entity, JsonNode? node, Action<Entity, TState> read)
         where TState : class
     {
         if (node is null)
@@ -60,6 +66,7 @@ public sealed class SaveStates(World world)
             return;
         }
 
+        JsonTypeInfo<TState> info = GetInfo<TState>();
         TState? state = node.Deserialize(info);
         if (state is not null)
         {

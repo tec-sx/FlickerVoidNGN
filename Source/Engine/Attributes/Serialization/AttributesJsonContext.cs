@@ -8,7 +8,7 @@ using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Engine.Attributes.Serialization;
 
-/// <summary>Source-generated JSON for attribute, modifier and check definitions, the attribute conditions and effects, and the <c>attributes</c> component.</summary>
+/// <summary>Source-generated JSON for attribute, modifier and check definitions, the attribute conditions and effects, the <c>attributes</c> component and what saves keep.</summary>
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, UseStringEnumConverter = true, Converters = [typeof(TagJsonConverter)])]
 [JsonSerializable(typeof(AttributeDefinition))]
 [JsonSerializable(typeof(ModifierDefinition))]
@@ -20,4 +20,5 @@ namespace FlickerVoid.Engine.Attributes.Serialization;
 [JsonSerializable(typeof(ApplyModifierEffect))]
 [JsonSerializable(typeof(RemoveModifierEffect))]
 [JsonSerializable(typeof(AttributeSet))]
+[JsonSerializable(typeof(SavedAttributes))]
 public sealed partial class AttributesJsonContext : JsonSerializerContext;

@@ -7,7 +7,6 @@ using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Interaction.Interactables;
-using FlickerVoid.Engine.Interaction.Serialization;
 using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Platform.Input.Gestures;
 using FlickerVoid.Engine.Runtime.Components;
@@ -51,7 +50,7 @@ public sealed partial class InteractionSystem : BaseSystem<World, GameTime>
         game.Lifecycle.OnDeactivate((Entity entity, ref Interactor _) => Stop(entity));
         _events.Handle((in FocusCommand command) => Focus(command.Interactor, command.Target));
         _events.Handle((in InteractionInput input) => Push(input));
-        game.SaveStates.Add("interactable", InteractionJsonContext.Default.SavedInteractable, Save, Restore);
+        game.SaveStates.Add<SavedInteractable>("interactable", Save, Restore);
     }
 
     /// <summary>The offers of the interactor's focus it can see, heaviest first: hidden ones whose conditions fail are left out.</summary>
