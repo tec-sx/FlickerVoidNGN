@@ -72,6 +72,41 @@ public sealed class CharacterMovementSystemTests : IDisposable
     }
 
     [Fact]
+    public void TurnsInPlaceToFaceAPointAtItsTurnSpeed()
+    {
+        _builder.Build();
+        Entity hero = _builder.Spawn("""{ "name": "Hero", "components": { "transform": {}, "characterMover": { "turnSpeed": 90 } } }""")[0];
+        _builder.Game.Events.Send(new FaceCommand(hero, new Vector3(-3, 0, 0)));
+
+        _builder.Run(0.5f);
+        Vector3 halfway = Vector3.Transform(Vector3.UnitZ, _builder.Game.World.Get<Transform>(hero).Rotation);
+        _builder.Run(0.6f);
+
+        halfway.X.Should().BeApproximately(-MathF.Sin(MathF.PI / 4), 0.03f);
+        Transform transform = _builder.Game.World.Get<Transform>(hero);
+        Vector3 forward = Vector3.Transform(Vector3.UnitZ, transform.Rotation);
+        forward.X.Should().BeApproximately(-1, 1e-3f);
+        transform.Position.Should().Be(Vector3.Zero);
+        _builder.Game.World.Has<Facing>(hero).Should().BeFalse();
+    }
+
+    [Fact]
+    public void FacingAPointStopsItWalking()
+    {
+        _builder.Build();
+        Entity hero = _builder.Spawn(Walker)[0];
+        _builder.Game.Events.Send(new MoveCommand(hero, new Vector3(10, 0, 0)));
+        _builder.Run(0.5f);
+
+        _builder.Game.Events.Send(new FaceCommand(hero, new Vector3(0, 0, 10)));
+        _builder.Run(0.1f);
+        float stopped = _builder.Game.World.Get<Transform>(hero).Position.X;
+        _builder.Run(1);
+
+        _builder.Game.World.Get<Transform>(hero).Position.X.Should().Be(stopped);
+    }
+
+    [Fact]
     public void StandsOnTheGroundPhysicsFinds()
     {
         _builder.WithPhysics().Build();

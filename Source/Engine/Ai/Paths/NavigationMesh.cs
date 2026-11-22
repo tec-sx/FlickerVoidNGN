@@ -131,6 +131,28 @@ public sealed class NavigationMesh
         return corners.Count > 0;
     }
 
+    /// <summary>A random point of the ground within the radius of a point, reachable from the ground nearest to it; false when there is none.</summary>
+    public bool TryFindRandomPoint(Vector3 around, float radius, Random random, out Vector3 point)
+    {
+        point = around;
+        RcVec3f center = ToRecast(around);
+        DtStatus found = _query.FindNearestPoly(center, _searchExtents, _filter, out long polygon, out RcVec3f nearest, out _);
+        if (found.Failed() || polygon == 0)
+        {
+            return false;
+        }
+
+        RandomSource source = new(random);
+        DtStatus picked = _query.FindRandomPointWithinCircle(polygon, nearest, radius, _filter, source, out _, out RcVec3f randomPoint);
+        if (picked.Failed())
+        {
+            return false;
+        }
+
+        point = new Vector3(randomPoint.X, randomPoint.Y, randomPoint.Z);
+        return true;
+    }
+
     private static DtNavMeshCreateParams CreateParameters(RcConfig config, RcPolyMesh polygons, RcPolyMeshDetail detail, NavigationSettings settings)
     {
         return new DtNavMeshCreateParams
