@@ -1,12 +1,8 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
     "$schema": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": "string"
     },
     "image": {
       "type": [
@@ -17,11 +13,16 @@
     "tiling": {
       "type": "number"
     },
+    "intensity": {
+      "type": "number"
+    },
     "tint": {
       "type": "array",
       "items": {
         "type": "number"
-      }
+      },
+      "minItems": 3,
+      "maxItems": 3
     }
   },
   "additionalProperties": false

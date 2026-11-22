@@ -11,7 +11,7 @@ internal readonly record struct PostConstants(
     float Contrast,
     float Saturation,
     float Bloom,
-    float Grain,
+    float CanvasIntensity,
     uint Scene,
     uint BloomTexture,
     uint Canvas,

@@ -166,7 +166,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         string status = "";
         try
         {
-            preview = new MaterialPreview(scene.Game.LoggerFactory);
+            preview = new MaterialPreview(scene.Game.LoggerFactory, _content.RootDirectory);
         }
         catch (GraphicsUnavailableException exception)
         {

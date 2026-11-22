@@ -554,15 +554,11 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
-    public void LaysGrainOverTheImage()
+    public void FlattensTheCanvasToItsAverageAtNoIntensity()
     {
-        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
-        _builder.WithScene(Camera, Quad);
-        _builder.WithMood(static mood => mood with { Canvas = null, Grain = 0.2f });
+        uint[] flat = RenderCanvas(_builder, """{ "image": "Paper.tga", "intensity": 0 }""", Camera);
 
-        uint[] grain = _builder.Render();
-
-        grain.Distinct().Should().HaveCountGreaterThan(1, "grain varies from pixel to pixel");
+        flat.Distinct().Should().ContainSingle("without intensity the canvas is its average colour alone");
     }
 
     [Fact]
@@ -791,6 +787,12 @@ public sealed class SceneRendererTests : IDisposable
     /// <summary>A paper of sixteen different greys under the entities, a camera first.</summary>
     private static uint[] RenderPaper(SceneRendererTestsBuilder builder, params string[] entities)
     {
+        return RenderCanvas(builder, """{ "image": "Paper.tga" }""", entities);
+    }
+
+    /// <summary>A paper of sixteen different greys, set up by the canvas file, under the entities, a camera first.</summary>
+    private static uint[] RenderCanvas(SceneRendererTestsBuilder builder, string canvas, params string[] entities)
+    {
         uint[] texels = new uint[16];
         for (int index = 0; index < texels.Length; index++)
         {
@@ -799,7 +801,7 @@ public sealed class SceneRendererTests : IDisposable
         }
 
         builder.WithTexture("Paper.tga", 4, 4, texels, mips: true);
-        builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga" }""");
+        builder.WithFile("Paper.fvcanvas", canvas);
         builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas" });
         builder.WithScene(entities);
         return builder.Render();

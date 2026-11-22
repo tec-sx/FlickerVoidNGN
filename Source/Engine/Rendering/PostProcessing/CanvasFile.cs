@@ -25,6 +25,10 @@ public sealed record CanvasFile
     [Range(0.1, 16)]
     public float Tiling { get; set; } = 1;
 
+    /// <summary>How strongly the image's texture shows: 1 as painted, 0 its average colour alone, above 1 stronger.</summary>
+    [Range(0, 2)]
+    public float Intensity { get; set; } = 1;
+
     /// <summary>Multiplies the image's colour.</summary>
     [Color]
     public Vector3 Tint { get; set; } = Vector3.One;

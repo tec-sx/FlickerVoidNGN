@@ -1,5 +1,5 @@
 // Turns the lit scene into the final image: adds bloom, then exposure, contrast, saturation and tint, then the tonemapper's
-// curve, then lays it over the canvas, then grain. The scene's alpha is how much paint lies there (0 to 1) plus how thick it
+// curve, then lays it over the canvas. The scene's alpha is how much paint lies there (0 to 1) plus how thick it
 // stands (0 to 1, from a painting's impasto): bare canvas shows where there is none, and the canvas's weave shows through
 // paint that isn't thick, so everything looks painted on it; only thick impasto hides it. The
 // canvas is flat and moves with the world as an orthographic camera pans and zooms.
@@ -15,7 +15,7 @@ struct PostConstants
     float Contrast;
     float Saturation;
     float Bloom;
-    float Grain;
+    float CanvasIntensity;
     uint Scene;
     uint BloomTexture;
     uint Canvas;
@@ -91,11 +91,6 @@ float3 Tonemap(float3 color)
     }
 }
 
-float PixelNoise(float2 pixel)
-{
-    return frac(52.9829189 * frac(dot(pixel, float2(0.06711056, 0.00583715))));
-}
-
 float4 PixelMain(float4 position : SV_Position) : SV_Target
 {
     Texture2D scene = Textures[Post.Scene];
@@ -127,8 +122,12 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
         uint levels;
         canvas.GetDimensions(0, width, height, levels);
         float2 uv = CanvasUv(position.xy, float2(width, height));
-        float3 canvasColor = canvas.SampleLevel(Samplers[Post.WrapSampler], uv, 0).rgb * Post.CanvasTint;
+        // Sampled through its mips, so a small window shows the weave softened rather than broken into aliased specks.
+        float3 sampled = canvas.Sample(Samplers[Post.WrapSampler], uv).rgb * Post.CanvasTint;
         float3 averageCanvas = canvas.SampleLevel(Samplers[Post.WrapSampler], uv, levels - 1).rgb * Post.CanvasTint;
+
+        // Intensity scales how far the canvas strays from its average colour: its texture fades, or grows stronger.
+        float3 canvasColor = max(lerp(averageCanvas, sampled, Post.CanvasIntensity), 0);
         float3 toLuminance = float3(0.2126, 0.7152, 0.0722);
         float averageLuminance = max(dot(averageCanvas, toLuminance), 1e-3);
 
@@ -141,8 +140,6 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
         color = lerp(canvasColor, painted, coverage);
         coverage = 1;
     }
-
-    color += (PixelNoise(position.xy) - 0.5) * Post.Grain;
 
     // Coverage: 0 where nothing was drawn and there is no canvas, so a stage's image shows over the interface; light added
     // there (bloom) stays additive.

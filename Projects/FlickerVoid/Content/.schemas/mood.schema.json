@@ -77,9 +77,6 @@
     "whitePoint": {
       "type": "number"
     },
-    "grain": {
-      "type": "number"
-    },
     "canvas": {
       "type": [
         "string",

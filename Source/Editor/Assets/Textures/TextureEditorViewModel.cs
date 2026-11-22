@@ -176,7 +176,7 @@ public sealed partial class TextureEditorViewModel : ObservableObject
         Status = "";
         if (_settings is CanvasFile file)
         {
-            TextureEdits tinted = source.Tint(file.Tint);
+            TextureEdits tinted = Intensify(source, file.Intensity).Tint(file.Tint);
             Summary = $"{image}, {source.Width} × {source.Height}";
             PreviewPixels = Tile(tinted, file.Tiling);
             return;
@@ -187,6 +187,40 @@ public sealed partial class TextureEditorViewModel : ObservableObject
         string compression = settings.Compression == TextureCompression.Bc7 ? "BC7" : "uncompressed";
         Summary = $"{edited.Width} × {edited.Height}, {compression}";
         PreviewPixels = Fit(edited);
+    }
+
+    /// <summary>The texels moved toward or away from their average colour, as the canvas's intensity does in the game.</summary>
+    private static TextureEdits Intensify(TextureEdits image, float intensity)
+    {
+        if (intensity == 1)
+        {
+            return image;
+        }
+
+        int texels = image.Width * image.Height;
+        Vector3 sum = Vector3.Zero;
+        for (int texel = 0; texel < texels; texel++)
+        {
+            int offset = texel * 4;
+            sum += new Vector3(image.Rgba[offset], image.Rgba[offset + 1], image.Rgba[offset + 2]);
+        }
+
+        Vector3 average = sum / texels;
+        byte[] rgba = new byte[image.Rgba.Length];
+        for (int texel = 0; texel < texels; texel++)
+        {
+            int offset = texel * 4;
+            for (int channel = 0; channel < 3; channel++)
+            {
+                float value = image.Rgba[offset + channel];
+                float moved = float.Lerp(average[channel], value, intensity);
+                rgba[offset + channel] = (byte)Math.Clamp(MathF.Round(moved), 0, 255);
+            }
+
+            rgba[offset + 3] = image.Rgba[offset + 3];
+        }
+
+        return new TextureEdits(rgba, image.Width, image.Height);
     }
 
     /// <summary>The image's texels, or null when it can't be read, saying why.</summary>

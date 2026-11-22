@@ -68,7 +68,7 @@ internal sealed class PostProcessor : IDisposable
             mood.Contrast,
             mood.Saturation,
             mood.Bloom,
-            mood.Grain,
+            canvas.File.Intensity,
             targets.Hdr.BindlessIndex,
             bloom,
             canvasIndex,

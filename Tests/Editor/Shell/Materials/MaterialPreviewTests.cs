@@ -49,4 +49,16 @@ public sealed class MaterialPreviewTests : IDisposable
         blueChannel.Should().BeGreaterThan(100);
         green.Should().BeLessThan(30);
     }
+
+    [Fact]
+    public void ShowsTexturesFromTheEditorsContent()
+    {
+        MaterialPreview preview = _builder.WithTexture("Green.png", 0, 255, 0).Build();
+        MaterialFile material = JsonSerializer.Deserialize("""{ "parameters": { "texture": "Green.png" } }""", RenderingJsonContext.Default.MaterialFile)!;
+
+        byte[] pixels = preview.Render(material, PreviewShape.Sphere, yaw: 0, Size);
+
+        (byte red, byte green, _) = MaterialPreviewTestsBuilder.PixelAt(pixels, Size, Size / 2, Size / 2);
+        green.Should().BeGreaterThan(red, "the texture comes from the editor's content folder, not the preview's own");
+    }
 }

@@ -85,10 +85,6 @@ public sealed record LightingMood
     [Range(1, 20)]
     public float WhitePoint { get; set; } = 11.2f;
 
-    /// <summary>The strength of the noise added to every pixel, as a share of full brightness.</summary>
-    [Range(0, 0.5)]
-    public float Grain { get; set; }
-
     /// <summary>The canvas everything is painted on, a <c>.fvcanvas</c> file; none paints on nothing.</summary>
     [ContentFile(".fvcanvas")]
     public string? Canvas { get; set; }
@@ -137,7 +133,6 @@ public sealed record LightingMood
             Tint = Vector3.Lerp(from.Tint, to.Tint, amount),
             Tonemapper = tonemapper,
             WhitePoint = float.Lerp(from.WhitePoint, to.WhitePoint, amount),
-            Grain = float.Lerp(from.Grain, to.Grain, amount),
             Canvas = canvas,
         };
     }
@@ -145,7 +140,7 @@ public sealed record LightingMood
     /// <summary>This mood with neutral post-processing, for captures that need the light as it is.</summary>
     public LightingMood WithoutPost()
     {
-        return this with { Bloom = 0, Exposure = 1, Contrast = 1, Saturation = 1, Tint = Vector3.One, Tonemapper = Tonemapper.None, Grain = 0, Canvas = null };
+        return this with { Bloom = 0, Exposure = 1, Contrast = 1, Saturation = 1, Tint = Vector3.One, Tonemapper = Tonemapper.None, Canvas = null };
     }
 }
 

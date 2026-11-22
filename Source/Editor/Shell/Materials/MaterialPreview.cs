@@ -25,14 +25,15 @@ namespace FlickerVoid.Editor.Materials;
 
 /// <summary>
 /// Renders materials on a grey sphere or cube with the game's own renderer, on a device of its own, and reads the image
-/// back, so the material editor can show it without sharing textures with Avalonia. Its world and content live in a
-/// temporary folder: the preview meshes and the material being shown.
+/// back, so the material editor can show it without sharing textures with Avalonia. It reads the editor's content, so the
+/// material's textures are found, and writes the preview meshes and the material being shown into a hidden folder there.
 /// </summary>
 public sealed class MaterialPreview : IMaterialPreview, IDisposable
 {
-    private const string MaterialPath = "Preview.fvmat";
-    private const string SpherePath = "Sphere.glb";
-    private const string CubePath = "Cube.glb";
+    private const string FolderName = ".material-preview";
+    private const string MaterialPath = FolderName + "/Preview.fvmat";
+    private const string SpherePath = FolderName + "/Sphere.glb";
+    private const string CubePath = FolderName + "/Cube.glb";
     private const PixelFormat Format = PixelFormat.Rgba8UNormSrgb;
     private const float CameraHeight = 1.2f;
     private const float CameraDistance = 3.2f;
@@ -48,14 +49,15 @@ public sealed class MaterialPreview : IMaterialPreview, IDisposable
     private IBuffer? _readback;
 
     /// <summary>Throws <see cref="GraphicsUnavailableException"/> without a Vulkan GPU.</summary>
-    public MaterialPreview(ILoggerFactory loggerFactory)
+    public MaterialPreview(ILoggerFactory loggerFactory, string contentRoot)
     {
-        string folderName = "FlickerVoidMaterialPreview-" + Path.GetRandomFileName();
-        _folder = Path.Combine(Path.GetTempPath(), folderName);
+        _content = new ContentManager(contentRoot);
+        _folder = _content.GetFullPath(FolderName);
         Directory.CreateDirectory(_folder);
-        WriteModel("Sphere.fvmodel", PreviewMeshes.CreateSphere(radius: 0.75f, rings: 32, segments: 48));
-        WriteModel("Cube.fvmodel", PreviewMeshes.CreateCube(size: 0.95f));
-        _content = new ContentManager(_folder);
+        ModelData sphere = PreviewMeshes.CreateSphere(radius: 0.75f, rings: 32, segments: 48);
+        WriteModel(Path.ChangeExtension(SpherePath, ".fvmodel"), sphere);
+        ModelData cube = PreviewMeshes.CreateCube(size: 0.95f);
+        WriteModel(Path.ChangeExtension(CubePath, ".fvmodel"), cube);
         _game = new Game(loggerFactory);
         _game.AddRendering();
         CreateCamera(_game.World);
@@ -150,14 +152,14 @@ public sealed class MaterialPreview : IMaterialPreview, IDisposable
 
     private void WriteModel(string path, ModelData model)
     {
-        string fullPath = Path.Combine(_folder, path);
+        string fullPath = _content.GetFullPath(path);
         using FileStream stream = File.Create(fullPath);
         ModelFile.Write(model, stream);
     }
 
     private void WriteMaterial(MaterialFile material)
     {
-        string fullPath = Path.Combine(_folder, MaterialPath);
+        string fullPath = _content.GetFullPath(MaterialPath);
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(material, RenderingJsonContext.Default.MaterialFile);
         File.WriteAllBytes(fullPath, json);
         _content.NotifyChanged(MaterialPath);

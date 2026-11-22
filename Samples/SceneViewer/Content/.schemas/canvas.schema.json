@@ -22,6 +22,9 @@
       "items": {
         "type": "number"
       }
+    },
+    "intensity": {
+      "type": "number"
     }
   },
   "additionalProperties": false

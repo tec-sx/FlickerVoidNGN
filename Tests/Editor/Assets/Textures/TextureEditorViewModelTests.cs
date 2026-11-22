@@ -74,10 +74,20 @@ public sealed class TextureEditorViewModelTests : IDisposable
 
         TextureEditorViewModel editor = _builder.Build("Paper.fvcanvas");
 
-        editor.Fields.Select(static field => field.Label).Should().Equal("Image", "Tiling", "Tint");
+        editor.Fields.Select(static field => field.Label).Should().Equal("Image", "Tiling", "Intensity", "Tint");
         TextureEditorViewModelTestsBuilder.PixelAt(editor, 10, 10).Should().Be(((byte)255, (byte)0, (byte)0));
         TextureEditorViewModelTestsBuilder.PixelAt(editor, 74, 10).Should().Be(((byte)0, (byte)0, (byte)255), "the image repeats twice across the preview's height, and so as often across its width");
         TextureEditorViewModelTestsBuilder.PixelAt(editor, 138, 10).Should().Be(((byte)255, (byte)0, (byte)0));
+    }
+
+    [Fact]
+    public void PreviewsACanvasWithoutIntensityAsItsAverageColour()
+    {
+        _builder.WithImage("Paper.tga", 4, 4).WithFile("Paper.fvcanvas", """{ "image": "Paper.tga", "intensity": 0 }""");
+
+        TextureEditorViewModel editor = _builder.Build("Paper.fvcanvas");
+
+        TextureEditorViewModelTestsBuilder.PixelAt(editor, 10, 10).Should().Be(((byte)128, (byte)0, (byte)128), "half red and half blue average to purple");
     }
 
     private static NumberFieldViewModel NumberField(TextureEditorViewModel editor, string label)
