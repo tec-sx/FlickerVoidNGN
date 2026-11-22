@@ -84,11 +84,7 @@ public sealed class UndoHistory
 
         UndoGroup group = _group!;
         _group = null;
-        if (group.Steps.Count == 1)
-        {
-            Push(group.Steps[0]);
-        }
-        else if (group.Steps.Count > 1)
+        if (group.Steps.Count > 0)
         {
             Push(group);
         }
