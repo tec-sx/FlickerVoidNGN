@@ -2,6 +2,7 @@ using System.Numerics;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Ai.Senses;
 using FlickerVoid.Engine.Dialogue.Conversations;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Interaction.Locks;
@@ -134,15 +135,18 @@ public sealed class ClickControlSystemTests : IDisposable
         Entity door = spawned[3];
         List<float> rattles = [];
         _builder.Game.Events.Handle((in ToggleBlockedEvent _) => rattles.Add(_builder.Game.World.Get<DoorHinge>(door).Rattle));
+        List<NoiseEvent> noises = [];
+        _builder.Game.Events.Handle((in NoiseEvent noise) => noises.Add(noise));
 
         _builder.ClickAt(camera, new Vector3(0.5f, 0, 0));
         _builder.Run(2.5f);
 
         Vector3 position = _builder.Game.World.Get<Transform>(spawned[2]).Position;
-        position.X.Should().BeApproximately(1.125f, 0.06f);
+        position.X.Should().BeInRange(1.3f, 1.5f, "it stops within reach, its radius clear of the door's edge");
         _builder.Game.World.Get<Lockable>(door).Locked.Should().BeTrue();
         _builder.Game.World.Get<Toggle>(door).Open.Should().BeFalse();
         rattles.Should().ContainSingle().Which.Should().Be(DoorSwingSystem.RattleTime);
+        noises.Should().ContainSingle().Which.Should().Be(new NoiseEvent(spawned[2], Vector3.Zero), "a rattling door is heard");
     }
 
     [Fact]

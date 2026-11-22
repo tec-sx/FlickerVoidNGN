@@ -1,3 +1,4 @@
+using Arch.Core;
 using Arch.System;
 
 using BepuPhysics;
@@ -14,4 +15,7 @@ public interface IPhysicsSystem : ISystem<GameTime>
 
     /// <summary>The nearest body along the ray within <paramref name="maxDistance"/>, such as the floor or door the player clicked.</summary>
     bool RayCast(Ray ray, float maxDistance, out RayHit hit);
+
+    /// <summary>The nearest body along the ray other than the ignored entity's, such as what a guard looking out from its own body sees.</summary>
+    bool RayCast(Ray ray, float maxDistance, Entity ignored, out RayHit hit);
 }

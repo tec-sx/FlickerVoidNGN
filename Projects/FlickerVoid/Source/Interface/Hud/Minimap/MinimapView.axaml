@@ -1,4 +1,4 @@
-<!-- The minimap: the map grid and the view cone inside a round clip, turned so the camera's view points up, under the compass ring. -->
+<!-- The minimap: the map grid, its markers and the view cone inside a round clip, turned so the camera's view points up, under the compass ring. -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:minimap="using:FlickerVoid.Interface.Hud.Minimap"
@@ -23,6 +23,27 @@
             </Rectangle.RenderTransform>
           </Rectangle>
         </Panel>
+        <!-- Markers sit at their offset from the centre: dots, and a diamond for the one the player follows. -->
+        <ItemsControl ItemsSource="{Binding Markers}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <Grid />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="minimap:MinimapMarkerViewModel">
+              <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Panel.RenderTransform>
+                  <TranslateTransform X="{Binding X}" Y="{Binding Y}" />
+                </Panel.RenderTransform>
+                <Ellipse Width="7" Height="7" Fill="{DynamicResource HudTintBrush}" Stroke="#E6020414" StrokeThickness="1"
+                         IsVisible="{Binding !IsTracked}" />
+                <Path Data="M 0,-6 L 6,0 L 0,6 L -6,0 Z" Fill="{DynamicResource AccentBrush}" Stroke="#E6020414" StrokeThickness="1"
+                      Stretch="None" IsVisible="{Binding IsTracked}" />
+              </Panel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
         <Image Source="avares://FlickerVoid.Interface/Assets/Images/EyeRange.png" Width="176" Height="176"
                HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%">
           <Image.RenderTransform>

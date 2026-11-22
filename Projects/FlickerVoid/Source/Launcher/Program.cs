@@ -9,6 +9,7 @@ using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Story.Knowledge;
 using FlickerVoid.Engine.Story.Quests;
 using FlickerVoid.Engine.Ui;
+using FlickerVoid.Engine.Ui.Stages;
 using FlickerVoid.Engine.Ui.Surfaces;
 using FlickerVoid.Gameplay;
 using FlickerVoid.Interface;
@@ -16,7 +17,7 @@ using FlickerVoid.Launcher;
 
 using Microsoft.Extensions.Logging;
 
-// Runs the game in a window on its startup scene, with its interface over it; Escape closes it. "--scene <file>" runs another scene (the editor's Play does),
+// Runs the game in a window on its startup scene, with its interface over it; Escape closes it, F5 saves to the quick slot and F9 loads it. "--scene <file>" runs another scene (the editor's Play does),
 // "--mood <file>" lights it with a lighting mood, "--frames <count>" closes it after that many frames, "--saves <folder>" keeps save slots there,
 // "--validation" checks Vulkan calls and "--debug" starts with the debug interface shown (F1 toggles it; its Game menu has the Story and Rules panels).
 HostOptions options;
@@ -34,7 +35,10 @@ using ILoggerFactory loggerFactory = LoggerFactory.Create(static logging => logg
 using SceneHost host = new(options, loggerFactory, "FlickerVoid");
 GameplayModule gameplay = new();
 gameplay.Add(host.Game);
+InterfaceModule ui = new();
+ui.Add(host.Game);
 host.Input.Map = host.Data.Load<InputMap>("Input/Controls.fvdata");
+_ = new QuickSaves(host.Game.Events, host.Saves);
 host.Start(CreateOverlays);
 host.Run();
 return 0;
@@ -43,6 +47,7 @@ return 0;
 FrameOverlays CreateOverlays(PixelFormat format, SceneRenderer renderer)
 {
     UiPlatform.Start<InterfaceApplication>();
+    host.Game.AddStages(host.Device, host.Content);
     GameInterface gameInterface = new(host.Game);
     host.Game.FrameSystems.Add(gameInterface);
     GameUi gameUi = new(host.Device, host.Window, format, gameInterface.View);

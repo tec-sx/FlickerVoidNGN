@@ -1,5 +1,5 @@
 <!-- The HUD: tracked quests at the top left, the minimap at the bottom right, and at the bottom centre the dialogue box while
-     talking, else the prompt for what the pointer is over. Only the dialogue box takes clicks, so everything else leaves the mouse
+     talking, the scan card in scan mode, else the prompt for what the pointer is over. Only the dialogue box takes clicks, so everything else leaves the mouse
      to the world. -->
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -9,6 +9,7 @@
              xmlns:conversations="using:FlickerVoid.Interface.Hud.Conversations"
              xmlns:prompts="using:FlickerVoid.Interface.Hud.Prompts"
              xmlns:minimap="using:FlickerVoid.Interface.Hud.Minimap"
+             xmlns:scanning="using:FlickerVoid.Interface.Hud.Scanning"
              x:Class="FlickerVoid.Interface.Hud.HudView"
              x:DataType="hud:HudViewModel">
   <Grid>
@@ -74,6 +75,26 @@
                 <TextBlock Text="{Binding Name}" Classes.locked="{Binding !IsAvailable}" />
                 <TextBlock Classes="muted" Text="{Binding LockedReason}" IsVisible="{Binding IsLocked}" />
               </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </controls:HudFrame>
+
+    <controls:HudFrame HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="24,0,24,36" Width="420" Padding="20,14"
+                       IsHitTestVisible="False" IsVisible="{Binding Scan.IsVisible, FallbackValue=False}">
+      <StackPanel Spacing="6">
+        <TextBlock Classes="label" Text="SCAN" />
+        <TextBlock Classes="heading" Text="{Binding Scan.Title}" />
+        <ProgressBar Minimum="0" Maximum="100" Value="{Binding Scan.Progress}" MinHeight="3" Height="3"
+                     Foreground="{DynamicResource HudTintBrush}" IsVisible="{Binding Scan.ShowsProgress}" />
+        <ItemsControl ItemsSource="{Binding Scan.Entries}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="scanning:ScanEntryViewModel">
+              <Grid ColumnDefinitions="90,*" Margin="0,2">
+                <TextBlock Classes="label" Text="{Binding Label}" />
+                <TextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" />
+              </Grid>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

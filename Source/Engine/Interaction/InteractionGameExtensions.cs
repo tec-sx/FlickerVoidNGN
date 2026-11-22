@@ -10,7 +10,8 @@ namespace FlickerVoid.Engine.Interaction;
 
 /// <summary>
 /// Adds interaction to a game: the <c>interactable</c> data asset type, the <c>interactorTags</c> and <c>locked</c> conditions, the
-/// <c>interactable</c>, <c>interactor</c>, <c>lock</c> and <c>toggle</c> components, and the systems that run them.
+/// <c>interactable</c>, <c>interactor</c>, <c>lock</c> and <c>toggle</c> components, the systems that run them, and what saves keep of
+/// interactables, locks and toggles.
 /// </summary>
 public static class InteractionGameExtensions
 {
@@ -24,6 +25,8 @@ public static class InteractionGameExtensions
         game.Spawner.Register("interactor", InteractionJsonContext.Default.Interactor);
         game.Spawner.Register("lock", InteractionJsonContext.Default.Lockable);
         game.Spawner.Register("toggle", InteractionJsonContext.Default.Toggle);
+        game.SaveStates.AddComponent("lock", InteractionJsonContext.Default.Lockable);
+        game.SaveStates.AddComponent("toggle", InteractionJsonContext.Default.Toggle);
 
         InteractionSystem interaction = new(game);
         game.FixedSystems.Add(interaction);
