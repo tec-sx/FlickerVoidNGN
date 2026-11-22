@@ -1,0 +1,8 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "marker",
+  "id": "Marker.Person",
+  "display": { "name": "Someone" },
+  "tags": [ "Marker.Category.People" ],
+  "fragments": [ { "$type": "minimap" }, { "$type": "compass" }, { "$type": "worldMap" } ]
+}

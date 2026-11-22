@@ -1,22 +1,29 @@
+using System.Collections.ObjectModel;
 using System.Numerics;
 
 using Arch.Core;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 
+using FlickerVoid.Engine.Maps.Navigation;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Runtime.Components;
 
+using MinimapData = FlickerVoid.Engine.Maps.Navigation.MinimapView;
 using World = Arch.Core.World;
 
 namespace FlickerVoid.Interface.Hud.Minimap;
 
 /// <summary>
 /// The HUD's minimap: a compass ring and a map grid turned so the camera's view points up, scrolled under the protagonist, with
-/// the protagonist's view cone turned the way it faces. Headings are degrees clockwise from north, which is -Z.
+/// the protagonist's view cone turned the way it faces, and the map system's markers around the protagonist (its navigator) at the
+/// grid's scale. Headings are degrees clockwise from north, which is -Z.
 /// </summary>
-public sealed partial class MinimapViewModel(World world) : ObservableObject
+public sealed partial class MinimapViewModel(World world, MapSystem? maps = null) : ObservableObject
 {
+    /// <summary>Pixels from the minimap's centre to its edge.</summary>
+    public const float Radius = 88;
+
     /// <summary>How many map pixels a metre of the world takes.</summary>
     public const float PixelsPerMetre = 16;
 
@@ -43,6 +50,8 @@ public sealed partial class MinimapViewModel(World world) : ObservableObject
     [ObservableProperty]
     public partial double MapY { get; private set; }
 
+    public ObservableCollection<MinimapMarkerViewModel> Markers { get; } = [];
+
     public void Update()
     {
         Entity protagonist = FindFirst(Protagonists);
@@ -64,6 +73,37 @@ public sealed partial class MinimapViewModel(World world) : ObservableObject
         Vector3 position = protagonistPlace.Position;
         MapX = -(position.X * PixelsPerMetre) % TileSize;
         MapY = -(position.Z * PixelsPerMetre) % TileSize;
+        UpdateMarkers(cameraHeading);
+    }
+
+    private void UpdateMarkers(float cameraHeading)
+    {
+        List<MarkerView> shown = [];
+        if (maps is not null)
+        {
+            MinimapData view = maps.BuildMinimapView(cameraHeading, Radius / PixelsPerMetre);
+            shown = view.Markers;
+        }
+
+        while (Markers.Count > shown.Count)
+        {
+            Markers.RemoveAt(Markers.Count - 1);
+        }
+
+        while (Markers.Count < shown.Count)
+        {
+            Markers.Add(new MinimapMarkerViewModel());
+        }
+
+        for (int index = 0; index < shown.Count; index++)
+        {
+            MarkerView marker = shown[index];
+            MinimapMarkerViewModel item = Markers[index];
+            item.X = marker.Position.X * Radius;
+            item.Y = marker.Position.Y * Radius;
+            item.IsTracked = marker.Tracked;
+            item.IsClamped = marker.Clamped;
+        }
     }
 
     private static float Heading(Vector3 direction)

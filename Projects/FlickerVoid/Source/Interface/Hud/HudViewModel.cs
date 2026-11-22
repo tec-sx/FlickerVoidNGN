@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 
 using FlickerVoid.Engine.Dialogue.Conversations;
 using FlickerVoid.Engine.Interaction.Interactors;
+using FlickerVoid.Engine.Maps.Navigation;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Story.Quests;
 using FlickerVoid.Interface.Hud.Conversations;
@@ -25,7 +26,8 @@ public sealed class HudViewModel
         Tracker = new QuestTrackerViewModel(quests, game.Events);
         Dialogue = new DialogueBoxViewModel(dialogue, game.World, game.Events);
         Prompt = new InteractionPromptViewModel(interaction, dialogue, game.World);
-        Minimap = new MinimapViewModel(game.World);
+        MapSystem? maps = game.Services.GetService<MapSystem>();
+        Minimap = new MinimapViewModel(game.World, maps);
     }
 
     public QuestTrackerViewModel Tracker { get; }
