@@ -32,7 +32,7 @@ internal sealed class ShotDriver
         _events = events;
     }
 
-    public void Play(Entity shot, int toKey)
+    public void Play(Entity shot, int toKey, bool layers)
     {
         ShotPlayback playback = GetPlayback(shot);
         ShotTimeline timeline = GetTimeline(shot);
@@ -44,6 +44,13 @@ internal sealed class ShotDriver
 
         playback.Target = target;
         playback.Playing = true;
+        playback.LayersOff = !layers;
+    }
+
+    /// <summary>Whether the shot's layers move it: not while it plays a request that turned them off.</summary>
+    public bool LayersEnabled(Entity shot)
+    {
+        return !_playbacks.TryGetValue(shot, out ShotPlayback? playback) || !playback.LayersOff;
     }
 
     public float GetTime(Entity shot)
@@ -136,6 +143,7 @@ internal sealed class ShotDriver
         {
             playback.Time = playback.Target;
             playback.Playing = false;
+            playback.LayersOff = false;
             _events.Send(new ShotFinishedEvent(shot));
             return;
         }
@@ -203,7 +211,7 @@ internal sealed class ShotDriver
     }
 
     /// <summary>Where the shot's target is aimed at: the named entity, else the first camera target, at its aim height.</summary>
-    private bool TryFindTarget(in Shot shot, out Vector3 aim)
+    public bool TryFindTarget(in Shot shot, out Vector3 aim)
     {
         Entity target = Entity.Null;
         string name = shot.Target;
@@ -315,6 +323,9 @@ internal sealed class ShotDriver
         public float Target { get; set; }
 
         public bool Playing { get; set; }
+
+        /// <summary>Whether the play request running turned the shot's layers off.</summary>
+        public bool LayersOff { get; set; }
 
         /// <summary>How far along its rail a tracked shot is.</summary>
         public float Distance { get; set; }

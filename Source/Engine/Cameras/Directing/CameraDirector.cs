@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.System;
 
+using FlickerVoid.Engine.Cameras.Layers;
 using FlickerVoid.Engine.Cameras.Shots;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
@@ -10,12 +11,14 @@ using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Loop;
 
+using Microsoft.Extensions.Logging;
+
 namespace FlickerVoid.Engine.Cameras.Directing;
 
 /// <summary>
 /// Directs the camera each frame, a frame system and service: keeps one shot live (the scene's starting shot until told otherwise),
 /// switches shots with a transition (cut, cross-fade, fade or blend), keeps a stack of shots to return to, drives the live shot
-/// along its rail, and writes its posed lens and world pose, with the transition laid over the frame, into its
+/// along its rail, moves it by its camera layers (shakes and zoom punches asked for by commands), and writes its posed lens and world pose, with the transition laid over the frame, into its
 /// <see cref="ActiveCamera"/>, which the renderer draws from.
 /// </summary>
 public sealed class CameraDirector : BaseSystem<World, GameTime>
@@ -24,6 +27,7 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
 
     private readonly EventBus _events;
     private readonly ShotDriver _driver;
+    private readonly CameraLayerRunner _layers;
     private readonly List<Entity> _stack = [];
 
     private float _fade;
@@ -42,13 +46,23 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
     private float _blendSpeed;
     private ShotEase _blendEase;
 
-    public CameraDirector(World world, EventBus events)
-        : base(world)
+    public CameraDirector(Game game)
+        : base(game.World)
     {
-        _events = events;
-        _driver = new ShotDriver(world, events);
+        _events = game.Events;
+        _driver = new ShotDriver(game.World, game.Events);
+        ILogger<CameraDirector> logger = game.LoggerFactory.CreateLogger<CameraDirector>();
+        _layers = new CameraLayerRunner(game.Services, logger);
         ArrayRegistry.Add<ActiveCamera>();
+        _events.Handle((in CameraShakeCommand command) => _layers.Shakes.Add(command));
+        _events.Handle((in ZoomPunchCommand command) => _layers.Punches.Add(command));
     }
+
+    /// <summary>
+    /// Where the pointer is, from the centre of the screen, -1 to 1 with +Y up, for look layers; the game sets it each frame, and
+    /// null means unknown.
+    /// </summary>
+    public Vector2? Pointer { get; set; }
 
     /// <summary>The shot drawn now, or <see cref="Entity.Null"/> before the first frame or without shots.</summary>
     public Entity Live { get; private set; } = Entity.Null;
@@ -145,12 +159,15 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         SetFadeTarget(0, duration);
     }
 
-    /// <summary>Plays a shot's timeline from where it is to a key's time (forwards or back), or to the end without one.</summary>
-    public void Play(Entity shot, int toKey = -1)
+    /// <summary>
+    /// Plays a shot's timeline from where it is to a key's time (forwards or back), or to the end without one; a cutscene can turn
+    /// the shot's layers off until it gets there.
+    /// </summary>
+    public void Play(Entity shot, int toKey = -1, bool layers = true)
     {
         if (IsShot(shot))
         {
-            _driver.Play(shot, toKey);
+            _driver.Play(shot, toKey, layers);
         }
     }
 
@@ -165,6 +182,7 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         if (!IsShot(Live))
         {
             _driver.Forget(Live);
+            _layers.Forget(Live);
             Entity start = FindStart();
             if (start == Entity.Null)
             {
@@ -179,7 +197,8 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         _driver.Drive(Live, seconds, sendMarkers: true);
         UpdateDissolve(seconds);
         _blend = MathF.Min(_blend + (_blendSpeed * seconds), 1);
-        WriteView();
+        WriteView(seconds);
+        _layers.EndFrame();
     }
 
     private void StartFade(in ShotTransition transition)
@@ -320,14 +339,26 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
 
         Live = shot;
         _driver.Snap(shot);
-        WriteView();
+        WriteView(0);
         _events.Send(new ShotChangedEvent(previous, shot));
     }
 
-    /// <summary>Writes the live shot's view, blended when a blend runs, and the transition over it into its active camera.</summary>
-    private void WriteView()
+    /// <summary>Writes the live shot's view, moved by its layers and blended when a blend runs, and the transition over it into its active camera.</summary>
+    private void WriteView(float seconds)
     {
         RenderCamera view = _driver.Pose(Live);
+        if (_driver.LayersEnabled(Live))
+        {
+            Shot shot = World.Get<Shot>(Live);
+            Vector3? target = null;
+            if (_driver.TryFindTarget(shot, out Vector3 aim))
+            {
+                target = aim;
+            }
+
+            view = _layers.Apply(Live, shot.Rig, view, target, Pointer, seconds);
+        }
+
         if (_blend < 1)
         {
             float eased = _blendEase.Apply(_blend);

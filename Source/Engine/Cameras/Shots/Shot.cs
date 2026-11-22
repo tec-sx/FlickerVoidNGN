@@ -1,3 +1,5 @@
+using FlickerVoid.Engine.Runtime.Components;
+
 namespace FlickerVoid.Engine.Cameras.Shots;
 
 /// <summary>
@@ -25,4 +27,8 @@ public struct Shot
 
     /// <summary>Seconds a tracked shot takes to come most of the way to its target's point on the rail; 0 follows at once.</summary>
     public float Smoothing { get; set; } = 0.3f;
+
+    /// <summary>The camera rig (a <c>cameraRig</c> data asset) whose layers move the camera a little on top of the rail.</summary>
+    [ContentFile(".fvdata")]
+    public string Rig { get; set; } = string.Empty;
 }
