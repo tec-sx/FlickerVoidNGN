@@ -73,4 +73,4 @@ Each step is one pull request or a short stack, and ends in something to try in 
 7. **Rules:** `Attributes` and `Abilities`, then the game's abilities and items.
 8. **Interface:** the `Ui` module, HUD and hub pages.
 9. **World:** `Maps`, `Ai` with residents, the scanner.
-10. **Saves** across every module, then the stage 7 gate: the basic story loop from the Unreal milestone plays in NGN.
+10. **Saves** across every module, then the stage 7 gate: the basic story loop from the Unreal milestone plays in NGN. Done (2026-11-22, `Tests/Gameplay/Story/StoryLoopTests`).

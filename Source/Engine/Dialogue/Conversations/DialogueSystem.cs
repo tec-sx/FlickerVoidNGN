@@ -21,7 +21,7 @@ namespace FlickerVoid.Engine.Dialogue.Conversations;
 /// Runs the one conversation at a time: starts a participant's dialogue graph, plays its lines and presents its choices through
 /// events the interface handles, which answers with <see cref="Advance"/>, <see cref="Choose"/> and <see cref="End"/>. The
 /// conversation ends when its graph finishes or has nothing left to do, when it is ended, or when its owner is gone. The game can't
-/// be saved during a conversation (<see cref="SaveBlock"/>).
+/// be saved during a conversation (<see cref="SaveBlock"/>), and a load ends it.
 /// </summary>
 public sealed partial class DialogueSystem : BaseSystem<World, GameTime>
 {
@@ -33,6 +33,7 @@ public sealed partial class DialogueSystem : BaseSystem<World, GameTime>
     private readonly IFactDatabase _facts;
     private readonly IServiceRegistry _services;
     private readonly EventBus _events;
+    private SaveSystem? _saves;
     private readonly DialogueSettings _settings;
     private readonly ILogger<DialogueSystem> _logger;
     private readonly List<Wait> _waits = [];
@@ -172,8 +173,23 @@ public sealed partial class DialogueSystem : BaseSystem<World, GameTime>
         CloseIfIdle();
     }
 
+    /// <summary>Follows loads, which end the conversation, as the game they bring back has none.</summary>
+    public override void Initialize()
+    {
+        _saves = _services.GetService<SaveSystem>();
+        if (_saves is not null)
+        {
+            _saves.Loaded += HandleLoaded;
+        }
+    }
+
     public override void Dispose()
     {
+        if (_saves is not null)
+        {
+            _saves.Loaded -= HandleLoaded;
+        }
+
         Close(stopGraph: true);
         base.Dispose();
     }
@@ -367,6 +383,8 @@ public sealed partial class DialogueSystem : BaseSystem<World, GameTime>
     }
 
     private void HandleRunFinished(FlowRun run) => Close(stopGraph: false);
+
+    private void HandleLoaded(SaveGame save) => End();
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Can't start a conversation with entity {Owner}: one is running, or it has no dialogue participant with a dialogue.")]
     private partial void LogCantStart(int owner);
