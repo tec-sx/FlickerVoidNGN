@@ -215,7 +215,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
         AssetBrowserViewModel browser = _builder.Build();
 
         browser.NewChoices.Select(static choice => $"{choice.Group}/{choice.Name}").Should()
-            .Equal("/Folder", "/Scene", "Look/Material", "Look/Mood", "Flow/Flow Graph");
+            .Equal("/Folder", "/Scene", "Look/Material", "Look/Mood", "Look/Canvas", "Flow/Flow Graph");
     }
 
     [Fact]
@@ -242,6 +242,31 @@ public sealed class AssetBrowserViewModelTests : IDisposable
 
         browser.SelectedFolder!.Path.Should().Be("New Folder");
         browser.Folders[0].Children.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void CreatesACanvas()
+    {
+        AssetBrowserViewModel browser = _builder.Build();
+
+        browser.CreateCanvasCommand.Execute(null);
+
+        browser.Assets.Select(static asset => asset.Path).Should().Equal("New Canvas.fvcanvas");
+        _builder.ReadFile("New Canvas.fvcanvas").Should().Contain("canvas.schema.json");
+    }
+
+    [Fact]
+    public void TakesAnImagesSettingsAlongWhenItIsRenamedOrDeleted()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Paper.png", "").WithFile("Paper.png.fvtexture").Build();
+        browser.SelectedAsset = browser.Assets[0];
+
+        browser.RenameCommand.Execute("Linen");
+
+        _builder.Exists("Linen.png.fvtexture").Should().BeTrue();
+        _builder.Exists("Paper.png.fvtexture").Should().BeFalse();
+        browser.DeleteCommand.Execute(null);
+        _builder.Exists("Linen.png.fvtexture").Should().BeFalse();
     }
 
     [Fact]

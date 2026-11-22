@@ -3,6 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 
 using FlickerVoid.Editor.Assets.Materials;
+using FlickerVoid.Editor.Assets.Textures;
 using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Flows;
 using FlickerVoid.Editor.Inspector;
@@ -10,6 +11,7 @@ using FlickerVoid.Editor.Materials;
 using FlickerVoid.Editor.Persistence.Projects;
 using FlickerVoid.Editor.Projects;
 using FlickerVoid.Editor.Scenes;
+using FlickerVoid.Editor.Textures;
 
 namespace FlickerVoid.Editor;
 
@@ -71,6 +73,7 @@ public sealed partial class MainWindow : Window
         {
             main.MaterialRequested += ShowMaterial;
             main.FlowRequested += ShowFlow;
+            main.TextureRequested += ShowTexture;
             AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
             main.AskUnsaved = AskUnsaved;
         }
@@ -157,6 +160,13 @@ public sealed partial class MainWindow : Window
     private void ShowFlow(FlowGraphViewModel graph)
     {
         FlowEditorWindow window = new() { DataContext = graph };
+        window.AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
+        window.Show(this);
+    }
+
+    private void ShowTexture(TextureEditorViewModel editor)
+    {
+        TextureEditorWindow window = new() { DataContext = editor };
         window.AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
         window.Show(this);
     }
