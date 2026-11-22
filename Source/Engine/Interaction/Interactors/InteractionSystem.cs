@@ -7,6 +7,7 @@ using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Interaction.Interactables;
+using FlickerVoid.Engine.Interaction.Serialization;
 using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Platform.Input.Gestures;
 using FlickerVoid.Engine.Runtime.Components;
@@ -50,6 +51,7 @@ public sealed partial class InteractionSystem : BaseSystem<World, GameTime>
         game.Lifecycle.OnDeactivate((Entity entity, ref Interactor _) => Stop(entity));
         _events.Handle((in FocusCommand command) => Focus(command.Interactor, command.Target));
         _events.Handle((in InteractionInput input) => Push(input));
+        game.SaveStates.Add("interactable", InteractionJsonContext.Default.SavedInteractable, Save, Restore);
     }
 
     /// <summary>The offers of the interactor's focus it can see, heaviest first: hidden ones whose conditions fail are left out.</summary>
@@ -165,6 +167,39 @@ public sealed partial class InteractionSystem : BaseSystem<World, GameTime>
         int[] uses = definition.Offers.Select(static offer => offer.Uses).ToArray();
         ActiveInteractable active = new() { Definition = definition, State = InteractableState.Awake, Uses = uses };
         World.Add(entity, active);
+    }
+
+    private SavedInteractable? Save(Entity entity)
+    {
+        if (!World.TryGet(entity, out ActiveInteractable active))
+        {
+            return null;
+        }
+
+        // An interaction under way is not saved: it is ready to be used again after a load.
+        InteractableState state = active.State;
+        if (state == InteractableState.Interacting)
+        {
+            state = InteractableState.Awake;
+        }
+
+        return new SavedInteractable { State = state, Uses = [.. active.Uses], Cooldown = active.Cooldown };
+    }
+
+    private void Restore(Entity entity, SavedInteractable saved)
+    {
+        if (!World.Has<ActiveInteractable>(entity))
+        {
+            return;
+        }
+
+        ref ActiveInteractable active = ref World.Get<ActiveInteractable>(entity);
+        active.State = saved.State;
+        active.Cooldown = saved.Cooldown;
+        if (saved.Uses.Length == active.Uses.Length)
+        {
+            active.Uses = [.. saved.Uses];
+        }
     }
 
     private void Deactivate(Entity entity)
