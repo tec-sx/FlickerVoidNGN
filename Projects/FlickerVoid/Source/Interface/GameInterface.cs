@@ -63,6 +63,12 @@ public sealed class GameInterface : ISystem<GameTime>
             hovered = hit.Entity;
         }
 
+        Hud.Scan?.Update();
+        if (Hud.Scan is { IsVisible: true })
+        {
+            hovered = Entity.Null;
+        }
+
         Hud.Prompt.Update(hovered);
         Hud.Minimap.Update();
     }
