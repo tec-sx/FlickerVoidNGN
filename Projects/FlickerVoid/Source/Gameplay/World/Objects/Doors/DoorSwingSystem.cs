@@ -9,12 +9,16 @@ using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Gameplay.Serialization;
 
 namespace FlickerVoid.Gameplay.World.Objects.Doors;
 
 using World = Arch.Core.World;
 
-/// <summary>Swings doors toward open or shut as their toggles change, each fixed step, and rattles them, a noise whoever tried them made, when a lock blocks them and no key opens it.</summary>
+/// <summary>
+/// Swings doors toward open or shut as their toggles change, each fixed step, and rattles them, a noise whoever tried them made, when a
+/// lock blocks them and no key opens it; saves keep how far each saveable door is open.
+/// </summary>
 public sealed class DoorSwingSystem : BaseSystem<World, GameTime>
 {
     /// <summary>Seconds a blocked door rattles.</summary>
@@ -36,6 +40,7 @@ public sealed class DoorSwingSystem : BaseSystem<World, GameTime>
         game.Lifecycle.OnDeactivate((Entity entity, ref DoorSwing _) => Deactivate(entity));
         game.Events.Handle((in ToggledEvent toggled) => Swing(toggled.Target, toggled.Open));
         game.Events.Handle((in ToggleBlockedEvent blocked) => Rattle(blocked.Target, blocked.Instigator));
+        game.SaveStates.AddComponent("doorHinge", FlickerVoidJsonContext.Default.DoorHinge);
     }
 
     public override void Update(in GameTime t)

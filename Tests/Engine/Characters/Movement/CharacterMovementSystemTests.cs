@@ -41,6 +41,27 @@ public sealed class CharacterMovementSystemTests : IDisposable
     }
 
     [Fact]
+    public void ASavedCharacterWalksOnWhereItWasGoingAfterALoad()
+    {
+        _builder.Build();
+        Entity hero = _builder.Spawn("""{ "name": "Hero", "components": { "transform": {}, "characterMover": { "speed": 2 }, "saveable": { "id": "Hero" } } }""")[0];
+        _builder.Game.Lifecycle.Play(_builder.Game.World);
+        _builder.Game.Events.Send(new MoveCommand(hero, new Vector3(4, 0, 0)));
+        _builder.Run(1);
+        _builder.Saves.Save("Slot1");
+        _builder.Game.Events.Send(new StopCommand(hero));
+        _builder.Game.Events.Send(new MoveCommand(hero, new Vector3(-4, 0, 0)));
+        _builder.Run(0.5f);
+
+        _builder.Saves.Load("Slot1");
+        Vector3 loaded = _builder.Game.World.Get<Transform>(hero).Position;
+        _builder.Run(1.2f);
+
+        loaded.X.Should().BeApproximately(2, 0.1f);
+        _builder.Game.World.Get<Transform>(hero).Position.X.Should().BeApproximately(4, 0.06f);
+    }
+
+    [Fact]
     public void TurnsToFaceWhereItWalks()
     {
         _builder.Build();

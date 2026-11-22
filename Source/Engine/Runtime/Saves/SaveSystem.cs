@@ -1,7 +1,11 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
+
+using Arch.Core;
 
 using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Tags;
+using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Loop;
 
 using Microsoft.Extensions.Logging;
@@ -9,14 +13,21 @@ using Microsoft.Extensions.Logging;
 namespace FlickerVoid.Engine.Runtime.Saves;
 
 /// <summary>
-/// Writes the game to save slots and reads it back: the facts, which hold quests, knowledge and standing, and whatever modules
-/// write when <see cref="Writing"/> is raised and read when <see cref="Loaded"/> is. Each slot is a <c>.fvsave</c> JSON file in
+/// Writes the game to save slots and reads it back: the facts, which hold quests, knowledge and standing, the <see cref="SaveStates"/>
+/// of every <see cref="Saveable"/> entity (those gone when saving are destroyed when loading) and of the game as a whole; modules
+/// that need to follow a load handle <see cref="Loaded"/>. Each slot is a <c>.fvsave</c> JSON file in
 /// the settings' folder.
 /// </summary>
 public sealed partial class SaveSystem
 {
     public const string Extension = ".fvsave";
 
+    private static readonly QueryDescription Saveables = new QueryDescription().WithAll<Saveable>();
+
+    private readonly World _world;
+    private readonly EntityLifecycle _lifecycle;
+    private readonly SaveStates _states;
+    private readonly HashSet<string> _started = [];
     private readonly IFactDatabase _facts;
     private readonly SaveSettings _settings;
     private readonly ILogger<SaveSystem> _logger;
@@ -27,16 +38,17 @@ public sealed partial class SaveSystem
 
     public SaveSystem(Game game, SaveSettings settings)
     {
+        _world = game.World;
+        _lifecycle = game.Lifecycle;
+        _states = game.SaveStates;
         _facts = game.Facts;
+        game.Lifecycle.OnActivate((Entity _, ref Saveable saveable) => _started.Add(saveable.Id));
         _settings = settings;
         _logger = game.LoggerFactory.CreateLogger<SaveSystem>();
         game.Loop.Update += time => _total = time.Total;
     }
 
-    /// <summary>Raised as a save is written, after the facts, so modules add their state.</summary>
-    public event Action<SaveGame>? Writing;
-
-    /// <summary>Raised after a save is read and the facts are back, so modules restore their state.</summary>
+    /// <summary>Raised after a save is read and the facts and states are back.</summary>
     public event Action<SaveGame>? Loaded;
 
     /// <summary>How long the game has been played, over every load.</summary>
@@ -85,6 +97,7 @@ public sealed partial class SaveSystem
         }
 
         _facts.RestoreFacts(facts);
+        ReadStates(save);
         _loadedPlayTime = save.Metadata.PlayTime;
         _totalAtLoad = _total;
         LastLoaded = save;
@@ -152,13 +165,94 @@ public sealed partial class SaveSystem
             save.Facts[tag.Name] = value;
         }
 
-        Writing?.Invoke(save);
+        WriteStates(save);
         Directory.CreateDirectory(_settings.Folder);
         string temporary = path + ".tmp";
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(save, SavesJsonContext.Default.SaveGame);
         File.WriteAllBytes(temporary, bytes);
         File.Move(temporary, path, overwrite: true);
         return true;
+    }
+
+    private void WriteStates(SaveGame save)
+    {
+        HashSet<string> alive = [];
+        foreach ((Entity entity, string id) in FindSaveables())
+        {
+            alive.Add(id);
+            Dictionary<string, JsonNode> states = [];
+            foreach (SaveState state in _states.States)
+            {
+                JsonNode? node = state.Write(entity);
+                if (node is not null)
+                {
+                    states[state.Key] = node;
+                }
+            }
+
+            save.Entities[id] = states;
+        }
+
+        foreach (string id in _started)
+        {
+            if (!alive.Contains(id))
+            {
+                save.Destroyed.Add(id);
+            }
+        }
+
+        foreach (GlobalSaveState state in _states.Globals)
+        {
+            JsonNode? node = state.Write();
+            if (node is not null)
+            {
+                save.States[state.Key] = node;
+            }
+        }
+    }
+
+    private void ReadStates(SaveGame save)
+    {
+        HashSet<string> destroyed = [.. save.Destroyed];
+        foreach ((Entity entity, string id) in FindSaveables())
+        {
+            if (destroyed.Contains(id))
+            {
+                _lifecycle.Destroy(_world, entity);
+                continue;
+            }
+
+            if (!save.Entities.TryGetValue(id, out Dictionary<string, JsonNode>? states))
+            {
+                continue;
+            }
+
+            foreach (SaveState state in _states.States)
+            {
+                states.TryGetValue(state.Key, out JsonNode? node);
+                state.Read(entity, node);
+            }
+        }
+
+        foreach (GlobalSaveState state in _states.Globals)
+        {
+            save.States.TryGetValue(state.Key, out JsonNode? node);
+            state.Read(node);
+        }
+    }
+
+    /// <summary>The saveable entities with an id.</summary>
+    private List<(Entity Entity, string Id)> FindSaveables()
+    {
+        List<(Entity, string)> found = [];
+        _world.Query(in Saveables, (Entity entity, ref Saveable saveable) =>
+        {
+            if (saveable.Id.Length > 0)
+            {
+                found.Add((entity, saveable.Id));
+            }
+        });
+        return found;
     }
 
     private SaveGame? Read(string path)
