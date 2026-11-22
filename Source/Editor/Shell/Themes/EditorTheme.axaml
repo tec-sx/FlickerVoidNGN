@@ -39,6 +39,8 @@
     <SolidColorBrush x:Key="EditorAxisXBrush" Color="#C8553D" />
     <StaticResource x:Key="EditorAxisYBrush" ResourceKey="EditorPlayBrush" />
     <SolidColorBrush x:Key="EditorAxisZBrush" Color="#4A8FBF" />
+    <!-- The bar of every other number box, which drags like the axes do. -->
+    <SolidColorBrush x:Key="EditorValueBrush" Color="#D9B23A" />
 
     <!-- Fluent's own tokens, read by its control themes. -->
     <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
@@ -157,6 +159,32 @@
   <!-- Menus and submenus scroll once they hold more than fits. -->
   <Style Selector="MenuFlyoutPresenter, ContextMenu, MenuItem /template/ Popup > Border">
     <Setter Property="MaxHeight" Value="{StaticResource EditorMenuMaxHeight}" />
+  </Style>
+
+  <!-- The asset picker (AssetPickerView): a field showing the current file, over a popup like the searchable menu. -->
+  <Style Selector="ToggleButton.asset">
+    <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="5,2" />
+  </Style>
+  <Style Selector="ToggleButton.asset:checked /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="Border.pickerPopup">
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource EditorWellCornerRadius}" />
+    <Setter Property="BoxShadow" Value="0 4 12 0 #80000000" />
+  </Style>
+  <Style Selector="Button.pickerNone">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Margin" Value="4,0" />
+    <Setter Property="Opacity" Value="0.8" />
   </Style>
 
   <!-- The search box (SearchBox) and the searchable menu (SearchMenu). -->

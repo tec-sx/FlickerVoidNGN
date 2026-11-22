@@ -9,20 +9,24 @@
        components and materials need no editor code of their own. -->
   <Application.DataTemplates>
     <!-- Ranged numbers first: a template matches subclasses too, and the first match wins. Numbers are dragged sideways or typed
-         after a click; X, Y and Z carry the axes' colours. -->
+         after a click; X, Y and Z carry the axes' colours, every other number a yellow bar. -->
     <DataTemplate DataType="inspector:RangedNumberFieldViewModel">
       <shellInspector:DragNumberBox Value="{Binding Value}" Minimum="{Binding Lowest}" Maximum="{Binding Highest}"
-                                    Step="{Binding DragStep}" IsReadOnly="{Binding IsReadOnly}" />
+                                    Step="{Binding DragStep}" IsReadOnly="{Binding IsReadOnly}" AxisBrush="{StaticResource EditorValueBrush}" />
     </DataTemplate>
     <DataTemplate DataType="inspector:NumberFieldViewModel">
-      <shellInspector:DragNumberBox Value="{Binding Value}" IsReadOnly="{Binding IsReadOnly}" />
+      <shellInspector:DragNumberBox Value="{Binding Value}" IsReadOnly="{Binding IsReadOnly}" AxisBrush="{StaticResource EditorValueBrush}" />
     </DataTemplate>
     <DataTemplate DataType="inspector:BoolFieldViewModel">
       <CheckBox IsChecked="{Binding Value}" IsEnabled="{Binding !IsReadOnly}" />
     </DataTemplate>
     <DataTemplate DataType="inspector:TextFieldViewModel">
-      <AutoCompleteBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" ItemsSource="{Binding Suggestions}"
-                       FilterMode="Contains" MinimumPrefixLength="0" IsEnabled="{Binding !IsReadOnly}" />
+      <TextBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsReadOnly}" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:AssetFieldViewModel">
+      <Panel IsEnabled="{Binding !IsReadOnly}">
+        <shellInspector:AssetPickerView DataContext="{Binding Picker}" />
+      </Panel>
     </DataTemplate>
     <DataTemplate DataType="inspector:ListFieldViewModel">
       <StackPanel Spacing="2">
@@ -30,8 +34,12 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate DataType="inspector:ListItemViewModel">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4" Margin="0,1">
-                <AutoCompleteBox Text="{Binding Text, UpdateSourceTrigger=LostFocus}" ItemsSource="{Binding Suggestions}"
-                                 FilterMode="Contains" MinimumPrefixLength="0" />
+                <Panel>
+                  <TextBox Text="{Binding Text, UpdateSourceTrigger=LostFocus}" IsVisible="{Binding IsText}" />
+                  <Panel IsVisible="{Binding !IsText}">
+                    <shellInspector:AssetPickerView DataContext="{Binding Picker}" />
+                  </Panel>
+                </Panel>
                 <Button Grid.Column="1" Classes="icon" ToolTip.Tip="Remove"
                         Command="{Binding $parent[ItemsControl].((inspector:ListFieldViewModel)DataContext).RemoveCommand}"
                         CommandParameter="{Binding}">

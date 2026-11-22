@@ -5,6 +5,7 @@ using Avalonia.Markup.Xaml;
 using FlickerVoid.Editor.Assets.Materials;
 using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Flows;
+using FlickerVoid.Editor.Inspector;
 using FlickerVoid.Editor.Materials;
 using FlickerVoid.Editor.Scenes;
 
@@ -64,6 +65,7 @@ public sealed partial class MainWindow : Window
         {
             main.MaterialRequested += ShowMaterial;
             main.FlowRequested += ShowFlow;
+            AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
             main.AskUnsaved = AskUnsaved;
         }
     }
@@ -108,7 +110,19 @@ public sealed partial class MainWindow : Window
     private void ShowFlow(FlowGraphViewModel graph)
     {
         FlowEditorWindow window = new() { DataContext = graph };
+        window.AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
         window.Show(this);
+    }
+
+    /// <summary>An asset field's open button, here or in a window this one opened: shows the file in the asset browser and opens it.</summary>
+    private void HandleOpenAsset(object? sender, OpenAssetEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel main)
+        {
+            main.OpenContentFile(e.Path);
+        }
+
+        e.Handled = true;
     }
 
     private void HandleMaterialsClosed(object? sender, EventArgs e)

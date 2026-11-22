@@ -47,6 +47,26 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     }
 
     [Fact]
+    public void RevealsAFileInItsFolder()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Props/Crate.glb").WithFile("Room.glb").Build();
+
+        AssetEntry? revealed = browser.Reveal("Props/Crate.glb");
+
+        browser.SelectedFolder!.Path.Should().Be("Props");
+        browser.SelectedAsset.Should().Be(revealed);
+        revealed!.Path.Should().Be("Props/Crate.glb");
+    }
+
+    [Fact]
+    public void RevealsNothingForAMissingFile()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Room.glb").Build();
+
+        browser.Reveal("Props/Gone.glb").Should().BeNull();
+    }
+
+    [Fact]
     public void OpeningAFolderItemShowsItsContents()
     {
         AssetBrowserViewModel browser = _builder.WithFile("Scenes/Room.fvscene").Build();

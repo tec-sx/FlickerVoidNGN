@@ -15,6 +15,11 @@ public static class AssetKindLooks
 
     public static FuncValueConverter<AssetFolder, IBrush> FolderBrush { get; } = new(static folder => GetBrush(GetFolderKind(folder)));
 
+    /// <summary>The icon of the file a content path names, by its extension, for fields that name files.</summary>
+    public static FuncValueConverter<string?, Geometry> PathIcon { get; } = new(static path => GetIcon(AssetCatalog.GetKind(path ?? "")));
+
+    public static FuncValueConverter<string?, IBrush> PathBrush { get; } = new(static path => GetBrush(AssetCatalog.GetKind(path ?? "")));
+
     private static AssetKind GetFolderKind(AssetFolder? folder)
     {
         if (folder?.Path == AssetCatalog.CodePrefix)

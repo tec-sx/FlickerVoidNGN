@@ -8,7 +8,7 @@ namespace FlickerVoid.Editor.Core.Inspector;
 /// <summary>Picks the field for a value from its type and the attributes that refine it.</summary>
 public static class FieldFactory
 {
-    /// <summary>The field for the value; with <paramref name="files"/>, a field naming a content file suggests those it may name.</summary>
+    /// <summary>The field for the value; with <paramref name="files"/>, a field naming a content file picks from those it may name.</summary>
     public static FieldViewModel Create(IEditableValue property, FindContentFiles? files = null)
     {
         FieldViewModel field = CreateEmpty(property, files);
@@ -42,14 +42,19 @@ public static class FieldFactory
 
         if (type == typeof(string))
         {
-            IReadOnlyList<string> suggestions = FindSuggestions(property, files);
-            return new TextFieldViewModel(property, suggestions);
+            Func<IReadOnlyList<string>>? find = GetFinder(property, files);
+            if (find is not null)
+            {
+                return new AssetFieldViewModel(property, find);
+            }
+
+            return new TextFieldViewModel(property);
         }
 
         if (type == typeof(string[]))
         {
-            IReadOnlyList<string> suggestions = FindSuggestions(property, files);
-            return new ListFieldViewModel(property, suggestions);
+            Func<IReadOnlyList<string>>? find = GetFinder(property, files);
+            return new ListFieldViewModel(property, find);
         }
 
         if (type == typeof(float) || type == typeof(double) || type == typeof(int))
@@ -71,14 +76,15 @@ public static class FieldFactory
         return new ReadOnlyFieldViewModel(property);
     }
 
-    private static IReadOnlyList<string> FindSuggestions(IEditableValue property, FindContentFiles? files)
+    /// <summary>Lists the content files a value may name, when it names one and there are files to list.</summary>
+    private static Func<IReadOnlyList<string>>? GetFinder(IEditableValue property, FindContentFiles? files)
     {
         ContentFileAttribute? file = property.GetAttribute<ContentFileAttribute>();
         if (file is null || files is null)
         {
-            return [];
+            return null;
         }
 
-        return files(file.Extensions);
+        return () => files(file.Extensions);
     }
 }

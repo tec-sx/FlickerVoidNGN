@@ -165,6 +165,20 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         Opened?.Invoke(asset);
     }
 
+    /// <summary>Shows the file's folder with the file selected, as Unreal's Browse to Asset does; null when there is no such file.</summary>
+    public AssetEntry? Reveal(string path)
+    {
+        string folder = GetFolder(path);
+        SelectFolder(folder);
+        AssetEntry? found = Items.FirstOrDefault(item => item.Path == path);
+        if (found is not null)
+        {
+            SelectedAsset = found;
+        }
+
+        return found;
+    }
+
     /// <summary>Shows the selected folder's parent; the roots stay where they are.</summary>
     [RelayCommand]
     public void Up()

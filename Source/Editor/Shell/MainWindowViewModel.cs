@@ -291,6 +291,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Viewport.Status = $"{path} changed on disk; its unsaved edits are kept. Save to overwrite it or discard to take the change.";
     }
 
+    /// <summary>Shows the content file in the asset browser and opens it as a double-click would; a missing file is reported.</summary>
+    public void OpenContentFile(string path)
+    {
+        AssetEntry? asset = Assets.Reveal(path);
+        if (asset is null)
+        {
+            Viewport.Status = $"{path} is not in the content folder.";
+            return;
+        }
+
+        OpenAsset(asset);
+    }
+
     private async void OpenAsset(AssetEntry asset)
     {
         switch (asset.Kind)

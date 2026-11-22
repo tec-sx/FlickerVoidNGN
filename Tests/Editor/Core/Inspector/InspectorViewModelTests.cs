@@ -63,7 +63,7 @@ public sealed class InspectorViewModelTests : IDisposable
 
         _builder.Field<EnumFieldViewModel>("Camera", "Projection").Options.Should().Contain(CameraProjection.Orthographic);
         _builder.Field<NumberFieldViewModel>("Camera", "Field Of View").Value.Should().Be(60);
-        _builder.Field<TextFieldViewModel>("Mesh Renderer", "Mesh").Value.Should().Be("Room.glb");
+        _builder.Field<AssetFieldViewModel>("Mesh Renderer", "Mesh").Picker.Current.Should().Be("Room.glb");
     }
 
     [Fact]
@@ -215,15 +215,33 @@ public sealed class InspectorViewModelTests : IDisposable
     }
 
     [Fact]
-    public void SuggestsTheContentFilesAFileFieldTakes()
+    public void PicksTheContentFilesAFileFieldTakes()
     {
         _builder.WithContentFile("Props/Crate.glb").WithContentFile("Wood.fvmat").WithContentFile("Paper.png");
         _builder.Select("Crate", new Transform(), new MeshRenderer { Mesh = "Props/Crate.glb", Materials = ["Wood.fvmat"] });
 
-        TextFieldViewModel mesh = _builder.Field<TextFieldViewModel>("Mesh Renderer", "Mesh");
+        AssetFieldViewModel mesh = _builder.Field<AssetFieldViewModel>("Mesh Renderer", "Mesh");
         ListFieldViewModel materials = _builder.Field<ListFieldViewModel>("Mesh Renderer", "Materials");
+        mesh.Picker.IsOpen = true;
+        AssetPickerViewModel material = materials.Items[0].Picker!;
+        material.IsOpen = true;
 
-        mesh.Suggestions.Should().Equal("Props/Crate.glb");
-        materials.Items[0].Suggestions.Should().Equal("Wood.fvmat");
+        mesh.Picker.Matches.Should().Equal("Props/Crate.glb");
+        material.Matches.Should().Equal("Wood.fvmat");
+        material.Current.Should().Be("Wood.fvmat");
+    }
+
+    [Fact]
+    public void WritesTheAssetChosenInAPicker()
+    {
+        _builder.WithContentFile("Props/Crate.glb").WithContentFile("Room.glb").WithContentFile("Wood.fvmat").WithContentFile("Stone.fvmat");
+        Entity crate = _builder.Select("Crate", new Transform(), new MeshRenderer { Mesh = "Props/Crate.glb", Materials = ["Wood.fvmat"] });
+
+        _builder.Field<AssetFieldViewModel>("Mesh Renderer", "Mesh").Picker.ChooseCommand.Execute("Room.glb");
+        _builder.Field<ListFieldViewModel>("Mesh Renderer", "Materials").Items[0].Picker!.ChooseCommand.Execute("Stone.fvmat");
+
+        MeshRenderer renderer = _builder.World.Get<MeshRenderer>(crate);
+        renderer.Mesh.Should().Be("Room.glb");
+        renderer.Materials.Should().Equal("Stone.fvmat");
     }
 }
