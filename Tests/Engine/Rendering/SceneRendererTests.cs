@@ -479,6 +479,33 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void ShowsTheCanvasThroughPlainPaint()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0.3f, 0.3f, 0.3f, 1)));
+
+        uint[] pixels = RenderPaper(_builder, Camera, Quad);
+
+        uint[] painted = [pixels[5], pixels[6], pixels[9], pixels[10]];
+        painted.Distinct().Should().HaveCountGreaterThan(1, "the canvas's weave shows through paint without impasto");
+    }
+
+    [Fact]
+    public void CoversTheCanvasWithThickImpasto()
+    {
+        uint white = SceneRendererTestsBuilder.Rgba(255, 255, 255, 255);
+        uint[] high = [white, white, white, white];
+        _builder.WithTexture("Wall.reb", 1, 1, [SceneRendererTestsBuilder.Rgba(255, 0, 0, 255)]);
+        _builder.WithTexture("Wall.relief.dds", 2, 2, high, PixelFormat.Rgba8UNorm);
+        _builder.WithFile("Wall.fvmat", """{ "parameters": { "texture": "Wall.reb", "reliefDepth": 0 } }""");
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Vector4.One));
+
+        uint[] pixels = RenderPaper(_builder, Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Wall.fvmat"] } } }""");
+
+        uint[] painted = [pixels[5], pixels[6], pixels[9], pixels[10]];
+        painted.Should().AllBeEquivalentTo(RedPixel, "thick impasto hides the canvas");
+    }
+
+    [Fact]
     public void TurnsThePaperWithTheCameraLikeASkySphere()
     {
         const string turned = """
@@ -741,8 +768,8 @@ public sealed class SceneRendererTests : IDisposable
         pixels[(3 * 8) + 1].Should().Be(EmptyPixel);
     }
 
-    /// <summary>Bare paper of four different texels a row, seen by the camera.</summary>
-    private static uint[] RenderPaper(SceneRendererTestsBuilder builder, string camera)
+    /// <summary>A paper of sixteen different greys under the entities, a camera first.</summary>
+    private static uint[] RenderPaper(SceneRendererTestsBuilder builder, params string[] entities)
     {
         uint[] texels = new uint[16];
         for (int index = 0; index < texels.Length; index++)
@@ -751,9 +778,9 @@ public sealed class SceneRendererTests : IDisposable
             texels[index] = SceneRendererTestsBuilder.Rgba(value, value, value, 255);
         }
 
-        builder.WithTexture("Paper.tga", 4, 4, texels);
+        builder.WithTexture("Paper.tga", 4, 4, texels, mips: true);
         builder.WithMood(static mood => mood with { Paper = "Paper.tga", PaperGrain = 0 });
-        builder.WithScene(camera);
+        builder.WithScene(entities);
         return builder.Render();
     }
 }

@@ -42,6 +42,21 @@ public sealed class SkyPassTests : IDisposable
     }
 
     [Fact]
+    public void LetsThePaperShowThroughTheSkyLikeAThinWash()
+    {
+        using SkyPassTestsBuilder dark = new();
+        _builder.WithPaper(220).Camera.LookAt(new Vector3(0, 1, 0), 0, 0, 5);
+        dark.WithPaper(110).Camera.LookAt(new Vector3(0, 1, 0), 0, 0, 5);
+
+        uint[] onLight = _builder.Render();
+        uint[] onDark = dark.Render();
+
+        int light = SkyPassTestsBuilder.Brightness(onLight[(TopRow * Size) + Centre]);
+        int darker = SkyPassTestsBuilder.Brightness(onDark[(TopRow * Size) + Centre]);
+        light.Should().BeGreaterThan(darker + 60, "the sky is laid over the paper, not over it like a wall");
+    }
+
+    [Fact]
     public void DrawsNothingWhileHidden()
     {
         _builder.Render();

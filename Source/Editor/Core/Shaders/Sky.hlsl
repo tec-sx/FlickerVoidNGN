@@ -1,13 +1,15 @@
 // The editor's sky: one triangle at the far plane fills only what the scene left empty, with a gradient like an atmosphere,
 // dark ground below the horizon and a lighter warm haze above it fading to a muted blue overhead. A perspective view shades by
 // where each pixel's view ray points; an orthographic one, whose rays all point the same way, by height on the near plane.
+// Over a mood's paper it is a wash multiplied over it: the gradient over the horizon's brightness, so the paper shows through.
 
 struct SkyConstants
 {
     // The view's matrices multiply row vectors, as System.Numerics' do.
     row_major float4x4 InverseViewProjection;
     float Orthographic;
-    float3 Padding;
+    float Glaze;
+    float2 Padding;
 };
 
 [[vk::push_constant]] ConstantBuffer<SkyConstants> Sky : register(b0, space0);
@@ -69,5 +71,13 @@ float4 PixelMain(VertexOutput input) : SV_Target
         color = lerp(GroundNear, GroundFar, smoothstep(0, 0.4, -elevation));
     }
 
-    return float4(pow(color, 2.2), 1);
+    float3 linearColor = pow(color, 2.2);
+    if (Sky.Glaze > 0.5)
+    {
+        float3 horizon = pow(Horizon, 2.2);
+        float brightest = dot(horizon, float3(0.2126, 0.7152, 0.0722));
+        return float4(saturate(linearColor / brightest), 1);
+    }
+
+    return float4(linearColor, 1);
 }

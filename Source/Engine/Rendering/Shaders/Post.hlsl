@@ -1,5 +1,7 @@
 // Turns the lit scene into the final image: adds bloom, then exposure, contrast, saturation and tint, then the tonemapper's
-// curve, then lays it over the paper, which shows where the scene's alpha (how thick the paint is) is low, then grain. The
+// curve, then lays it over the paper, then grain. The scene's alpha is how much paint lies there (0 to 1) plus how thick it
+// stands (0 to 1, from a painting's impasto): bare paper shows where there is none, and the canvas's weave shows through
+// paint that isn't thick, so everything looks painted on it; only thick impasto hides it. The
 // paper lies on a sphere around the camera like a sky, so it turns as the camera turns, and slides with an orthographic pan.
 // Draws one triangle that covers the target.
 
@@ -22,7 +24,6 @@ struct PostConstants
     uint Tonemapper;
     float WhitePoint;
     float PaperGrain;
-    float2 Padding;
     float3 PaperRight;
     float PaperPanRight;
     float3 PaperUp;
@@ -133,7 +134,7 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
     color *= Post.Tint;
     color = Tonemap(color);
 
-    float coverage = sceneColor.a;
+    float coverage = saturate(sceneColor.a);
     if (Post.Paper != None)
     {
         Texture2D paper = Textures[Post.Paper];
@@ -147,14 +148,21 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
         float2 uv = PaperUv(position.xy, float2(targetWidth, targetHeight), float2(width, height));
         float3 paperColor = paper.SampleLevel(Samplers[Post.WrapSampler], uv, 0).rgb;
         float3 averagePaper = paper.SampleLevel(Samplers[Post.WrapSampler], uv, levels - 1).rgb;
+        float3 toLuminance = float3(0.2126, 0.7152, 0.0722);
+        float averageLuminance = max(dot(averagePaper, toLuminance), 1e-3);
+
+        // Paint that isn't thick lets the canvas's weave through: the paper over its own average brightness, so it keeps the
+        // painted colour's light and takes the canvas's texture and hue.
+        float thickness = saturate(sceneColor.a - 1);
+        float3 weave = paperColor / averageLuminance;
+        float3 painted = lerp(color * weave, color, thickness);
 
         // Thin paint fills the paper's valleys (darker than the paper's average) first and leaves its peaks bare; bare paper
-        // and thick paint stay as they are.
-        float3 toLuminance = float3(0.2126, 0.7152, 0.0722);
-        float grain = dot(averagePaper - paperColor, toLuminance) / max(dot(averagePaper, toLuminance), 1e-3);
-        float paint = sceneColor.a;
-        float thickness = saturate(paint + grain * Post.PaperGrain * 4 * paint * (1 - paint));
-        color = lerp(paperColor, color, thickness);
+        // and fully painted paper stay as they are.
+        float grain = dot(averagePaper - paperColor, toLuminance) / averageLuminance;
+        float paint = coverage;
+        float covered = saturate(paint + grain * Post.PaperGrain * 4 * paint * (1 - paint));
+        color = lerp(paperColor, painted, covered);
         coverage = 1;
     }
 

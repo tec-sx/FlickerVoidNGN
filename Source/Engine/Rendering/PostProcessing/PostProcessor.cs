@@ -77,7 +77,6 @@ internal sealed class PostProcessor : IDisposable
             (uint)mood.Tonemapper,
             mood.WhitePoint,
             mood.PaperGrain,
-            Vector2.Zero,
             paperView);
         commands.PushConstants(constants);
         commands.Draw(3);

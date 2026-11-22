@@ -11,5 +11,8 @@ public enum BlendMode : byte
     /// <summary>Premultiplied alpha: source + destination * (1 - alpha).</summary>
     Premultiplied,
     Additive,
+
+    /// <summary>Source * destination, like a glaze over what is already there.</summary>
+    Multiply,
 }
 
