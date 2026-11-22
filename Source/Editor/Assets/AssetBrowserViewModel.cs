@@ -26,6 +26,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     private const string DataGroup = "Data Asset";
     private const string TableGroup = "Table";
 
+    private readonly ImportSources _imports;
     private readonly IContentManager _content;
     private readonly List<AssetCatalog> _catalogs;
     private readonly AssetCatalog? _code;
@@ -37,6 +38,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     public AssetBrowserViewModel(IContentManager content, DataTypes? data = null, string? codeFolder = null)
     {
         _content = content;
+        _imports = new ImportSources(content);
         List<MenuChoice> choices =
         [
             new("Folder", CreateFolder, Icon: "NewFolder"),
@@ -122,6 +124,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
     /// <summary>The file or folder item renaming, deleting and moving work on; with none, renaming works on the selected folder.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanReimport))]
     public partial AssetEntry? SelectedAsset { get; set; }
 
     /// <summary>The name and folder of the flow node class being created, while the browser asks for them.</summary>
@@ -335,6 +338,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         if (SelectedAsset is { } asset)
         {
             _content.Delete(asset.Path);
+            _imports.Remove(asset.Path);
             SelectedAsset = null;
             if (asset.Kind == AssetKind.Folder)
             {
@@ -349,9 +353,74 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         {
             string parent = GetFolder(folder.Path);
             _content.Delete(folder.Path);
+            _imports.Remove(folder.Path);
             Refresh();
             SelectFolder(parent);
         }
+    }
+
+    /// <summary>Whether the selected file was imported from outside the content folder, so it can be imported again.</summary>
+    public bool CanReimport => SelectedAsset is { } asset && _imports.Find(asset.Path) is not null;
+
+    /// <summary>
+    /// Copies files from outside the content folder into the selected folder and remembers where they came from; a file
+    /// imported again from the same place replaces its copy, and another file with a taken name gets a free one.
+    /// </summary>
+    public void Import(IReadOnlyList<string> fullPaths) => Import(fullPaths, SelectedFolder?.Path ?? "");
+
+    /// <summary>Copies files from outside the content folder into the given folder, as <see cref="Import(IReadOnlyList{string})"/>.</summary>
+    public void Import(IReadOnlyList<string> fullPaths, string folder)
+    {
+        Status = "";
+        if (RefuseCode(folder))
+        {
+            return;
+        }
+
+        string? imported = null;
+        foreach (string fullPath in fullPaths)
+        {
+            string fileName = Path.GetFileName(fullPath);
+            string path = Combine(folder, fileName);
+            string? source = _imports.Find(path);
+            bool sameSource = source is not null && ContentManager.PathComparer.Equals(source, fullPath);
+            if (Exists(path) && !sameSource)
+            {
+                string name = Path.GetFileNameWithoutExtension(fileName);
+                string extension = Path.GetExtension(fileName);
+                path = FindFreePath(folder, name, extension);
+            }
+
+            byte[] bytes = File.ReadAllBytes(fullPath);
+            _content.Write(path, bytes);
+            _imports.Set(path, fullPath);
+            imported = path;
+        }
+
+        SearchText = "";
+        FindAssets();
+        SelectedAsset = Assets.FirstOrDefault(entry => entry.Path == imported);
+    }
+
+    /// <summary>Copies the selected file again from where it was imported, after it changed there.</summary>
+    [RelayCommand]
+    public void Reimport()
+    {
+        Status = "";
+        if (SelectedAsset is not { } asset || _imports.Find(asset.Path) is not { } source)
+        {
+            return;
+        }
+
+        if (!File.Exists(source))
+        {
+            Status = $"{asset.Name} can't be imported again: {source} is gone.";
+            return;
+        }
+
+        byte[] bytes = File.ReadAllBytes(source);
+        _content.Write(asset.Path, bytes);
+        Status = $"Imported {asset.Name} again from {source}.";
     }
 
     /// <summary>The full path of a file or folder the browser shows, in the content or the code.</summary>
@@ -510,6 +579,11 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     private string FindFreePath(string name, string extension)
     {
         string folder = SelectedFolder?.Path ?? "";
+        return FindFreePath(folder, name, extension);
+    }
+
+    private string FindFreePath(string folder, string name, string extension)
+    {
         string path = Combine(folder, name + extension);
         int number = 2;
         while (Exists(path))
@@ -542,6 +616,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         }
 
         _content.Move(path, newPath);
+        _imports.Move(path, newPath);
         return true;
     }
 

@@ -23,9 +23,9 @@ public sealed class AssetBuilderTests : IDisposable
     }
 
     [Fact]
-    public void LeavesTheSchemaFolderOut()
+    public void LeavesHiddenFilesAndFoldersOut()
     {
-        _files.WithSource(".schemas/scene.schema.json", "{}").WithSource("A.txt", "a");
+        _files.WithSource(".schemas/scene.schema.json", "{}").WithSource(".imports", "A.txt|C:/a.txt").WithSource("A.txt", "a");
         AssetBuilder builder = _files.Build();
 
         BuildReport report = _files.BuildAll(builder);

@@ -8,4 +8,7 @@ public enum ShaderParameterType
 
     /// <summary>A linear RGB colour, three floats.</summary>
     Color,
+
+    /// <summary>A texture named by its source file, packed as the index the shader samples it by.</summary>
+    Texture,
 }

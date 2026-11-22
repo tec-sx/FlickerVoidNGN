@@ -34,14 +34,15 @@ public sealed class LightingMoodTests : IDisposable
     [Fact]
     public void BlendsEverySettingBetweenTwoMoods()
     {
-        LightingMood day = new() { Exposure = 1, Tint = Vector3.One, FogDensity = 0 };
-        LightingMood night = new() { Exposure = 0.5f, Tint = new Vector3(0.5f, 0.5f, 1), FogDensity = 0.2f };
+        LightingMood day = new() { Exposure = 1, Tint = Vector3.One, FogDensity = 0, PaperGrain = 0 };
+        LightingMood night = new() { Exposure = 0.5f, Tint = new Vector3(0.5f, 0.5f, 1), FogDensity = 0.2f, PaperGrain = 1 };
 
         LightingMood blended = LightingMood.Lerp(day, night, 0.5f);
 
         blended.Exposure.Should().BeApproximately(0.75f, 1e-6f);
         blended.Tint.Should().Be(new Vector3(0.75f, 0.75f, 1));
         blended.FogDensity.Should().BeApproximately(0.1f, 1e-6f);
+        blended.PaperGrain.Should().BeApproximately(0.5f, 1e-6f);
     }
 
     [Fact]

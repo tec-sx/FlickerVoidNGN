@@ -1,5 +1,6 @@
 // Turns the lit scene into the final image: adds bloom, then exposure, contrast, saturation and tint, then the tonemapper's
-// curve, then grain and a paper texture laid over the screen. Draws one triangle that covers the target.
+// curve, then lays it over the paper, which shows where the scene's alpha (how thick the paint is) is low, then grain.
+// Draws one triangle that covers the target.
 
 Texture2D Textures[] : register(t0, space1);
 SamplerState Samplers[] : register(s0, space3);
@@ -19,6 +20,7 @@ struct PostConstants
     uint WrapSampler;
     uint Tonemapper;
     float WhitePoint;
+    float PaperGrain;
 };
 
 [[vk::push_constant]] ConstantBuffer<PostConstants> Post : register(b0, space0);
@@ -101,18 +103,31 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
     color *= Post.Tint;
     color = Tonemap(color);
 
+    float coverage = sceneColor.a;
     if (Post.Paper != None)
     {
         Texture2D paper = Textures[Post.Paper];
         uint width;
         uint height;
-        paper.GetDimensions(width, height);
+        uint levels;
+        paper.GetDimensions(0, width, height, levels);
         float2 uv = position.xy / float2(width, height);
-        color *= paper.SampleLevel(Samplers[Post.WrapSampler], uv, 0).rgb;
+        float3 paperColor = paper.SampleLevel(Samplers[Post.WrapSampler], uv, 0).rgb;
+        float3 averagePaper = paper.SampleLevel(Samplers[Post.WrapSampler], uv, levels - 1).rgb;
+
+        // Thin paint fills the paper's valleys (darker than the paper's average) first and leaves its peaks bare; bare paper
+        // and thick paint stay as they are.
+        float3 toLuminance = float3(0.2126, 0.7152, 0.0722);
+        float grain = dot(averagePaper - paperColor, toLuminance) / max(dot(averagePaper, toLuminance), 1e-3);
+        float paint = sceneColor.a;
+        float thickness = saturate(paint + grain * Post.PaperGrain * 4 * paint * (1 - paint));
+        color = lerp(paperColor, color, thickness);
+        coverage = 1;
     }
 
     color += (PixelNoise(position.xy) - 0.5) * Post.Grain;
 
-    // Coverage: 0 where nothing was drawn, so a stage's image shows over the interface; light added there (bloom) stays additive.
-    return float4(color, sceneColor.a);
+    // Coverage: 0 where nothing was drawn and there is no paper, so a stage's image shows over the interface; light added
+    // there (bloom) stays additive.
+    return float4(color, coverage);
 }

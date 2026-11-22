@@ -14,7 +14,7 @@ public sealed class MaterialLayoutTests
         byte[] packed = MaterialLayout.Pack(_builder.Parameters, null);
 
         float[] values = MemoryMarshal.Cast<byte, float>(packed).ToArray();
-        values.Should().Equal(0.25f, 0, 0, 0);
+        values.Should().Equal(0.25f, 0, 0, 0, BitConverter.UInt32BitsToSingle(MaterialLayout.NoTexture), BitConverter.UInt32BitsToSingle(MaterialLayout.NoTexture));
     }
 
     [Fact]
@@ -25,7 +25,35 @@ public sealed class MaterialLayoutTests
         byte[] packed = MaterialLayout.Pack(_builder.Parameters, material);
 
         float[] values = MemoryMarshal.Cast<byte, float>(packed).ToArray();
-        values.Should().Equal(0.25f, 1, 0.5f, 0);
+        values.Should().Equal(0.25f, 1, 0.5f, 0, BitConverter.UInt32BitsToSingle(MaterialLayout.NoTexture), BitConverter.UInt32BitsToSingle(MaterialLayout.NoTexture));
+    }
+
+    [Fact]
+    public void PacksATextureAsTheIndicesOfItsImageAndRelief()
+    {
+        MaterialFile material = MaterialLayoutTestsBuilder.Material("""{ "parameters": { "texture": "Paintings/Wall.reb" } }""");
+        List<string> loaded = [];
+
+        byte[] packed = MaterialLayout.Pack(_builder.Parameters, material, path =>
+        {
+            loaded.Add(path);
+            return new MaterialTexture(7, 9);
+        });
+
+        uint[] values = MemoryMarshal.Cast<byte, uint>(packed).ToArray();
+        values[^2..].Should().Equal(7u, 9u);
+        loaded.Should().Equal("Paintings/Wall.reb");
+    }
+
+    [Fact]
+    public void PacksNoTextureForATextureSetToNull()
+    {
+        MaterialFile material = MaterialLayoutTestsBuilder.Material("""{ "parameters": { "texture": null } }""");
+
+        byte[] packed = MaterialLayout.Pack(_builder.Parameters, material, _ => new MaterialTexture(7, 9));
+
+        uint[] values = MemoryMarshal.Cast<byte, uint>(packed).ToArray();
+        values[^2..].Should().Equal(MaterialLayout.NoTexture, MaterialLayout.NoTexture);
     }
 
     [Fact]

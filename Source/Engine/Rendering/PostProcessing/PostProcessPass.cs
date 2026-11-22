@@ -5,7 +5,7 @@ using FlickerVoid.Engine.Rendering.Pipeline;
 
 namespace FlickerVoid.Engine.Rendering.PostProcessing;
 
-/// <summary>Blooms, grades and lays paper over the HDR scene into the output, as the mood says.</summary>
+/// <summary>Blooms and grades the HDR scene into the output over the mood's paper, as the mood says.</summary>
 internal sealed class PostProcessPass : IRenderPass
 {
     private readonly PostProcessor _post;

@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 
@@ -441,21 +442,90 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
-    public void LaysGrainAndPaperOverTheImage()
+    public void LaysThePaperUnderThePaintShowingThroughWhereItIsThin()
     {
         uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
         _builder.WithTexture("Paper.tga", 1, 1, [grey]);
+        _builder.WithMood(static mood => mood with { Paper = "Paper.tga", PaperGrain = 0 });
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
         _builder.WithScene(Camera, Quad);
 
-        _builder.WithMood(static mood => mood with { Paper = "Paper.tga" });
-        uint[] paper = _builder.Render();
+        uint[] thick = _builder.Render();
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(1, 0, 0, 0.5f)));
+        _builder.NotifyChanged("Quad.fvmodel");
+        uint[] thin = _builder.Render();
+
+        SceneRendererTestsBuilder.Channels(thick[5]).Should().Be(((byte)255, (byte)0, (byte)0), "thick paint hides the paper");
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(thin[5]);
+        green.Should().BeInRange(25, 31, "half of the paper's light (sRGB 128 is about a fifth) shows through half-thick paint");
+        blue.Should().Be(green);
+        red.Should().BeInRange(150, 160);
+    }
+
+    [Fact]
+    public void ShowsThePaperUnlitWhereNothingIsPainted()
+    {
+        uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
+        _builder.WithTexture("Paper.tga", 1, 1, [grey]);
+        _builder.WithMood(static mood => mood with { Paper = "Paper.tga", Exposure = 3 });
+        _builder.WithScene(Camera);
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(53, 57, "the paper keeps its own colour whatever the light and grading");
+        green.Should().Be(red);
+        blue.Should().Be(red);
+    }
+
+    [Fact]
+    public void LaysGrainOverTheImage()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
         _builder.WithMood(static mood => mood with { Paper = null, Grain = 0.2f });
+
         uint[] grain = _builder.Render();
 
-        (byte red, _, _) = SceneRendererTestsBuilder.Channels(paper[5]);
-        red.Should().BeInRange(53, 57, "paper at sRGB 128 lets about a fifth of the light through");
         grain.Distinct().Should().HaveCountGreaterThan(1, "grain varies from pixel to pixel");
+    }
+
+    [Fact]
+    public void PaintsAMaterialsTextureInPlaceOfThePartsOwn()
+    {
+        uint blue = SceneRendererTestsBuilder.Rgba(0, 0, 255, 255);
+        _builder.WithTexture("Blue.tga", 1, 1, [blue]);
+        _builder.WithFile("Blue.fvmat", """{ "parameters": { "texture": "Blue.tga" } }""");
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Vector4.One));
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Blue.fvmat"] } } }""");
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, byte blueChannel) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeLessThan(10);
+        blueChannel.Should().BeGreaterThan(200);
+    }
+
+    [Fact]
+    public void TiltsTheLightByAPaintingsRelief()
+    {
+        uint white = SceneRendererTestsBuilder.Rgba(255, 255, 255, 255);
+        uint[] rising = [SceneRendererTestsBuilder.Rgba(0, 0, 0, 255), SceneRendererTestsBuilder.Rgba(85, 85, 85, 255), SceneRendererTestsBuilder.Rgba(170, 170, 170, 255), white];
+        _builder.WithTexture("Wall.reb", 1, 1, [white]);
+        _builder.WithTexture("Wall.relief.dds", 4, 1, rising, PixelFormat.Rgba8UNorm);
+        _builder.WithFile("Wall.fvmat", """{ "parameters": { "texture": "Wall.reb", "reliefDepth": 0 } }""");
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Vector4.One));
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0);
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Wall.fvmat"] } } }""");
+        uint[] flat = _builder.Render();
+        _builder.WithFile("Wall.fvmat", """{ "parameters": { "texture": "Wall.reb", "reliefDepth": 0.1 } }""");
+        _builder.NotifyChanged("Wall.fvmat");
+
+        uint[] raised = _builder.Render();
+
+        (byte flatRed, _, _) = SceneRendererTestsBuilder.Channels(flat[5]);
+        (byte raisedRed, _, _) = SceneRendererTestsBuilder.Channels(raised[5]);
+        raisedRed.Should().BeLessThan((byte)(flatRed - 10), "the paint rises toward the sun, so its slope faces away from it");
     }
 
     [Fact]

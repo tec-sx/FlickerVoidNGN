@@ -13,6 +13,12 @@
     { "name": "specular", "type": "float", "default": 0, "minimum": 0, "maximum": 4 },
     { "name": "glossiness", "type": "float", "default": 0.5, "minimum": 0, "maximum": 1 },
     { "name": "emissive", "type": "color", "default": [0, 0, 0] },
-    { "name": "emissiveIntensity", "type": "float", "default": 1, "minimum": 0, "maximum": 16 }
+    { "name": "emissiveIntensity", "type": "float", "default": 1, "minimum": 0, "maximum": 16 },
+    // A painting or image used in place of the mesh part's own texture; its alpha is how thick the paint is.
+    { "name": "texture", "type": "texture", "default": null },
+    // How many times the texture repeats over the mesh part's uvs.
+    { "name": "textureScale", "type": "float", "default": 1, "minimum": 0.1, "maximum": 16 },
+    // How high, in world units, the thickest impasto of a painting's relief stands; it tilts the light, the mesh stays flat.
+    { "name": "reliefDepth", "type": "float", "default": 0.01, "minimum": 0, "maximum": 0.1 }
   ]
 }

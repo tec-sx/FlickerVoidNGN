@@ -44,6 +44,23 @@ public sealed class MaterialEditorViewModelTests : IDisposable
     }
 
     [Fact]
+    public void PicksTheTextureAmongTheImagesAndPaintings()
+    {
+        _builder.WithMaterial("Wall.fvmat", """{ "parameters": { "texture": "Paintings/Wall.reb" } }""");
+        _builder.WithMaterial("Paintings/Wall.reb", "painting");
+        _builder.WithMaterial("Paper.png", "image");
+        MaterialEditorViewModel editor = _builder.Build();
+
+        editor.SelectedMaterial = "Wall.fvmat";
+
+        AssetFieldViewModel texture = editor.Parameters.OfType<AssetFieldViewModel>().Single(field => field.Label == "Texture");
+        texture.Picker.Current.Should().Be("Paintings/Wall.reb");
+        texture.Picker.IsOpen = true;
+        texture.Picker.Matches.Should().Equal("Paintings/Wall.reb", "Paper.png");
+        texture.Picker.AcceptsNone.Should().BeTrue();
+    }
+
+    [Fact]
     public void HoldsAnEditUnsavedAndTellsTheSceneTheMaterialChanged()
     {
         _builder.WithMaterial("Brick.fvmat", """{ "parameters": {} }""");

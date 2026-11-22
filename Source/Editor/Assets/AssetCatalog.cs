@@ -30,6 +30,7 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
         (".jpeg", AssetKind.Texture),
         (".tga", AssetKind.Texture),
         (".bmp", AssetKind.Texture),
+        (".reb", AssetKind.Texture),
         (".dds", AssetKind.Texture),
         (".hlsl", AssetKind.Shader),
         (".hlsli", AssetKind.Shader),

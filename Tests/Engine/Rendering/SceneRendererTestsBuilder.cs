@@ -81,10 +81,10 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     /// Writes Rgba8 pixels, top row first, as the content build leaves a texture named <paramref name="path"/>: an sRGB DDS
     /// with the .dds extension, uncompressed so the pixels stay exact.
     /// </summary>
-    public SceneRendererTestsBuilder WithTexture(string path, int width, int height, uint[] pixels)
+    public SceneRendererTestsBuilder WithTexture(string path, int width, int height, uint[] pixels, PixelFormat format = PixelFormat.Rgba8UNormSrgb)
     {
         byte[] data = MemoryMarshal.AsBytes(pixels.AsSpan()).ToArray();
-        DdsImage image = new(width, height, PixelFormat.Rgba8UNormSrgb, 1, data);
+        DdsImage image = new(width, height, format, 1, data);
         string builtPath = Path.ChangeExtension(path, ".dds");
         string fullPath = Path.Combine(_contentFolder, builtPath);
         using FileStream stream = File.Create(fullPath);

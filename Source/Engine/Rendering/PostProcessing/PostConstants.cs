@@ -18,5 +18,6 @@ internal readonly record struct PostConstants(
     uint ClampSampler,
     uint WrapSampler,
     uint Tonemapper,
-    float WhitePoint);
+    float WhitePoint,
+    float PaperGrain);
 

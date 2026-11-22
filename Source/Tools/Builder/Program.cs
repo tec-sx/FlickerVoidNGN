@@ -4,6 +4,7 @@ using System.Globalization;
 using FlickerVoid.Tools.Builder;
 using FlickerVoid.Tools.Builder.Importing;
 using FlickerVoid.Tools.Builder.Models;
+using FlickerVoid.Tools.Builder.Paintings;
 using FlickerVoid.Tools.Builder.Shaders;
 using FlickerVoid.Tools.Builder.Textures;
 using FlickerVoid.Tools.Builder.Watching;
@@ -24,8 +25,9 @@ using DxcShaderCompiler compiler = new();
 ShaderImporter shaders = new(compiler);
 SkipImporter shaderSources = new(".hlsl", ".hlsli");
 TextureImporter textures = new();
+PaintingImporter paintings = new();
 ModelImporter models = new();
-IAssetImporter[] importers = [shaders, shaderSources, textures, models];
+IAssetImporter[] importers = [shaders, shaderSources, textures, paintings, models];
 AssetBuilder builder = new(importers);
 if (watch)
 {
