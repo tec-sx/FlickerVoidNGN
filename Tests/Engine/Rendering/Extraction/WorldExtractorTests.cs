@@ -28,6 +28,61 @@ public sealed class WorldExtractorTests : IDisposable
     }
 
     [Fact]
+    public void PutsTheActiveCameraFirstAtItsPosedView()
+    {
+        Camera still = new() { OrthographicHeight = 7 };
+        Camera directed = new() { OrthographicHeight = 3 };
+        Camera posedLens = new() { OrthographicHeight = 5 };
+        Transform pose = new() { Position = new Vector3(4, 5, 6) };
+        ActiveCamera active = new() { Lens = posedLens, Pose = pose };
+
+        RenderScene scene = _builder.WithCamera(still, Vector3.Zero).WithActiveCamera(directed, Vector3.One, active).Extract();
+
+        scene.Cameras.Should().HaveCount(2);
+        scene.Cameras[0].Camera.OrthographicHeight.Should().Be(5);
+        scene.Cameras[0].Transform.Position.Should().Be(new Vector3(4, 5, 6));
+        scene.Cameras[1].Camera.OrthographicHeight.Should().Be(7);
+    }
+
+    [Fact]
+    public void CopiesTheTransitionTheActiveCameraLaysOver()
+    {
+        Camera lens = new() { OrthographicHeight = 3 };
+        Transform from = new() { Position = new Vector3(1, 2, 3) };
+        ActiveCamera active = new() { Lens = lens, Fade = 0.25f, FadeColor = Vector3.UnitX, Dissolve = 0.5f, DissolveLens = lens, DissolvePose = from };
+
+        RenderScene scene = _builder.WithActiveCamera(lens, Vector3.Zero, active).Extract();
+
+        scene.Transition.Fade.Should().Be(0.25f);
+        scene.Transition.FadeColor.Should().Be(Vector3.UnitX);
+        scene.Transition.Dissolve.Should().Be(0.5f);
+        scene.Transition.DissolveFrom.Transform.Position.Should().Be(new Vector3(1, 2, 3));
+        scene.Transition.IsVisible.Should().BeTrue();
+    }
+
+    [Fact]
+    public void LaysNothingOverWithoutADirector()
+    {
+        RenderScene scene = _builder.WithCamera(new Camera(), Vector3.Zero).Extract();
+
+        scene.Transition.IsVisible.Should().BeFalse();
+    }
+
+    [Fact]
+    public void FindsTheActiveCameraElseTheFirst()
+    {
+        Camera still = new() { OrthographicHeight = 7 };
+        RenderCamera? first = _builder.WithCamera(still, Vector3.Zero).FindCamera();
+        Transform pose = new() { Position = new Vector3(4, 5, 6) };
+        ActiveCamera active = new() { Lens = still, Pose = pose };
+
+        RenderCamera? directed = _builder.WithActiveCamera(still, Vector3.One, active).FindCamera();
+
+        first!.Value.Transform.Position.Should().Be(Vector3.Zero);
+        directed!.Value.Transform.Position.Should().Be(new Vector3(4, 5, 6));
+    }
+
+    [Fact]
     public void CopiesStaticMeshesWithTheirWorldMatrix()
     {
         Transform transform = new() { Position = new Vector3(1, 0, 0), Scale = new Vector3(2) };

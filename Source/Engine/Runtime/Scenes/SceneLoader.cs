@@ -72,6 +72,21 @@ public sealed partial class SceneLoader : IDisposable
         return GetLoaded(path, out _).Entities;
     }
 
+    /// <summary>The template the loaded scene file at <paramref name="path"/> gave the entity, or null.</summary>
+    public string? GetTemplate(string path, Entity entity)
+    {
+        LoadedScene loaded = GetLoaded(path, out _);
+        for (int index = 0; index < loaded.Entities.Count; index++)
+        {
+            if (loaded.Entities[index] == entity)
+            {
+                return loaded.Scene.Entities[index].Template;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>Destroys the entities spawned from the scene file and stops following it; does nothing when it isn't loaded.</summary>
     public void Unload(string path)
     {

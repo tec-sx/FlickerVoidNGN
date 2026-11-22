@@ -26,6 +26,7 @@ public sealed partial class MaterialEditorWindow : Window
         _preview.PointerPressed += HandlePreviewPressed;
         _preview.PointerMoved += HandlePreviewMoved;
         _preview.PointerReleased += HandlePreviewReleased;
+        UndoShortcuts.Attach(this, () => _viewModel?.History);
     }
 
     protected override void OnDataContextChanged(EventArgs e)

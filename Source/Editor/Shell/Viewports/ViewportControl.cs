@@ -15,6 +15,7 @@ using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Controls;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Menus;
+using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Textures;
@@ -246,6 +247,17 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         {
             choices.Add(duplicate);
             choices.Add(delete);
+        }
+
+        UndoHistory history = viewModel.Scene.History;
+        if (history.UndoName is { } undoName)
+        {
+            choices.Add(new MenuChoice($"Undo {undoName}", () => history.Undo(), "Edit", "Undo", "Ctrl+Z"));
+        }
+
+        if (history.RedoName is { } redoName)
+        {
+            choices.Add(new MenuChoice($"Redo {redoName}", () => history.Redo(), "Edit", "Redo", "Ctrl+Y"));
         }
 
         EditorMenus.ShowOptions(this, choices, MenuGrouping.Separators);

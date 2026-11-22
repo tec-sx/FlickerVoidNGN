@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Rendering.Serialization;
@@ -20,7 +21,7 @@ namespace FlickerVoid.Editor.Assets.Textures;
 /// crop) or of a canvas (<c>.fvcanvas</c>: image, tiling, tint, grain, curvature), held unsaved as it changes until saved or
 /// discarded, and a preview drawn on the CPU of what the build makes of the image, or of the canvas repeated by its tiling.
 /// </summary>
-public sealed partial class TextureEditorViewModel : ObservableObject
+public sealed partial class TextureEditorViewModel : ObservableObject, IDisposable
 {
     public const int PreviewSize = 256;
 
@@ -50,7 +51,11 @@ public sealed partial class TextureEditorViewModel : ObservableObject
         }
 
         Load();
+        _content.Restored += HandleRestored;
     }
+
+    /// <summary>The settings file's undo and redo steps.</summary>
+    public UndoHistory History => _content.GetHistory(_settingsPath);
 
     /// <summary>The image or canvas being edited.</summary>
     public string Path { get; }
@@ -85,6 +90,20 @@ public sealed partial class TextureEditorViewModel : ObservableObject
     {
         _content.Discard(_settingsPath);
         Load();
+    }
+
+    public void Dispose()
+    {
+        _content.Restored -= HandleRestored;
+    }
+
+    private void HandleRestored(string fullPath)
+    {
+        string settings = _content.GetFullPath(_settingsPath);
+        if (Engine.Runtime.Content.ContentManager.PathComparer.Equals(settings, fullPath))
+        {
+            Load();
+        }
     }
 
     private void Load()

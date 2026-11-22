@@ -1,5 +1,6 @@
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Rendering.Lighting;
 
 namespace FlickerVoid.Editor.Tests;
@@ -111,10 +112,47 @@ public sealed class MainWindowViewModelTests : IDisposable
     }
 
     [Fact]
+    public void UndoesADataAssetEditAndShowsTheFormAgain()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetKind.Data);
+        NumberFieldViewModel hours = (NumberFieldViewModel)((Core.Data.DataObjectViewModel)_builder.ViewModel.DataContent!).Fields.Single();
+        hours.Value = 9;
+
+        _builder.ViewModel.GetHistory(sidePanelFocused: true)!.Undo();
+
+        NumberFieldViewModel shown = (NumberFieldViewModel)((Core.Data.DataObjectViewModel)_builder.ViewModel.DataContent!).Fields.Single();
+        shown.Value.Should().Be(6);
+        _builder.ViewModel.UnsavedPaths.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void UndoesAFlowGraphEditInItsEditor()
+    {
+        Core.Flows.FlowGraphViewModel? requested = null;
+        _builder.ViewModel.FlowRequested += (_, graph) => requested = graph;
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Cellar, AssetKind.Flow);
+        requested!.AddNode("finish", 200, 0);
+
+        _builder.ViewModel.GetFlowHistory(MainWindowViewModelTestsBuilder.Cellar).Undo();
+
+        requested.Nodes.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void UndoesSceneEditsWhenTheKeyboardIsOutsideTheSidePanel()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetKind.Data);
+
+        UndoHistory? history = _builder.ViewModel.GetHistory(sidePanelFocused: false);
+
+        history.Should().BeSameAs(_builder.Scene.History);
+    }
+
+    [Fact]
     public void OpensFlowGraphsInAGraphEditorWithTheirEditsHeldUnsaved()
     {
         Core.Flows.FlowGraphViewModel? requested = null;
-        _builder.ViewModel.FlowRequested += graph => requested = graph;
+        _builder.ViewModel.FlowRequested += (_, graph) => requested = graph;
 
         _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Cellar, AssetKind.Flow);
 

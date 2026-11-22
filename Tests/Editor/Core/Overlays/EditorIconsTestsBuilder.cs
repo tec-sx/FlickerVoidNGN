@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Editor.Core.Cameras;
+using FlickerVoid.Engine.Cameras.Triggers;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
@@ -50,6 +51,14 @@ internal sealed class EditorIconsTestsBuilder : IDisposable
     {
         Transform transform = new() { Position = position };
         return _game.World.Create(transform, new Camera());
+    }
+
+    /// <summary>A trigger area whose box is centred one unit above its entity, with a camera cue.</summary>
+    public Entity AddCameraCue(Vector3 position)
+    {
+        Transform transform = new() { Position = position };
+        TriggerArea area = new() { Offset = Vector3.UnitY };
+        return _game.World.Create(transform, area, new CameraCue());
     }
 
     public Entity AddIrradianceVolume(Vector3 position)

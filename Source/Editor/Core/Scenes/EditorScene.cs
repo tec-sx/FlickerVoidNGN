@@ -4,6 +4,7 @@ using System.Text.Json;
 using Arch.Core;
 
 using FlickerVoid.Editor.Core.Selection;
+using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Flow;
 using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Rendering;
@@ -65,6 +66,9 @@ public sealed class EditorScene : IDisposable
     /// <summary>The entity the viewport and the inspector work on.</summary>
     public EditorSelection Selection { get; } = new();
 
+    /// <summary>The scene's undo and redo steps, recorded by its edit methods and cleared when another scene opens.</summary>
+    public UndoHistory History { get; } = new();
+
     /// <summary>Raised after a scene file was opened.</summary>
     public event Action? Opened;
 
@@ -104,6 +108,8 @@ public sealed class EditorScene : IDisposable
         }
 
         Entity entity = _loader.Add(ScenePath, data);
+        EntityStep step = new($"Add {data.Name}", this, data, added: true);
+        History.Record(step);
         EntitiesChanged?.Invoke();
         MarkEdited();
         return entity;
@@ -115,29 +121,18 @@ public sealed class EditorScene : IDisposable
     /// </summary>
     public Entity DuplicateEntity(Entity entity)
     {
-        World world = Game.World;
-        string name = "Entity";
-        if (world.TryGet(entity, out EntityName entityName))
+        EntityData data = CaptureEntity(entity);
+        string name = data.Name;
+        if (name.Length == 0)
         {
-            name = entityName.Value;
+            name = "Entity";
         }
 
-        EntityData data = new() { Name = GetFreeName(name) };
-        if (world.TryGet(entity, out EntityFolder folder))
-        {
-            data.Folder = folder.Path;
-        }
-
-        foreach (SceneComponent component in Game.Spawner.Components)
-        {
-            if (component.Has(world, entity))
-            {
-                JsonElement json = component.Write(world, entity);
-                data.Components.Add(component.Name, json);
-            }
-        }
-
-        return AddEntity(data);
+        data.Name = GetFreeName(name);
+        History.BeginGroup($"Duplicate {name}");
+        Entity copy = AddEntity(data);
+        History.EndGroup();
+        return copy;
     }
 
     /// <summary>Destroys an entity; the next save leaves it out of the scene file.</summary>
@@ -150,6 +145,12 @@ public sealed class EditorScene : IDisposable
         }
 
         Selection.Deselect(entity);
+        if (!History.IsApplying)
+        {
+            EntityData data = CaptureEntity(entity);
+            EntityStep step = new($"Delete {data.Name}", this, data, added: false);
+            History.Record(step);
+        }
 
         Game.Spawner.Lifecycle.Destroy(world, entity);
         EntitiesChanged?.Invoke();
@@ -166,10 +167,17 @@ public sealed class EditorScene : IDisposable
             return;
         }
 
+        SceneComponent? registered = FindComponent(typeof(T));
+        JsonElement? before = WriteComponent(entity, registered);
         EntityLifecycle lifecycle = Game.Spawner.Lifecycle;
         lifecycle.StopComponent(world, entity, typeof(T));
         world.Set(entity, component);
         lifecycle.StartComponent(world, entity, typeof(T));
+        if (registered is not null)
+        {
+            RecordComponent("Edit", entity, registered, before);
+        }
+
         MarkEdited();
     }
 
@@ -187,6 +195,12 @@ public sealed class EditorScene : IDisposable
         if (current == wanted)
         {
             return;
+        }
+
+        if (!History.IsApplying && world.TryGet(entity, out EntityName entityName))
+        {
+            FolderStep step = new($"Move {entityName.Value} to folder", this, entityName.Value, current, wanted);
+            History.Record(step);
         }
 
         if (wanted is null)
@@ -215,11 +229,13 @@ public sealed class EditorScene : IDisposable
             return;
         }
 
+        JsonElement? before = WriteComponent(entity, component);
         EntityLifecycle lifecycle = Game.Spawner.Lifecycle;
         Type type = component.TypeInfo.Type;
         lifecycle.StopComponent(world, entity, type);
         component.Set(world, entity, value);
         lifecycle.StartComponent(world, entity, type);
+        RecordComponent("Edit", entity, component, before);
         MarkEdited();
     }
 
@@ -236,6 +252,31 @@ public sealed class EditorScene : IDisposable
         component.Read(world, entity, defaults.RootElement);
         Type type = component.TypeInfo.Type;
         Game.Spawner.Lifecycle.StartComponent(world, entity, type);
+        RecordComponent("Add", entity, component, null);
+        MarkEdited();
+    }
+
+    /// <summary>Gives the entity the component as the JSON describes it, replacing the one it has.</summary>
+    public void ReadComponent(Entity entity, SceneComponent component, JsonElement data)
+    {
+        World world = Game.World;
+        if (!world.IsAlive(entity))
+        {
+            return;
+        }
+
+        JsonElement? before = WriteComponent(entity, component);
+        EntityLifecycle lifecycle = Game.Spawner.Lifecycle;
+        Type type = component.TypeInfo.Type;
+        if (before is not null)
+        {
+            lifecycle.StopComponent(world, entity, type);
+            component.Remove(world, entity);
+        }
+
+        component.Read(world, entity, data);
+        lifecycle.StartComponent(world, entity, type);
+        RecordComponent("Edit", entity, component, before);
         MarkEdited();
     }
 
@@ -247,9 +288,11 @@ public sealed class EditorScene : IDisposable
             return;
         }
 
+        JsonElement? before = WriteComponent(entity, component);
         Type type = component.TypeInfo.Type;
         Game.Spawner.Lifecycle.StopComponent(world, entity, type);
         component.Remove(world, entity);
+        RecordComponent("Remove", entity, component, before);
         MarkEdited();
     }
 
@@ -276,6 +319,7 @@ public sealed class EditorScene : IDisposable
         }
 
         ScenePath = path;
+        History.Clear();
         SetUnsaved(false);
         Opened?.Invoke();
         EntitiesChanged?.Invoke();
@@ -321,6 +365,94 @@ public sealed class EditorScene : IDisposable
         Picker.Dispose();
         _loader.Dispose();
         Game.Dispose();
+    }
+
+    /// <summary>The first live entity of the open scene with the name, or null.</summary>
+    public Entity? Find(string name)
+    {
+        World world = Game.World;
+        foreach (Entity entity in Entities)
+        {
+            if (world.TryGet(entity, out EntityName entityName) && entityName.Value == name)
+            {
+                return entity;
+            }
+        }
+
+        return null;
+    }
+
+    private SceneComponent? FindComponent(Type type)
+    {
+        foreach (SceneComponent component in Game.Spawner.Components)
+        {
+            if (component.TypeInfo.Type == type)
+            {
+                return component;
+            }
+        }
+
+        return null;
+    }
+
+    private JsonElement? WriteComponent(Entity entity, SceneComponent? component)
+    {
+        if (History.IsApplying || component is null || !component.Has(Game.World, entity))
+        {
+            return null;
+        }
+
+        return component.Write(Game.World, entity);
+    }
+
+    private void RecordComponent(string verb, Entity entity, SceneComponent component, JsonElement? before)
+    {
+        World world = Game.World;
+        if (History.IsApplying || !world.TryGet(entity, out EntityName entityName))
+        {
+            return;
+        }
+
+        JsonElement? after = null;
+        if (component.Has(world, entity))
+        {
+            after = component.Write(world, entity);
+        }
+
+        ComponentStep step = new($"{verb} {entityName.Value}", this, entityName.Value, component, before, after);
+        History.Record(step);
+    }
+
+    /// <summary>The entity as a scene file would hold it in full: name, template, folder and every component.</summary>
+    private EntityData CaptureEntity(Entity entity)
+    {
+        World world = Game.World;
+        EntityData data = new();
+        if (world.TryGet(entity, out EntityName entityName))
+        {
+            data.Name = entityName.Value;
+        }
+
+        if (ScenePath is not null)
+        {
+            data.Template = _loader.GetTemplate(ScenePath, entity);
+        }
+
+        if (world.TryGet(entity, out EntityFolder folder))
+        {
+            data.Folder = folder.Path;
+        }
+
+        foreach (SceneComponent component in Game.Spawner.Components)
+        {
+            if (component.Has(world, entity))
+            {
+                JsonElement json = component.Write(world, entity);
+                data.Components.Add(component.Name, json);
+            }
+        }
+
+        return data;
     }
 
     private void MarkEdited()
