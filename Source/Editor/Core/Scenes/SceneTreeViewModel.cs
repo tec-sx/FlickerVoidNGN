@@ -96,10 +96,13 @@ public sealed partial class SceneTreeViewModel : ObservableObject
     /// <summary>Files the entities under the folder, or at the top for null or empty.</summary>
     public void MoveTo(IEnumerable<Entity> entities, string? folder)
     {
+        _scene.History.BeginGroup("File in folder");
         foreach (Entity entity in entities.ToList())
         {
             _scene.SetFolder(entity, folder);
         }
+
+        _scene.History.EndGroup();
 
         Rebuild();
     }
@@ -152,6 +155,7 @@ public sealed partial class SceneTreeViewModel : ObservableObject
     private void Refile(string from, string to)
     {
         World world = _scene.Game.World;
+        _scene.History.BeginGroup($"Refile {from}");
         foreach (Entity entity in _scene.Entities)
         {
             string folder = FolderOf(world, entity);
@@ -162,6 +166,8 @@ public sealed partial class SceneTreeViewModel : ObservableObject
                 _scene.SetFolder(entity, moved);
             }
         }
+
+        _scene.History.EndGroup();
 
         foreach (string empty in _emptyFolders.ToList())
         {
