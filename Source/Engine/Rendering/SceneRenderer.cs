@@ -53,6 +53,9 @@ public sealed class SceneRenderer : IDisposable
 
     public SceneRenderer(IGraphicsDevice device, IContentManager content, PixelFormat colorFormat)
     {
+        Device = device;
+        Content = content;
+        ColorFormat = colorFormat;
         ShaderLibrary shaders = ShaderLibrary.ForEngine("Rendering");
         _targets = new ScreenTargets(device);
         TextureDescription whiteDescription = new(1, 1, PixelFormat.Rgba8UNorm, TextureUsage.ShaderRead) { Name = "White" };
@@ -82,6 +85,13 @@ public sealed class SceneRenderer : IDisposable
         Pipeline.Add(new PostProcessPass(device, shaders, colorFormat, content));
         Pipeline.Add(new OutlinePass(device, shaders, colorFormat));
     }
+
+    public IGraphicsDevice Device { get; }
+
+    public IContentManager Content { get; }
+
+    /// <summary>The format of the color targets it draws into.</summary>
+    public PixelFormat ColorFormat { get; }
 
     /// <summary>The passes that draw each frame, in order; add, insert or replace passes to change how frames are drawn.</summary>
     public RenderPipeline Pipeline { get; } = new();
@@ -134,6 +144,17 @@ public sealed class SceneRenderer : IDisposable
 
         RenderCamera first = _scene.Cameras[0];
         RenderView(commands, colorTarget, first.Camera, first.Transform);
+    }
+
+    /// <summary>Draws an already filled scene through the given camera; leaves the target in the RenderTarget state.</summary>
+    public void Render(ICommandList commands, RenderScene scene, ITexture colorTarget, in Camera camera, in Transform cameraTransform)
+    {
+        if (!ReferenceEquals(scene, _scene))
+        {
+            CopyScene(scene);
+        }
+
+        RenderView(commands, colorTarget, camera, cameraTransform);
     }
 
     public void Dispose()
@@ -197,5 +218,6 @@ public sealed class SceneRenderer : IDisposable
         _scene.PointLights.AddRange(scene.PointLights);
         _scene.SpotLights.AddRange(scene.SpotLights);
         _scene.ProbeVolumes.AddRange(scene.ProbeVolumes);
+        _scene.Transition = scene.Transition;
     }
 }

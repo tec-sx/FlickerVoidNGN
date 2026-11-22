@@ -10,6 +10,7 @@ using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Rendering.Serialization;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
@@ -154,7 +155,10 @@ public sealed partial class SceneHost : IDisposable
 
     private SceneRenderer CreateRenderer(PixelFormat format)
     {
-        return new SceneRenderer(Device, Content, format) { Mood = Mood };
+        SceneRenderer renderer = new(Device, Content, format) { Mood = Mood };
+        SceneRendererSetup? setup = Game.Services.GetService<SceneRendererSetup>();
+        setup?.Apply(renderer);
+        return renderer;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "{Scene} has no camera, so the window stays empty.")]

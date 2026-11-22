@@ -195,6 +195,109 @@
     {
       "type": "object",
       "properties": {
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "$type"
+            ],
+            "anyOf": [
+              {
+                "properties": {
+                  "$type": {
+                    "const": "follow"
+                  },
+                  "strength": {
+                    "type": "number"
+                  },
+                  "radius": {
+                    "type": "number"
+                  },
+                  "damping": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "properties": {
+                  "$type": {
+                    "const": "look"
+                  },
+                  "radius": {
+                    "type": "number"
+                  },
+                  "deadzone": {
+                    "type": "number"
+                  },
+                  "damping": {
+                    "type": "number"
+                  },
+                  "returnTime": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "properties": {
+                  "$type": {
+                    "const": "shake"
+                  },
+                  "positionAmplitude": {
+                    "type": "number"
+                  },
+                  "rotationAmplitude": {
+                    "type": "number"
+                  },
+                  "frequency": {
+                    "type": "number"
+                  },
+                  "falloff": {
+                    "type": "number"
+                  },
+                  "constant": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "properties": {
+                  "$type": {
+                    "const": "zoomPunch"
+                  },
+                  "amount": {
+                    "type": "number"
+                  },
+                  "attack": {
+                    "type": "number"
+                  },
+                  "release": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "$schema": {
+          "type": "string"
+        },
+        "type": {
+          "const": "cameraRig"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
         "offers": {
           "type": "array",
           "items": {
@@ -600,6 +703,91 @@
                             },
                             "value": {
                               "type": "integer"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "properties": {
+                            "$type": {
+                              "const": "cutToShot"
+                            },
+                            "shot": {
+                              "type": "string"
+                            },
+                            "mode": {
+                              "enum": [
+                                "Switch",
+                                "Push",
+                                "Return"
+                              ]
+                            },
+                            "transition": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "enum": [
+                                    "Cut",
+                                    "CrossFade",
+                                    "Fade",
+                                    "Blend"
+                                  ]
+                                },
+                                "duration": {
+                                  "type": "number"
+                                },
+                                "inDuration": {
+                                  "type": "number"
+                                },
+                                "color": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "number"
+                                  },
+                                  "minItems": 3,
+                                  "maxItems": 3
+                                },
+                                "ease": {
+                                  "enum": [
+                                    "Linear",
+                                    "EaseIn",
+                                    "EaseOut",
+                                    "EaseInOut"
+                                  ]
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "properties": {
+                            "$type": {
+                              "const": "playShot"
+                            },
+                            "shot": {
+                              "type": "string"
+                            },
+                            "toKey": {
+                              "type": "integer"
+                            },
+                            "layers": {
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "properties": {
+                            "$type": {
+                              "const": "shakeCamera"
+                            },
+                            "strength": {
+                              "type": "number"
+                            },
+                            "duration": {
+                              "type": "number"
                             }
                           },
                           "additionalProperties": false
@@ -1830,6 +2018,91 @@
                   {
                     "properties": {
                       "$type": {
+                        "const": "cutToShot"
+                      },
+                      "shot": {
+                        "type": "string"
+                      },
+                      "mode": {
+                        "enum": [
+                          "Switch",
+                          "Push",
+                          "Return"
+                        ]
+                      },
+                      "transition": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "Cut",
+                              "CrossFade",
+                              "Fade",
+                              "Blend"
+                            ]
+                          },
+                          "duration": {
+                            "type": "number"
+                          },
+                          "inDuration": {
+                            "type": "number"
+                          },
+                          "color": {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            },
+                            "minItems": 3,
+                            "maxItems": 3
+                          },
+                          "ease": {
+                            "enum": [
+                              "Linear",
+                              "EaseIn",
+                              "EaseOut",
+                              "EaseInOut"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "$type": {
+                        "const": "playShot"
+                      },
+                      "shot": {
+                        "type": "string"
+                      },
+                      "toKey": {
+                        "type": "integer"
+                      },
+                      "layers": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "$type": {
+                        "const": "shakeCamera"
+                      },
+                      "strength": {
+                        "type": "number"
+                      },
+                      "duration": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "$type": {
                         "const": "modifyAttribute"
                       },
                       "attribute": {
@@ -2629,6 +2902,91 @@
                                 },
                                 "value": {
                                   "type": "integer"
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            {
+                              "properties": {
+                                "$type": {
+                                  "const": "cutToShot"
+                                },
+                                "shot": {
+                                  "type": "string"
+                                },
+                                "mode": {
+                                  "enum": [
+                                    "Switch",
+                                    "Push",
+                                    "Return"
+                                  ]
+                                },
+                                "transition": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "enum": [
+                                        "Cut",
+                                        "CrossFade",
+                                        "Fade",
+                                        "Blend"
+                                      ]
+                                    },
+                                    "duration": {
+                                      "type": "number"
+                                    },
+                                    "inDuration": {
+                                      "type": "number"
+                                    },
+                                    "color": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "number"
+                                      },
+                                      "minItems": 3,
+                                      "maxItems": 3
+                                    },
+                                    "ease": {
+                                      "enum": [
+                                        "Linear",
+                                        "EaseIn",
+                                        "EaseOut",
+                                        "EaseInOut"
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            {
+                              "properties": {
+                                "$type": {
+                                  "const": "playShot"
+                                },
+                                "shot": {
+                                  "type": "string"
+                                },
+                                "toKey": {
+                                  "type": "integer"
+                                },
+                                "layers": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            {
+                              "properties": {
+                                "$type": {
+                                  "const": "shakeCamera"
+                                },
+                                "strength": {
+                                  "type": "number"
+                                },
+                                "duration": {
+                                  "type": "number"
                                 }
                               },
                               "additionalProperties": false
@@ -3861,6 +4219,91 @@
                   {
                     "properties": {
                       "$type": {
+                        "const": "cutToShot"
+                      },
+                      "shot": {
+                        "type": "string"
+                      },
+                      "mode": {
+                        "enum": [
+                          "Switch",
+                          "Push",
+                          "Return"
+                        ]
+                      },
+                      "transition": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "Cut",
+                              "CrossFade",
+                              "Fade",
+                              "Blend"
+                            ]
+                          },
+                          "duration": {
+                            "type": "number"
+                          },
+                          "inDuration": {
+                            "type": "number"
+                          },
+                          "color": {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            },
+                            "minItems": 3,
+                            "maxItems": 3
+                          },
+                          "ease": {
+                            "enum": [
+                              "Linear",
+                              "EaseIn",
+                              "EaseOut",
+                              "EaseInOut"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "$type": {
+                        "const": "playShot"
+                      },
+                      "shot": {
+                        "type": "string"
+                      },
+                      "toKey": {
+                        "type": "integer"
+                      },
+                      "layers": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "$type": {
+                        "const": "shakeCamera"
+                      },
+                      "strength": {
+                        "type": "number"
+                      },
+                      "duration": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "$type": {
                         "const": "modifyAttribute"
                       },
                       "attribute": {
@@ -4202,6 +4645,91 @@
                       },
                       "value": {
                         "type": "integer"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "$type": {
+                        "const": "cutToShot"
+                      },
+                      "shot": {
+                        "type": "string"
+                      },
+                      "mode": {
+                        "enum": [
+                          "Switch",
+                          "Push",
+                          "Return"
+                        ]
+                      },
+                      "transition": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "Cut",
+                              "CrossFade",
+                              "Fade",
+                              "Blend"
+                            ]
+                          },
+                          "duration": {
+                            "type": "number"
+                          },
+                          "inDuration": {
+                            "type": "number"
+                          },
+                          "color": {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            },
+                            "minItems": 3,
+                            "maxItems": 3
+                          },
+                          "ease": {
+                            "enum": [
+                              "Linear",
+                              "EaseIn",
+                              "EaseOut",
+                              "EaseInOut"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "$type": {
+                        "const": "playShot"
+                      },
+                      "shot": {
+                        "type": "string"
+                      },
+                      "toKey": {
+                        "type": "integer"
+                      },
+                      "layers": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "$type": {
+                        "const": "shakeCamera"
+                      },
+                      "strength": {
+                        "type": "number"
+                      },
+                      "duration": {
+                        "type": "number"
                       }
                     },
                     "additionalProperties": false
@@ -4891,6 +5419,91 @@
                       },
                       "value": {
                         "type": "integer"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "$type": {
+                        "const": "cutToShot"
+                      },
+                      "shot": {
+                        "type": "string"
+                      },
+                      "mode": {
+                        "enum": [
+                          "Switch",
+                          "Push",
+                          "Return"
+                        ]
+                      },
+                      "transition": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "Cut",
+                              "CrossFade",
+                              "Fade",
+                              "Blend"
+                            ]
+                          },
+                          "duration": {
+                            "type": "number"
+                          },
+                          "inDuration": {
+                            "type": "number"
+                          },
+                          "color": {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            },
+                            "minItems": 3,
+                            "maxItems": 3
+                          },
+                          "ease": {
+                            "enum": [
+                              "Linear",
+                              "EaseIn",
+                              "EaseOut",
+                              "EaseInOut"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "$type": {
+                        "const": "playShot"
+                      },
+                      "shot": {
+                        "type": "string"
+                      },
+                      "toKey": {
+                        "type": "integer"
+                      },
+                      "layers": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "properties": {
+                      "$type": {
+                        "const": "shakeCamera"
+                      },
+                      "strength": {
+                        "type": "number"
+                      },
+                      "duration": {
+                        "type": "number"
                       }
                     },
                     "additionalProperties": false
@@ -6024,6 +6637,91 @@
                                 },
                                 "value": {
                                   "type": "integer"
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            {
+                              "properties": {
+                                "$type": {
+                                  "const": "cutToShot"
+                                },
+                                "shot": {
+                                  "type": "string"
+                                },
+                                "mode": {
+                                  "enum": [
+                                    "Switch",
+                                    "Push",
+                                    "Return"
+                                  ]
+                                },
+                                "transition": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "enum": [
+                                        "Cut",
+                                        "CrossFade",
+                                        "Fade",
+                                        "Blend"
+                                      ]
+                                    },
+                                    "duration": {
+                                      "type": "number"
+                                    },
+                                    "inDuration": {
+                                      "type": "number"
+                                    },
+                                    "color": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "number"
+                                      },
+                                      "minItems": 3,
+                                      "maxItems": 3
+                                    },
+                                    "ease": {
+                                      "enum": [
+                                        "Linear",
+                                        "EaseIn",
+                                        "EaseOut",
+                                        "EaseInOut"
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            {
+                              "properties": {
+                                "$type": {
+                                  "const": "playShot"
+                                },
+                                "shot": {
+                                  "type": "string"
+                                },
+                                "toKey": {
+                                  "type": "integer"
+                                },
+                                "layers": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            {
+                              "properties": {
+                                "$type": {
+                                  "const": "shakeCamera"
+                                },
+                                "strength": {
+                                  "type": "number"
+                                },
+                                "duration": {
+                                  "type": "number"
                                 }
                               },
                               "additionalProperties": false

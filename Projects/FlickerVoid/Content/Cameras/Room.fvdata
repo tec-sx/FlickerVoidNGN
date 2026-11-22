@@ -1,0 +1,10 @@
+{
+  "$schema": "../.schemas/data.schema.json",
+  "type": "cameraRig",
+  "layers": [
+    { "$type": "follow", "strength": 0.12, "radius": 0.35, "damping": 0.9 },
+    { "$type": "look", "radius": 0.3, "deadzone": 0.35, "damping": 0.8, "returnTime": 1.2 },
+    { "$type": "shake" },
+    { "$type": "zoomPunch" }
+  ]
+}

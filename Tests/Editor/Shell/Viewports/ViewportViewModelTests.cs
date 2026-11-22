@@ -5,6 +5,7 @@ using Arch.Core;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Gizmos;
 using FlickerVoid.Editor.Core.Overlays;
+using FlickerVoid.Engine.Cameras.Shots;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Meshes;
@@ -223,6 +224,52 @@ public sealed class ViewportViewModelTests : IDisposable
         Vector3.Distance(transform.Position, new Vector3(0, 2, 0)).Should().BeLessThan(0.02f);
         _builder.ViewModel.Selection.Selected.Should().Be(light);
         _builder.ViewModel.Scene.IsUnsaved.Should().BeTrue();
+    }
+
+    [Fact]
+    public void PicksAShotsKeyAndMovesItWithTheGizmo()
+    {
+        Entity shot = _builder.AddSelectedShot();
+        _builder.ViewModel.GizmoMode = GizmoMode.Move;
+        Vector3 key = new(2, 0, 0);
+        _builder.Click(_builder.PixelOf(key));
+        float length = _builder.ViewModel.Gizmo.GetHandleLength(_builder.ViewModel.Camera, key, Height);
+        Vector2 handle = _builder.PixelOf(key + new Vector3(0, 0.7f * length, 0));
+        Vector2 raised = _builder.PixelOf(key + new Vector3(0, (0.7f * length) + 1, 0));
+
+        _builder.ViewModel.PointerPressed(handle, Width, Height);
+        _builder.ViewModel.PointerMoved(raised, Width, Height);
+        _builder.ViewModel.PointerReleased();
+
+        _builder.ViewModel.Timeline.SelectedKey.Should().Be(1);
+        Vector3 moved = _builder.World.Get<Shot>(shot).Keys[1].Position;
+        Vector3.Distance(moved, new Vector3(2, 1, 0)).Should().BeLessThan(0.02f);
+        _builder.World.Get<Transform>(shot).Position.Should().Be(Vector3.Zero, "the shot itself stays put");
+        _builder.ViewModel.Selection.Selected.Should().Be(shot);
+    }
+
+    [Fact]
+    public void PreviewsASelectedShotWhereItsTimelineIsScrubbed()
+    {
+        _builder.AddSelectedShot();
+
+        _builder.ViewModel.Timeline.ScrubTime = 1;
+        RenderCamera? preview = _builder.ViewModel.GetPreviewCamera();
+
+        preview!.Value.Transform.Position.X.Should().BeApproximately(1, 1e-3f);
+    }
+
+    [Fact]
+    public void AddsAShotKeyWhereTheViewStands()
+    {
+        Entity shot = _builder.AddSelectedShot();
+        _builder.ViewModel.Timeline.ScrubTime = 3;
+
+        _builder.ViewModel.AddShotKeyCommand.Execute(null);
+
+        ShotKey added = _builder.World.Get<Shot>(shot).Keys[^1];
+        added.Time.Should().Be(3);
+        Vector3.Distance(added.Position, _builder.ViewModel.Camera.Position).Should().BeLessThan(1e-3f);
     }
 
     [Fact]

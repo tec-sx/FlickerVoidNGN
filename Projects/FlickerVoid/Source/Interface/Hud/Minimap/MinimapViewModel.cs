@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 using FlickerVoid.Engine.Maps.Navigation;
 using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Components;
 
 using MinimapData = FlickerVoid.Engine.Maps.Navigation.MinimapView;
@@ -31,7 +32,6 @@ public sealed partial class MinimapViewModel(World world, MapSystem? maps = null
     public const float TileSize = 128;
 
     private static readonly QueryDescription Protagonists = new QueryDescription().WithAll<Gameplay.Protagonist.Protagonist, Transform>();
-    private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>();
 
     [ObservableProperty]
     public partial bool IsVisible { get; private set; }
@@ -55,14 +55,14 @@ public sealed partial class MinimapViewModel(World world, MapSystem? maps = null
     public void Update()
     {
         Entity protagonist = FindFirst(Protagonists);
-        Entity camera = FindFirst(Cameras);
-        IsVisible = protagonist != Entity.Null && camera != Entity.Null;
-        if (!IsVisible)
+        RenderCamera? camera = ActiveCamera.Find(world);
+        IsVisible = protagonist != Entity.Null && camera is not null;
+        if (camera is not { } drawn || protagonist == Entity.Null)
         {
             return;
         }
 
-        Transform cameraPlace = world.Get<Transform>(camera);
+        Transform cameraPlace = drawn.Transform;
         Transform protagonistPlace = world.Get<Transform>(protagonist);
         Vector3 cameraForward = Vector3.Transform(-Vector3.UnitZ, cameraPlace.Rotation);
         Vector3 protagonistForward = Vector3.Transform(Vector3.UnitZ, protagonistPlace.Rotation);

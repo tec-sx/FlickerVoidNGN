@@ -11,6 +11,7 @@
     { "id": "Input.ScanMode", "bindings": [ { "key": "F" } ] },
     { "id": "Input.Scan", "bindings": [ { "button": "Right" } ] },
     { "id": "Input.QuickSave", "bindings": [ { "key": "F5" } ] },
-    { "id": "Input.QuickLoad", "bindings": [ { "key": "F9" } ] }
+    { "id": "Input.QuickLoad", "bindings": [ { "key": "F9" } ] },
+    { "id": "Input.Skip", "bindings": [ { "key": "Space" } ] }
   ]
 }

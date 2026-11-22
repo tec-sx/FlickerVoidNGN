@@ -409,6 +409,214 @@
             }
           }
         },
+        "shot": {
+          "type": "object",
+          "properties": {
+            "keys": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "position": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "rotation": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 4,
+                    "maxItems": 4
+                  },
+                  "zoom": {
+                    "type": "number"
+                  },
+                  "time": {
+                    "type": "number"
+                  },
+                  "ease": {
+                    "enum": [
+                      "Linear",
+                      "EaseIn",
+                      "EaseOut",
+                      "EaseInOut"
+                    ]
+                  },
+                  "marker": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "drive": {
+              "enum": [
+                "Timed",
+                "Tracked"
+              ]
+            },
+            "start": {
+              "type": "boolean"
+            },
+            "target": {
+              "type": "string"
+            },
+            "lookAtTarget": {
+              "type": "boolean"
+            },
+            "smoothing": {
+              "type": "number"
+            },
+            "rig": {
+              "type": "string"
+            },
+            "skippable": {
+              "type": "boolean"
+            }
+          }
+        },
+        "cameraTarget": {
+          "type": "object",
+          "properties": {
+            "height": {
+              "type": "number"
+            }
+          }
+        },
+        "triggerArea": {
+          "type": "object",
+          "properties": {
+            "size": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "offset": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "requiredTags": {
+              "type": "array"
+            }
+          }
+        },
+        "triggerActivator": {
+          "type": "object"
+        },
+        "cameraCue": {
+          "type": "object",
+          "properties": {
+            "shot": {
+              "type": "string"
+            },
+            "mode": {
+              "enum": [
+                "Switch",
+                "Push",
+                "Return"
+              ]
+            },
+            "transition": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "Cut",
+                    "CrossFade",
+                    "Fade",
+                    "Blend"
+                  ]
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "inDuration": {
+                  "type": "number"
+                },
+                "color": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 3,
+                  "maxItems": 3
+                },
+                "ease": {
+                  "enum": [
+                    "Linear",
+                    "EaseIn",
+                    "EaseOut",
+                    "EaseInOut"
+                  ]
+                }
+              }
+            },
+            "on": {
+              "enum": [
+                "Enter",
+                "Exit"
+              ]
+            },
+            "play": {
+              "type": "boolean"
+            },
+            "toKey": {
+              "type": "integer"
+            },
+            "layers": {
+              "type": "boolean"
+            },
+            "shakeStrength": {
+              "type": "number"
+            },
+            "shakeDuration": {
+              "type": "number"
+            },
+            "once": {
+              "type": "boolean"
+            },
+            "when": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "fact": {
+                    "type": "string"
+                  },
+                  "compare": {
+                    "enum": [
+                      "Equal",
+                      "NotEqual",
+                      "Greater",
+                      "GreaterOrEqual",
+                      "Less",
+                      "LessOrEqual",
+                      "Defined",
+                      "Undefined"
+                    ]
+                  },
+                  "value": {
+                    "type": "integer"
+                  },
+                  "invert": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
         "perception": {
           "type": "object",
           "properties": {

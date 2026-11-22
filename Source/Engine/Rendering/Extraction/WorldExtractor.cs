@@ -11,10 +11,14 @@ using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Rendering.Extraction;
 
-/// <summary>Extracts cameras, meshes with their outlines, lights and irradiance volumes from entities with a transform.</summary>
+/// <summary>
+/// Extracts cameras (a director's <see cref="ActiveCamera"/> first, at its posed view), meshes with their outlines, lights and
+/// irradiance volumes from entities with a transform.
+/// </summary>
 public sealed class WorldExtractor : IRenderExtractor
 {
-    private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>();
+    private static readonly QueryDescription ActiveCameras = new QueryDescription().WithAll<ActiveCamera>();
+    private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>().WithNone<ActiveCamera>();
     private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>().WithNone<MeshAnimator>();
     private static readonly QueryDescription AnimatedMeshes = new QueryDescription().WithAll<MeshRenderer, Transform, MeshAnimator>();
     private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>();
@@ -24,6 +28,12 @@ public sealed class WorldExtractor : IRenderExtractor
     public void Extract(World world, RenderScene scene)
     {
         scene.Clear();
+        world.Query(in ActiveCameras, (ref ActiveCamera active) =>
+        {
+            scene.Cameras.Add(new RenderCamera(active.Lens, active.Pose));
+            RenderCamera dissolveFrom = new(active.DissolveLens, active.DissolvePose);
+            scene.Transition = new RenderTransition(active.Fade, active.FadeColor, active.Dissolve, dissolveFrom);
+        });
         world.Query(in Cameras, (ref Camera camera, ref Transform transform) =>
         {
             scene.Cameras.Add(new RenderCamera(camera, transform));
