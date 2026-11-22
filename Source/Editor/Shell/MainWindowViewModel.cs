@@ -19,6 +19,7 @@ using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Scenes;
+using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Editor.Inspector;
 using FlickerVoid.Editor.Materials;
@@ -49,6 +50,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private MoodDocument? _mood;
     private string? _dataPath;
     private string? _sceneMood;
+    private readonly HashSet<string> _openFlows = new(ContentManager.PathComparer);
 
     /// <summary>
     /// Shows the scene over <paramref name="content"/>, the scene's content with its unsaved edits; <paramref name="player"/>
@@ -67,6 +69,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _content.UnsavedChanged += HandleUnsavedChanged;
         _content.ChangedOnDisk += HandleChangedOnDisk;
         _content.Changed += HandleContentChanged;
+        _content.Restored += HandleRestored;
         Viewport = viewport;
         Inspector = inspector;
         SceneTree = new SceneTreeViewModel(viewport.Scene);
@@ -81,7 +84,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>Raised to show a flow graph opened in the content browser in a graph editor window.</summary>
-    public event Action<FlowGraphViewModel>? FlowRequested;
+    public event Action<string, FlowGraphViewModel>? FlowRequested;
 
     /// <summary>Raised to show a material in the material editor, by its path in the content folder.</summary>
     public event Action<string>? MaterialRequested;
@@ -141,8 +144,45 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    /// <summary>The index of the View tab under the scene outliner.</summary>
+    public const int ViewTab = 1;
+
     /// <summary>The index of the Data tab under the scene outliner.</summary>
     public const int DataTab = 2;
+
+    /// <summary>
+    /// The history Ctrl+Z works on: the mood's or the data asset's when the keyboard is in the View or Data tab, else the scene's.
+    /// </summary>
+    public UndoHistory? GetHistory(bool sidePanelFocused)
+    {
+        if (sidePanelFocused && SideTab == ViewTab)
+        {
+            if (_mood is null)
+            {
+                return null;
+            }
+
+            return _content.GetHistory(_mood.Path);
+        }
+
+        if (sidePanelFocused && SideTab == DataTab)
+        {
+            if (_dataPath is null)
+            {
+                return null;
+            }
+
+            return _content.GetHistory(_dataPath);
+        }
+
+        return Viewport.Scene.History;
+    }
+
+    /// <summary>The flow graph's undo and redo steps, for its editor window.</summary>
+    public UndoHistory GetFlowHistory(string path) => _content.GetHistory(path);
+
+    /// <summary>Forgets a flow graph whose editor window closed, so undo there no longer opens it.</summary>
+    public void CloseFlow(string path) => _openFlows.Remove(path);
 
     /// <summary>The open tab under the scene outliner: 0 inspector, 1 view, 2 data.</summary>
     [ObservableProperty]
@@ -422,7 +462,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ContentFileFinder files = new(_content);
         string title = Path.GetFileNameWithoutExtension(path);
         FlowGraphViewModel graph = new(title, document.Graph, types, document.Hold, files.Find);
-        FlowRequested?.Invoke(graph);
+        _openFlows.Add(path);
+        FlowRequested?.Invoke(path, graph);
     }
 
     /// <summary>Edits the table's rows in the Data tab, held unsaved like a data asset's.</summary>
@@ -487,6 +528,41 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             OpenMood(_mood.Path);
         }
+    }
+
+    /// <summary>Shows the mood, data asset, table or flow graph again after an undo or redo changed its file.</summary>
+    private void HandleRestored(string fullPath)
+    {
+        if (_mood is not null && IsPath(_mood.Path, fullPath))
+        {
+            OpenMood(_mood.Path);
+        }
+
+        if (_dataPath is not null && IsPath(_dataPath, fullPath))
+        {
+            if (_dataPath.EndsWith(".fvtable", StringComparison.OrdinalIgnoreCase))
+            {
+                OpenTable(_dataPath);
+            }
+            else
+            {
+                OpenData(_dataPath);
+            }
+        }
+
+        foreach (string flow in _openFlows.ToList())
+        {
+            if (IsPath(flow, fullPath))
+            {
+                OpenFlow(flow);
+            }
+        }
+    }
+
+    private bool IsPath(string path, string fullPath)
+    {
+        string full = _content.GetFullPath(path);
+        return ContentManager.PathComparer.Equals(full, fullPath);
     }
 
     /// <summary>Opens a scene in place of the open one, first asking what to do with the open scene's unsaved edits.</summary>

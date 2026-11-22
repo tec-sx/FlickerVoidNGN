@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
+using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Editor.Assets;
@@ -17,6 +18,7 @@ public sealed class UnsavedContent : IContentManager
     private readonly Dictionary<string, byte[]> _unsaved = new(ContentManager.PathComparer);
     private readonly Dictionary<string, object> _loaded = new(ContentManager.PathComparer);
     private readonly Dictionary<string, byte[]> _saved = new(ContentManager.PathComparer);
+    private readonly Dictionary<string, UndoHistory> _histories = new(ContentManager.PathComparer);
 
     public UnsavedContent(IContentManager disk)
     {
@@ -32,7 +34,26 @@ public sealed class UnsavedContent : IContentManager
     /// <summary>Raised with a file's full path when it changed on disk while it has unsaved edits, which are kept.</summary>
     public event Action<string>? ChangedOnDisk;
 
+    /// <summary>
+    /// Raised with a file's full path after an undo or redo put other contents in it, so whatever shows the file opens it again,
+    /// as after a discard.
+    /// </summary>
+    public event Action<string>? Restored;
+
     public string RootDirectory => _disk.RootDirectory;
+
+    /// <summary>The file's undo and redo steps, one per <see cref="Edit"/>; kept through saves, cleared by a discard or a change on disk.</summary>
+    public UndoHistory GetHistory(string path)
+    {
+        string fullPath = GetFullPath(path);
+        if (!_histories.TryGetValue(fullPath, out UndoHistory? history))
+        {
+            history = new UndoHistory();
+            _histories.Add(fullPath, history);
+        }
+
+        return history;
+    }
 
     public bool HasUnsaved => _unsaved.Count > 0;
 
@@ -82,6 +103,42 @@ public sealed class UnsavedContent : IContentManager
             throw new ArgumentException($"{path} is not a material or a mood file, whose edits are kept unsaved.", nameof(path));
         }
 
+        UndoHistory history = GetHistory(path);
+        if (!history.IsApplying)
+        {
+            byte[]? before = TryRead(path);
+            ContentStep step = new(this, path, before, contents);
+            history.Record(step);
+        }
+
+        Hold(fullPath, contents);
+    }
+
+    /// <summary>Puts contents an undo or redo brings back in the file: unsaved edits, or none when they are what the disk holds.</summary>
+    internal void Restore(string path, byte[]? contents)
+    {
+        string fullPath = GetFullPath(path);
+        if (contents is null || HoldsOnDisk(fullPath, contents))
+        {
+            bool removed = _unsaved.Remove(fullPath);
+            _loaded.Remove(fullPath);
+            _disk.Unload(path);
+            Changed?.Invoke(fullPath);
+            if (removed)
+            {
+                UnsavedChanged?.Invoke();
+            }
+        }
+        else
+        {
+            Hold(fullPath, contents);
+        }
+
+        Restored?.Invoke(fullPath);
+    }
+
+    private void Hold(string fullPath, byte[] contents)
+    {
         bool added = _unsaved.TryAdd(fullPath, contents);
         if (!added)
         {
@@ -93,6 +150,26 @@ public sealed class UnsavedContent : IContentManager
         if (added)
         {
             UnsavedChanged?.Invoke();
+        }
+    }
+
+    private byte[]? TryRead(string path)
+    {
+        try
+        {
+            return Read(path);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private void ForgetHistory(string fullPath)
+    {
+        if (_histories.Remove(fullPath, out UndoHistory? history))
+        {
+            history.Clear();
         }
     }
 
@@ -123,6 +200,7 @@ public sealed class UnsavedContent : IContentManager
     public void Discard(string path)
     {
         string fullPath = GetFullPath(path);
+        ForgetHistory(fullPath);
         if (!_unsaved.Remove(fullPath))
         {
             return;
@@ -263,6 +341,16 @@ public sealed class UnsavedContent : IContentManager
             }
         }
 
+        foreach (string history in _histories.Keys.ToList())
+        {
+            bool inside = ContentManager.PathComparer.Equals(history, fullPath)
+                || history.StartsWith(folder, StringComparison.OrdinalIgnoreCase);
+            if (inside)
+            {
+                ForgetHistory(history);
+            }
+        }
+
         foreach (string unsaved in dropped)
         {
             _unsaved.Remove(unsaved);
@@ -291,6 +379,7 @@ public sealed class UnsavedContent : IContentManager
             return;
         }
 
+        ForgetHistory(fullPath);
         _loaded.Remove(fullPath);
         Changed?.Invoke(fullPath);
     }

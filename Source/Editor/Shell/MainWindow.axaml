@@ -98,7 +98,7 @@
           </Border>
         </DockPanel>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
-        <TabControl Grid.Row="2" Padding="0" SelectedIndex="{Binding SideTab}">
+        <TabControl x:Name="SidePanel" Grid.Row="2" Padding="0" SelectedIndex="{Binding SideTab}">
           <TabItem Header="Inspector">
             <inspector:InspectorView DataContext="{Binding Inspector}" />
           </TabItem>

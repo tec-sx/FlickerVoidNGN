@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 
 namespace FlickerVoid.Editor.Inspector;
@@ -26,6 +27,13 @@ public sealed class DragNumberBox : TextBox
         AvaloniaProperty.Register<DragNumberBox, double>(nameof(Maximum), double.PositiveInfinity);
 
     public static readonly StyledProperty<IBrush?> AxisBrushProperty = AvaloniaProperty.Register<DragNumberBox, IBrush?>(nameof(AxisBrush));
+
+    /// <summary>Raised when a drag starts changing the value, so the window can record the drag as one undo step.</summary>
+    public static readonly RoutedEvent<RoutedEventArgs> DragStartedEvent =
+        RoutedEvent.Register<DragNumberBox, RoutedEventArgs>("DragStarted", RoutingStrategies.Bubble);
+
+    public static readonly RoutedEvent<RoutedEventArgs> DragCompletedEvent =
+        RoutedEvent.Register<DragNumberBox, RoutedEventArgs>("DragCompleted", RoutingStrategies.Bubble);
 
     private const double DragThreshold = 3;
     private const double FineFactor = 0.1;
@@ -125,7 +133,13 @@ public sealed class DragNumberBox : TextBox
             return;
         }
 
-        _dragging = true;
+        if (!_dragging)
+        {
+            _dragging = true;
+            RoutedEventArgs started = new(DragStartedEvent);
+            RaiseEvent(started);
+        }
+
         double step = Step * GetStepFactor(e.KeyModifiers);
         double dragged = _pressedValue + (moved * step);
         Value = Math.Clamp(dragged, Minimum, Maximum);
@@ -142,7 +156,7 @@ public sealed class DragNumberBox : TextBox
 
         bool clicked = !_dragging;
         _pressedAt = null;
-        _dragging = false;
+        EndDrag();
         e.Pointer.Capture(null);
         e.Handled = true;
         if (clicked)
@@ -175,6 +189,25 @@ public sealed class DragNumberBox : TextBox
         base.OnLostFocus(e);
         SetTyping(false);
         Commit();
+    }
+
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+        _pressedAt = null;
+        EndDrag();
+    }
+
+    private void EndDrag()
+    {
+        if (!_dragging)
+        {
+            return;
+        }
+
+        _dragging = false;
+        RoutedEventArgs completed = new(DragCompletedEvent);
+        RaiseEvent(completed);
     }
 
     private static double GetStepFactor(KeyModifiers modifiers)

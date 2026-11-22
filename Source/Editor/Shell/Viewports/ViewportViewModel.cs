@@ -296,7 +296,9 @@ public sealed partial class ViewportViewModel : ObservableObject
 
         List<Entity> copies = [];
         Entity? primary = null;
-        foreach (Entity entity in Selection.Entities.Where(world.IsAlive).ToList())
+        List<Entity> selected = [.. Selection.Entities.Where(world.IsAlive)];
+        Scene.History.BeginGroup(DescribeMany("Duplicate", selected));
+        foreach (Entity entity in selected)
         {
             Entity copy = Scene.DuplicateEntity(entity);
             copies.Add(copy);
@@ -306,6 +308,7 @@ public sealed partial class ViewportViewModel : ObservableObject
             }
         }
 
+        Scene.History.EndGroup();
         if (copies.Count > 0)
         {
             Selection.SelectAll(copies, primary);
@@ -351,10 +354,14 @@ public sealed partial class ViewportViewModel : ObservableObject
     [RelayCommand]
     public void DeleteSelected()
     {
-        foreach (Entity entity in Selection.Entities.ToList())
+        List<Entity> selected = [.. Selection.Entities];
+        Scene.History.BeginGroup(DescribeMany("Delete", selected));
+        foreach (Entity entity in selected)
         {
             Scene.DestroyEntity(entity);
         }
+
+        Scene.History.EndGroup();
     }
 
     /// <summary>
@@ -380,6 +387,9 @@ public sealed partial class ViewportViewModel : ObservableObject
             Transform transform = world.Get<Transform>(selected);
             if (Gizmo.BeginDrag(Camera, transform, pixel, width, height))
             {
+                List<Entity> moved = [.. Selection.Entities];
+                string verb = Gizmo.Mode.ToString();
+                Scene.History.BeginGroup(DescribeMany(verb, moved));
                 return;
             }
         }
@@ -505,8 +515,25 @@ public sealed partial class ViewportViewModel : ObservableObject
 
     public void PointerReleased()
     {
+        if (Gizmo.IsDragging)
+        {
+            Scene.History.EndGroup();
+        }
+
         Gizmo.EndDrag();
         _draggingKey = false;
+    }
+
+    /// <summary>An undo step's name for entities: "Move Lamp" for one, "Move 3 entities" for more.</summary>
+    private string DescribeMany(string verb, IReadOnlyList<Entity> entities)
+    {
+        World world = Scene.Game.World;
+        if (entities.Count == 1 && world.IsAlive(entities[0]) && world.TryGet(entities[0], out EntityName name))
+        {
+            return $"{verb} {name.Value}";
+        }
+
+        return $"{verb} {entities.Count} entities";
     }
 
     /// <summary>Fills the overlay with this frame's icons, the selection's outline or reach, and the gizmo.</summary>

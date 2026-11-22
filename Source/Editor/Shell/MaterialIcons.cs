@@ -120,6 +120,10 @@ public static class MaterialIcons
 
     public static Avalonia.Media.Geometry Reimport { get; } = Parse("M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z");
 
+    public static Avalonia.Media.Geometry Undo => Discard;
+
+    public static Avalonia.Media.Geometry Redo { get; } = Parse("M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z");
+
     /// <summary>Icons by name, for view models that name theirs without seeing Avalonia (menu choices, scene items).</summary>
     public static FuncValueConverter<string?, Avalonia.Media.Geometry?> ByName { get; } = new(Find);
 
@@ -128,6 +132,8 @@ public static class MaterialIcons
         return name switch
         {
             nameof(Add) => Add,
+            nameof(Undo) => Undo,
+            nameof(Redo) => Redo,
             nameof(Back) => Back,
             nameof(Bake) => Bake,
             nameof(Camera) => Camera,
