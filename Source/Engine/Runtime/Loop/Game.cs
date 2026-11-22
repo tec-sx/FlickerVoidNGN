@@ -29,7 +29,7 @@ public sealed partial class Game : IDisposable
         LoggerFactory = loggerFactory;
         _logger = LoggerFactory.CreateLogger<Game>();
         World = World.Create();
-        SaveStates = new SaveStates(World);
+        SaveStates = new SaveStates(World, Data);
 
         Services.AddService(LoggerFactory);
         Services.AddService(World);

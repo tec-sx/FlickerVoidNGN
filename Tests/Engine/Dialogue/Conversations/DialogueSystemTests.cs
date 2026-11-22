@@ -45,6 +45,21 @@ public sealed class DialogueSystemTests : IDisposable
     }
 
     [Fact]
+    public void TheGameCantBeSavedDuringAConversation()
+    {
+        _builder.WithGraph($"{Start}, {Greeting}, {End}", """{ "from": "start", "to": "hello" }, { "from": "hello", "to": "end" }""").Build();
+        (Entity hero, Entity innkeeper) = _builder.Pair();
+
+        _builder.Dialogue.Start(hero, innkeeper);
+        bool savedWhileTalking = _builder.Saves.Save("Slot1");
+        _builder.Dialogue.End();
+        bool savedAfter = _builder.Saves.Save("Slot1");
+
+        savedWhileTalking.Should().BeFalse();
+        savedAfter.Should().BeTrue();
+    }
+
+    [Fact]
     public void OnlyOneConversationRunsAtATime()
     {
         _builder.WithGraph($"{Start}, {Greeting}", """{ "from": "start", "to": "hello" }""").Build();

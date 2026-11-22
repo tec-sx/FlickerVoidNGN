@@ -8,6 +8,7 @@ using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 
@@ -15,7 +16,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlickerVoid.Engine.Attributes.Tests.Values;
 
-/// <summary>Builds a playing game with attributes over Stealth (0 to 10, whole), Health (0 to 100) and a Drunk modifier, with a hero and a guard.</summary>
+/// <summary>
+/// Builds a playing game with saves and attributes over Stealth (0 to 10, whole), Health (0 to 100) and a Drunk modifier, with a
+/// saveable hero and a guard.
+/// </summary>
 internal sealed class AttributeSystemTestsBuilder : IDisposable
 {
     private readonly string _folder;
@@ -50,6 +54,8 @@ internal sealed class AttributeSystemTestsBuilder : IDisposable
 
     public AttributeSystem Attributes { get; private set; } = null!;
 
+    public SaveSystem Saves { get; private set; } = null!;
+
     public Entity Hero { get; private set; }
 
     public Entity Guard { get; private set; }
@@ -70,10 +76,12 @@ internal sealed class AttributeSystemTestsBuilder : IDisposable
         _data = new DataAssets(content, Game.Data);
         Game.Services.AddService(_data);
         Attributes = Game.AddAttributes();
+        string saves = Path.Combine(_folder, "Saves");
+        Saves = Game.AddSaves(new SaveSettings { Folder = saves });
         Game.Lifecycle.Play(Game.World);
         string json = $$"""
             { "entities": [
-                { "components": { "attributes": { "values": [ {{hero}} ] } } },
+                { "components": { "saveable": { "id": "Hero" }, "attributes": { "values": [ {{hero}} ] } } },
                 { "components": { "attributes": { "values": [ {{guard}} ] } } } ] }
             """;
         SceneData scene = JsonSerializer.Deserialize(json, RuntimeJsonContext.Default.SceneData)!;

@@ -99,6 +99,23 @@ public sealed class DataAssets : IDisposable
         return found;
     }
 
+    /// <summary>The content path of a data asset this loaded and still holds, such as an item a save names by its file.</summary>
+    public bool TryGetPath(object asset, out string path)
+    {
+        foreach ((string fullPath, object loaded) in _loaded)
+        {
+            if (ReferenceEquals(loaded, asset))
+            {
+                string relative = Path.GetRelativePath(_content.RootDirectory, fullPath);
+                path = relative.Replace('\\', '/');
+                return true;
+            }
+        }
+
+        path = string.Empty;
+        return false;
+    }
+
     /// <summary>The definition of type <typeparamref name="T"/> whose id is <paramref name="id"/>; null when no file holds one.</summary>
     public T? Find<T>(Tag id)
         where T : Definition
