@@ -19,5 +19,7 @@ internal readonly record struct PostConstants(
     uint WrapSampler,
     uint Tonemapper,
     float WhitePoint,
-    float PaperGrain);
+    float PaperGrain,
+    Vector2 Padding,
+    PaperView PaperView);
 

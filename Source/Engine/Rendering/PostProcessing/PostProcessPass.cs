@@ -27,7 +27,8 @@ internal sealed class PostProcessPass : IRenderPass
             paper = context.Textures.Get(context.Mood.Paper);
         }
 
-        _post.Run(context.Commands, context.Targets, context.ColorTarget, context.Mood, paper, context.ClampSampler, context.Sampler);
+        PaperView paperView = PaperView.From(context.View, context.Camera, context.Height);
+        _post.Run(context.Commands, context.Targets, context.ColorTarget, context.Mood, paper, paperView, context.ClampSampler, context.Sampler);
     }
 
     public void Dispose()

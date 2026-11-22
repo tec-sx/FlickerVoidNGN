@@ -479,6 +479,34 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void TurnsThePaperWithTheCameraLikeASkySphere()
+    {
+        const string turned = """
+            { "name": "Camera", "components": { "transform": { "position": [0, 0, 5], "rotation": [0, 0.38268343, 0, 0.9238795] }, "camera": { "orthographicHeight": 2 } } }
+            """;
+        using SceneRendererTestsBuilder other = new();
+
+        uint[] ahead = RenderPaper(_builder, Camera);
+        uint[] aside = RenderPaper(other, turned);
+
+        aside.Should().NotEqual(ahead, "turning the camera turns the paper around it");
+    }
+
+    [Fact]
+    public void MovesThePaperWithAnOrthographicPan()
+    {
+        const string panned = """
+            { "name": "Camera", "components": { "transform": { "position": [0.5, 0, 5] }, "camera": { "orthographicHeight": 2 } } }
+            """;
+        using SceneRendererTestsBuilder other = new();
+
+        uint[] still = RenderPaper(_builder, Camera);
+        uint[] moved = RenderPaper(other, panned);
+
+        moved.Should().NotEqual(still, "the paper slides with the world as the camera pans");
+    }
+
+    [Fact]
     public void LaysGrainOverTheImage()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
@@ -711,5 +739,21 @@ public sealed class SceneRendererTests : IDisposable
 
         pixels[3 * 8].Should().Be(EmptyPixel);
         pixels[(3 * 8) + 1].Should().Be(EmptyPixel);
+    }
+
+    /// <summary>Bare paper of four different texels a row, seen by the camera.</summary>
+    private static uint[] RenderPaper(SceneRendererTestsBuilder builder, string camera)
+    {
+        uint[] texels = new uint[16];
+        for (int index = 0; index < texels.Length; index++)
+        {
+            byte value = (byte)(40 + index * 13);
+            texels[index] = SceneRendererTestsBuilder.Rgba(value, value, value, 255);
+        }
+
+        builder.WithTexture("Paper.tga", 4, 4, texels);
+        builder.WithMood(static mood => mood with { Paper = "Paper.tga", PaperGrain = 0 });
+        builder.WithScene(camera);
+        return builder.Render();
     }
 }

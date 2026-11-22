@@ -1,5 +1,6 @@
 // Turns the lit scene into the final image: adds bloom, then exposure, contrast, saturation and tint, then the tonemapper's
-// curve, then lays it over the paper, which shows where the scene's alpha (how thick the paint is) is low, then grain.
+// curve, then lays it over the paper, which shows where the scene's alpha (how thick the paint is) is low, then grain. The
+// paper lies on a sphere around the camera like a sky, so it turns as the camera turns, and slides with an orthographic pan.
 // Draws one triangle that covers the target.
 
 Texture2D Textures[] : register(t0, space1);
@@ -21,6 +22,13 @@ struct PostConstants
     uint Tonemapper;
     float WhitePoint;
     float PaperGrain;
+    float2 Padding;
+    float3 PaperRight;
+    float PaperPanRight;
+    float3 PaperUp;
+    float PaperPanUp;
+    float3 PaperForward;
+    float PaperPadding;
 };
 
 [[vk::push_constant]] ConstantBuffer<PostConstants> Post : register(b0, space0);
@@ -29,6 +37,28 @@ static const uint None = 0xFFFFFFFF;
 
 // The bloom levels the upsampling summed, which averaging divides back out.
 static const float BloomLevels = 5;
+
+// The field of view the paper's sphere is seen with, whatever the camera's projection: an orthographic camera's rays are all
+// parallel, so the sphere is looked at as through a lens of this width.
+static const float PaperFieldOfView = 1.0471976;
+
+static const float Pi = 3.14159265;
+
+// Where the pixel's ray meets the paper's sphere, in texels-sized uvs: longitude across and latitude down, the paper repeated
+// a whole number of times around so it meets itself, at about one texel a pixel, then slid by the camera's pan.
+float2 PaperUv(float2 pixel, float2 size, float2 paperSize)
+{
+    float2 clip = pixel / size * 2 - 1;
+    float halfHeight = tan(PaperFieldOfView * 0.5);
+    float halfWidth = halfHeight * size.x / size.y;
+    float3 ray = normalize(Post.PaperForward + Post.PaperRight * (clip.x * halfWidth) - Post.PaperUp * (clip.y * halfHeight));
+    float longitude = atan2(ray.x, -ray.z) / (2 * Pi) + 0.5;
+    float latitude = acos(clamp(ray.y, -1, 1)) / Pi;
+    float texelsAround = size.y * 2 * Pi / PaperFieldOfView;
+    float repeats = max(round(texelsAround / paperSize.x), 1);
+    float2 uv = float2(longitude * repeats, latitude * repeats * 0.5 * paperSize.x / paperSize.y);
+    return uv + float2(Post.PaperPanRight, -Post.PaperPanUp) / paperSize;
+}
 
 // Linear middle grey, which contrast pivots on.
 static const float MiddleGrey = 0.18;
@@ -111,7 +141,10 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
         uint height;
         uint levels;
         paper.GetDimensions(0, width, height, levels);
-        float2 uv = position.xy / float2(width, height);
+        uint targetWidth;
+        uint targetHeight;
+        scene.GetDimensions(targetWidth, targetHeight);
+        float2 uv = PaperUv(position.xy, float2(targetWidth, targetHeight), float2(width, height));
         float3 paperColor = paper.SampleLevel(Samplers[Post.WrapSampler], uv, 0).rgb;
         float3 averagePaper = paper.SampleLevel(Samplers[Post.WrapSampler], uv, levels - 1).rgb;
 
