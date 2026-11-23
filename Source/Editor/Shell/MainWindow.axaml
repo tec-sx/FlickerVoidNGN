@@ -90,13 +90,20 @@
       </Grid>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
       <Grid Grid.Column="2" RowDefinitions="*,2,*" Classes="sidePanel">
-        <DockPanel>
-          <TextBlock DockPanel.Dock="Top" Text="Scene" Classes="heading" />
-          <Border Classes="well">
-            <scenes:SceneTreeView x:Name="SceneTree" DataContext="{Binding SceneTree}"
-                                  controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
-          </Border>
-        </DockPanel>
+        <!-- The scene outline keeps to the entities at the top; the Entity tab shows the selection's whole tree. -->
+        <TabControl Padding="0">
+          <TabItem Header="Scene">
+            <Border Classes="well">
+              <scenes:SceneTreeView x:Name="SceneTree" DataContext="{Binding SceneTree}"
+                                    controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
+            </Border>
+          </TabItem>
+          <TabItem Header="{Binding EntityTree.Title, StringFormat='Entity {0}'}">
+            <Border Classes="well">
+              <scenes:EntityTreeView x:Name="EntityTree" DataContext="{Binding EntityTree}" />
+            </Border>
+          </TabItem>
+        </TabControl>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
         <TabControl x:Name="SidePanel" Grid.Row="2" Padding="0" SelectedIndex="{Binding SideTab}">
           <TabItem Header="Inspector">

@@ -32,6 +32,7 @@ public sealed partial class MainWindow : Window
     {
         AvaloniaXamlLoader.Load(this);
         this.GetControl<SceneTreeView>("SceneTree").DeleteRequested += HandleOutlineDelete;
+        this.GetControl<EntityTreeView>("EntityTree").DeleteRequested += HandleOutlineDelete;
         UndoShortcuts.Attach(this, FindHistory);
     }
 

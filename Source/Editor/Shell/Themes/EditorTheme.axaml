@@ -226,6 +226,26 @@
   <Style Selector="PathIcon.outlineIcon.folder">
     <Setter Property="Foreground" Value="#DCBC98" />
   </Style>
+  <Style Selector="TreeView.outline TreeViewItem /template/ ContentPresenter#PART_HeaderPresenter">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <!-- Entities shown under the entity they are nested under, in the axis blue; hidden ones faded. -->
+  <Style Selector="TextBlock.outlineName.nested">
+    <Setter Property="Foreground" Value="{StaticResource EditorAxisZBrush}" />
+  </Style>
+  <Style Selector="TextBlock.outlineName.hidden, PathIcon.outlineIcon.hidden">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+  <Style Selector=":is(Button).icon.outlineRow">
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Height" Value="18" />
+    <Setter Property="Padding" Value="2" />
+  </Style>
+  <Style Selector=":is(Button).icon.outlineRow PathIcon">
+    <Setter Property="Width" Value="12" />
+    <Setter Property="Height" Value="12" />
+  </Style>
 
   <!-- The asset browser's narrow column of kind filters. -->
   <Style Selector="ListBox.filters">
