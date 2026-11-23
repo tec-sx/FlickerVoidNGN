@@ -3,7 +3,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.System;
 
-using FlickerVoid.Engine.Cameras.Shots;
+using FlickerVoid.Engine.Cameras.Directing;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
@@ -12,7 +12,7 @@ using FlickerVoid.Engine.Runtime.Loop;
 namespace FlickerVoid.Engine.Cameras.Cutaways;
 
 /// <summary>
-/// Opens the building the camera's target stands in: the smallest indoor volume around the first <see cref="CameraTarget"/>
+/// Opens the building the camera's target stands in: the smallest indoor volume around what the cameras follow (the live shot's target, <see cref="CameraDirector.FindTarget"/>)
 /// becomes the <see cref="Cutaway"/>, and everything nested under the same top entity (the building) that stands at or above
 /// that volume's ceiling (the floors above, the roof) only casts shadows. Outside every volume, nothing is cut. Storeys are
 /// indoor volumes nested in their building, and the pieces of each storey stand on their entity, as greyboxes do.
@@ -22,7 +22,6 @@ public sealed class CutawaySystem : BaseSystem<World, GameTime>
     /// <summary>How far a target's feet or a piece's base may stray past a volume's box and still count as on it.</summary>
     private const float Margin = 0.05f;
 
-    private static readonly QueryDescription Targets = new QueryDescription().WithAll<CameraTarget, Transform>();
     private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IndoorVolume, Transform>();
     private static readonly QueryDescription Named = new QueryDescription().WithAll<EntityName>();
     private static readonly QueryDescription Placed = new QueryDescription().WithAll<Transform>();
@@ -34,9 +33,12 @@ public sealed class CutawaySystem : BaseSystem<World, GameTime>
     private readonly HashSet<Entity> _hiding = [];
     private Entity? _cutaway;
 
-    public CutawaySystem(World world)
+    private readonly CameraDirector _director;
+
+    public CutawaySystem(World world, CameraDirector director)
         : base(world)
     {
+        _director = director;
     }
 
     /// <summary>The indoor volume the camera looks into, if any.</summary>
@@ -143,15 +145,16 @@ public sealed class CutawaySystem : BaseSystem<World, GameTime>
         _hidden.UnionWith(_hiding);
     }
 
-    /// <summary>The smallest indoor volume holding the first camera target, or none.</summary>
+    /// <summary>The smallest indoor volume holding what the cameras follow, or none.</summary>
     private Entity? FindVolume()
     {
-        Vector3? target = null;
-        World.Query(in Targets, (ref Transform transform) => target ??= transform.Position);
-        if (target is not { } position)
+        Entity target = _director.FindTarget();
+        if (target == Entity.Null)
         {
             return null;
         }
+
+        Vector3 position = World.Get<Transform>(target).Position;
 
         Entity? found = null;
         float smallest = float.PositiveInfinity;

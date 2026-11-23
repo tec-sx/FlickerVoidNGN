@@ -12,5 +12,6 @@ internal readonly record struct SceneConstants(
     uint Vertices,
     uint Texture,
     uint Sampler,
-    uint Material);
+    uint Material,
+    uint Flags);
 

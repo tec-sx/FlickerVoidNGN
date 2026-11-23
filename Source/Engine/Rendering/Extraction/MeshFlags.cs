@@ -1,0 +1,17 @@
+namespace FlickerVoid.Engine.Rendering.Extraction;
+
+/// <summary>How a mesh is drawn beyond its looks: unseen but for its shadows, as an outline alone, or never cut away.</summary>
+[Flags]
+public enum MeshFlags
+{
+    None = 0,
+
+    /// <summary>Drawn into shadows alone (<see cref="Extraction.ShadowOnly"/>).</summary>
+    ShadowOnly = 1,
+
+    /// <summary>Drawn only as its outline, never seen or casting shadows, such as a doorway.</summary>
+    OutlineOnly = 2,
+
+    /// <summary>Kept where the cutaway would cut it (<see cref="Extraction.Uncut"/>).</summary>
+    Uncut = 4,
+}

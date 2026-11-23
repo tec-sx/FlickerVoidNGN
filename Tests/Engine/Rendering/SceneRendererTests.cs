@@ -269,6 +269,24 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void KeepsUncutMeshesInFrontOfTheCutaway()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithModel("Blue.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0, 0, 1, 1)));
+        _builder.WithScene(
+            Camera,
+            Quad,
+            """{ "name": "Door", "components": { "transform": { "position": [0, 0, 1] }, "meshRenderer": { "mesh": "Blue.glb" }, "uncut": {} } }""",
+            """{ "name": "Room", "components": { "transform": { "position": [0, -1.5, 0] }, "indoorVolume": { "size": [3, 3, 1], "ambient": 1 } } }""");
+        _builder.WithComponent("Room", new Cutaway());
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, byte blue) = SceneRendererTestsBuilder.Channels(pixels[0]);
+        blue.Should().BeGreaterThan(red, "the door stays in front of the room, so the way in and out shows");
+    }
+
+    [Fact]
     public void MutesTheWorldOutsideTheCutaway()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
@@ -889,6 +907,20 @@ public sealed class SceneRendererTests : IDisposable
         pixels[row + 3].Should().Be(RedPixel, "the mesh itself keeps its look");
         pixels[row + 6].Should().Be(green);
         pixels[0].Should().Be(EmptyPixel, "the corner is further than two pixels from the mesh");
+    }
+
+    [Fact]
+    public void DrawsDoorwaysAsOutlinesAlone()
+    {
+        _builder.WithScene(Camera, """{ "name": "Doorway", "components": { "transform": { "position": [0, -0.5, 0] }, "doorway": { "size": [1, 1, 0.1] } } }""");
+        _builder.WithTargetSize(8);
+
+        uint[] pixels = _builder.Render();
+
+        uint yellow = SceneRendererTestsBuilder.Rgba(255, 255, 0, 255);
+        int row = 3 * 8;
+        pixels[row].Should().Be(yellow, "a doorway is outlined in yellow by default");
+        pixels[row + 3].Should().Be(EmptyPixel, "the doorway's box itself is never drawn");
     }
 
     [Fact]

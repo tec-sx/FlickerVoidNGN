@@ -10,4 +10,7 @@ public interface IPathFinder
     /// as near to it as can be reached; false when there is no way from where the character stands.
     /// </summary>
     bool TryFindPath(Vector3 from, Vector3 to, List<Vector3> corners);
+
+    /// <summary>Where a step from <paramref name="from"/> toward <paramref name="to"/> ends without leaving the ground characters can walk.</summary>
+    Vector3 Constrain(Vector3 from, Vector3 to);
 }

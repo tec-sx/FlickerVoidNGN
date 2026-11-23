@@ -5,6 +5,7 @@ using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Pipeline;
@@ -118,7 +119,7 @@ public sealed class OutlinePass : IRenderPass
 
             GpuMeshPart part = draw.Part;
             Vector4 color = new(outline.Color, 1);
-            SceneConstants constants = new(draw.World, color, context.FrameBuffer, draw.Vertices.BindlessIndex, context.White.BindlessIndex, context.Sampler.BindlessIndex, draw.Material.BindlessIndex);
+            SceneConstants constants = new(draw.World, color, context.FrameBuffer, draw.Vertices.BindlessIndex, context.White.BindlessIndex, context.Sampler.BindlessIndex, draw.Material.BindlessIndex, (uint)draw.Flags);
             commands.SetIndexBuffer(part.Indices, IndexFormat.UInt32);
             commands.PushConstants(constants);
             commands.DrawIndexed(part.IndexCount);

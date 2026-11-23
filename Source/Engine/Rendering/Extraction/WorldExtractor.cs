@@ -25,6 +25,7 @@ public sealed class WorldExtractor : IRenderExtractor
     private static readonly QueryDescription Greyboxes = new QueryDescription().WithAll<Greybox, Transform>().WithNone<MeshRenderer, Hidden>();
     private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>().WithNone<Hidden>();
     private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription Doorways = new QueryDescription().WithAll<Doorway, Transform>().WithNone<Hidden>();
     private static readonly QueryDescription IndoorVolumes = new QueryDescription().WithAll<IndoorVolume, Transform>();
     private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
 
@@ -64,8 +65,8 @@ public sealed class WorldExtractor : IRenderExtractor
 
             Matrix4x4 meshWorld = transform.ToMatrix();
             Outline? outline = FindOutline(world, entity);
-            bool shadowOnly = world.Has<ShadowOnly>(entity);
-            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, null, renderer.Materials, outline, shadowOnly));
+            MeshFlags flags = GetFlags(world, entity);
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, null, renderer.Materials, outline, flags));
         });
         world.Query(in AnimatedMeshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform, ref MeshAnimator animator) =>
         {
@@ -76,16 +77,23 @@ public sealed class WorldExtractor : IRenderExtractor
 
             Matrix4x4 meshWorld = transform.ToMatrix();
             Outline? outline = FindOutline(world, entity);
-            bool shadowOnly = world.Has<ShadowOnly>(entity);
-            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, animator, renderer.Materials, outline, shadowOnly));
+            MeshFlags flags = GetFlags(world, entity);
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, animator, renderer.Materials, outline, flags));
         });
         world.Query(in Greyboxes, (Entity entity, ref Greybox greybox, ref Transform transform) =>
         {
             Matrix4x4 meshWorld = transform.ToMatrix();
             Outline? outline = FindOutline(world, entity);
             string mesh = greybox.GetShownSwap() ?? GreyboxMesh.GetName(greybox.Size);
-            bool shadowOnly = world.Has<ShadowOnly>(entity);
-            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, mesh, null, null, outline, shadowOnly));
+            MeshFlags flags = GetFlags(world, entity);
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, mesh, null, null, outline, flags));
+        });
+        world.Query(in Doorways, (Entity entity, ref Doorway doorway, ref Transform transform) =>
+        {
+            Matrix4x4 meshWorld = transform.ToMatrix();
+            Outline outline = new() { Color = doorway.Color };
+            string mesh = GreyboxMesh.GetName(doorway.Size);
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, mesh, null, null, outline, MeshFlags.OutlineOnly));
         });
         world.Query(in PointLights, (ref PointLight light, ref Transform transform) =>
         {
@@ -109,6 +117,22 @@ public sealed class WorldExtractor : IRenderExtractor
         {
             scene.ProbeVolumes.Add(new RenderProbeVolume(volume, transform.Position));
         });
+    }
+
+    private static MeshFlags GetFlags(World world, Entity entity)
+    {
+        MeshFlags flags = MeshFlags.None;
+        if (world.Has<ShadowOnly>(entity))
+        {
+            flags |= MeshFlags.ShadowOnly;
+        }
+
+        if (world.Has<Uncut>(entity))
+        {
+            flags |= MeshFlags.Uncut;
+        }
+
+        return flags;
     }
 
     private static Outline? FindOutline(World world, Entity entity)

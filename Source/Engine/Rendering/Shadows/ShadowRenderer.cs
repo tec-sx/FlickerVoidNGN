@@ -3,6 +3,7 @@ using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Meshes;
 
 namespace FlickerVoid.Engine.Rendering.Shadows;
@@ -70,6 +71,11 @@ internal sealed class ShadowRenderer : IDisposable
         commands.SetScissor(tile.X, tile.Y, tile.Size, tile.Size);
         foreach (MeshDraw draw in draws)
         {
+            if (draw.Flags.HasFlag(MeshFlags.OutlineOnly))
+            {
+                continue;
+            }
+
             ShadowConstants constants = new(draw.World * view.ViewProjection, draw.Vertices.BindlessIndex);
             commands.SetIndexBuffer(draw.Part.Indices, IndexFormat.UInt32);
             commands.PushConstants(constants);

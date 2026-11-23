@@ -51,7 +51,7 @@ public static class CamerasGameExtensions
         game.Services.AddService(director);
         CameraCueSystem cues = new(game, director);
         game.Services.AddService(cues);
-        CutawaySystem cutaways = new(game.World);
+        CutawaySystem cutaways = new(game.World, director);
         game.FrameSystems.Add(cutaways);
         game.Services.AddService(cutaways);
         SceneRendererSetup? renderers = game.Services.GetService<SceneRendererSetup>();
