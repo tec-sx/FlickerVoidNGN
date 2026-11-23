@@ -2,7 +2,6 @@ using System.Collections;
 using System.Text.Json.Serialization.Metadata;
 
 using FlickerVoid.Editor.Core.Inspector;
-using FlickerVoid.Engine.Gameplay.Tags;
 
 namespace FlickerVoid.Editor.Core.Data;
 
@@ -45,12 +44,7 @@ public sealed class DataObjectViewModel
                 continue;
             }
 
-            IEditableValue property = new ObjectProperty(target, info, edited);
-            if (info.PropertyType == typeof(Tag))
-            {
-                property = new TagProperty(property);
-            }
-
+            ObjectProperty property = new(target, info, edited);
             FieldViewModel field = FieldFactory.Create(property, files);
             fields.Add(field);
         }

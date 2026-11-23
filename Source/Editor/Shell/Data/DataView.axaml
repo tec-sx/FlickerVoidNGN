@@ -9,16 +9,7 @@
   <UserControl.DataTemplates>
     <DataTemplate DataType="data:DataObjectViewModel">
       <StackPanel>
-        <ItemsControl ItemsSource="{Binding Fields}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate DataType="inspector:FieldViewModel">
-              <Grid ColumnDefinitions="104,*" Margin="0,1">
-                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                <ContentControl Grid.Column="1" Content="{Binding}" />
-              </Grid>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" />
         <ItemsControl ItemsSource="{Binding Objects}">
           <ItemsControl.ItemTemplate>
             <DataTemplate DataType="data:DataObjectViewModel">

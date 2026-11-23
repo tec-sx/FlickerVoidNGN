@@ -419,6 +419,17 @@
   </Style>
 
   <!-- The inspector: a line under each component's header and number boxes that fit three to a row. -->
+  <!-- A field's value sits beside its label, or, holding fields of its own, under it, across the row and indented (FieldRow in
+       App.axaml); set by style, as a local column would win over the nested one. -->
+  <Style Selector="ContentControl.fieldValue">
+    <Setter Property="Grid.Column" Value="1" />
+  </Style>
+  <Style Selector="ContentControl.fieldValue.nested">
+    <Setter Property="Grid.Row" Value="1" />
+    <Setter Property="Grid.Column" Value="0" />
+    <Setter Property="Grid.ColumnSpan" Value="2" />
+    <Setter Property="Margin" Value="10,2,0,0" />
+  </Style>
   <Style Selector="Border.category">
     <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
     <Setter Property="BorderThickness" Value="0,0,0,1" />

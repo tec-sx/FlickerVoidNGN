@@ -11,6 +11,9 @@ public abstract class FieldViewModel(IEditableValue property) : ObservableObject
 
     public bool IsReadOnly => !Property.CanWrite;
 
+    /// <summary>Whether the field holds fields of its own, shown under its label rather than beside it.</summary>
+    public virtual bool IsNested => false;
+
     protected IEditableValue Property { get; } = property;
 
     /// <summary>Shows the property's value in the world, without writing it back.</summary>

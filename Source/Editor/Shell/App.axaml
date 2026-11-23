@@ -7,6 +7,15 @@
              RequestedThemeVariant="Dark">
   <!-- One template per kind of field, picked by the field's type, for the inspector and the material editor alike:
        components and materials need no editor code of their own. -->
+  <Application.Resources>
+    <!-- A field's row: its label beside it, or above it, indented, when it holds fields of its own (nested objects and lists). -->
+    <DataTemplate x:Key="FieldRow" DataType="inspector:FieldViewModel">
+      <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto" Margin="0,1">
+        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        <ContentControl Classes="fieldValue" Classes.nested="{Binding IsNested}" Content="{Binding}" />
+      </Grid>
+    </DataTemplate>
+  </Application.Resources>
   <Application.DataTemplates>
     <!-- Ranged numbers first: a template matches subclasses too, and the first match wins. Numbers are dragged sideways or typed
          after a click; X, Y and Z carry the axes' colours, every other number a yellow bar. -->
@@ -42,6 +51,35 @@
                 </Panel>
                 <Button Grid.Column="1" Classes="icon" ToolTip.Tip="Remove"
                         Command="{Binding $parent[ItemsControl].((inspector:ListFieldViewModel)DataContext).RemoveCommand}"
+                        CommandParameter="{Binding}">
+                  <PathIcon Data="{x:Static shell:MaterialIcons.Remove}" />
+                </Button>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button Classes="icon" ToolTip.Tip="Add" Command="{Binding AddCommand}" IsEnabled="{Binding !IsReadOnly}">
+          <PathIcon Data="{x:Static shell:MaterialIcons.Add}" />
+        </Button>
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate DataType="inspector:ObjectFieldViewModel">
+      <StackPanel Spacing="1">
+        <ComboBox ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}" IsVisible="{Binding HasKinds}"
+                  IsEnabled="{Binding !IsReadOnly}" HorizontalAlignment="Stretch" />
+        <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" />
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate DataType="inspector:CollectionFieldViewModel">
+      <StackPanel Spacing="1">
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="inspector:FieldViewModel">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource FieldRow}" />
+                <Button Grid.Column="1" Classes="icon" ToolTip.Tip="Remove" VerticalAlignment="Top"
+                        IsEnabled="{Binding !IsReadOnly}"
+                        Command="{Binding $parent[ItemsControl].((inspector:CollectionFieldViewModel)DataContext).RemoveCommand}"
                         CommandParameter="{Binding}">
                   <PathIcon Data="{x:Static shell:MaterialIcons.Remove}" />
                 </Button>

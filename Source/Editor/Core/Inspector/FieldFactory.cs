@@ -1,6 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.Numerics;
+using System.Text.Json.Serialization.Metadata;
 
+using FlickerVoid.Editor.Core.Data;
+using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Editor.Core.Inspector;
@@ -19,6 +22,12 @@ public static class FieldFactory
     private static FieldViewModel CreateEmpty(IEditableValue property, FindContentFiles? files)
     {
         Type type = property.Type;
+        if (type == typeof(Tag))
+        {
+            TagProperty tag = new(property);
+            return new TextFieldViewModel(tag);
+        }
+
         if (type == typeof(Vector3))
         {
             ColorAttribute? color = property.GetAttribute<ColorAttribute>();
@@ -71,6 +80,20 @@ public static class FieldFactory
         if (type.IsEnum)
         {
             return new EnumFieldViewModel(property);
+        }
+
+        if (property.Options is { } options)
+        {
+            JsonTypeInfo typeInfo = options.GetTypeInfo(type);
+            if (typeInfo.Kind == JsonTypeInfoKind.Enumerable && typeInfo.ElementType is not null)
+            {
+                return new CollectionFieldViewModel(property, files);
+            }
+
+            if (typeInfo.Kind == JsonTypeInfoKind.Object)
+            {
+                return new ObjectFieldViewModel(property, files);
+            }
         }
 
         return new ReadOnlyFieldViewModel(property);
