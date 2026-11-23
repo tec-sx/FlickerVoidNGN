@@ -1,6 +1,9 @@
 
 using System.Text.Json.Nodes;
 
+using Arch.Core;
+
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Rendering.Serialization;
@@ -28,6 +31,7 @@ public static class RenderingGameExtensions
         game.Schemas.Add("canvas", CreateCanvasSchema);
         game.Schemas.Add("texture", CreateTextureSchema);
         game.Services.AddService(new SceneRendererSetup());
+        ArrayRegistry.Add<Hidden>();
         MeshAnimationSystem animation = new(game.World);
         game.FrameSystems.Add(animation);
     }

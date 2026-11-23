@@ -1,6 +1,7 @@
 using Arch.Core;
 
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Engine.Runtime.Components;
 
@@ -9,7 +10,9 @@ namespace FlickerVoid.Editor.Core.Scenes;
 /// <summary>
 /// The open scene's outline: folders (from each entity's <see cref="EntityFolder"/>, plus new empty ones until something goes in),
 /// subfolders before entities, entities in the file's order. Choosing items selects their entities, a folder all of its own;
-/// a selection made elsewhere shows as <see cref="SelectedItems"/>. Folders are created, renamed and deleted here.
+/// a selection made elsewhere shows as <see cref="SelectedItems"/>. Folders are created, renamed and deleted here. Only entities at
+/// the top are listed: what is nested under one shows under it, marked nested, while it is revealed (or all are,
+/// <see cref="RevealAllNested"/>), and the Entity tab (<see cref="EntityTreeViewModel"/>) shows the whole tree of the selection.
 /// </summary>
 public sealed partial class SceneTreeViewModel : ObservableObject
 {
@@ -18,6 +21,7 @@ public sealed partial class SceneTreeViewModel : ObservableObject
     private readonly EditorScene _scene;
     private readonly HashSet<string> _emptyFolders = [];
     private readonly HashSet<string> _collapsed = [];
+    private readonly HashSet<string> _revealed = [];
     private IReadOnlyList<SceneTreeItem> _chosenFolders = [];
     private bool _choosing;
 
@@ -27,8 +31,13 @@ public sealed partial class SceneTreeViewModel : ObservableObject
         _scene.EntitiesChanged += Rebuild;
         _scene.Opened += HandleOpened;
         _scene.Selection.Changed += ShowSelection;
+        _scene.VisibilityChanged += ShowHidden;
         Rebuild();
     }
+
+    /// <summary>Whether every entity nested under another is shown under it.</summary>
+    [ObservableProperty]
+    public partial bool RevealAllNested { get; set; }
 
     [ObservableProperty]
     public partial IReadOnlyList<SceneTreeItem> Items { get; private set; } = [];
@@ -93,12 +102,13 @@ public sealed partial class SceneTreeViewModel : ObservableObject
         return path;
     }
 
-    /// <summary>Files the entities under the folder, or at the top for null or empty.</summary>
+    /// <summary>Files the entities under the folder, or at the top for null or empty, taking them off their parents.</summary>
     public void MoveTo(IEnumerable<Entity> entities, string? folder)
     {
         _scene.History.BeginGroup("File in folder");
         foreach (Entity entity in entities.ToList())
         {
+            _scene.SetParent(entity, null);
             _scene.SetFolder(entity, folder);
         }
 
@@ -106,6 +116,37 @@ public sealed partial class SceneTreeViewModel : ObservableObject
 
         Rebuild();
     }
+
+    /// <summary>Nests the entities under <paramref name="parent"/>, as dropping them on it does.</summary>
+    public void Nest(IEnumerable<Entity> entities, Entity parent)
+    {
+        _scene.SetParent(entities, parent);
+    }
+
+    [RelayCommand]
+    private void HideSelected() => _scene.SetHidden(_scene.Selection.Entities, hidden: true);
+
+    [RelayCommand]
+    private void ShowSelected() => _scene.SetHidden(_scene.Selection.Entities, hidden: false);
+
+    [RelayCommand]
+    private void ShowAll() => _scene.ShowAll();
+
+    partial void OnRevealAllNestedChanged(bool value) => Rebuild();
+
+    private void ToggleReveal(SceneTreeItem item)
+    {
+        if (!_revealed.Remove(item.Name))
+        {
+            _revealed.Add(item.Name);
+        }
+
+        Rebuild();
+    }
+
+    private void ToggleHidden(SceneTreeItem item) => SceneTreeItem.ToggleHidden(_scene, item);
+
+    private void ShowHidden() => SceneTreeItem.ShowHidden(_scene, Items);
 
     /// <summary>Renames the folder at <paramref name="path"/>, moving everything in it and its subfolders.</summary>
     public void RenameFolder(string path, string name)
@@ -141,7 +182,7 @@ public sealed partial class SceneTreeViewModel : ObservableObject
     public void Refresh()
     {
         World world = _scene.Game.World;
-        foreach (SceneTreeItem item in Flatten(Items))
+        foreach (SceneTreeItem item in SceneTreeItem.Flatten(Items))
         {
             if (item.Entity is { } entity && (!world.IsAlive(entity) || NameOf(world, entity) != item.Name))
             {
@@ -205,6 +246,7 @@ public sealed partial class SceneTreeViewModel : ObservableObject
     {
         _emptyFolders.Clear();
         _collapsed.Clear();
+        _revealed.Clear();
         Rebuild();
     }
 
@@ -228,7 +270,7 @@ public sealed partial class SceneTreeViewModel : ObservableObject
 
     private void Rebuild()
     {
-        foreach (SceneTreeItem item in Flatten(Items))
+        foreach (SceneTreeItem item in SceneTreeItem.Flatten(Items))
         {
             if (item.IsFolder && !item.IsExpanded)
             {
@@ -250,6 +292,7 @@ public sealed partial class SceneTreeViewModel : ObservableObject
 
         HashSet<string> folders = [.. GetFolderPaths()];
         Items = BuildLevel("", folders, entities, world);
+        ShowHidden();
         ShowSelection();
     }
 
@@ -267,13 +310,50 @@ public sealed partial class SceneTreeViewModel : ObservableObject
 
         foreach (Entity entity in entities)
         {
-            if (FolderOf(world, entity) != parent)
+            if (FolderOf(world, entity) != parent || _scene.GetParent(entity) is not null)
             {
                 continue;
             }
 
+            string name = NameOf(world, entity);
+            bool revealed = RevealAllNested || _revealed.Contains(name);
+            List<SceneTreeItem> nested = [];
+            if (revealed)
+            {
+                HashSet<Entity> seen = [entity];
+                nested = BuildNested(entity, parent, world, seen);
+            }
+
             string icon = SceneIcons.For(world, entity, _scene.Game.Spawner.Components);
-            items.Add(new SceneTreeItem(NameOf(world, entity), parent, icon, entity, []));
+            bool hasNested = _scene.GetChildren(entity).Count > 0;
+            SceneTreeItem item = new(name, parent, icon, entity, nested)
+            {
+                HasNested = hasNested,
+                IsRevealed = revealed && hasNested,
+                HideToggled = ToggleHidden,
+                RevealToggled = ToggleReveal,
+            };
+            items.Add(item);
+        }
+
+        return items;
+    }
+
+    /// <summary>Everything nested under the entity, marked nested; <paramref name="seen"/> keeps a loop of parents from repeating.</summary>
+    private List<SceneTreeItem> BuildNested(Entity entity, string folder, World world, HashSet<Entity> seen)
+    {
+        List<SceneTreeItem> items = [];
+        foreach (Entity child in _scene.GetChildren(entity))
+        {
+            if (!seen.Add(child))
+            {
+                continue;
+            }
+
+            List<SceneTreeItem> inner = BuildNested(child, folder, world, seen);
+            string icon = SceneIcons.For(world, child, _scene.Game.Spawner.Components);
+            SceneTreeItem item = new(NameOf(world, child), folder, icon, child, inner) { IsNested = true, HideToggled = ToggleHidden };
+            items.Add(item);
         }
 
         return items;
@@ -288,7 +368,7 @@ public sealed partial class SceneTreeViewModel : ObservableObject
 
         HashSet<Entity> selected = [.. _scene.Selection.Entities];
         List<SceneTreeItem> shown = [];
-        foreach (SceneTreeItem item in Flatten(Items))
+        foreach (SceneTreeItem item in SceneTreeItem.Flatten(Items))
         {
             if (item.Entity is { } entity && selected.Contains(entity))
             {
@@ -298,7 +378,7 @@ public sealed partial class SceneTreeViewModel : ObservableObject
 
         foreach (SceneTreeItem folder in _chosenFolders)
         {
-            SceneTreeItem? current = Flatten(Items).FirstOrDefault(item => item.IsFolder && item.Path == folder.Path);
+            SceneTreeItem? current = SceneTreeItem.Flatten(Items).FirstOrDefault(item => item.IsFolder && item.Path == folder.Path);
             if (current is not null && current.GetEntities().All(selected.Contains))
             {
                 shown.Add(current);
@@ -306,18 +386,6 @@ public sealed partial class SceneTreeViewModel : ObservableObject
         }
 
         SelectedItems = shown;
-    }
-
-    private static IEnumerable<SceneTreeItem> Flatten(IEnumerable<SceneTreeItem> items)
-    {
-        foreach (SceneTreeItem item in items)
-        {
-            yield return item;
-            foreach (SceneTreeItem child in Flatten(item.Children))
-            {
-                yield return child;
-            }
-        }
     }
 
     private static string ParentOf(string path)

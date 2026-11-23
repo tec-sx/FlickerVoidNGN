@@ -1,4 +1,4 @@
-// The editor's sky: one triangle at the far plane fills only what the scene left empty, with a gradient like an atmosphere,
+// The sky: one triangle at the far plane fills only what the scene left empty, with a gradient like an atmosphere,
 // dark ground below the horizon and a lighter warm haze above it fading to a muted blue overhead. A perspective view shades by
 // where each pixel's view ray points; an orthographic one, whose rays all point the same way, by height on the near plane.
 // Over a mood's paper it is a wash multiplied over it: the gradient over the horizon's brightness, so the paper shows through.

@@ -81,6 +81,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Viewport = viewport;
         Inspector = inspector;
         SceneTree = new SceneTreeViewModel(viewport.Scene);
+        EntityTree = new EntityTreeViewModel(viewport.Scene);
         ContentFileFinder files = new(content);
         ViewSettings = new ViewSettingsViewModel(viewport.Mood, files.Find);
         Assets = new AssetBrowserViewModel(viewport.Scene.Content, viewport.Scene.Game.Data, codeFolder);
@@ -202,6 +203,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     /// <summary>The open scene's entities, to select one that is hard to click in the viewport.</summary>
     public SceneTreeViewModel SceneTree { get; }
+
+    /// <summary>The Entity tab: the selected entity's whole tree.</summary>
+    public EntityTreeViewModel EntityTree { get; }
 
     /// <summary>The content folder's files; opening a scene shows it, opening a material shows it in the material editor.</summary>
     public AssetBrowserViewModel Assets { get; }

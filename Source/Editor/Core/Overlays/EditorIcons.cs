@@ -5,6 +5,7 @@ using Arch.Core;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Engine.Cameras.Triggers;
 using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
@@ -13,7 +14,7 @@ namespace FlickerVoid.Editor.Core.Overlays;
 
 /// <summary>
 /// The icons that show and pick entities with nothing else to see: lights (in their colour), cameras, irradiance volumes and camera
-/// cues (a camera at the centre of their trigger area). They
+/// cues (an outlined camera with a trigger badge at the centre of their trigger area, so they never look like cameras). They
 /// keep their size on screen and are drawn over everything, so a light inside a wall can still be clicked.
 /// </summary>
 public sealed class EditorIcons
@@ -23,11 +24,11 @@ public sealed class EditorIcons
     public static readonly Vector4 SelectedColor = new(1, 0.55f, 0.1f, 1);
 
     private static readonly Vector4 PlainColor = new(0.9f, 0.9f, 0.9f, 1);
-    private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>();
-    private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>();
-    private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>();
-    private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
-    private static readonly QueryDescription Cues = new QueryDescription().WithAll<CameraCue, TriggerArea, Transform>();
+    private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription Cues = new QueryDescription().WithAll<CameraCue, TriggerArea, Transform>().WithNone<Hidden>();
 
     private readonly List<IconInstance> _icons = [];
 
@@ -59,7 +60,7 @@ public sealed class EditorIcons
         {
             Matrix4x4 matrix = transform.ToMatrix();
             Vector3 centre = Vector3.Transform(area.Offset, matrix);
-            Add(entity, centre, EditorIcon.Camera, PlainColor, selected);
+            Add(entity, centre, EditorIcon.CameraCue, PlainColor, selected);
         });
     }
 

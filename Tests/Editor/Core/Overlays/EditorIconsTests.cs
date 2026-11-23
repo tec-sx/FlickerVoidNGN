@@ -41,7 +41,7 @@ public sealed class EditorIconsTests : IDisposable
     }
 
     [Fact]
-    public void ShowsCameraCuesByACameraAtTheirAreasCentre()
+    public void ShowsCameraCuesByACueIconAtTheirAreasCentre()
     {
         Entity cue = _builder.AddCameraCue(new Vector3(2, 0, 0));
 
@@ -49,7 +49,7 @@ public sealed class EditorIconsTests : IDisposable
 
         IconInstance icon = _icons.Icons.Should().ContainSingle().Subject;
         icon.Entity.Should().Be(cue);
-        icon.Icon.Should().Be(EditorIcon.Camera);
+        icon.Icon.Should().Be(EditorIcon.CameraCue);
         icon.Position.Should().Be(new Vector3(2, 1, 0));
     }
 
