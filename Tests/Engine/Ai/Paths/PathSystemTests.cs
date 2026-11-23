@@ -145,4 +145,29 @@ public sealed class PathSystemTests : IDisposable
         position.Z.Should().BeApproximately(0, 0.1f);
         _builder.MaxAbsZ.Should().BeGreaterThan(3, "it walked round the wall's end");
     }
+
+    [Fact]
+    public void KeepsSteeredCharactersOnTheGroundTheyCanWalk()
+    {
+        _builder.WithFloor().WithWall().Build();
+        Entity hero = _builder.AddWalker(West);
+
+        _builder.Game.Events.Send(new SteerCommand(hero, Vector3.UnitX));
+        _builder.Run(4);
+
+        Vector3 position = _builder.Game.World.Get<Transform>(hero).Position;
+        position.X.Should().BeLessThan(-0.2f, "the wall stops it, as it stands outside the walkable ground");
+        position.Y.Should().BeApproximately(0, 0.05f, "it stays on the floor rather than climbing the wall");
+    }
+
+    [Fact]
+    public void ConstrainsAStepToTheWalkableGround()
+    {
+        PathSystem paths = _builder.WithFloor().WithWall().Build();
+
+        Vector3 reached = paths.Constrain(new Vector3(-1, 0, 0), new Vector3(1, 0, 0));
+
+        reached.X.Should().BeLessThan(-0.2f, "the step ends at the wall's side");
+        reached.Z.Should().BeApproximately(0, 0.05f);
+    }
 }

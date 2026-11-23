@@ -54,6 +54,16 @@ public sealed class CutawaySystemTests : IDisposable
     }
 
     [Fact]
+    public void FollowsTheLiveShotsTargetWhateverOtherTargetsThereAre()
+    {
+        _builder.WalkTo(Vector3.Zero);
+
+        _builder.ChangeFoxArchetype();
+
+        _cutaways.Cutaway.Should().Be(_builder["Ground"], "the door the cameras may also look at stands outside");
+    }
+
+    [Fact]
     public void ClosesTheBuildingOnLeaving()
     {
         _builder.WalkTo(Vector3.Zero);

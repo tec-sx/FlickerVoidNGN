@@ -49,6 +49,21 @@ public sealed class PathSystem : IPathFinder
         return Mesh.TryFindPath(from, to, corners);
     }
 
+    public Vector3 Constrain(Vector3 from, Vector3 to)
+    {
+        if (_dirty)
+        {
+            Build();
+        }
+
+        if (Mesh is null)
+        {
+            return to;
+        }
+
+        return Mesh.Constrain(from, to);
+    }
+
     /// <summary>A random point of the ground within the radius of a point, such as where a resident wanders next; false when there is none.</summary>
     public bool TryFindRandomPoint(Vector3 around, float radius, Random random, out Vector3 point)
     {

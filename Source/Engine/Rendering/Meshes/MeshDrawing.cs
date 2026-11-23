@@ -3,6 +3,7 @@ using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Pipeline;
 
@@ -16,14 +17,14 @@ internal static class MeshDrawing
         ICommandList commands = context.Commands;
         foreach (MeshDraw draw in context.Draws)
         {
-            if (draw.ShadowOnly)
+            if ((draw.Flags & (MeshFlags.ShadowOnly | MeshFlags.OutlineOnly)) != 0)
             {
                 continue;
             }
 
             GpuMeshPart part = draw.Part;
             ITexture texture = part.Texture ?? context.White;
-            SceneConstants constants = new(draw.World, part.BaseColor, context.FrameBuffer, draw.Vertices.BindlessIndex, texture.BindlessIndex, context.Sampler.BindlessIndex, draw.Material.BindlessIndex);
+            SceneConstants constants = new(draw.World, part.BaseColor, context.FrameBuffer, draw.Vertices.BindlessIndex, texture.BindlessIndex, context.Sampler.BindlessIndex, draw.Material.BindlessIndex, (uint)draw.Flags);
             commands.SetIndexBuffer(part.Indices, IndexFormat.UInt32);
             commands.PushConstants(constants);
             commands.DrawIndexed(part.IndexCount);

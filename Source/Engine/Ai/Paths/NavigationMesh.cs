@@ -131,6 +131,30 @@ public sealed class NavigationMesh
         return corners.Count > 0;
     }
 
+    /// <summary>
+    /// Where a step from <paramref name="from"/> toward <paramref name="to"/> ends sliding along the walkable ground's edges, at
+    /// <paramref name="to"/>'s height; <paramref name="to"/> itself when <paramref name="from"/> has no ground near it.
+    /// </summary>
+    public Vector3 Constrain(Vector3 from, Vector3 to)
+    {
+        RcVec3f start = ToRecast(from);
+        DtStatus found = _query.FindNearestPoly(start, _searchExtents, _filter, out long polygon, out RcVec3f startPoint, out _);
+        if (found.Failed() || polygon == 0)
+        {
+            return to;
+        }
+
+        RcVec3f end = ToRecast(to);
+        Span<long> visited = _polygons;
+        DtStatus moved = _query.MoveAlongSurface(polygon, startPoint, end, _filter, out RcVec3f reached, visited, out _, MaxPolygons);
+        if (moved.Failed())
+        {
+            return to;
+        }
+
+        return new Vector3(reached.X, to.Y, reached.Z);
+    }
+
     /// <summary>A random point of the ground within the radius of a point, reachable from the ground nearest to it; false when there is none.</summary>
     public bool TryFindRandomPoint(Vector3 around, float radius, Random random, out Vector3 point)
     {

@@ -5,6 +5,7 @@ using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Materials;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Rendering.PostProcessing;
@@ -33,6 +34,8 @@ namespace FlickerVoid.Engine.Rendering.Serialization;
 [JsonSerializable(typeof(TextureSettings))]
 [JsonSerializable(typeof(SceneMood))]
 [JsonSerializable(typeof(IndoorVolume))]
+[JsonSerializable(typeof(Uncut))]
+[JsonSerializable(typeof(Doorway))]
 [JsonSerializable(typeof(Outline))]
 [JsonSerializable(typeof(ShaderParameters))]
 [JsonSerializable(typeof(MaterialFile))]

@@ -76,12 +76,12 @@ internal sealed class SkinningPass : IRenderPass
 
             IBuffer material = _materials.Get(materialPath, context.Textures);
             Outline? outline = mesh.Outline;
-            if (mesh.ShadowOnly)
+            if (mesh.Flags.HasFlag(MeshFlags.ShadowOnly))
             {
                 outline = null;
             }
 
-            context.Draws.Add(new MeshDraw(mesh.World, part, vertices, material, outline, mesh.ShadowOnly));
+            context.Draws.Add(new MeshDraw(mesh.World, part, vertices, material, outline, mesh.Flags));
         }
     }
 }

@@ -17,7 +17,11 @@ struct SceneConstants
     uint Texture;
     uint Sampler;
     uint Material;
+    uint Flags;
 };
+
+// MeshFlags.Uncut: the cutaway keeps the mesh, such as a door.
+static const uint FlagUncut = 4;
 
 // The parameters Scene.fvshader declares, in its order.
 struct Material
@@ -535,7 +539,7 @@ float2 BlurScreenShadows(FrameData frame, float2 pixel)
 void DepthMain(VertexOutput input)
 {
     FrameData frame = LoadFrame(Scene.Frame);
-    if (IsCutAway(frame, input.WorldPosition))
+    if ((Scene.Flags & FlagUncut) == 0 && IsCutAway(frame, input.WorldPosition))
     {
         discard;
     }
@@ -589,7 +593,7 @@ static const float ImpastoCover = 0.1;
 float4 PixelMain(VertexOutput input) : SV_Target
 {
     FrameData frame = LoadFrame(Scene.Frame);
-    if (IsCutAway(frame, input.WorldPosition))
+    if ((Scene.Flags & FlagUncut) == 0 && IsCutAway(frame, input.WorldPosition))
     {
         discard;
     }

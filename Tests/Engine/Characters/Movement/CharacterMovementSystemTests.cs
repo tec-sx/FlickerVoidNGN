@@ -244,4 +244,73 @@ public sealed class CharacterMovementSystemTests : IDisposable
 
         _builder.Game.World.Has<Heading>(hero).Should().BeFalse();
     }
+
+    [Fact]
+    public void FallsOntoTheGroundWhileStandingStill()
+    {
+        _builder.WithPhysics().Build();
+        IReadOnlyList<Entity> entities = _builder.Spawn("""
+            { "name": "Hero", "components": { "transform": { "position": [0, 3, 0] }, "characterMover": {} } },
+            { "name": "Ground", "components": {
+                "transform": { "position": [0, 0.1, 0] },
+                "staticBody": { "collider": { "type": "box", "size": [4, 0.2, 4] } } } }
+            """);
+
+        _builder.Run(2);
+
+        _builder.Game.World.Get<Transform>(entities[0]).Position.Y.Should().BeApproximately(0.2f, 1e-3f);
+    }
+
+    [Fact]
+    public void FallsGraduallyRatherThanDroppingAtOnce()
+    {
+        _builder.WithPhysics().Build();
+        IReadOnlyList<Entity> entities = _builder.Spawn("""
+            { "name": "Hero", "components": { "transform": { "position": [0, 3, 0] }, "characterMover": {} } },
+            { "name": "Ground", "components": {
+                "transform": { "position": [0, -0.1, 0] },
+                "staticBody": { "collider": { "type": "box", "size": [4, 0.2, 4] } } } }
+            """);
+
+        _builder.Run(1 / 60f);
+
+        _builder.Game.World.Get<Transform>(entities[0]).Position.Y.Should().BeInRange(2.5f, 3 - 1e-4f);
+    }
+
+    [Fact]
+    public void WalksDownOffALedgeOfAnyHeight()
+    {
+        _builder.WithPhysics().Build();
+        IReadOnlyList<Entity> entities = _builder.Spawn(Walker + """
+            , { "name": "Ledge", "components": {
+                "transform": { "position": [0, -0.1, 0] },
+                "staticBody": { "collider": { "type": "box", "size": [1, 0.2, 1] } } } },
+              { "name": "Pit", "components": {
+                "transform": { "position": [0, -4.1, 0] },
+                "staticBody": { "collider": { "type": "box", "size": [20, 0.2, 20] } } } }
+            """);
+        _builder.Game.Events.Send(new MoveCommand(entities[0], new Vector3(3, 0, 0)));
+
+        _builder.Run(4);
+
+        _builder.Game.World.Get<Transform>(entities[0]).Position.Y.Should().BeApproximately(-4, 1e-3f);
+    }
+
+    [Fact]
+    public void NeverStandsOnItsOwnBody()
+    {
+        _builder.WithPhysics().Build();
+        IReadOnlyList<Entity> entities = _builder.Spawn("""
+            { "name": "Hero", "components": { "transform": {}, "characterMover": {},
+                "staticBody": { "collider": { "type": "box", "size": [0.6, 1.8, 0.6], "offset": [0, 0.9, 0] } } } },
+            { "name": "Ground", "components": {
+                "transform": { "position": [0, -0.1, 0] },
+                "staticBody": { "collider": { "type": "box", "size": [4, 0.2, 4] } } } }
+            """);
+        _builder.Game.Lifecycle.Play(_builder.Game.World);
+
+        _builder.Run(1);
+
+        _builder.Game.World.Get<Transform>(entities[0]).Position.Y.Should().BeApproximately(0, 1e-3f);
+    }
 }

@@ -260,6 +260,25 @@ internal sealed class ShotDriver
     /// <summary>Where the shot's target is aimed at: the named entity, else the first camera target, at its aim height.</summary>
     public bool TryFindTarget(in Shot shot, out Vector3 aim)
     {
+        Entity target = FindTarget(shot);
+        aim = Vector3.Zero;
+        if (target == Entity.Null)
+        {
+            return false;
+        }
+
+        aim = _world.Get<Transform>(target).Position;
+        if (_world.TryGet(target, out CameraTarget cameraTarget))
+        {
+            aim.Y += cameraTarget.Height;
+        }
+
+        return true;
+    }
+
+    /// <summary>The shot's target: the entity it names, else the camera target spawned first; <see cref="Entity.Null"/> without one.</summary>
+    public Entity FindTarget(in Shot shot)
+    {
         Entity target = Entity.Null;
         string name = shot.Target;
         if (string.IsNullOrEmpty(name))
@@ -283,19 +302,12 @@ internal sealed class ShotDriver
             });
         }
 
-        aim = Vector3.Zero;
-        if (target == Entity.Null)
+        if (target != Entity.Null && !_world.Has<Transform>(target))
         {
-            return false;
+            return Entity.Null;
         }
 
-        aim = _world.Get<Transform>(target).Position;
-        if (_world.TryGet(target, out CameraTarget cameraTarget))
-        {
-            aim.Y += cameraTarget.Height;
-        }
-
-        return true;
+        return target;
     }
 
     private Camera GetLens(Entity shot)

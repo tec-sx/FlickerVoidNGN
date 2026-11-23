@@ -74,6 +74,18 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
     /// </summary>
     public Vector2? Pointer { get; set; }
 
+    /// <summary>What the cameras follow now: the live shot's target, else the camera target spawned first; <see cref="Entity.Null"/> without one.</summary>
+    public Entity FindTarget()
+    {
+        Shot shot = new();
+        if (IsShot(Live))
+        {
+            shot = World.Get<Shot>(Live);
+        }
+
+        return _driver.FindTarget(shot);
+    }
+
     /// <summary>The shot drawn now, or <see cref="Entity.Null"/> before the first frame or without shots.</summary>
     public Entity Live { get; private set; } = Entity.Null;
 
