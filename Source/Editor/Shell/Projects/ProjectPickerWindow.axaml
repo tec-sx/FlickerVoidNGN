@@ -7,7 +7,7 @@ xmlns:projects="using:FlickerVoid.Editor.Projects"
         Title="FlickerVoid Projects"
         Width="640" Height="440" WindowStartupLocation="CenterScreen">
   <DockPanel Margin="16">
-    <TextBlock DockPanel.Dock="Top" Text="{Binding ProjectsFolder, StringFormat='Projects in {0}'}" Margin="0,0,0,8" Opacity="0.7" />
+    <TextBlock DockPanel.Dock="Top" Text="{Binding ProjectsFolder, StringFormat='Projects in {0} and those opened before'}" Margin="0,0,0,8" Opacity="0.7" />
     <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,12,0,0" IsEnabled="{Binding !IsBusy}">
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button Content="Open" Command="{Binding OpenCommand}" CommandParameter="{Binding SelectedProject}" />

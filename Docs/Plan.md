@@ -18,7 +18,7 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 | Editor | Avalonia on Windows and Linux, on Avalonia's Vulkan backend: the viewport shares a Vulkan texture and semaphores with it through Avalonia's GPU interop (`Source/Editor`) |
 | Platforms | One codebase for Windows and Linux; OS-specific work for Windows first, with a TODO on the Linux side |
 | Gameplay | The Unreal project is the reference; NGN ports from it |
-| Projects | `Documents/FlickerVoid/<Project>`; the demo project is FlickerVoid |
+| Projects | `Documents/FlickerVoid/<Project>`; the game is Bleeders, in its own repository (`tec-sx/Bleeders`) building against the engine `FLICKERVOID_ENGINE` names |
 
 ## Architecture
 

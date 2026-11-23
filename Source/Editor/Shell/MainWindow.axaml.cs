@@ -120,7 +120,9 @@ public sealed partial class MainWindow : Window
     private async void HandleOpenProjectClick(object? sender, RoutedEventArgs e)
     {
         string folder = ProjectPickerViewModel.GetDefaultProjectsFolder();
-        ProjectPickerViewModel picker = new(folder, new DotnetProjectBuilder(), new TemplateProjectCreator());
+        string recentFile = RecentProjects.GetDefaultFile();
+        RecentProjects recent = new(recentFile);
+        ProjectPickerViewModel picker = new(folder, recent, new DotnetProjectBuilder(), new TemplateProjectCreator());
         ProjectPickerWindow window = new() { DataContext = picker };
         string? chosen = null;
         picker.Opened += project =>

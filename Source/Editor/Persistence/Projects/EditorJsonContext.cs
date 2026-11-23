@@ -11,4 +11,5 @@ namespace FlickerVoid.Editor.Persistence.Projects;
     UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     WriteIndented = true)]
 [JsonSerializable(typeof(ProjectFile))]
+[JsonSerializable(typeof(RecentProjectsFile))]
 public sealed partial class EditorJsonContext : JsonSerializerContext;

@@ -1,5 +1,0 @@
-{
-  "$schema": "../.schemas/canvas.schema.json",
-  "image": "Canvas_01.jpg",
-  "tiling": 1
-}
