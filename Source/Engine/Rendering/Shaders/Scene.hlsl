@@ -1,9 +1,10 @@
 // Draws a mesh part whose vertices (float3 position, float3 normal, float2 uv) are pulled from a bindless buffer: its base
 // color times its texture and its material's tint, shaded by the material's controls (Scene.fvshader) and lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster,
 // shadowed through the shadow atlas and tinted by spot light cookies, plus bounced light from irradiance probes, seen
-// through fog lit by the same lights.
+// through fog lit by the same lights. Indoor volumes scale the ambient light inside them, and while the camera looks into one
+// (the cutaway) whatever stands in front of its box is cut away and the world outside it muted.
 // The frame buffer holds FrameData (Frame.hlsl), then the lights, the shadows, each cluster's
-// range of light indices, and the indices. ScreenShadows.hlsl gives each pixel its ambient occlusion and contact shadow.
+// range of light indices, the indices and the indoor volumes. ScreenShadows.hlsl gives each pixel its ambient occlusion and contact shadow.
 
 #include "Frame.hlsl"
 
@@ -162,6 +163,67 @@ float3 ToCamera(FrameData frame, float3 worldPosition)
     }
 
     return -normalize(frame.DepthAxis.xyz);
+}
+
+// Indoor volumes reach a little past their boxes, so walls, floors and ceilings standing on them count as inside.
+static const float IndoorMargin = 0.05;
+static const uint IndoorSize = 32;
+
+bool IsInBox(float3 position, float3 boxMin, float3 boxMax)
+{
+    return all(position >= boxMin - IndoorMargin) && all(position <= boxMax + IndoorMargin);
+}
+
+// The share of the mood's ambient light at a point: the least of the indoor volumes it stands in, else all of it.
+float IndoorAmbient(FrameData frame, float3 worldPosition)
+{
+    ByteAddressBuffer buffer = Buffers[Scene.Frame];
+    float ambient = 1;
+    for (uint index = 0; index < frame.IndoorCount; index++)
+    {
+        uint offset = frame.IndoorsOffset + index * IndoorSize;
+        float3 boxMin = buffer.Load<float3>(offset);
+        float boxAmbient = buffer.Load<float>(offset + 12);
+        float3 boxMax = buffer.Load<float3>(offset + 16);
+        if (IsInBox(worldPosition, boxMin, boxMax))
+        {
+            ambient = min(ambient, boxAmbient);
+        }
+    }
+
+    return ambient;
+}
+
+// Whether a point stands between the camera and the cutaway's box: outside it, with the box behind it along the view.
+bool IsCutAway(FrameData frame, float3 worldPosition)
+{
+    if (frame.Cut == 0 || IsInBox(worldPosition, frame.CutMin, frame.CutMax))
+    {
+        return false;
+    }
+
+    float3 away = -ToCamera(frame, worldPosition);
+    away = select(abs(away) < 1e-6, 1e-6, away);
+    float3 toMin = (frame.CutMin - IndoorMargin - worldPosition) / away;
+    float3 toMax = (frame.CutMax + IndoorMargin - worldPosition) / away;
+    float3 nearSides = min(toMin, toMax);
+    float3 farSides = max(toMin, toMax);
+    float enter = max(max(nearSides.x, nearSides.y), max(nearSides.z, 0));
+    float leave = min(farSides.x, min(farSides.y, farSides.z));
+    return enter <= leave;
+}
+
+// Greys and darkens the world outside the cutaway's box by its muting, so the room it looks into stands out.
+float3 MuteOutside(FrameData frame, float3 color, float3 worldPosition)
+{
+    if (frame.Cut == 0 || frame.CutMuted <= 0 || IsInBox(worldPosition, frame.CutMin, frame.CutMax))
+    {
+        return color;
+    }
+
+    float grey = dot(color, float3(0.2126, 0.7152, 0.0722));
+    float3 muted = lerp(color, grey, frame.CutMuted);
+    return muted * (1 - (0.5 * frame.CutMuted));
 }
 
 // The point light shadow face whose view holds the offset from the light, by its largest axis: +X, -X, +Y, -Y, +Z, -Z.
@@ -377,7 +439,7 @@ float Phase(float cosAngle, float anisotropy)
 // The light a point in fog scatters toward the camera, from every light that reaches it, before the fog's color.
 float3 FogLight(FrameData frame, float2 pixel, float3 position, float3 towardCamera)
 {
-    float3 light = frame.Ambient + SampleProbes(frame, position, 0);
+    float3 light = frame.Ambient * IndoorAmbient(frame, position) + SampleProbes(frame, position, 0);
     float3 sunDirection = normalize(frame.SunDirection);
     float sun = (1 - frame.Ambient) * Phase(dot(sunDirection, towardCamera), frame.FogAnisotropy);
     if (frame.SunShadow != None)
@@ -469,9 +531,14 @@ float2 BlurScreenShadows(FrameData frame, float2 pixel)
     return float2(occlusion / 9, contact);
 }
 
-// The depth prepass runs VertexMain too, so its depth matches the scene pass exactly.
-void DepthMain()
+// The depth prepass runs VertexMain too, so its depth matches the scene pass exactly; it cuts away what the scene pass does.
+void DepthMain(VertexOutput input)
 {
+    FrameData frame = LoadFrame(Scene.Frame);
+    if (IsCutAway(frame, input.WorldPosition))
+    {
+        discard;
+    }
 }
 
 // The outline pass draws outlined meshes' silhouettes in their outline's color, which it passes as the base color.
@@ -522,6 +589,11 @@ static const float ImpastoCover = 0.1;
 float4 PixelMain(VertexOutput input) : SV_Target
 {
     FrameData frame = LoadFrame(Scene.Frame);
+    if (IsCutAway(frame, input.WorldPosition))
+    {
+        discard;
+    }
+
     Material material = LoadMaterial();
     uint texture = Scene.Texture;
     float2 uv = input.Uv;
@@ -556,7 +628,7 @@ float4 PixelMain(VertexOutput input) : SV_Target
         sun *= SampleShadow(frame, frame.SunShadow, input.WorldPosition, normal, 0, true);
     }
 
-    float3 ambient = frame.Ambient + SampleProbes(frame, input.WorldPosition, normal);
+    float3 ambient = frame.Ambient * IndoorAmbient(frame, input.WorldPosition) + SampleProbes(frame, input.WorldPosition, normal);
     float3 diffuse = ambient * screenShadows.r + sun * sunDiffuse;
     float3 specular = sun * sunSpecular;
     ShadeClusterLights(frame, material, input.Position.xy, input.WorldPosition, normal, toCamera, diffuse, specular);
@@ -574,5 +646,6 @@ float4 PixelMain(VertexOutput input) : SV_Target
         color = color * fog.a + fog.rgb;
     }
 
+    color = MuteOutside(frame, color, input.WorldPosition);
     return float4(color, albedo.a + impasto * albedo.a);
 }

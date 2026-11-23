@@ -13,8 +13,8 @@ using FlickerVoid.Engine.Runtime.Greyboxes;
 namespace FlickerVoid.Engine.Rendering.Extraction;
 
 /// <summary>
-/// Extracts cameras (a director's <see cref="ActiveCamera"/> first, at its posed view), meshes and greyboxes (the box, or the swap model shown in its place) with their outlines, lights and
-/// irradiance volumes from entities with a transform.
+/// Extracts cameras (a director's <see cref="ActiveCamera"/> first, at its posed view), meshes and greyboxes (the box, or the swap model shown in its place) with their outlines, lights,
+/// indoor volumes (and the cutaway) and irradiance volumes from entities with a transform.
 /// </summary>
 public sealed class WorldExtractor : IRenderExtractor
 {
@@ -25,6 +25,7 @@ public sealed class WorldExtractor : IRenderExtractor
     private static readonly QueryDescription Greyboxes = new QueryDescription().WithAll<Greybox, Transform>().WithNone<MeshRenderer, Hidden>();
     private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>().WithNone<Hidden>();
     private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription IndoorVolumes = new QueryDescription().WithAll<IndoorVolume, Transform>();
     private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
 
     public void Extract(World world, RenderScene scene)
@@ -49,7 +50,8 @@ public sealed class WorldExtractor : IRenderExtractor
 
             Matrix4x4 meshWorld = transform.ToMatrix();
             Outline? outline = FindOutline(world, entity);
-            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, null, renderer.Materials, outline));
+            bool shadowOnly = world.Has<ShadowOnly>(entity);
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, null, renderer.Materials, outline, shadowOnly));
         });
         world.Query(in AnimatedMeshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform, ref MeshAnimator animator) =>
         {
@@ -60,14 +62,16 @@ public sealed class WorldExtractor : IRenderExtractor
 
             Matrix4x4 meshWorld = transform.ToMatrix();
             Outline? outline = FindOutline(world, entity);
-            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, animator, renderer.Materials, outline));
+            bool shadowOnly = world.Has<ShadowOnly>(entity);
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, animator, renderer.Materials, outline, shadowOnly));
         });
         world.Query(in Greyboxes, (Entity entity, ref Greybox greybox, ref Transform transform) =>
         {
             Matrix4x4 meshWorld = transform.ToMatrix();
             Outline? outline = FindOutline(world, entity);
             string mesh = greybox.GetShownSwap() ?? GreyboxMesh.GetName(greybox.Size);
-            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, mesh, null, null, outline));
+            bool shadowOnly = world.Has<ShadowOnly>(entity);
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, mesh, null, null, outline, shadowOnly));
         });
         world.Query(in PointLights, (ref PointLight light, ref Transform transform) =>
         {
@@ -76,6 +80,16 @@ public sealed class WorldExtractor : IRenderExtractor
         world.Query(in SpotLights, (ref SpotLight light, ref Transform transform) =>
         {
             scene.SpotLights.Add(new RenderSpotLight(light, transform.Position, transform.Rotation));
+        });
+        world.Query(in IndoorVolumes, (Entity entity, ref IndoorVolume volume, ref Transform transform) =>
+        {
+            (Vector3 min, Vector3 max) = volume.GetBounds(transform.Position, transform.Rotation);
+            RenderIndoor indoor = new(min, max, volume.Ambient, volume.OutsideMuted);
+            scene.Indoors.Add(indoor);
+            if (world.Has<Cutaway>(entity))
+            {
+                scene.Cutaway = indoor;
+            }
         });
         world.Query(in Volumes, (ref IrradianceVolume volume, ref Transform transform) =>
         {

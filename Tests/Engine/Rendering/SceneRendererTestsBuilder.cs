@@ -13,6 +13,7 @@ using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
@@ -127,6 +128,22 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         string json = $$"""{ "entities": [{{string.Join(",", entities)}}] }""";
         SceneData? scene = JsonSerializer.Deserialize(json, RuntimeJsonContext.Default.SceneData);
         _game.Spawner.Spawn(scene!, _game.World);
+        return this;
+    }
+
+    /// <summary>Adds a component the scene files can't give, such as a tag systems set, to the scene's entity of that name.</summary>
+    public SceneRendererTestsBuilder WithComponent<T>(string name, T component)
+    {
+        Entity? found = null;
+        QueryDescription named = new QueryDescription().WithAll<EntityName>();
+        _game.World.Query(in named, (Entity entity, ref EntityName entityName) =>
+        {
+            if (entityName.Value == name)
+            {
+                found = entity;
+            }
+        });
+        _game.World.Add(found!.Value, component);
         return this;
     }
 

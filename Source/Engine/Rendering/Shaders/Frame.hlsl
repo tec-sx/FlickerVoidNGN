@@ -41,9 +41,15 @@ struct FrameData
     float AmbientOcclusion;
     float AmbientOcclusionRadius;
     float ContactShadowLength;
+    float3 CutMin;
+    uint Cut;
+    float3 CutMax;
+    float CutMuted;
+    uint IndoorCount;
+    uint IndoorsOffset;
 };
 
-static const uint FrameDataSize = 320;
+static const uint FrameDataSize = 368;
 static const uint None = 0xFFFFFFFF;
 
 FrameData LoadFrame(uint index)
@@ -82,6 +88,12 @@ FrameData LoadFrame(uint index)
     frame.AmbientOcclusion = buffer.Load<float>(308);
     frame.AmbientOcclusionRadius = buffer.Load<float>(312);
     frame.ContactShadowLength = buffer.Load<float>(316);
+    frame.CutMin = buffer.Load<float3>(320);
+    frame.Cut = buffer.Load<uint>(332);
+    frame.CutMax = buffer.Load<float3>(336);
+    frame.CutMuted = buffer.Load<float>(348);
+    frame.IndoorCount = buffer.Load<uint>(352);
+    frame.IndoorsOffset = buffer.Load<uint>(356);
     return frame;
 }
 
