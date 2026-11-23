@@ -1,26 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
-             xmlns:scenes="using:FlickerVoid.Engine.Runtime.Scenes"
              xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Inspector.InspectorView"
              x:DataType="inspector:InspectorViewModel">
   <DockPanel>
     <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" Classes="heading" />
-    <DropDownButton DockPanel.Dock="Bottom" Content="Add Component" HorizontalAlignment="Stretch" Margin="2"
-                    IsEnabled="{Binding !!AddableComponents.Count}">
-      <DropDownButton.Flyout>
-        <MenuFlyout ItemsSource="{Binding AddableComponents}">
-          <MenuFlyout.ItemContainerTheme>
-            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="scenes:SceneComponent">
-              <Setter Property="Header" Value="{Binding Name}" />
-              <Setter Property="Command" Value="{Binding $parent[UserControl].((inspector:InspectorViewModel)DataContext).AddComponentCommand}" />
-              <Setter Property="CommandParameter" Value="{Binding}" />
-            </ControlTheme>
-          </MenuFlyout.ItemContainerTheme>
-        </MenuFlyout>
-      </DropDownButton.Flyout>
-    </DropDownButton>
+    <Button DockPanel.Dock="Bottom" Content="Add Component" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2"
+            IsEnabled="{Binding !!AddChoices.Count}" Click="OnAddComponentClick" />
     <Border Classes="well">
     <ScrollViewer>
       <ItemsControl ItemsSource="{Binding Components}" Margin="2,0,2,4">

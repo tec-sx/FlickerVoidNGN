@@ -46,6 +46,20 @@ public sealed class InspectorViewModelTests : IDisposable
     }
 
     [Fact]
+    public void OffersAddableComponentsGroupedByModuleWithIcons()
+    {
+        Entity lamp = _builder.Select("Lamp", new Transform(), new PointLight());
+
+        FlickerVoid.Editor.Core.Menus.MenuChoice spot = _builder.ViewModel.AddChoices.Single(choice => choice.Name == "Spot Light");
+        spot.Run();
+
+        spot.Group.Should().Be("Rendering");
+        spot.Icon.Should().Be("SpotLight");
+        _builder.World.Has<SpotLight>(lamp).Should().BeTrue();
+        _builder.ViewModel.AddChoices.Should().NotContain(choice => choice.Name == "Spot Light" || choice.Name == "Transform");
+    }
+
+    [Fact]
     public void ShowsNothingWhenNothingIsSelected()
     {
         _builder.Select("Lamp", new Transform(), new PointLight());

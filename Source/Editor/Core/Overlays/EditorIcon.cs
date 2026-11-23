@@ -7,4 +7,5 @@ public enum EditorIcon
     SpotLight,
     Camera,
     IrradianceVolume,
+    CameraCue,
 }
