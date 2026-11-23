@@ -15,6 +15,7 @@ using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Selection;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Editor.Scenes;
+using FlickerVoid.Engine.Cameras.Shots;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Rendering.Cameras;
@@ -38,6 +39,9 @@ public sealed partial class ViewportViewModel : ObservableObject
     private const float ReachLineWidth = 1.5f;
     private const int ConeEdges = 4;
     private const float FrustumAspect = 16f / 9f;
+
+    private static readonly QueryDescription CameraTargets = new QueryDescription().WithAll<CameraTarget, Transform>();
+    private static readonly QueryDescription NamedEntities = new QueryDescription().WithAll<EntityName, Transform>();
 
     /// <summary>The radius framed round an entity without a mesh, such as a light.</summary>
     private const float FramedPointRadius = 1;
@@ -91,6 +95,10 @@ public sealed partial class ViewportViewModel : ObservableObject
     public partial bool IsGameView { get; set; }
 
     public bool IsGridVisible => ShowGrid && !IsGameView;
+
+    /// <summary>Draws the main camera's depth fade, in the viewport and the camera preview.</summary>
+    [ObservableProperty]
+    public partial bool ShowDepthFade { get; set; } = true;
 
     /// <summary>The selected entity's name, or what to do to select one.</summary>
     public string SelectionText
@@ -595,6 +603,77 @@ public sealed partial class ViewportViewModel : ObservableObject
         Camera camera = world.Get<Camera>(selected);
         Transform transform = world.Get<Transform>(selected);
         return new RenderCamera(camera, transform);
+    }
+
+    /// <summary>The depth fade the viewport draws: the main camera's, without any camera's override; none while it is switched off.</summary>
+    public DepthFade GetDepthFade()
+    {
+        if (!ShowDepthFade)
+        {
+            return default;
+        }
+
+        return MainCamera.Find(Scene.Game.World);
+    }
+
+    /// <summary>The depth fade the selected camera's preview draws: the main camera's changed by the camera's override.</summary>
+    public DepthFade GetPreviewDepthFade()
+    {
+        if (!ShowDepthFade || Selection.Selected is not { } selected)
+        {
+            return default;
+        }
+
+        return MainCamera.FindFor(Scene.Game.World, selected);
+    }
+
+    /// <summary>
+    /// Where the depth fade is measured from, as the game does: the selected shot's named target, else the first camera target,
+    /// at its aim height; without one, the editor camera's pivot.
+    /// </summary>
+    public Vector3 GetDepthFocus()
+    {
+        World world = Scene.Game.World;
+        string target = string.Empty;
+        if (Selection.Selected is { } selected && world.IsAlive(selected) && world.TryGet(selected, out Shot shot))
+        {
+            target = shot.Target;
+        }
+
+        Entity found = Entity.Null;
+        if (string.IsNullOrEmpty(target))
+        {
+            world.Query(in CameraTargets, (Entity entity) =>
+            {
+                if (found == Entity.Null || entity.Id < found.Id)
+                {
+                    found = entity;
+                }
+            });
+        }
+        else
+        {
+            world.Query(in NamedEntities, (Entity entity, ref EntityName name) =>
+            {
+                if (found == Entity.Null && name.Value == target)
+                {
+                    found = entity;
+                }
+            });
+        }
+
+        if (found == Entity.Null)
+        {
+            return Camera.Pivot;
+        }
+
+        Vector3 aim = world.Get<Transform>(found).Position;
+        if (world.TryGet(found, out CameraTarget cameraTarget))
+        {
+            aim.Y += cameraTarget.Height;
+        }
+
+        return aim;
     }
 
     /// <summary>A mesh's box, a point light's reach as three circles, a spot light's cone, or an irradiance volume's box.</summary>

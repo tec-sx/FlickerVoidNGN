@@ -86,6 +86,30 @@ public sealed class WorldExtractorTests : IDisposable
     }
 
     [Fact]
+    public void CopiesTheActiveCamerasDepthFadeAndFocus()
+    {
+        Camera lens = new() { OrthographicHeight = 3 };
+        DepthFade fade = new(1, 2, 0.5f, 3, 4, 0.25f, Vector3.UnitY);
+        ActiveCamera active = new() { Lens = lens, DepthFade = fade, Focus = new Vector3(1, 2, 3) };
+
+        RenderScene scene = _builder.WithMainCamera(new MainCamera()).WithActiveCamera(lens, Vector3.Zero, active).Extract();
+
+        scene.DepthFade.Should().Be(fade, "the director already chose the fade");
+        scene.Focus.Should().Be(new Vector3(1, 2, 3));
+    }
+
+    [Fact]
+    public void FadesTheFirstCameraAsTheMainCameraSaysWithoutADirector()
+    {
+        MainCamera main = new() { NearAmount = 0.5f };
+
+        RenderScene scene = _builder.WithMainCamera(main).Extract();
+
+        scene.DepthFade.Should().Be(main.ToDepthFade());
+        scene.Focus.Should().BeNull();
+    }
+
+    [Fact]
     public void LaysNothingOverWithoutADirector()
     {
         RenderScene scene = _builder.WithCamera(new Camera(), Vector3.Zero).Extract();

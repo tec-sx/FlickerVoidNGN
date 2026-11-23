@@ -19,7 +19,8 @@ namespace FlickerVoid.Engine.Cameras.Directing;
 /// <summary>
 /// Directs the camera each frame, a frame system and service: keeps one shot live (the scene's starting shot until told otherwise),
 /// switches shots with a transition (cut, cross-fade, fade or blend), keeps a stack of shots to return to, drives the live shot
-/// along its rail, moves it by its camera layers (shakes and zoom punches asked for by commands), and writes its posed lens and world pose, with the transition laid over the frame, into its
+/// along its rail, moves it by its camera layers (shakes and zoom punches asked for by commands), and writes its posed lens and world pose, with the transition laid over the frame
+/// and its depth fade (the main camera's, changed by the shot's override, measured from its target, blended as shots change), into its
 /// <see cref="ActiveCamera"/>, which the renderer draws from.
 /// </summary>
 public sealed class CameraDirector : BaseSystem<World, GameTime>
@@ -46,6 +47,8 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
     private float _dissolveSpeed;
 
     private RenderCamera _blendFrom;
+    private DepthFade _blendFromFade;
+    private Vector3? _blendFromFocus;
     private float _blend = 1;
     private float _blendSpeed;
     private ShotEase _blendEase;
@@ -494,6 +497,8 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         if (IsShot(Live) && World.TryGet(Live, out ActiveCamera active))
         {
             drawn = new RenderCamera(active.Lens, active.Pose);
+            _blendFromFade = active.DepthFade;
+            _blendFromFocus = active.Focus;
         }
 
         EndMoves();
@@ -544,22 +549,26 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
     private void WriteView(float seconds)
     {
         RenderCamera view = _driver.Pose(Live);
+        Shot shot = World.Get<Shot>(Live);
+        Vector3? target = null;
+        if (_driver.TryFindTarget(shot, out Vector3 aim))
+        {
+            target = aim;
+        }
+
         if (_driver.LayersEnabled(Live))
         {
-            Shot shot = World.Get<Shot>(Live);
-            Vector3? target = null;
-            if (_driver.TryFindTarget(shot, out Vector3 aim))
-            {
-                target = aim;
-            }
-
             view = _layers.Apply(Live, shot.Rig, view, target, Pointer, seconds);
         }
 
+        DepthFade fade = MainCamera.FindFor(World, Live);
+        Vector3? focus = target;
         if (_blend < 1)
         {
             float eased = _blendEase.Apply(_blend);
             view = Mix(_blendFrom, view, eased);
+            fade = DepthFade.Lerp(_blendFromFade, fade, eased);
+            focus = MixFocus(_blendFromFocus, focus, eased);
         }
 
         ActiveCamera active = new() { Lens = view.Camera, Pose = view.Transform, Fade = _fade, FadeColor = _fadeColor };
@@ -569,7 +578,12 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
             active.Dissolve = _dissolve;
             active.DissolveLens = from.Camera;
             active.DissolvePose = from.Transform;
+            DepthFade fromFade = MainCamera.FindFor(World, _dissolveFrom);
+            fade = DepthFade.Lerp(fade, fromFade, _dissolve);
         }
+
+        active.DepthFade = fade;
+        active.Focus = focus;
 
         if (World.Has<ActiveCamera>(Live))
         {
@@ -595,6 +609,17 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
 
         Transform pose = new() { Position = position, Rotation = rotation };
         return new RenderCamera(lens, pose);
+    }
+
+    /// <summary>The focus part of the way from one to another; a missing one gives way to the other.</summary>
+    private static Vector3? MixFocus(Vector3? from, Vector3? to, float amount)
+    {
+        if (from is { } start && to is { } end)
+        {
+            return Vector3.Lerp(start, end, amount);
+        }
+
+        return to ?? from;
     }
 
     /// <summary>The earliest created shot marked to start, else the earliest created shot.</summary>
