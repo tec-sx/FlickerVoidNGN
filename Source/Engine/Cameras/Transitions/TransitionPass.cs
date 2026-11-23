@@ -97,6 +97,7 @@ public sealed class TransitionPass : IRenderPass
         _dissolveRenderer.Mood = context.Mood;
         _dissolveRenderer.LocalLights = context.LocalLights;
         _dissolveRenderer.Probes = context.Probes;
+        _dissolveRenderer.Sky = context.Sky;
         _dissolveRenderer.Render(context.Commands, context.Scene, target, from.Camera, from.Transform);
         context.Commands.Barrier(target, ResourceState.ShaderRead);
         return target;

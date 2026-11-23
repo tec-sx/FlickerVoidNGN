@@ -1,14 +1,12 @@
+using System.Numerics;
 using System.Runtime.InteropServices;
 
-using FlickerVoid.Editor.Core.Cameras;
-using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
-using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.PostProcessing;
@@ -18,11 +16,11 @@ using FlickerVoid.Engine.Runtime.Loop;
 
 using Microsoft.Extensions.Logging;
 
-namespace FlickerVoid.Editor.Core.Tests.Viewports;
+namespace FlickerVoid.Engine.Rendering.Tests;
 
 /// <summary>
-/// Renders an empty world with the sky pass after the scene renderer's own passes, through an editor camera, on a Vulkan device
-/// with validation on; skips the test without Vulkan 1.3 and fails it on any logged error.
+/// Renders an empty world with the renderer's sky on, through a camera looking level from a metre up, on a Vulkan device with
+/// validation on; skips the test without Vulkan 1.3 and fails it on any logged error.
 /// </summary>
 internal sealed class SkyPassTestsBuilder : IDisposable
 {
@@ -48,7 +46,18 @@ internal sealed class SkyPassTestsBuilder : IDisposable
         Directory.CreateDirectory(_contentFolder);
     }
 
-    public EditorCamera Camera { get; } = new();
+    public Camera Camera { get; set; } = new();
+
+    public Transform CameraTransform { get; set; } = new() { Position = new Vector3(0, 1, 5) };
+
+    /// <summary>Looks through an orthographic camera tilted down, as the game's views do.</summary>
+    public SkyPassTestsBuilder LookingDownOrthographically()
+    {
+        Camera = new Camera { Projection = CameraProjection.Orthographic };
+        Quaternion tilt = Quaternion.CreateFromAxisAngle(Vector3.UnitX, -0.5f);
+        CameraTransform = new Transform { Position = new Vector3(0, 5, 10), Rotation = tilt };
+        return this;
+    }
 
     /// <summary>Lays a paper of one grey under the scene, as a mood with paper does.</summary>
     public SkyPassTestsBuilder WithPaper(byte grey)
@@ -67,8 +76,8 @@ internal sealed class SkyPassTestsBuilder : IDisposable
         return this;
     }
 
-    /// <summary>The pass under test, once the first render has built it.</summary>
-    public SkyPass? Sky { get; private set; }
+    /// <summary>The renderer under test, once the first render has built it.</summary>
+    public SceneRenderer? Renderer => _renderer;
 
     /// <summary>Renders into a new target and reads it back as Rgba8 pixels, top row first.</summary>
     public uint[] Render()
@@ -83,10 +92,8 @@ internal sealed class SkyPassTestsBuilder : IDisposable
         using IBuffer readback = device.CreateBuffer(readbackDescription);
         using ICommandList commands = device.CreateCommandList();
 
-        Camera camera = Camera.ToCamera();
-        Transform transform = Camera.ToTransform();
         commands.Begin();
-        _renderer.Render(commands, _game.World, color, camera, transform);
+        _renderer.Render(commands, _game.World, color, Camera, CameraTransform);
         commands.Barrier(color, ResourceState.CopySource);
         commands.CopyTextureToBuffer(color, readback, 0);
         commands.End();
@@ -128,11 +135,7 @@ internal sealed class SkyPassTestsBuilder : IDisposable
     {
         ContentManager content = new(_contentFolder);
         LightingMood mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0, Tonemapper = Tonemapper.None, Canvas = _paper };
-        SceneRenderer renderer = new(device, content, Format) { Mood = mood };
-        ShaderLibrary shaders = ShaderLibrary.ForEngine("Editor");
-        Sky = new SkyPass(device, shaders, Format);
-        renderer.Pipeline.Add(Sky);
-        return renderer;
+        return new SceneRenderer(device, content, Format) { Mood = mood, Sky = true };
     }
 
     private IGraphicsDevice BuildDevice()
