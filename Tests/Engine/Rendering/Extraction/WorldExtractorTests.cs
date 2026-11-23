@@ -7,6 +7,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Greyboxes;
 
 namespace FlickerVoid.Engine.Rendering.Tests.Extraction;
 
@@ -25,6 +26,30 @@ public sealed class WorldExtractorTests : IDisposable
         scene.Cameras.Should().ContainSingle();
         scene.Cameras[0].Camera.OrthographicHeight.Should().Be(7);
         scene.Cameras[0].Transform.Position.Should().Be(position);
+    }
+
+    [Fact]
+    public void DrawsAGreyboxAsABoxOfItsSize()
+    {
+        Greybox greybox = new() { Size = new Vector3(4, 3, 0.2f) };
+        Transform transform = new() { Position = new Vector3(1, 0, 2) };
+
+        RenderScene scene = _builder.WithGreybox(greybox, transform).Extract();
+
+        scene.Meshes.Should().ContainSingle();
+        scene.Meshes[0].Mesh.Should().Be(GreyboxMesh.GetName(new Vector3(4, 3, 0.2f)));
+        scene.Meshes[0].World.Translation.Should().Be(new Vector3(1, 0, 2));
+    }
+
+    [Fact]
+    public void DrawsTheSwapModelShownInAGreyboxsPlace()
+    {
+        Greybox greybox = new() { Swaps = ["Walls/Plain.glb", "Walls/Broken.glb"], Swap = 2 };
+
+        RenderScene scene = _builder.WithGreybox(greybox, new Transform()).Extract();
+
+        scene.Meshes.Should().ContainSingle();
+        scene.Meshes[0].Mesh.Should().Be("Walls/Broken.glb");
     }
 
     [Fact]

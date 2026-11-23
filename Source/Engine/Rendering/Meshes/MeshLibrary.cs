@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Runtime.InteropServices;
 
 using FlickerVoid.Engine.Graphics.Buffers;
@@ -11,6 +12,7 @@ namespace FlickerVoid.Engine.Rendering.Meshes;
 /// <summary>
 /// Loads each model the first time it is drawn and keeps it on the GPU until its file changes on disk and the next draw loads
 /// it again. A model is named by its source (Room.glb); the game loads what the content build baked of it (Room.fvmodel).
+/// Greybox boxes are made from their names (<see cref="GreyboxMesh"/>).
 /// </summary>
 internal sealed class MeshLibrary : IDisposable
 {
@@ -27,6 +29,11 @@ internal sealed class MeshLibrary : IDisposable
 
     public GpuModel Get(string path)
     {
+        if (GreyboxMesh.TryGetSize(path, out Vector3 size))
+        {
+            return GetGreybox(path, size);
+        }
+
         string builtPath = Path.ChangeExtension(path, ".fvmodel");
         string fullPath = _content.GetFullPath(builtPath);
         if (_models.TryGetValue(fullPath, out GpuModel? loaded))
@@ -43,6 +50,20 @@ internal sealed class MeshLibrary : IDisposable
         GpuMeshPart[] uploaded = [.. data.Parts.Select(part => Upload(part, path))];
         GpuModel model = new(uploaded, data.Animations);
         _models.Add(fullPath, model);
+        return model;
+    }
+
+    private GpuModel GetGreybox(string name, Vector3 size)
+    {
+        if (_models.TryGetValue(name, out GpuModel? made))
+        {
+            return made;
+        }
+
+        ModelData data = GreyboxMesh.Create(size);
+        GpuMeshPart[] uploaded = [.. data.Parts.Select(part => Upload(part, name))];
+        GpuModel model = new(uploaded, data.Animations);
+        _models.Add(name, model);
         return model;
     }
 

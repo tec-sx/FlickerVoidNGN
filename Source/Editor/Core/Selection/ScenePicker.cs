@@ -7,16 +7,18 @@ using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Greyboxes;
 
 namespace FlickerVoid.Editor.Core.Selection;
 
 /// <summary>
-/// Finds the mesh a ray hits first, by its triangles (skinned ones in their bind pose); entities without a mesh are picked by
+/// Finds the mesh or greybox a ray hits first, by its triangles (skinned ones in their bind pose); entities without a mesh are picked by
 /// their icons. Keeps each model's triangles from the first pick until its file changes.
 /// </summary>
 public sealed class ScenePicker : IDisposable
 {
     private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription Greyboxes = new QueryDescription().WithAll<Greybox, Transform>().WithNone<MeshRenderer, Hidden>();
 
     private readonly IContentManager _content;
     private readonly Dictionary<string, PickModel?> _models = new(ContentManager.PathComparer);
@@ -45,6 +47,15 @@ public sealed class ScenePicker : IDisposable
                 nearestDistance = distance;
             }
         });
+        world.Query(in Greyboxes, (Entity entity, ref Greybox greybox, ref Transform transform) =>
+        {
+            string mesh = GetMesh(greybox);
+            if (HitsMesh(ray, mesh, transform, out float distance) && distance < nearestDistance)
+            {
+                nearest = entity;
+                nearestDistance = distance;
+            }
+        });
         distance = nearestDistance;
         return nearest;
     }
@@ -59,12 +70,21 @@ public sealed class ScenePicker : IDisposable
             return false;
         }
 
-        if (!world.TryGet(entity, out MeshRenderer renderer))
+        string mesh;
+        if (world.TryGet(entity, out MeshRenderer renderer))
+        {
+            mesh = renderer.Mesh;
+        }
+        else if (world.TryGet(entity, out Greybox greybox))
+        {
+            mesh = GetMesh(greybox);
+        }
+        else
         {
             return false;
         }
 
-        PickModel? model = Load(renderer.Mesh);
+        PickModel? model = Load(mesh);
         if (model is null)
         {
             return false;
@@ -125,8 +145,19 @@ public sealed class ScenePicker : IDisposable
         return true;
     }
 
+    /// <summary>The model a greybox shows: the swap in its place, or its box.</summary>
+    private static string GetMesh(in Greybox greybox)
+    {
+        return greybox.GetShownSwap() ?? GreyboxMesh.GetName(greybox.Size);
+    }
+
     private PickModel? Load(string mesh)
     {
+        if (GreyboxMesh.TryGetSize(mesh, out Vector3 size))
+        {
+            return LoadGreybox(mesh, size);
+        }
+
         string builtPath = Path.ChangeExtension(mesh, ".fvmodel");
         string fullPath = _content.GetFullPath(builtPath);
         if (_models.TryGetValue(fullPath, out PickModel? loaded))
@@ -144,6 +175,19 @@ public sealed class ScenePicker : IDisposable
         return model;
     }
 
+    private PickModel LoadGreybox(string mesh, Vector3 size)
+    {
+        if (_models.TryGetValue(mesh, out PickModel? made) && made is not null)
+        {
+            return made;
+        }
+
+        ModelData data = GreyboxMesh.Create(size);
+        PickModel model = Collect(data);
+        _models[mesh] = model;
+        return model;
+    }
+
     private static PickModel Read(string fullPath)
     {
         ModelData data;
@@ -152,6 +196,11 @@ public sealed class ScenePicker : IDisposable
             data = ModelFile.Read(stream);
         }
 
+        return Collect(data);
+    }
+
+    private static PickModel Collect(ModelData data)
+    {
         List<Vector3> positions = [];
         List<uint> indices = [];
         Vector3 min = new(float.PositiveInfinity);

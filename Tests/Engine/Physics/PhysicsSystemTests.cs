@@ -117,6 +117,28 @@ public sealed class PhysicsSystemTests : IDisposable
     }
 
     [Fact]
+    public void SolidGreyboxesBlockWhilePlaying()
+    {
+        _game.Lifecycle.Play(_game.World);
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 5, 0] },
+                "rigidBody": { "mass": 10, "collider": { "type": "box", "offset": [0, 0.5, 0] } } } },
+            { "name": "Floor", "components": {
+                "transform": { "position": [0, -1, 0] },
+                "greybox": { "size": [20, 1, 20] } } },
+            { "name": "Rug", "components": {
+                "transform": { "position": [0, 0, 0] },
+                "greybox": { "size": [2, 0.1, 2], "solid": false } } }
+            """);
+
+        Run(seconds: 3);
+
+        Transform crate = _game.World.Get<Transform>(entities[0]);
+        crate.Position.Y.Should().BeInRange(-0.05f, 0.05f);
+    }
+
+    [Fact]
     public void ShapesSitAtTheirCollidersOffsetInTheEntitysSpace()
     {
         IReadOnlyList<Entity> entities = Spawn("""

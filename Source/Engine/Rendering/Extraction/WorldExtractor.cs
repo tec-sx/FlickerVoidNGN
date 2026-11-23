@@ -8,11 +8,12 @@ using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Greyboxes;
 
 namespace FlickerVoid.Engine.Rendering.Extraction;
 
 /// <summary>
-/// Extracts cameras (a director's <see cref="ActiveCamera"/> first, at its posed view), meshes with their outlines, lights and
+/// Extracts cameras (a director's <see cref="ActiveCamera"/> first, at its posed view), meshes and greyboxes (the box, or the swap model shown in its place) with their outlines, lights and
 /// irradiance volumes from entities with a transform.
 /// </summary>
 public sealed class WorldExtractor : IRenderExtractor
@@ -21,6 +22,7 @@ public sealed class WorldExtractor : IRenderExtractor
     private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>().WithNone<ActiveCamera>();
     private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>().WithNone<MeshAnimator, Hidden>();
     private static readonly QueryDescription AnimatedMeshes = new QueryDescription().WithAll<MeshRenderer, Transform, MeshAnimator>().WithNone<Hidden>();
+    private static readonly QueryDescription Greyboxes = new QueryDescription().WithAll<Greybox, Transform>().WithNone<MeshRenderer, Hidden>();
     private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>().WithNone<Hidden>();
     private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>().WithNone<Hidden>();
     private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
@@ -59,6 +61,13 @@ public sealed class WorldExtractor : IRenderExtractor
             Matrix4x4 meshWorld = transform.ToMatrix();
             Outline? outline = FindOutline(world, entity);
             scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, animator, renderer.Materials, outline));
+        });
+        world.Query(in Greyboxes, (Entity entity, ref Greybox greybox, ref Transform transform) =>
+        {
+            Matrix4x4 meshWorld = transform.ToMatrix();
+            Outline? outline = FindOutline(world, entity);
+            string mesh = greybox.GetShownSwap() ?? GreyboxMesh.GetName(greybox.Size);
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, mesh, null, null, outline));
         });
         world.Query(in PointLights, (ref PointLight light, ref Transform transform) =>
         {
