@@ -19,6 +19,7 @@ public static class SceneIcons
         ("sceneMood", "Mood"),
         ("interactable", "Entity"),
         ("meshRenderer", "Model"),
+        ("greybox", "Model"),
     ];
 
     public const string Folder = "Folder";

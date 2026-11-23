@@ -23,7 +23,7 @@ public sealed partial class Game : IDisposable
     private readonly ILogger _logger;
     private bool _initialized;
 
-    /// <summary>Creates the world and registers it, the logger factory, the scene spawner, the debug console, the events, the facts and the transform hierarchy as services.</summary>
+    /// <summary>Creates the world and registers it, the logger factory, the scene spawner (with the transform, saveable and greybox components), the debug console, the events, the facts and the transform hierarchy as services.</summary>
     public Game(ILoggerFactory loggerFactory)
     {
         LoggerFactory = loggerFactory;
@@ -36,6 +36,7 @@ public sealed partial class Game : IDisposable
 
         Spawner.Register("transform", RuntimeJsonContext.Default.Transform);
         Spawner.Register("saveable", RuntimeJsonContext.Default.Saveable);
+        Spawner.Register("greybox", RuntimeJsonContext.Default.Greybox);
         SaveStates.AddComponent("transform", RuntimeJsonContext.Default.Transform);
         Services.AddService(Spawner);
         Schemas.Add("scene", Spawner.GetSchema);

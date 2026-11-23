@@ -8,6 +8,7 @@ using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Greyboxes;
 using FlickerVoid.Engine.Runtime.Loop;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -59,6 +60,12 @@ internal sealed class ScenePickerTestsBuilder : IDisposable
         Transform transform = new() { Position = position, Scale = new Vector3(scale) };
         MeshRenderer renderer = new() { Mesh = mesh };
         return _game.World.Create(transform, renderer);
+    }
+
+    public Entity AddGreybox(Greybox greybox, Vector3 position)
+    {
+        Transform transform = new() { Position = position };
+        return _game.World.Create(transform, greybox);
     }
 
     /// <summary>Reports a content file changed, as the content watcher would.</summary>

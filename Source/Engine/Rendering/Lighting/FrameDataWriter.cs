@@ -4,13 +4,14 @@ using System.Runtime.InteropServices;
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Pipeline;
 
 namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>
-/// Writes the frame's view, sun, lights, shadows, light clusters and probes into the frame buffer ring, after every pass
+/// Writes the frame's view, sun, lights, shadows, light clusters, probes, indoor volumes and cutaway into the frame buffer ring, after every pass
 /// has prepared and before any executes.
 /// </summary>
 internal sealed class FrameDataWriter : IDisposable
@@ -46,7 +47,10 @@ internal sealed class FrameDataWriter : IDisposable
         int shadowsOffset = lightsOffset + lightBytes.Length;
         int clustersOffset = shadowsOffset + shadowBytes.Length;
         int indicesOffset = clustersOffset + rangeBytes.Length;
-        int size = indicesOffset + indexBytes.Length;
+        GpuIndoor[] indoors = CollectIndoors(context.Scene);
+        ReadOnlySpan<byte> indoorBytes = MemoryMarshal.AsBytes(indoors.AsSpan());
+        int indoorsOffset = indicesOffset + indexBytes.Length;
+        int size = indoorsOffset + indoorBytes.Length;
 
         // A pixel's view depth is the dot product of its world position and the view matrix's negated third column.
         Matrix4x4 viewMatrix = view.View;
@@ -68,6 +72,14 @@ internal sealed class FrameDataWriter : IDisposable
             volume = probes.Volume;
             probeSize = volume.Size;
             probeMin = probes.Center - (volume.Size / 2);
+        }
+
+        RenderIndoor cutaway = default;
+        uint cut = 0;
+        if (context.Scene.Cutaway is { } looked)
+        {
+            cutaway = looked;
+            cut = 1;
         }
 
         Matrix4x4.Invert(viewMatrix, out Matrix4x4 cameraWorld);
@@ -127,6 +139,14 @@ internal sealed class FrameDataWriter : IDisposable
             fade.FarEnd,
             fade.FarAmount,
             0,
+            0,
+            cutaway.Min,
+            cut,
+            cutaway.Max,
+            cutaway.OutsideMuted,
+            (uint)indoors.Length,
+            (uint)indoorsOffset,
+            0,
             0);
 
         IBuffer frame = _frames.Get(size);
@@ -136,7 +156,20 @@ internal sealed class FrameDataWriter : IDisposable
         frame.Write(shadowBytes, shadowsOffset);
         frame.Write(rangeBytes, clustersOffset);
         frame.Write(indexBytes, indicesOffset);
+        frame.Write(indoorBytes, indoorsOffset);
         return frame;
+    }
+
+    private static GpuIndoor[] CollectIndoors(RenderScene scene)
+    {
+        GpuIndoor[] indoors = new GpuIndoor[scene.Indoors.Count];
+        for (int index = 0; index < indoors.Length; index++)
+        {
+            RenderIndoor indoor = scene.Indoors[index];
+            indoors[index] = new GpuIndoor(indoor.Min, indoor.Ambient, indoor.Max);
+        }
+
+        return indoors;
     }
 
     public void Dispose()

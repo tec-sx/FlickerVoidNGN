@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Engine.Runtime.Geometry;
+using FlickerVoid.Engine.Runtime.Greyboxes;
 using FlickerVoid.Editor.Core.Selection;
 
 namespace FlickerVoid.Editor.Core.Tests.Selection;
@@ -25,6 +26,19 @@ public sealed class ScenePickerTests : IDisposable
         Entity? picked = picker.Pick(_builder.World, DownTheZAxis);
 
         picked.Should().Be(square);
+    }
+
+    [Fact]
+    public void PicksGreyboxesByTheirBox()
+    {
+        Greybox greybox = new() { Size = new Vector3(2, 2, 2) };
+        Entity box = _builder.AddGreybox(greybox, new Vector3(0, -1, 0));
+        ScenePicker picker = _builder.Build();
+
+        Entity? picked = picker.Pick(_builder.World, DownTheZAxis, out float distance);
+
+        picked.Should().Be(box);
+        distance.Should().BeApproximately(9, 0.001f);
     }
 
     [Fact]

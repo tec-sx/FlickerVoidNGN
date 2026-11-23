@@ -49,9 +49,15 @@ struct FrameData
     float FarStart;
     float FarEnd;
     float FarAmount;
+    float3 CutMin;
+    uint Cut;
+    float3 CutMax;
+    float CutMuted;
+    uint IndoorCount;
+    uint IndoorsOffset;
 };
 
-static const uint FrameDataSize = 368;
+static const uint FrameDataSize = 416;
 static const uint None = 0xFFFFFFFF;
 
 FrameData LoadFrame(uint index)
@@ -98,6 +104,12 @@ FrameData LoadFrame(uint index)
     frame.FarStart = buffer.Load<float>(348);
     frame.FarEnd = buffer.Load<float>(352);
     frame.FarAmount = buffer.Load<float>(356);
+    frame.CutMin = buffer.Load<float3>(368);
+    frame.Cut = buffer.Load<uint>(380);
+    frame.CutMax = buffer.Load<float3>(384);
+    frame.CutMuted = buffer.Load<float>(396);
+    frame.IndoorCount = buffer.Load<uint>(400);
+    frame.IndoorsOffset = buffer.Load<uint>(404);
     return frame;
 }
 

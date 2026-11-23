@@ -21,6 +21,9 @@ public sealed record EntityPreset(string Name, IReadOnlyList<string> Components,
     [
         new("Empty", ["transform"], "Empty") { Icon = "Empty" },
         new("Mesh", ["transform", "meshRenderer"], "Model") { Icon = "Model" },
+        Greybox("Box", "[1, 1, 1]"),
+        Greybox("Wall", "[4, 3, 0.2]"),
+        Greybox("Floor", "[4, 0.2, 4]"),
         new("Point Light", ["transform", "pointLight"], "Light") { Icon = "PointLight" },
         new("Spot Light", ["transform", "spotLight"], "Light") { Icon = "SpotLight" },
         new("Irradiance Volume", ["transform", "irradianceVolume"], "Light") { Icon = "Grid" },
@@ -38,6 +41,13 @@ public sealed record EntityPreset(string Name, IReadOnlyList<string> Components,
     {
         ["meshRenderer"] = """{ "mesh": "" }""",
     };
+
+    /// <summary>A greybox of a typical size, to lay out a level before its models are made.</summary>
+    private static EntityPreset Greybox(string name, string size)
+    {
+        Dictionary<string, string> values = new() { ["greybox"] = $$"""{ "size": {{size}} }""" };
+        return new EntityPreset(name, ["transform", "greybox"], "Greybox") { Values = values, Icon = "Model" };
+    }
 
     /// <summary>A mesh entity named after a model file in the content folder, which it draws.</summary>
     public static EntityPreset ForModel(string path)

@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Cameras.Cutaways;
 using FlickerVoid.Engine.Cameras.Directing;
 using FlickerVoid.Engine.Cameras.Layers;
 using FlickerVoid.Engine.Cameras.Scripting;
@@ -17,7 +18,7 @@ namespace FlickerVoid.Engine.Cameras;
 /// Adds directed cameras to a game: the <c>shot</c>, <c>cameraTarget</c>, <c>triggerArea</c>, <c>triggerActivator</c> and
 /// <c>cameraCue</c> components, the trigger area system (fixed) and cue system, the <c>cutToShot</c>, <c>playShot</c> and
 /// <c>shakeCamera</c> effects, the <c>switchShot</c>, <c>playShot</c>, <c>waitForShotMarker</c>, <c>fade</c> and
-/// <c>shakeCamera</c> flow nodes, the <c>cameraRig</c> data asset type and its layers (<c>follow</c>, <c>look</c>, <c>shake</c>, <c>zoomPunch</c>), the camera director (a frame system and service) and, in every scene renderer the host creates, the transition pass; after <c>AddRendering</c>.
+/// <c>shakeCamera</c> flow nodes, the <c>cameraRig</c> data asset type and its layers (<c>follow</c>, <c>look</c>, <c>shake</c>, <c>zoomPunch</c>), the camera director (a frame system and service), the cutaway system (a frame system and service) and, in every scene renderer the host creates, the transition pass; after <c>AddRendering</c>.
 /// </summary>
 public static class CamerasGameExtensions
 {
@@ -50,6 +51,9 @@ public static class CamerasGameExtensions
         game.Services.AddService(director);
         CameraCueSystem cues = new(game, director);
         game.Services.AddService(cues);
+        CutawaySystem cutaways = new(game.World);
+        game.FrameSystems.Add(cutaways);
+        game.Services.AddService(cutaways);
         SceneRendererSetup? renderers = game.Services.GetService<SceneRendererSetup>();
         renderers?.Add(AddTransitionPass);
         return director;

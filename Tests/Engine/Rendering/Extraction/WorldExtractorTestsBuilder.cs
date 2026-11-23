@@ -9,6 +9,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Greyboxes;
 
 namespace FlickerVoid.Engine.Rendering.Tests.Extraction;
 
@@ -57,6 +58,12 @@ internal sealed class WorldExtractorTestsBuilder : IDisposable
         MeshRenderer renderer = new() { Mesh = mesh };
         Entity entity = _world.Create(renderer, new Transform(), animator);
         id = entity.Id;
+        return this;
+    }
+
+    public WorldExtractorTestsBuilder WithGreybox(Greybox greybox, Transform transform)
+    {
+        _world.Create(greybox, transform);
         return this;
     }
 

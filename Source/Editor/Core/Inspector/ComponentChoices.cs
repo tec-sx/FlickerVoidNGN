@@ -15,6 +15,7 @@ public static class ComponentChoices
         ["irradianceVolume"] = "Grid",
         ["sceneMood"] = "Mood",
         ["meshRenderer"] = "Model",
+        ["greybox"] = "Model",
         ["protagonist"] = "Character",
         ["transform"] = "Move",
     };

@@ -5,6 +5,7 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Materials;
+using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Runtime.Content;
 
@@ -74,7 +75,13 @@ internal sealed class SkinningPass : IRenderPass
             }
 
             IBuffer material = _materials.Get(materialPath, context.Textures);
-            context.Draws.Add(new MeshDraw(mesh.World, part, vertices, material, mesh.Outline));
+            Outline? outline = mesh.Outline;
+            if (mesh.ShadowOnly)
+            {
+                outline = null;
+            }
+
+            context.Draws.Add(new MeshDraw(mesh.World, part, vertices, material, outline, mesh.ShadowOnly));
         }
     }
 }
