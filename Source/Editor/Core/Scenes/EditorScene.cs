@@ -443,6 +443,11 @@ public sealed class EditorScene : IDisposable
             data.Folder = folder.Path;
         }
 
+        if (world.TryGet(entity, out EntityParent parent))
+        {
+            data.Parent = parent.Name;
+        }
+
         foreach (SceneComponent component in Game.Spawner.Components)
         {
             if (component.Has(world, entity))
