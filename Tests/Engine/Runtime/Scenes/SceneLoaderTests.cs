@@ -5,6 +5,7 @@ using Arch.Core;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Scenes;
+using FlickerVoid.Engine.Runtime.Tests.Entities;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
 
@@ -156,6 +157,33 @@ public sealed class SceneLoaderTests : IDisposable
         Transform transform = _builder.World.Get<Transform>(lamp);
         transform.Position.Should().Be(new Vector3(4, 0, 0), "the placed transform replaces the template's");
         _builder.World.Has<Attached>(lamp).Should().BeTrue();
+    }
+
+    [Fact]
+    public void SpawnsAnEntityClassWithItsComponentsAtTheirDefaults()
+    {
+        SceneLoader loader = _builder.Build();
+        Transform placed = new() { Position = new Vector3(4, 0, 0) };
+
+        Lamp lamp = loader.Templates.Spawn<Lamp>(_builder.World, placed);
+
+        lamp.Glow.Intensity.Should().Be(1);
+        lamp.Transform.Position.Should().Be(new Vector3(4, 0, 0));
+        _builder.World.Has<Attached>(lamp.Entity).Should().BeTrue();
+    }
+
+    [Fact]
+    public void SpawnsAnEntityClassFromItsTemplate()
+    {
+        SceneLoader loader = _builder
+            .WithScene("Props/Lantern.fventity", """{ "components": { "glow": { "intensity": 4 } } }""")
+            .Build();
+        Transform placed = new() { Position = new Vector3(0, 1, 0) };
+
+        Lantern lantern = loader.Templates.Spawn<Lantern>(_builder.World, placed);
+
+        lantern.Glow.Intensity.Should().Be(4);
+        _builder.World.Get<Transform>(lantern.Entity).Position.Should().Be(new Vector3(0, 1, 0));
     }
 
     [Fact]

@@ -4,6 +4,7 @@ using Arch.Core;
 
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Engine.Runtime.Scenes;
@@ -18,6 +19,9 @@ public sealed class EntityTemplates
 
     private const string TransformName = "transform";
 
+    /// <summary>A component with no values set, which reads as its defaults.</summary>
+    private static readonly JsonElement DefaultComponent = JsonElement.Parse("{}");
+
     private readonly IContentManager _content;
     private readonly ISceneSpawner _spawner;
 
@@ -30,11 +34,49 @@ public sealed class EntityTemplates
     /// <summary>Creates and starts an entity from the template at <paramref name="path"/>, placed at <paramref name="transform"/>.</summary>
     public Entity Spawn(string path, World world, in Transform transform)
     {
+        EntityData placed = Place(path, transform);
+        return _spawner.Create(placed, world);
+    }
+
+    /// <summary>
+    /// Creates and starts an entity of the class, from its template when it names one, placed at <paramref name="transform"/>;
+    /// the class's components that neither gives start at their defaults.
+    /// </summary>
+    public TClass Spawn<TClass>(World world, in Transform transform)
+        where TClass : struct, IEntityClass<TClass>
+    {
+        EntityData placed = Place(TClass.Template, transform);
+        foreach (Type type in TClass.Components)
+        {
+            SceneComponent component = FindComponent(type);
+            placed.Components.TryAdd(component.Name, DefaultComponent);
+        }
+
+        Entity entity = _spawner.Create(placed, world);
+        return TClass.From(world, entity);
+    }
+
+    /// <summary>The entity a template, or none, makes at <paramref name="transform"/>, which replaces the template's.</summary>
+    private EntityData Place(string? template, in Transform transform)
+    {
         JsonElement placed = JsonSerializer.SerializeToElement(transform, RuntimeJsonContext.Default.Transform);
-        EntityData data = new() { Template = path, Components = { [TransformName] = placed } };
+        EntityData data = new() { Template = template, Components = { [TransformName] = placed } };
         EntityData expanded = Expand(data);
         expanded.Components[TransformName] = placed;
-        return _spawner.Create(expanded, world);
+        return expanded;
+    }
+
+    private SceneComponent FindComponent(Type type)
+    {
+        foreach (SceneComponent component in _spawner.Components)
+        {
+            if (component.TypeInfo.Type == type)
+            {
+                return component;
+            }
+        }
+
+        throw new InvalidOperationException($"{type.Name} is not registered as a scene component, so entities can't be spawned with it.");
     }
 
     /// <summary>The entity with its template's components under its own; the same data when it names no template.</summary>
