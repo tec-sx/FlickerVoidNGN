@@ -4,14 +4,14 @@ using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
-using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Pipeline;
 
-namespace FlickerVoid.Editor.Core.Viewports;
+namespace FlickerVoid.Engine.Rendering.Sky;
 
 /// <summary>
 /// Fills what the scene left empty with a sky-like gradient, lighter above the horizon; over a mood's paper it is a thin wash
-/// laid over the paper (multiplied), so the paper shows through. Add it after the post-processing pass, before the grid.
+/// laid over the paper (multiplied), so the paper shows through. It draws after post-processing while the renderer's
+/// <see cref="SceneRenderer.Sky"/> is on.
 /// </summary>
 public sealed class SkyPass : IRenderPass
 {
@@ -35,15 +35,13 @@ public sealed class SkyPass : IRenderPass
         _wash = device.CreateGraphicsPipeline(wash);
     }
 
-    public bool Visible { get; set; } = true;
-
     public void Prepare(RenderContext context)
     {
     }
 
     public void Execute(RenderContext context)
     {
-        if (!Visible)
+        if (!context.Sky)
         {
             return;
         }

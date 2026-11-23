@@ -155,7 +155,7 @@ public sealed partial class SceneHost : IDisposable
 
     private SceneRenderer CreateRenderer(PixelFormat format)
     {
-        SceneRenderer renderer = new(Device, Content, format) { Mood = Mood };
+        SceneRenderer renderer = new(Device, Content, format) { Mood = Mood, Sky = true };
         SceneRendererSetup? setup = Game.Services.GetService<SceneRendererSetup>();
         setup?.Apply(renderer);
         return renderer;

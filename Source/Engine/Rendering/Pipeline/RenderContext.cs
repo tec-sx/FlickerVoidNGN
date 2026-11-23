@@ -46,6 +46,9 @@ public sealed class RenderContext
 
     public bool Probes { get; internal set; } = true;
 
+    /// <summary>Whether the sky fills what the scene left empty.</summary>
+    public bool Sky { get; internal set; }
+
     /// <summary>The scene's depth, which passes after the opaque pass can test against, such as overlays drawn over the output.</summary>
     public ITexture Depth => Targets.Depth;
 

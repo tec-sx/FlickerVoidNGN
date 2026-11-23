@@ -18,6 +18,7 @@ using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Rendering.Shadows;
+using FlickerVoid.Engine.Rendering.Sky;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 
@@ -83,6 +84,7 @@ public sealed class SceneRenderer : IDisposable
         Pipeline.Add(new ScreenShadowPass(device, shaders));
         Pipeline.Add(new OpaquePass(device, shaders));
         Pipeline.Add(new PostProcessPass(device, shaders, colorFormat, content));
+        Pipeline.Add(new SkyPass(device, shaders, colorFormat));
         Pipeline.Add(new OutlinePass(device, shaders, colorFormat));
     }
 
@@ -107,6 +109,12 @@ public sealed class SceneRenderer : IDisposable
 
     /// <summary>Whether the irradiance volume's probes add bounced light.</summary>
     public bool Probes { get; set; } = true;
+
+    /// <summary>
+    /// Whether a sky gradient fills what the scene leaves empty; the game's window and the editor's views draw it, while stages,
+    /// previews and probe bakes leave the background empty.
+    /// </summary>
+    public bool Sky { get; set; }
 
     /// <summary>Probes that replace the world's irradiance volume while a bake renders, or null.</summary>
     internal ProbeSource? BakeProbes { get; set; }
@@ -186,6 +194,7 @@ public sealed class SceneRenderer : IDisposable
         context.Mood = Mood;
         context.LocalLights = LocalLights;
         context.Probes = Probes;
+        context.Sky = Sky;
         context.FrameSlot = _frameData.Advance();
 
         Pipeline.Prepare(context);

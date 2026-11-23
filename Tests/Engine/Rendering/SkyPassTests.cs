@@ -1,8 +1,4 @@
-using System.Numerics;
-
-using FlickerVoid.Engine.Rendering.Cameras;
-
-namespace FlickerVoid.Editor.Core.Tests.Viewports;
+namespace FlickerVoid.Engine.Rendering.Tests;
 
 public sealed class SkyPassTests : IDisposable
 {
@@ -18,8 +14,6 @@ public sealed class SkyPassTests : IDisposable
     [Fact]
     public void FillsTheEmptyViewLighterAboveTheHorizonThanBelow()
     {
-        _builder.Camera.LookAt(new Vector3(0, 1, 0), 0, 0, 5);
-
         uint[] pixels = _builder.Render();
 
         int above = SkyPassTestsBuilder.Brightness(pixels[(TopRow * Size) + Centre]);
@@ -31,8 +25,7 @@ public sealed class SkyPassTests : IDisposable
     [Fact]
     public void ShadesAnOrthographicViewFromTopToBottomToo()
     {
-        _builder.Camera.Projection = CameraProjection.Orthographic;
-        _builder.Camera.LookAt(Vector3.Zero, 0, -0.5f, 10);
+        _builder.LookingDownOrthographically();
 
         uint[] pixels = _builder.Render();
 
@@ -45,8 +38,8 @@ public sealed class SkyPassTests : IDisposable
     public void LetsThePaperShowThroughTheSkyLikeAThinWash()
     {
         using SkyPassTestsBuilder dark = new();
-        _builder.WithPaper(220).Camera.LookAt(new Vector3(0, 1, 0), 0, 0, 5);
-        dark.WithPaper(110).Camera.LookAt(new Vector3(0, 1, 0), 0, 0, 5);
+        _builder.WithPaper(220);
+        dark.WithPaper(110);
 
         uint[] onLight = _builder.Render();
         uint[] onDark = dark.Render();
@@ -57,10 +50,10 @@ public sealed class SkyPassTests : IDisposable
     }
 
     [Fact]
-    public void DrawsNothingWhileHidden()
+    public void DrawsNothingWhileTheRendererHasNoSky()
     {
         _builder.Render();
-        _builder.Sky!.Visible = false;
+        _builder.Renderer!.Sky = false;
 
         uint[] pixels = _builder.Render();
 
