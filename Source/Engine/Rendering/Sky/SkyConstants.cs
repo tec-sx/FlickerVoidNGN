@@ -1,7 +1,7 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
 
-namespace FlickerVoid.Editor.Core.Viewports;
+namespace FlickerVoid.Engine.Rendering.Sky;
 
 /// <summary>The sky shader's push constants; mirrors SkyConstants in Sky.hlsl.</summary>
 [StructLayout(LayoutKind.Sequential)]
