@@ -4,6 +4,7 @@ using Arch.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Scenes;
@@ -42,6 +43,10 @@ public sealed partial class InspectorViewModel : ObservableObject
     /// <summary>The registered components the selected entity doesn't have yet.</summary>
     [ObservableProperty]
     public partial IReadOnlyList<SceneComponent> AddableComponents { get; set; } = [];
+
+    /// <summary>The addable components as the Add Component menu offers them, grouped by module with icons.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<MenuChoice> AddChoices { get; set; } = [];
 
     /// <summary>Gives the selected entity the component with its defaults.</summary>
     [RelayCommand]
@@ -96,6 +101,7 @@ public sealed partial class InspectorViewModel : ObservableObject
             Title = NothingSelected;
             Components = [];
             AddableComponents = [];
+            AddChoices = [];
             return;
         }
 
@@ -125,5 +131,6 @@ public sealed partial class InspectorViewModel : ObservableObject
 
         Components = components;
         AddableComponents = addable;
+        AddChoices = ComponentChoices.Build(addable, AddComponent);
     }
 }

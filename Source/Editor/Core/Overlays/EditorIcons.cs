@@ -14,7 +14,7 @@ namespace FlickerVoid.Editor.Core.Overlays;
 
 /// <summary>
 /// The icons that show and pick entities with nothing else to see: lights (in their colour), cameras, irradiance volumes and camera
-/// cues (a camera at the centre of their trigger area). They
+/// cues (an outlined camera with a trigger badge at the centre of their trigger area, so they never look like cameras). They
 /// keep their size on screen and are drawn over everything, so a light inside a wall can still be clicked.
 /// </summary>
 public sealed class EditorIcons
@@ -60,7 +60,7 @@ public sealed class EditorIcons
         {
             Matrix4x4 matrix = transform.ToMatrix();
             Vector3 centre = Vector3.Transform(area.Offset, matrix);
-            Add(entity, centre, EditorIcon.Camera, PlainColor, selected);
+            Add(entity, centre, EditorIcon.CameraCue, PlainColor, selected);
         });
     }
 

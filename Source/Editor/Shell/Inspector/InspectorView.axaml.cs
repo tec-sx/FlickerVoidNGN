@@ -1,7 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
+
+using FlickerVoid.Editor.Controls;
+using FlickerVoid.Editor.Core.Menus;
 
 using FlickerVoid.Editor.Core.Inspector;
 
@@ -28,6 +32,15 @@ public sealed partial class InspectorView : UserControl
     {
         _refresh.Stop();
         base.OnDetachedFromVisualTree(e);
+    }
+
+    /// <summary>Opens the searchable Add Component menu, the components grouped by module.</summary>
+    private void OnAddComponentClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control button && DataContext is InspectorViewModel inspector)
+        {
+            SearchMenu.Show(button, inspector.AddChoices, MenuGrouping.Separators);
+        }
     }
 
     private void HandleRefreshTick(object? sender, EventArgs e)
