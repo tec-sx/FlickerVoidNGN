@@ -15,7 +15,7 @@ namespace FlickerVoid.Engine.Rendering;
 /// <summary>Adds rendering to a game.</summary>
 public static class RenderingGameExtensions
 {
-    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume", "sceneMood" and "outline" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, the <see cref="SceneRendererSetup"/> service, and the schemas of lighting mood and material files.</summary>
+    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume", "sceneMood", "outline", "mainCamera" and "depthFadeOverride" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, the <see cref="SceneRendererSetup"/> service, and the schemas of lighting mood and material files.</summary>
     public static void AddRendering(this Game game)
     {
         game.Spawner.Register("camera", RenderingJsonContext.Default.Camera);
@@ -26,6 +26,8 @@ public static class RenderingGameExtensions
         game.Spawner.Register("irradianceVolume", RenderingJsonContext.Default.IrradianceVolume);
         game.Spawner.Register("sceneMood", RenderingJsonContext.Default.SceneMood);
         game.Spawner.Register("outline", RenderingJsonContext.Default.Outline);
+        game.Spawner.Register("mainCamera", RenderingJsonContext.Default.MainCamera);
+        game.Spawner.Register("depthFadeOverride", RenderingJsonContext.Default.DepthFadeOverride);
         game.Schemas.Add("mood", CreateMoodSchema);
         game.Schemas.Add("material", CreateMaterialSchema);
         game.Schemas.Add("canvas", CreateCanvasSchema);

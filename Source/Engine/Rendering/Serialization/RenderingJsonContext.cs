@@ -22,6 +22,8 @@ namespace FlickerVoid.Engine.Rendering.Serialization;
     UseStringEnumConverter = true,
     Converters = [typeof(Vector3JsonConverter)])]
 [JsonSerializable(typeof(Camera))]
+[JsonSerializable(typeof(MainCamera))]
+[JsonSerializable(typeof(DepthFadeOverride))]
 [JsonSerializable(typeof(MeshRenderer))]
 [JsonSerializable(typeof(MeshAnimator))]
 [JsonSerializable(typeof(PointLight))]

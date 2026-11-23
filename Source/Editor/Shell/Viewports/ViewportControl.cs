@@ -456,7 +456,11 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         Camera camera = viewModel.Camera.ToCamera();
         Transform transform = viewModel.Camera.ToTransform();
         RenderCamera? preview = viewModel.GetPreviewCamera();
-        renderer.Render(viewModel.Scene.Game.World, camera, transform, preview);
+        DepthFade viewFade = viewModel.GetDepthFade();
+        DepthFade previewFade = viewModel.GetPreviewDepthFade();
+        Vector3 focus = viewModel.GetDepthFocus();
+        ViewportDepthFade depthFade = new(viewFade, previewFade, focus);
+        renderer.Render(viewModel.Scene.Game.World, camera, transform, preview, depthFade);
         _lastUpdate = _surface!.UpdateWithSemaphoresAsync(_image!, _ready!, _released!);
     }
 

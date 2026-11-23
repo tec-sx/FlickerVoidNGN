@@ -114,8 +114,10 @@ internal sealed class ViewportRenderer : IDisposable
     /// Renders a frame into the shared texture and hands it over in the CopySource state, with the preview camera's view in a corner
     /// when there is one; call <see cref="Resize"/> first.
     /// </summary>
-    public void Render(World world, in Camera camera, in Transform cameraTransform, RenderCamera? preview)
+    public void Render(World world, in Camera camera, in Transform cameraTransform, RenderCamera? preview, in ViewportDepthFade depthFade)
     {
+        _scene.DepthFade = depthFade.View;
+        _scene.Focus = depthFade.Focus;
         VulkanSharedTexture target = Target!;
         ITexture view = _view!;
         target.BeginFrame();
@@ -123,7 +125,7 @@ internal sealed class ViewportRenderer : IDisposable
         _scene.Render(_commands, world, view, camera, cameraTransform);
         if (preview is { } previewCamera)
         {
-            RenderPreview(world, view, previewCamera);
+            RenderPreview(world, view, previewCamera, depthFade);
         }
 
         _commands.Barrier(view, ResourceState.CopySource);
@@ -136,7 +138,7 @@ internal sealed class ViewportRenderer : IDisposable
     }
 
     /// <summary>Draws the preview camera's view the viewport's shape, a quarter of its width, and copies it framed into the bottom right.</summary>
-    private void RenderPreview(World world, ITexture view, in RenderCamera preview)
+    private void RenderPreview(World world, ITexture view, in RenderCamera preview, in ViewportDepthFade depthFade)
     {
         int viewWidth = view.Description.Width;
         int viewHeight = view.Description.Height;
@@ -158,6 +160,8 @@ internal sealed class ViewportRenderer : IDisposable
 
         _previewScene ??= new SceneRenderer(_device, _content, ViewFormat) { Sky = true };
         _previewScene.Mood = _scene.Mood;
+        _previewScene.DepthFade = depthFade.Preview;
+        _previewScene.Focus = depthFade.Focus;
         _previewScene.Render(_commands, world, _preview, preview.Camera, preview.Transform);
         _commands.Barrier(_frame, ResourceState.RenderTarget);
         ColorTarget frameClear = new(_frame, LoadAction.Clear, FrameColor);

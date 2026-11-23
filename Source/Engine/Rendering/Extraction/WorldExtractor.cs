@@ -13,7 +13,7 @@ namespace FlickerVoid.Engine.Rendering.Extraction;
 
 /// <summary>
 /// Extracts cameras (a director's <see cref="ActiveCamera"/> first, at its posed view), meshes with their outlines, lights and
-/// irradiance volumes from entities with a transform.
+/// irradiance volumes from entities with a transform; without a director, the first camera's depth fade from the main camera.
 /// </summary>
 public sealed class WorldExtractor : IRenderExtractor
 {
@@ -33,11 +33,25 @@ public sealed class WorldExtractor : IRenderExtractor
             scene.Cameras.Add(new RenderCamera(active.Lens, active.Pose));
             RenderCamera dissolveFrom = new(active.DissolveLens, active.DissolvePose);
             scene.Transition = new RenderTransition(active.Fade, active.FadeColor, active.Dissolve, dissolveFrom);
+            scene.DepthFade = active.DepthFade;
+            scene.Focus = active.Focus;
         });
-        world.Query(in Cameras, (ref Camera camera, ref Transform transform) =>
+        bool directed = scene.Cameras.Count > 0;
+        Entity first = Entity.Null;
+        world.Query(in Cameras, (Entity entity, ref Camera camera, ref Transform transform) =>
         {
+            if (first == Entity.Null)
+            {
+                first = entity;
+            }
+
             scene.Cameras.Add(new RenderCamera(camera, transform));
         });
+        if (!directed && first != Entity.Null)
+        {
+            scene.DepthFade = MainCamera.FindFor(world, first);
+        }
+
         world.Query(in Meshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform) =>
         {
             if (renderer.Mesh.Length == 0)

@@ -73,6 +73,13 @@ internal sealed class FrameDataWriter : IDisposable
         Matrix4x4.Invert(viewMatrix, out Matrix4x4 cameraWorld);
         Matrix4x4.Invert(view.ViewProjection, out Matrix4x4 inverseViewProjection);
         LightingMood mood = context.Mood;
+        DepthFade fade = context.DepthFade;
+        float focusDepth = 0;
+        if (context.Focus is { } focus)
+        {
+            focusDepth = Vector4.Dot(new Vector4(focus, 1), depthAxis);
+        }
+
         Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
         FrameData data = new(
             view.ViewProjection,
@@ -110,7 +117,17 @@ internal sealed class FrameDataWriter : IDisposable
             context.Targets.ScreenShadows.BindlessIndex,
             mood.AmbientOcclusion,
             mood.AmbientOcclusionRadius,
-            mood.ContactShadowLength);
+            mood.ContactShadowLength,
+            focusDepth,
+            fade.NearStart,
+            fade.NearEnd,
+            fade.NearAmount,
+            fade.FarColor,
+            fade.FarStart,
+            fade.FarEnd,
+            fade.FarAmount,
+            0,
+            0);
 
         IBuffer frame = _frames.Get(size);
         ReadOnlySpan<FrameData> header = new(in data);

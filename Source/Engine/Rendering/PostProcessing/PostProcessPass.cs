@@ -39,7 +39,7 @@ internal sealed class PostProcessPass : IRenderPass
 
         CanvasView view = CanvasView.From(context.View, context.Camera, context.Height, file.Tiling);
         PostCanvas canvas = new(file, image, view);
-        _post.Run(context.Commands, context.Targets, context.ColorTarget, context.Mood, canvas, context.ClampSampler, context.Sampler);
+        _post.Run(context.Commands, context.Targets, context.ColorTarget, context.Mood, canvas, context.ClampSampler, context.Sampler, context.FrameBuffer);
     }
 
     public void Dispose()

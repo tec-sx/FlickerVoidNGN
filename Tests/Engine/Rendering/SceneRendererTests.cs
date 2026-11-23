@@ -405,6 +405,65 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void DarkensWhatStandsNearerThanTheFocus()
+    {
+        const string main = """{ "name": "Main", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2 }, "mainCamera": { "nearStart": 0, "nearEnd": 1, "nearAmount": 0.5, "farAmount": 0 } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(main, Quad);
+        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, -5));
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(126, 129, "the quad stands five units in front of the focus, past the near end");
+        green.Should().Be(0);
+        blue.Should().Be(0);
+        pixels[0].Should().Be(EmptyPixel, "nothing is painted there to darken");
+    }
+
+    [Fact]
+    public void MeltsWhatLiesFartherThanTheFocusIntoTheFarColour()
+    {
+        const string main = """{ "name": "Main", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2 }, "mainCamera": { "nearAmount": 0, "farStart": 0, "farEnd": 1, "farAmount": 0.5, "farColor": [0, 0, 1] } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(main, Quad);
+        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, 3));
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(126, 129, "the quad lies three units behind the focus, past the far end");
+        green.Should().Be(0);
+        blue.Should().BeInRange(126, 129);
+        pixels[0].Should().Be(EmptyPixel);
+    }
+
+    [Fact]
+    public void MeasuresTheDepthFadeFromTheCameraWithoutAFocus()
+    {
+        const string main = """{ "name": "Main", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2 }, "mainCamera": { "nearAmount": 0, "farStart": 4, "farEnd": 4.5, "farAmount": 1, "farColor": [0, 0, 0] } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(main, Quad);
+
+        uint[] pixels = _builder.Render();
+
+        pixels[5].Should().Be(BlackPixel, "the quad is five units from the camera, past the far end");
+    }
+
+    [Fact]
+    public void LeavesTheDepthFadeOutWhileItIsSwitchedOff()
+    {
+        const string main = """{ "name": "Main", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2 }, "mainCamera": { "farStart": 0, "farEnd": 1, "farAmount": 1, "farColor": [0, 0, 0] } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(main, Quad);
+        _builder.WithRenderer(static renderer => renderer.DepthFades = false);
+
+        uint[] pixels = _builder.Render();
+
+        pixels[5].Should().Be(RedPixel);
+    }
+
+    [Fact]
     public void SpreadsBrightLightIntoBloom()
     {
         const string light = """{ "name": "Light", "components": { "transform": { "position": [0, 0, 0.5] }, "pointLight": { "intensity": 40, "range": 2 } } }""";
