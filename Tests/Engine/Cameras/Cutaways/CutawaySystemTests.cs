@@ -65,5 +65,22 @@ public sealed class CutawaySystemTests : IDisposable
         ShadowOnly("Roof").Should().BeFalse();
     }
 
+    [Fact]
+    public void TellsWhatTheCameraCantSee()
+    {
+        _builder.WalkTo(Vector3.Zero);
+        Vector3 down = Vector3.Normalize(new Vector3(0, -1, -1));
+
+        bool roof = _cutaways.IsUnseen(_builder["Roof"], new Vector3(0, 6.2f, 0), down);
+        bool wallInFront = _cutaways.IsUnseen(_builder["Shed Roof"], new Vector3(0, 1, 4), down);
+        bool behind = _cutaways.IsUnseen(_builder["Shed Roof"], new Vector3(0, 1, -4), down);
+        bool inside = _cutaways.IsUnseen(_builder["Ground Wall"], new Vector3(0, 1, 2), down);
+
+        roof.Should().BeTrue("it only casts shadows");
+        wallInFront.Should().BeTrue("it stands in front of the room");
+        behind.Should().BeFalse("the room is not behind it");
+        inside.Should().BeFalse();
+    }
+
     private bool ShadowOnly(string name) => _builder.World.Has<ShadowOnly>(_builder[name]);
 }

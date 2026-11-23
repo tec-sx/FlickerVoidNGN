@@ -27,6 +27,9 @@ public sealed class CutawaySystem : BaseSystem<World, GameTime>
     private static readonly QueryDescription Named = new QueryDescription().WithAll<EntityName>();
     private static readonly QueryDescription Placed = new QueryDescription().WithAll<Transform>();
 
+    /// <summary>How far past their boxes indoor volumes reach in the scene shader, so walls standing on them count as inside.</summary>
+    private const float IndoorMargin = 0.05f;
+
     private readonly HashSet<Entity> _hidden = [];
     private readonly HashSet<Entity> _hiding = [];
     private Entity? _cutaway;
@@ -38,6 +41,61 @@ public sealed class CutawaySystem : BaseSystem<World, GameTime>
 
     /// <summary>The indoor volume the camera looks into, if any.</summary>
     public Entity? Cutaway => _cutaway;
+
+    /// <summary>
+    /// Whether the camera can't see the entity at <paramref name="point"/>, looking along <paramref name="away"/>: it only casts
+    /// shadows, or the point stands in front of the cutaway, as the scene shader cuts it. Clicks pass through what is unseen.
+    /// </summary>
+    public bool IsUnseen(Entity entity, Vector3 point, Vector3 away)
+    {
+        if (World.IsAlive(entity) && World.Has<ShadowOnly>(entity))
+        {
+            return true;
+        }
+
+        if (_cutaway is not { } opened || !World.IsAlive(opened))
+        {
+            return false;
+        }
+
+        IndoorVolume volume = World.Get<IndoorVolume>(opened);
+        Transform transform = World.Get<Transform>(opened);
+        (Vector3 min, Vector3 max) = volume.GetBounds(transform.Position, transform.Rotation);
+        return IsInFront(min - new Vector3(IndoorMargin), max + new Vector3(IndoorMargin), point, away);
+    }
+
+    /// <summary>Whether a point outside the box has the box behind it along <paramref name="away"/>.</summary>
+    private static bool IsInFront(Vector3 min, Vector3 max, Vector3 point, Vector3 away)
+    {
+        bool inside = point.X >= min.X && point.Y >= min.Y && point.Z >= min.Z && point.X <= max.X && point.Y <= max.Y && point.Z <= max.Z;
+        if (inside)
+        {
+            return false;
+        }
+
+        float enter = 0;
+        float leave = float.PositiveInfinity;
+        for (int axis = 0; axis < 3; axis++)
+        {
+            float direction = away[axis];
+            if (MathF.Abs(direction) < 1e-6f)
+            {
+                if (point[axis] < min[axis] || point[axis] > max[axis])
+                {
+                    return false;
+                }
+
+                continue;
+            }
+
+            float toMin = (min[axis] - point[axis]) / direction;
+            float toMax = (max[axis] - point[axis]) / direction;
+            enter = MathF.Max(enter, MathF.Min(toMin, toMax));
+            leave = MathF.Min(leave, MathF.Max(toMin, toMax));
+        }
+
+        return enter <= leave;
+    }
 
     public override void Update(in GameTime t)
     {
