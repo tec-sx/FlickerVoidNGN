@@ -275,6 +275,19 @@ public sealed class EditorScene : IDisposable
         return true;
     }
 
+    /// <summary>Nests every entity under <paramref name="parent"/>, or takes them off their parents for null, as one undo step.</summary>
+    public void SetParent(IEnumerable<Entity> entities, Entity? parent)
+    {
+        string name = parent is { } nest && Game.World.TryGet(nest, out EntityName parentName) ? $"Nest under {parentName.Value}" : "Take off parent";
+        History.BeginGroup(name);
+        foreach (Entity entity in entities.ToList())
+        {
+            SetParent(entity, parent);
+        }
+
+        History.EndGroup();
+    }
+
     /// <summary>The entity of the open scene this one is nested under, or null at the top or when its parent is gone.</summary>
     public Entity? GetParent(Entity entity)
     {
