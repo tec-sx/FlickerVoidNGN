@@ -118,6 +118,8 @@ public sealed class MaterialParameterValue(MaterialDocument document, ShaderPara
         document.Set(parameter.Name, element);
     }
 
+    public JsonSerializerOptions? Options => null;
+
     public string ToJson(object? value)
     {
         return Convert.ToString(value, CultureInfo.InvariantCulture) ?? "";

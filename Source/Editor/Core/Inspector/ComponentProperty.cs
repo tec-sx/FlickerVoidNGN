@@ -44,6 +44,8 @@ public sealed class ComponentProperty : IEditableValue
         return PropertyAttributes.Find<TAttribute>(_property);
     }
 
+    public JsonSerializerOptions Options => _property.Options;
+
     public object? Get()
     {
         World world = _scene.Game.World;

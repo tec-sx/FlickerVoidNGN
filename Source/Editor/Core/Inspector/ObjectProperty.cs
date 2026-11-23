@@ -23,6 +23,8 @@ public sealed class ObjectProperty(object target, JsonPropertyInfo property, Act
         return PropertyAttributes.Find<TAttribute>(property);
     }
 
+    public JsonSerializerOptions Options => property.Options;
+
     public object? Get() => property.Get!(target);
 
     public void Set(object? value)

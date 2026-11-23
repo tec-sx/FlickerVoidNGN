@@ -3,15 +3,17 @@ using Arch.Core;
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Scenes;
+using FlickerVoid.Engine.Cameras;
+using FlickerVoid.Engine.Physics;
 using FlickerVoid.Engine.Runtime.Components;
-
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Loop;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlickerVoid.Editor.Core.Tests.Inspector;
 
-/// <summary>Builds the inspector over an empty scene in a temporary content folder.</summary>
+/// <summary>Builds the inspector over an empty scene in a temporary content folder, its game knowing cameras and physics as a project's would.</summary>
 internal sealed class InspectorViewModelTestsBuilder : IDisposable
 {
     private readonly string _contentFolder;
@@ -22,7 +24,7 @@ internal sealed class InspectorViewModelTestsBuilder : IDisposable
         string folderName = Path.GetRandomFileName();
         _contentFolder = Path.Combine(Path.GetTempPath(), folderName);
         Directory.CreateDirectory(_contentFolder);
-        _scene = new EditorScene(NullLoggerFactory.Instance, new ContentManager(_contentFolder));
+        _scene = new EditorScene(NullLoggerFactory.Instance, new ContentManager(_contentFolder), [new ProjectModule()]);
         ContentFileFinder files = new(_scene.Content);
         ViewModel = new InspectorViewModel(_scene, files.Find);
     }
@@ -79,5 +81,15 @@ internal sealed class InspectorViewModelTestsBuilder : IDisposable
     {
         _scene.Dispose();
         Directory.Delete(_contentFolder, recursive: true);
+    }
+
+    /// <summary>Adds cameras and physics to the editor's game, as Bleeders' gameplay module does.</summary>
+    private sealed class ProjectModule : IGameModule
+    {
+        public void Add(Game game)
+        {
+            game.AddPhysics();
+            game.AddCameras();
+        }
     }
 }

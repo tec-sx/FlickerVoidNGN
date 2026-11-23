@@ -4,6 +4,12 @@ using Arch.Core;
 
 
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Engine.Cameras.Directing;
+using FlickerVoid.Engine.Cameras.Shots;
+using FlickerVoid.Engine.Cameras.Triggers;
+using FlickerVoid.Engine.Gameplay.Tags;
+using FlickerVoid.Engine.Physics;
+using FlickerVoid.Engine.Physics.Colliders;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
@@ -257,5 +263,83 @@ public sealed class InspectorViewModelTests : IDisposable
         MeshRenderer renderer = _builder.World.Get<MeshRenderer>(crate);
         renderer.Mesh.Should().Be("Room.glb");
         renderer.Materials.Should().Equal("Stone.fvmat");
+    }
+
+    [Fact]
+    public void EditsANestedValueThroughItsOwnFields()
+    {
+        CameraCue cue = new() { Transition = new ShotTransition { Kind = TransitionKind.Blend, Duration = 1 } };
+        Entity spot = _builder.Select("Spot", new Transform(), cue);
+
+        ObjectFieldViewModel transition = _builder.Field<ObjectFieldViewModel>("Camera Cue", "Transition");
+        string[] labels = [.. transition.Fields.Select(field => field.Label)];
+        NumberFieldViewModel duration = Child<NumberFieldViewModel>(transition, "Duration");
+        duration.Value = 2;
+
+        labels.Should().Equal("Kind", "Duration", "In Duration", "Color", "Ease");
+        transition.HasKinds.Should().BeFalse();
+        _builder.World.Get<CameraCue>(spot).Transition.Duration.Should().Be(2);
+        _builder.World.Get<CameraCue>(spot).Transition.Kind.Should().Be(TransitionKind.Blend);
+    }
+
+    [Fact]
+    public void EditsAddsAndRemovesTheItemsOfAListOfObjects()
+    {
+        List<ShotKey> keys = [new ShotKey { Time = 0 }, new ShotKey { Time = 2 }];
+        Entity hall = _builder.Select("Hall", new Transform(), new Shot { Keys = keys });
+
+        CollectionFieldViewModel field = _builder.Field<CollectionFieldViewModel>("Shot", "Keys");
+        ObjectFieldViewModel second = field.Items[1].Should().BeOfType<ObjectFieldViewModel>().Subject;
+        Child<NumberFieldViewModel>(second, "Time").Value = 3;
+        field.AddCommand.Execute(null);
+        _builder.ViewModel.Refresh();
+        field.RemoveCommand.Execute(field.Items[0]);
+        _builder.ViewModel.Refresh();
+
+        float[] times = [.. _builder.World.Get<Shot>(hall).Keys.Select(key => key.Time)];
+        times.Should().Equal(3, 0);
+        field.Items.Should().HaveCount(2);
+        keys.Select(key => key.Time).Should().Equal([0, 2], "the edits write copies, so the undo step taken before each keeps the old keys");
+    }
+
+    [Fact]
+    public void SwitchesAPolymorphicValueByKindKeepingWhatTheKindsShare()
+    {
+        BoxCollider box = new() { Offset = new Vector3(0.5f, 1, 0) };
+        Entity door = _builder.Select("Door", new Transform(), new StaticBody { Collider = box });
+
+        ObjectFieldViewModel collider = _builder.Field<ObjectFieldViewModel>("Static Body", "Collider");
+        string[] boxLabels = [.. collider.Fields.Select(field => field.Label)];
+        string? boxKind = collider.Kind;
+        collider.Kind = "Sphere";
+        _builder.ViewModel.Refresh();
+
+        collider.Kinds.Should().Equal("Box", "Sphere", "Capsule");
+        boxKind.Should().Be("Box");
+        boxLabels.Should().Equal("Size", "Offset");
+        SphereCollider sphere = _builder.World.Get<StaticBody>(door).Collider.Should().BeOfType<SphereCollider>().Subject;
+        sphere.Offset.Should().Be(new Vector3(0.5f, 1, 0));
+        collider.Fields.Select(field => field.Label).Should().Equal("Radius", "Offset");
+    }
+
+    [Fact]
+    public void EditsAListOfTagsAsNames()
+    {
+        Entity spot = _builder.Select("Spot", new Transform(), new TriggerArea { RequiredTags = [new Tag("Player")] });
+
+        CollectionFieldViewModel tags = _builder.Field<CollectionFieldViewModel>("Trigger Area", "Required Tags");
+        tags.AddCommand.Execute(null);
+        _builder.ViewModel.Refresh();
+        tags.Items[1].Should().BeOfType<TextFieldViewModel>().Subject.Value = "Character.Fox";
+
+        tags.Items[0].Should().BeOfType<TextFieldViewModel>().Subject.Value.Should().Be("Player");
+        _builder.World.Get<TriggerArea>(spot).RequiredTags.Should().Equal(new Tag("Player"), new Tag("Character.Fox"));
+    }
+
+    private static TField Child<TField>(ObjectFieldViewModel owner, string label)
+        where TField : FieldViewModel
+    {
+        FieldViewModel field = owner.Fields.Single(candidate => candidate.Label == label);
+        return field.Should().BeOfType<TField>().Subject;
     }
 }

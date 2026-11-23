@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Engine.Gameplay.Tags;
 
@@ -19,6 +21,8 @@ public sealed class TagProperty(IEditableValue tag) : IEditableValue
     {
         return tag.GetAttribute<TAttribute>();
     }
+
+    public JsonSerializerOptions? Options => null;
 
     public object? Get()
     {
