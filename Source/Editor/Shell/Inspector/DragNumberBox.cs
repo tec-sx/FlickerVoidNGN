@@ -11,7 +11,8 @@ namespace FlickerVoid.Editor.Inspector;
 
 /// <summary>
 /// A number box edited by dragging sideways across it (Shift for fine steps, Ctrl for coarse ones) or, after a click, by typing;
-/// an optional coloured bar on its left names the axis it edits.
+/// a click or right-click selects the whole value, so Ctrl+C or the context menu copies it. An optional coloured bar on its left
+/// names the axis it edits.
 /// </summary>
 public sealed class DragNumberBox : TextBox
 {
@@ -105,6 +106,13 @@ public sealed class DragNumberBox : TextBox
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         PointerPoint point = e.GetCurrentPoint(this);
+        if (!_typing && point.Properties.IsRightButtonPressed)
+        {
+            base.OnPointerPressed(e);
+            StartTyping();
+            return;
+        }
+
         if (_typing || IsReadOnly || !point.Properties.IsLeftButtonPressed)
         {
             base.OnPointerPressed(e);
@@ -161,14 +169,17 @@ public sealed class DragNumberBox : TextBox
         e.Handled = true;
         if (clicked)
         {
-            SetTyping(true);
-            Focus();
-            SelectAll();
+            StartTyping();
         }
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
+        if (e.Key == Key.C && e.KeyModifiers == KeyModifiers.Control && string.IsNullOrEmpty(SelectedText))
+        {
+            SelectAll();
+        }
+
         switch (e.Key)
         {
             case Key.Enter:
@@ -223,6 +234,14 @@ public sealed class DragNumberBox : TextBox
         }
 
         return 1;
+    }
+
+    /// <summary>Opens the box for typing with the whole value selected, so it can be retyped, copied or pasted over.</summary>
+    private void StartTyping()
+    {
+        SetTyping(true);
+        Focus();
+        SelectAll();
     }
 
     private void SetTyping(bool typing)
