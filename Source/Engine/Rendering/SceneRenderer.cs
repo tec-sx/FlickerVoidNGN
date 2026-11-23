@@ -116,6 +116,15 @@ public sealed class SceneRenderer : IDisposable
     /// </summary>
     public bool Sky { get; set; }
 
+    /// <summary>Whether the depth fade is drawn; on by default.</summary>
+    public bool DepthFades { get; set; } = true;
+
+    /// <summary>The depth fade drawn in place of the scene's first camera's, such as the main camera's for an editor's own view; null keeps the scene's.</summary>
+    public DepthFade? DepthFade { get; set; }
+
+    /// <summary>The world point the depth fade is measured from in place of the scene's; null keeps the scene's.</summary>
+    public Vector3? Focus { get; set; }
+
     /// <summary>Probes that replace the world's irradiance volume while a bake renders, or null.</summary>
     internal ProbeSource? BakeProbes { get; set; }
 
@@ -195,6 +204,13 @@ public sealed class SceneRenderer : IDisposable
         context.LocalLights = LocalLights;
         context.Probes = Probes;
         context.Sky = Sky;
+        context.DepthFade = default;
+        if (DepthFades)
+        {
+            context.DepthFade = DepthFade ?? _scene.DepthFade;
+        }
+
+        context.Focus = Focus ?? _scene.Focus;
         context.FrameSlot = _frameData.Advance();
 
         Pipeline.Prepare(context);
@@ -228,5 +244,7 @@ public sealed class SceneRenderer : IDisposable
         _scene.SpotLights.AddRange(scene.SpotLights);
         _scene.ProbeVolumes.AddRange(scene.ProbeVolumes);
         _scene.Transition = scene.Transition;
+        _scene.DepthFade = scene.DepthFade;
+        _scene.Focus = scene.Focus;
     }
 }

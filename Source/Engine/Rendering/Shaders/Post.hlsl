@@ -1,12 +1,11 @@
 // Turns the lit scene into the final image: adds bloom, then exposure, contrast, saturation and tint, then the tonemapper's
-// curve, then lays it over the canvas. The scene's alpha is how much paint lies there (0 to 1) plus how thick it
+// curve, then the camera's depth fade (nearer than the focus darkens, farther melts into a colour), then lays it over the canvas. The scene's alpha is how much paint lies there (0 to 1) plus how thick it
 // stands (0 to 1, from a painting's impasto): bare canvas shows where there is none, and the canvas's weave shows through
 // paint that isn't thick, so everything looks painted on it; only thick impasto hides it. The
 // canvas is flat and moves with the world as an orthographic camera pans and zooms.
 // Draws one triangle that covers the target.
 
-Texture2D Textures[] : register(t0, space1);
-SamplerState Samplers[] : register(s0, space3);
+#include "Frame.hlsl"
 
 struct PostConstants
 {
@@ -27,11 +26,11 @@ struct PostConstants
     float3 CanvasTint;
     float CanvasPanRight;
     float CanvasPanUp;
+    uint Frame;
+    uint Depth;
 };
 
 [[vk::push_constant]] ConstantBuffer<PostConstants> Post : register(b0, space0);
-
-static const uint None = 0xFFFFFFFF;
 
 // The bloom levels the upsampling summed, which averaging divides back out.
 static const float BloomLevels = 5;
@@ -91,6 +90,32 @@ float3 Tonemap(float3 color)
     }
 }
 
+// 0 at or before start, 1 at or past end, eased between.
+float Ramp(float start, float end, float value)
+{
+    float amount = saturate((value - start) / max(end - start, 1e-4));
+    return amount * amount * (3 - 2 * amount);
+}
+
+// Darkens what stands nearer than the frame's focus and melts what lies farther into the far colour, by their depth along the
+// view from the focus; only where there is paint.
+float3 FadeByDepth(float2 pixel, float3 color, float coverage)
+{
+    FrameData frame = LoadFrame(Post.Frame);
+    if (frame.NearAmount <= 0 && frame.FarAmount <= 0)
+    {
+        return color;
+    }
+
+    float depth = Textures[Post.Depth].Load(int3(pixel, 0)).r;
+    float3 world = WorldAtPixel(frame, pixel, depth);
+    float beyondFocus = dot(float4(world, 1), frame.DepthAxis) - frame.FocusDepth;
+    float near = frame.NearAmount * Ramp(frame.NearStart, frame.NearEnd, -beyondFocus) * coverage;
+    float far = frame.FarAmount * Ramp(frame.FarStart, frame.FarEnd, beyondFocus) * coverage;
+    color *= 1 - near;
+    return lerp(color, frame.FarColor, far);
+}
+
 float4 PixelMain(float4 position : SV_Position) : SV_Target
 {
     Texture2D scene = Textures[Post.Scene];
@@ -114,6 +139,7 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
     color = Tonemap(color);
 
     float coverage = saturate(sceneColor.a);
+    color = FadeByDepth(position.xy, color, coverage);
     if (Post.Canvas != None)
     {
         Texture2D canvas = Textures[Post.Canvas];

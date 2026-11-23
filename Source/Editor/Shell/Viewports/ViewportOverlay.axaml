@@ -34,6 +34,9 @@
           <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.MoveSnap.IsOn}" ToolTip.Tip="Snap moves to the grid, in world units">
             <PathIcon Data="{x:Static shell:MaterialIcons.Grid}" />
           </ToggleButton>
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding ShowDepthFade}" ToolTip.Tip="Depth fade (the main camera's)">
+            <PathIcon Data="{x:Static shell:MaterialIcons.DepthFade}" />
+          </ToggleButton>
           <ComboBox Classes="viewportSnap" ItemsSource="{Binding Gizmo.MoveSnap.Steps}" SelectedItem="{Binding Gizmo.MoveSnap.Step}"
                     ToolTip.Tip="Grid size, in world units" />
           <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.RotateSnap.IsOn}" ToolTip.Tip="Snap turns to steps, in degrees">
@@ -55,6 +58,9 @@
           </ToggleButton>
           <ToggleButton Classes="viewportIcon" IsChecked="{Binding ShowGrid}" ToolTip.Tip="Grid">
             <PathIcon Data="{x:Static shell:MaterialIcons.Grid}" />
+          </ToggleButton>
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding ShowDepthFade}" ToolTip.Tip="Depth fade (the main camera's)">
+            <PathIcon Data="{x:Static shell:MaterialIcons.DepthFade}" />
           </ToggleButton>
         </StackPanel>
       </Border>

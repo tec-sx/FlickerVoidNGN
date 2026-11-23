@@ -101,6 +101,15 @@ internal sealed class CameraDirectorTestsBuilder : IDisposable
         return scene.Cameras[0];
     }
 
+    /// <summary>The scene as the renderer extracts it.</summary>
+    public RenderScene Extract()
+    {
+        RenderScene scene = new();
+        WorldExtractor extractor = new();
+        extractor.Extract(Game.World, scene);
+        return scene;
+    }
+
     /// <summary>What the director lays over the frame, as the renderer extracts it.</summary>
     public RenderTransition Transition()
     {

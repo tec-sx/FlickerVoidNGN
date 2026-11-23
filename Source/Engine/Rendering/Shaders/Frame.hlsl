@@ -41,9 +41,17 @@ struct FrameData
     float AmbientOcclusion;
     float AmbientOcclusionRadius;
     float ContactShadowLength;
+    float FocusDepth;
+    float NearStart;
+    float NearEnd;
+    float NearAmount;
+    float3 FarColor;
+    float FarStart;
+    float FarEnd;
+    float FarAmount;
 };
 
-static const uint FrameDataSize = 320;
+static const uint FrameDataSize = 368;
 static const uint None = 0xFFFFFFFF;
 
 FrameData LoadFrame(uint index)
@@ -82,6 +90,14 @@ FrameData LoadFrame(uint index)
     frame.AmbientOcclusion = buffer.Load<float>(308);
     frame.AmbientOcclusionRadius = buffer.Load<float>(312);
     frame.ContactShadowLength = buffer.Load<float>(316);
+    frame.FocusDepth = buffer.Load<float>(320);
+    frame.NearStart = buffer.Load<float>(324);
+    frame.NearEnd = buffer.Load<float>(328);
+    frame.NearAmount = buffer.Load<float>(332);
+    frame.FarColor = buffer.Load<float3>(336);
+    frame.FarStart = buffer.Load<float>(348);
+    frame.FarEnd = buffer.Load<float>(352);
+    frame.FarAmount = buffer.Load<float>(356);
     return frame;
 }
 

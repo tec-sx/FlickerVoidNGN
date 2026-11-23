@@ -1,3 +1,5 @@
+using System.Numerics;
+
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
@@ -48,6 +50,12 @@ public sealed class RenderContext
 
     /// <summary>Whether the sky fills what the scene left empty.</summary>
     public bool Sky { get; internal set; }
+
+    /// <summary>The depth fade post-processing draws.</summary>
+    public DepthFade DepthFade { get; internal set; }
+
+    /// <summary>The world point the depth fade is measured from; null measures from the camera.</summary>
+    public Vector3? Focus { get; internal set; }
 
     /// <summary>The scene's depth, which passes after the opaque pass can test against, such as overlays drawn over the output.</summary>
     public ITexture Depth => Targets.Depth;
