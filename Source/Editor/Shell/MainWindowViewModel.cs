@@ -48,6 +48,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private readonly ScenePlayer? _player;
     private readonly GameCompiler? _compiler;
+    private readonly string? _solution;
     private readonly UnsavedContent _content;
     private MoodDocument? _mood;
     private string? _dataPath;
@@ -57,7 +58,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// <summary>
     /// Shows the scene over <paramref name="content"/>, the scene's content with its unsaved edits; <paramref name="player"/>
     /// plays it in the project's game, when a project is open, and the asset browser shows <paramref name="codeFolder"/>, the
-    /// project's source folder; <paramref name="compiler"/> builds the project's code again and reloads it.
+    /// project's source folder; <paramref name="compiler"/> builds the project's code again and reloads it, and
+    /// <paramref name="solution"/> is the project's solution, opened in Visual Studio.
     /// </summary>
     public MainWindowViewModel(
         ViewportViewModel viewport,
@@ -65,10 +67,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         UnsavedContent content,
         ScenePlayer? player = null,
         string? codeFolder = null,
-        GameCompiler? compiler = null)
+        GameCompiler? compiler = null,
+        string? solution = null)
     {
         _player = player;
         _compiler = compiler;
+        _solution = solution;
         _content = content;
         _content.UnsavedChanged += HandleUnsavedChanged;
         _content.ChangedOnDisk += HandleChangedOnDisk;
@@ -270,6 +274,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    /// <summary>Opens the project's solution in Visual Studio.</summary>
+    [RelayCommand(CanExecute = nameof(CanOpenInVisualStudio))]
+    public void OpenInVisualStudio()
+    {
+        try
+        {
+            VisualStudio.Open(_solution!);
+            Viewport.Status = $"Opening {Path.GetFileName(_solution)} in Visual Studio.";
+        }
+        catch (Exception exception) when (exception is Win32Exception or IOException or InvalidOperationException)
+        {
+            Viewport.Status = $"Can't open {_solution}: {exception.Message}";
+        }
+    }
+
     public string Title
     {
         get
@@ -348,6 +367,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool CanPlay() => _player is not null;
 
     private bool CanCompile() => _compiler is not null;
+
+    private bool CanOpenInVisualStudio() => _solution is not null;
 
     /// <summary>The build output's first compiler error, else its first line, for the status bar.</summary>
     private static string GetFirstError(string output)

@@ -63,6 +63,10 @@
           </ToggleButton>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Classes="icon" Command="{Binding OpenInVisualStudioCommand}"
+                  ToolTip.Tip="Open in Visual Studio: opens the project's solution. Needs an open project.">
+            <PathIcon Data="{x:Static shell:MaterialIcons.VisualStudio}" />
+          </Button>
           <Button Classes="icon" Command="{Binding CompileCommand}"
                   ToolTip.Tip="Compile (Ctrl+Alt+F11): builds the project's code again and reloads it, keeping the scene's unsaved edits. Needs an open project.">
             <PathIcon Data="{x:Static shell:MaterialIcons.Code}" />

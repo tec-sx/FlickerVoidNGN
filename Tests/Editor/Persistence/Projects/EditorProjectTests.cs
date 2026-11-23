@@ -32,4 +32,36 @@ public sealed class EditorProjectTests : IDisposable
 
         open.Should().Throw<InvalidDataException>().WithMessage("*Hollow.fvproject*game*");
     }
+
+    [Fact]
+    public void FindsTheSolutionNamedAfterTheProjectBeforeAnyOther()
+    {
+        _builder.WithFile("Other.sln").WithFile("Hollow.slnx");
+        string file = _builder.WithProjectFile("Hollow.fvproject", """{ "game": "Source/Launcher/Hollow.Launcher.csproj" }""");
+
+        EditorProject project = _builder.Open(file);
+
+        project.Solution.Should().Be(Path.Combine(_builder.Folder, "Hollow.slnx"));
+    }
+
+    [Fact]
+    public void FindsAnySolutionBesideTheProjectFile()
+    {
+        _builder.WithFile("Game.sln");
+        string file = _builder.WithProjectFile("Hollow.fvproject", """{ "game": "Source/Launcher/Hollow.Launcher.csproj" }""");
+
+        EditorProject project = _builder.Open(file);
+
+        project.Solution.Should().Be(Path.Combine(_builder.Folder, "Game.sln"));
+    }
+
+    [Fact]
+    public void HasNoSolutionWhenNoneIsBesideTheProjectFile()
+    {
+        string file = _builder.WithProjectFile("Hollow.fvproject", """{ "game": "Source/Launcher/Hollow.Launcher.csproj" }""");
+
+        EditorProject project = _builder.Open(file);
+
+        project.Solution.Should().BeNull();
+    }
 }

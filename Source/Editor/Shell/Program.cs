@@ -25,7 +25,7 @@ if (options.Project is not null)
         RecentProjects recent = new(recentFile);
         recent.Add(options.Project);
         string? scene = options.Scene ?? project.StartupScene;
-        options = options with { Content = project.ContentFolder, Scene = scene, Game = project.Program, GameProject = project.Game, Code = project.CodeFolder };
+        options = options with { Content = project.ContentFolder, Scene = scene, Game = project.Program, GameProject = project.Game, Solution = project.Solution, Code = project.CodeFolder };
     }
     catch (Exception exception) when (exception is InvalidDataException or ProjectBuildException or IOException)
     {

@@ -20,6 +20,9 @@ public sealed record EditorOptions
     /// <summary>The game's C# project, which Compile builds again; null when no project is open.</summary>
     public string? GameProject { get; init; }
 
+    /// <summary>The project's solution, which Open in Visual Studio opens; null without a project or a solution.</summary>
+    public string? Solution { get; init; }
+
     /// <summary>The project's code folder, which the asset browser shows beside the content; null when no project is open.</summary>
     public string? Code { get; init; }
 

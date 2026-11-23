@@ -49,7 +49,7 @@ public sealed partial class App : Application
             }
             else
             {
-                desktop.MainWindow = CreateEditor(Options.Content, Options.Scene, Options.Game, Options.GameProject, Options.Code);
+                desktop.MainWindow = CreateEditor(Options.Content, Options.Scene, Options.Game, Options.GameProject, Options.Solution, Options.Code);
             }
         }
 
@@ -66,7 +66,7 @@ public sealed partial class App : Application
         ProjectPickerWindow window = new() { DataContext = picker };
         picker.Opened += project =>
         {
-            Window editor = CreateEditor(project.ContentFolder, project.StartupScene, project.Program, project.Game, project.CodeFolder);
+            Window editor = CreateEditor(project.ContentFolder, project.StartupScene, project.Program, project.Game, project.Solution, project.CodeFolder);
             desktop.MainWindow = editor;
             editor.Show();
             window.Close();
@@ -74,7 +74,7 @@ public sealed partial class App : Application
         return window;
     }
 
-    private Window CreateEditor(string content, string? scene, string? game, string? gameProject, string? code)
+    private Window CreateEditor(string content, string? scene, string? game, string? gameProject, string? solution, string? code)
     {
         UnsavedContent unsaved = new(new ContentManager(content));
         IReadOnlyList<IGameModule> modules = [];
@@ -132,7 +132,7 @@ public sealed partial class App : Application
             compiler = new GameCompiler(_scene, gameProject, new DotnetProjectBuilder(), gameCode);
         }
 
-        MainWindowViewModel main = new(viewport, inspector, unsaved, player, codeFolder, compiler);
+        MainWindowViewModel main = new(viewport, inspector, unsaved, player, codeFolder, compiler, solution);
         _poll = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, HandlePoll);
         _poll.Start();
         return new MainWindow { DataContext = main };
