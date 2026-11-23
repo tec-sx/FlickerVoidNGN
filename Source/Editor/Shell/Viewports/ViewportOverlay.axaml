@@ -6,7 +6,7 @@
              x:Class="FlickerVoid.Editor.Viewports.ViewportOverlay"
              x:DataType="viewports:ViewportViewModel">
   <Panel>
-    <StackPanel Orientation="Horizontal" Spacing="4" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Top">
+    <StackPanel Orientation="Horizontal" Spacing="1" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Top">
       <Border Classes="viewportBar">
         <StackPanel Orientation="Horizontal">
           <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsSelectMode}" ToolTip.Tip="Select (Q)">
