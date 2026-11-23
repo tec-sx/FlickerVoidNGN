@@ -31,6 +31,21 @@ public sealed class SceneLoaderTests : IDisposable
     }
 
     [Fact]
+    public void SpawnsTheSceneFromContentsGivenInPlaceOfTheFileAndSavesToTheFile()
+    {
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp" } ] }""").Build();
+        byte[] edited = System.Text.Encoding.UTF8.GetBytes("""{ "entities": [ { "name": "Lamp", "folder": "Lights" }, { "name": "Box" } ] }""");
+
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene", edited);
+
+        entities.Should().HaveCount(2);
+        _builder.World.Get<EntityFolder>(entities[0]).Path.Should().Be("Lights");
+        _builder.ReadFile("Room.fvscene").Should().NotContain("Box", "the contents are not saved until the scene is");
+        loader.Save("Room.fvscene");
+        _builder.ReadFile("Room.fvscene").Should().Contain("Box");
+    }
+
+    [Fact]
     public void PutsEntitiesInTheFoldersTheSceneNames()
     {
         SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "folder": "Lights/Hall" }, { "name": "Box" } ] }""").Build();

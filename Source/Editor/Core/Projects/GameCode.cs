@@ -6,18 +6,30 @@ using FlickerVoid.Engine.Runtime.Loop;
 namespace FlickerVoid.Editor.Core.Projects;
 
 /// <summary>
-/// The project's code in the editor: the game modules of the built game and of the project assemblies it references. The game is
-/// loaded once per editor run and stays loaded, because Arch keeps every component type it has seen; a rebuilt game needs the
-/// project opened again.
+/// The project's code in the editor: the game modules of the built game and of the project assemblies it references, loaded
+/// into a collectible context of their own from copies in memory, so the game can be rebuilt and loaded again while the editor
+/// runs. Arch's component registry is static and keeps every type it has seen, so an unloaded game is never fully collected:
+/// each reload leaks a little memory until the editor restarts, as Unreal's Live Coding does.
 /// </summary>
-public static class GameCode
+public sealed class GameCode
 {
+    private readonly GameLoadContext _context;
+
+    private GameCode(GameLoadContext context, IReadOnlyList<IGameModule> modules)
+    {
+        _context = context;
+        Modules = modules;
+    }
+
+    /// <summary>A game module of each type the game's assemblies export.</summary>
+    public IReadOnlyList<IGameModule> Modules { get; }
+
     /// <summary>Loads the built game at <paramref name="program"/> and creates each game module it holds.</summary>
-    public static IReadOnlyList<IGameModule> Load(string program)
+    public static GameCode Load(string program)
     {
         string fullPath = Path.GetFullPath(program);
         GameLoadContext context = new(fullPath);
-        Assembly game = context.LoadFromAssemblyPath(fullPath);
+        Assembly game = context.LoadCopy(fullPath);
         List<IGameModule> modules = [];
         HashSet<string> seen = [];
         Queue<Assembly> pending = new([game]);
@@ -39,7 +51,13 @@ public static class GameCode
             }
         }
 
-        return modules;
+        return new GameCode(context, modules);
+    }
+
+    /// <summary>Lets the game's assemblies go once nothing uses their types; the editor must have dropped the game made with them first.</summary>
+    public void Unload()
+    {
+        _context.Unload();
     }
 
     private static void AddModules(Assembly assembly, List<IGameModule> modules)

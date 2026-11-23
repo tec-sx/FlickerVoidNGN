@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
@@ -46,6 +47,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public const string DefaultMoodHeading = "Default mood (not saved)";
 
     private readonly ScenePlayer? _player;
+    private readonly GameCompiler? _compiler;
+    private readonly string? _solution;
     private readonly UnsavedContent _content;
     private MoodDocument? _mood;
     private string? _dataPath;
@@ -55,16 +58,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// <summary>
     /// Shows the scene over <paramref name="content"/>, the scene's content with its unsaved edits; <paramref name="player"/>
     /// plays it in the project's game, when a project is open, and the asset browser shows <paramref name="codeFolder"/>, the
-    /// project's source folder.
+    /// project's source folder; <paramref name="compiler"/> builds the project's code again and reloads it, and
+    /// <paramref name="solution"/> is the project's solution, opened in Visual Studio.
     /// </summary>
     public MainWindowViewModel(
         ViewportViewModel viewport,
         InspectorViewModel inspector,
         UnsavedContent content,
         ScenePlayer? player = null,
-        string? codeFolder = null)
+        string? codeFolder = null,
+        GameCompiler? compiler = null,
+        string? solution = null)
     {
         _player = player;
+        _compiler = compiler;
+        _solution = solution;
         _content = content;
         _content.UnsavedChanged += HandleUnsavedChanged;
         _content.ChangedOnDisk += HandleChangedOnDisk;
@@ -242,6 +250,45 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    /// <summary>Builds the project's game again and reloads its code into the scene, keeping the scene's unsaved edits.</summary>
+    [RelayCommand(CanExecute = nameof(CanCompile))]
+    public async Task Compile()
+    {
+        Viewport.Status = "Compiling the project's code...";
+        Stopwatch watch = Stopwatch.StartNew();
+        try
+        {
+            int modules = await _compiler!.Compile();
+            Assets.ListDataTypes(Viewport.Scene.Game.Data);
+            double seconds = watch.Elapsed.TotalSeconds;
+            Viewport.Status = string.Create(CultureInfo.InvariantCulture, $"Compiled and reloaded {modules} game module(s) in {seconds:0.0} s.");
+        }
+        catch (ProjectBuildException exception)
+        {
+            string error = GetFirstError(exception.Message);
+            Viewport.Status = $"Compile failed: {error}";
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or BadImageFormatException or TypeLoadException or MissingMethodException)
+        {
+            Viewport.Status = $"Compiled, but can't reload the game's code: {exception.Message}";
+        }
+    }
+
+    /// <summary>Opens the project's solution in Visual Studio.</summary>
+    [RelayCommand(CanExecute = nameof(CanOpenInVisualStudio))]
+    public void OpenInVisualStudio()
+    {
+        try
+        {
+            VisualStudio.Open(_solution!);
+            Viewport.Status = $"Opening {Path.GetFileName(_solution)} in Visual Studio.";
+        }
+        catch (Exception exception) when (exception is Win32Exception or IOException or InvalidOperationException)
+        {
+            Viewport.Status = $"Can't open {_solution}: {exception.Message}";
+        }
+    }
+
     public string Title
     {
         get
@@ -318,6 +365,30 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     private bool CanPlay() => _player is not null;
+
+    private bool CanCompile() => _compiler is not null;
+
+    private bool CanOpenInVisualStudio() => _solution is not null;
+
+    /// <summary>The build output's first compiler error, else its first line, for the status bar.</summary>
+    private static string GetFirstError(string output)
+    {
+        string[] lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (string line in lines)
+        {
+            if (line.Contains(": error ", StringComparison.Ordinal))
+            {
+                return line;
+            }
+        }
+
+        if (lines.Length == 0)
+        {
+            return output;
+        }
+
+        return lines[0];
+    }
 
     private void HandleUnsavedChanged()
     {

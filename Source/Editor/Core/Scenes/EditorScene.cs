@@ -27,8 +27,9 @@ namespace FlickerVoid.Editor.Core.Scenes;
 /// </summary>
 public sealed class EditorScene : IDisposable
 {
-    private readonly SceneLoader _loader;
-    private readonly ContentWatcher _watcher;
+    private readonly ILoggerFactory _loggerFactory;
+    private SceneLoader _loader;
+    private ContentWatcher _watcher;
 
     /// <summary>Opens an empty world over the content.</summary>
     public EditorScene(ILoggerFactory loggerFactory, IContentManager content)
@@ -39,24 +40,16 @@ public sealed class EditorScene : IDisposable
     /// <summary>Opens an empty world over the content, with the project's game modules added (see <see cref="Projects.GameCode"/>).</summary>
     public EditorScene(ILoggerFactory loggerFactory, IContentManager content, IReadOnlyList<IGameModule> modules)
     {
-        Game = new Game(loggerFactory);
-        Game.AddRendering();
-        Game.AddFlow();
-        Game.AddInput();
-        foreach (IGameModule module in modules)
-        {
-            module.Add(Game);
-        }
-
+        _loggerFactory = loggerFactory;
         Content = content;
-        ILogger<SceneLoader> logger = loggerFactory.CreateLogger<SceneLoader>();
-        _loader = new SceneLoader(Game.Spawner, Content, Game.World, logger);
         Picker = new ScenePicker(Content);
-        _watcher = new ContentWatcher(Content, Game.Schemas);
-        _watcher.Initialize();
+        Game = CreateGame(loggerFactory, modules);
+        _loader = CreateLoader(Game);
+        _watcher = CreateWatcher();
     }
 
-    public Game Game { get; }
+    /// <summary>The game the world is in; <see cref="Reload"/> replaces it, so read it each time rather than keeping it.</summary>
+    public Game Game { get; private set; }
 
     public IContentManager Content { get; }
 
@@ -359,12 +352,135 @@ public sealed class EditorScene : IDisposable
         return _loader.Capture(ScenePath);
     }
 
+    /// <summary>
+    /// Replaces the game with one made with <paramref name="modules"/>, the project's code as built again, and spawns the open
+    /// scene into it as the world has it now, so edits that are not saved survive; the selection follows its entities by name.
+    /// Undo steps hold the old code's components, so they are forgotten. When the new game can't be made or can't spawn the
+    /// scene, such as when a component it uses is gone, it throws and the old game stays.
+    /// </summary>
+    public void Reload(IReadOnlyList<IGameModule> modules)
+    {
+        string? path = ScenePath;
+        byte[]? captured = Capture();
+        Game game = CreateGame(_loggerFactory, modules);
+        SceneLoader loader = CreateLoader(game);
+        try
+        {
+            if (path is not null && captured is not null)
+            {
+                loader.Load(path, captured);
+            }
+        }
+        catch
+        {
+            loader.Dispose();
+            game.Dispose();
+            throw;
+        }
+
+        List<string> selected = GetSelectedNames(out string? primary);
+        Selection.Select(null);
+        Stop();
+        Game = game;
+        _loader = loader;
+        _watcher = CreateWatcher();
+        History.Clear();
+        Select(selected, primary);
+        Opened?.Invoke();
+        EntitiesChanged?.Invoke();
+    }
+
     public void Dispose()
     {
-        _watcher.Dispose();
+        Stop();
         Picker.Dispose();
+    }
+
+    private static Game CreateGame(ILoggerFactory loggerFactory, IReadOnlyList<IGameModule> modules)
+    {
+        Game game = new(loggerFactory);
+        try
+        {
+            game.AddRendering();
+            game.AddFlow();
+            game.AddInput();
+            foreach (IGameModule module in modules)
+            {
+                module.Add(game);
+            }
+        }
+        catch
+        {
+            game.Dispose();
+            throw;
+        }
+
+        return game;
+    }
+
+    private SceneLoader CreateLoader(Game game)
+    {
+        ILogger<SceneLoader> logger = _loggerFactory.CreateLogger<SceneLoader>();
+        return new SceneLoader(game.Spawner, Content, game.World, logger);
+    }
+
+    private ContentWatcher CreateWatcher()
+    {
+        ContentWatcher watcher = new(Content, Game.Schemas);
+        watcher.Initialize();
+        return watcher;
+    }
+
+    private List<string> GetSelectedNames(out string? primary)
+    {
+        World world = Game.World;
+        List<string> names = [];
+        primary = null;
+        foreach (Entity entity in Selection.Entities)
+        {
+            if (world.IsAlive(entity) && world.TryGet(entity, out EntityName name))
+            {
+                names.Add(name.Value);
+            }
+        }
+
+        if (Selection.Selected is { } selected && world.IsAlive(selected) && world.TryGet(selected, out EntityName selectedName))
+        {
+            primary = selectedName.Value;
+        }
+
+        return names;
+    }
+
+    private void Stop()
+    {
+        _watcher.Dispose();
         _loader.Dispose();
         Game.Dispose();
+    }
+
+    private void Select(List<string> names, string? primary)
+    {
+        List<Entity> entities = [];
+        Entity? primaryEntity = null;
+        foreach (string name in names)
+        {
+            if (Find(name) is not { } entity)
+            {
+                continue;
+            }
+
+            entities.Add(entity);
+            if (name == primary)
+            {
+                primaryEntity = entity;
+            }
+        }
+
+        if (entities.Count > 0)
+        {
+            Selection.SelectAll(entities, primaryEntity);
+        }
     }
 
     /// <summary>The first live entity of the open scene with the name, or null.</summary>
