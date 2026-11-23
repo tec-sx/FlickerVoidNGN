@@ -37,6 +37,13 @@ internal sealed class EditorProjectTestsBuilder : IDisposable
         return path;
     }
 
+    public EditorProjectTestsBuilder WithFile(string name)
+    {
+        string path = Path.Combine(Folder, name);
+        File.WriteAllText(path, "");
+        return this;
+    }
+
     public EditorProject Open(string file) => EditorProject.Open(file, _builder);
 
     public void Dispose()

@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="../../../Source/Engine/Runtime/FlickerVoid.Engine.Runtime.csproj" />
+    <ProjectReference Include="../../../Source/Tools/Generators/FlickerVoid.Tools.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

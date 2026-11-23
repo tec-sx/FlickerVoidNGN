@@ -53,3 +53,9 @@ https://github.com/google/material-design-icons
 Used in: `Source/Editor/Icons/*.png`, the Rounded filled glyphs `lightbulb`, `highlight`, `videocam` and `blur_on`, rasterised to 64 px white PNGs.
 
 Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0), Copyright Google LLC.
+
+## Simple Icons
+
+https://simpleicons.org (v9.21.0)
+
+Used in: `Source/Editor/Shell/MaterialIcons.cs` (the Visual Studio logo of the editor's Open in Visual Studio button). Simple Icons are released under CC0 1.0 Universal; the logo is a trademark of Microsoft, used only to name the program the button opens.

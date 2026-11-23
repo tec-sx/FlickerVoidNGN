@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -31,6 +32,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     private readonly IContentManager _content;
     private readonly List<AssetCatalog> _catalogs;
     private readonly AssetCatalog? _code;
+    private readonly bool _hasCode;
 
     /// <summary>
     /// Browses the content; <paramref name="data"/> lists the data asset and table types it can create, and
@@ -40,36 +42,8 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     {
         _content = content;
         _imports = new ImportSources(content);
-        List<MenuChoice> choices =
-        [
-            new("Folder", CreateFolder, Icon: "NewFolder"),
-            new("Scene", CreateScene, Icon: "Scene"),
-            new("Material", CreateMaterial, LookGroup, "Materials"),
-            new("Mood", CreateMood, LookGroup, "Mood"),
-            new("Canvas", CreateCanvas, LookGroup, "Canvas"),
-            new("Flow Graph", CreateFlow, FlowGroup, "Flow"),
-        ];
-        if (codeFolder is not null)
-        {
-            choices.Add(new MenuChoice("Flow Node", NewFlowNode, FlowGroup, "Code"));
-        }
-
-        if (data is not null)
-        {
-            foreach (string type in data.AssetTypes.Keys)
-            {
-                string name = DisplayNames.FromIdentifier(type);
-                choices.Add(new MenuChoice(name, () => CreateData(type), DataGroup, "Data"));
-            }
-
-            foreach (string type in data.RowTypes.Keys)
-            {
-                string name = DisplayNames.FromIdentifier(type);
-                choices.Add(new MenuChoice(name, () => CreateTable(type), TableGroup, "Table"));
-            }
-        }
-
-        NewChoices = choices;
+        _hasCode = codeFolder is not null;
+        ListDataTypes(data);
         _catalogs = AssetCatalog.ForContent(content);
         if (codeFolder is not null)
         {
@@ -93,6 +67,42 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         Refresh();
     }
 
+    /// <summary>Lists what <see cref="NewChoices"/> creates, with the data asset and table types <paramref name="data"/> registers, as again after the project's code is reloaded.</summary>
+    [MemberNotNull(nameof(NewChoices))]
+    public void ListDataTypes(DataTypes? data)
+    {
+        List<MenuChoice> choices =
+        [
+            new("Folder", CreateFolder, Icon: "NewFolder"),
+            new("Scene", CreateScene, Icon: "Scene"),
+            new("Material", CreateMaterial, LookGroup, "Materials"),
+            new("Mood", CreateMood, LookGroup, "Mood"),
+            new("Canvas", CreateCanvas, LookGroup, "Canvas"),
+            new("Flow Graph", CreateFlow, FlowGroup, "Flow"),
+        ];
+        if (_hasCode)
+        {
+            choices.Add(new MenuChoice("Flow Node", NewFlowNode, FlowGroup, "Code"));
+        }
+
+        if (data is not null)
+        {
+            foreach (string type in data.AssetTypes.Keys)
+            {
+                string name = DisplayNames.FromIdentifier(type);
+                choices.Add(new MenuChoice(name, () => CreateData(type), DataGroup, "Data"));
+            }
+
+            foreach (string type in data.RowTypes.Keys)
+            {
+                string name = DisplayNames.FromIdentifier(type);
+                choices.Add(new MenuChoice(name, () => CreateTable(type), TableGroup, "Table"));
+            }
+        }
+
+        NewChoices = choices;
+    }
+
     /// <summary>Raised when a file is opened, by double-click or Enter.</summary>
     public event Action<AssetEntry>? Opened;
 
@@ -102,7 +112,8 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     /// What the browser can create in the selected folder, in groups: folders and scenes, then materials and moods, flows, a data
     /// asset of each registered type and a table of each row type. Each menu showing them picks how to group them.
     /// </summary>
-    public IReadOnlyList<MenuChoice> NewChoices { get; }
+    [ObservableProperty]
+    public partial IReadOnlyList<MenuChoice> NewChoices { get; private set; }
 
     /// <summary>The roots of the tree: the game's source folders in a development build, else the content folder.</summary>
     [ObservableProperty]

@@ -7,12 +7,13 @@ using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
 using FlickerVoid.Engine.Runtime.Tests.Content;
+using FlickerVoid.Engine.Runtime.Tests.Entities;
 
 using Microsoft.Extensions.Logging;
 
 namespace FlickerVoid.Engine.Runtime.Tests.Scenes;
 
-/// <summary>Builds the scene loader under test over scene files in a temporary content folder, a new world and a spawner that knows transforms.</summary>
+/// <summary>Builds the scene loader under test over scene files in a temporary content folder, a new world and a spawner that knows transforms and glows.</summary>
 internal sealed class SceneLoaderTestsBuilder : IDisposable
 {
     private readonly ContentManagerTestsBuilder _files = new();
@@ -99,6 +100,7 @@ internal sealed class SceneLoaderTestsBuilder : IDisposable
     {
         SceneSpawner spawner = new();
         spawner.Register("transform", RuntimeJsonContext.Default.Transform);
+        spawner.Register("glow", TestEntitiesJsonContext.Default.Glow);
         return spawner;
     }
 }

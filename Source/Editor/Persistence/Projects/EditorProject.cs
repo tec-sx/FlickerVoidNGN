@@ -41,6 +41,33 @@ public sealed class EditorProject
 
     public string? StartupScene { get; }
 
+    /// <summary>The solution beside the project file that Visual Studio opens: the one named after the project, else the first there; null without one.</summary>
+    public string? Solution
+    {
+        get
+        {
+            foreach (string extension in (string[])[".slnx", ".sln"])
+            {
+                string named = Path.Combine(Folder, Name + extension);
+                if (System.IO.File.Exists(named))
+                {
+                    return named;
+                }
+            }
+
+            foreach (string extension in (string[])["*.slnx", "*.sln"])
+            {
+                string? first = Directory.EnumerateFiles(Folder, extension).Order(StringComparer.OrdinalIgnoreCase).FirstOrDefault();
+                if (first is not null)
+                {
+                    return first;
+                }
+            }
+
+            return null;
+        }
+    }
+
     /// <summary>Reads the project file and builds its game; throws <see cref="InvalidDataException"/> for a bad file and <see cref="ProjectBuildException"/> for a failed build.</summary>
     public static EditorProject Open(string file, IProjectBuilder builder)
     {
