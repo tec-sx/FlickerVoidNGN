@@ -1,6 +1,6 @@
 # Porting FlickerVoid from Unreal
 
-Decided with the owner on 2026-11-20: everything in the Unreal project moves to NGN. Generic systems (the Unreal plugins) become engine modules, game rules and content logic go into the FlickerVoid project (`Projects/FlickerVoid`), and AngelScript classes become entity classes and systems in that project. The ontology tree (Game -> Interface, Gameplay, Presentation) and the functional layers carry over. The entity model is Arch-first (owner, 2026-11-20; design doc "Entities, data assets and flow graphs"): struct components, systems with lifecycle hooks, generated handles per entity class.
+Decided with the owner on 2026-11-20: everything in the Unreal project moves to NGN. Generic systems (the Unreal plugins) become engine modules, game rules and content logic go into the game project (Bleeders, `tec-sx/Bleeders`; it was `Projects/FlickerVoid` here until 2026-11-22), and AngelScript classes become entity classes and systems in that project. The ontology tree (Game -> Interface, Gameplay, Presentation) and the functional layers carry over. The entity model is Arch-first (owner, 2026-11-20; design doc "Entities, data assets and flow graphs"): struct components, systems with lifecycle hooks, generated handles per entity class.
 
 ## Layers
 
@@ -8,9 +8,9 @@ Decided with the owner on 2026-11-20: everything in the Unreal project moves to 
 | --- | --- | --- |
 | Engine features (GAS, Mover, StateTree, CommonUI, Enhanced Input) | engine modules, ours or from libraries | `Source/Engine/<Module>` |
 | FVFramework and the FV*System plugins | engine modules, generic, no game rules | `Source/Engine/<Module>` |
-| Game module C++ (`Source/FV*`): setup, shapes, hosts | project code: components, definitions, systems | `Projects/FlickerVoid/Source/<Module>/<ontology path>` |
-| AngelScript (`Script/`) | project entity classes and systems | `Projects/FlickerVoid/Source/<Module>/<ontology path>` |
-| Content: data assets, Blueprints for looks, widgets | `.fvdata`, `.fvtable`, `.fventity`, `.fvflow`, scenes, UI files | `Projects/FlickerVoid/Content` |
+| Game module C++ (`Source/FV*`): setup, shapes, hosts | project code: components, definitions, systems | Bleeders `Source/<Module>/<ontology path>` |
+| AngelScript (`Script/`) | project entity classes and systems | Bleeders `Source/<Module>/<ontology path>` |
+| Content: data assets, Blueprints for looks, widgets | `.fvdata`, `.fvtable`, `.fventity`, `.fvflow`, scenes, UI files | Bleeders `Content` |
 
 The project's modules follow the ontology's first level: `Gameplay` (Protagonist, World, Narrative), `Interface` (menus, HUD, hub), `Presentation` (animation, camera, looks), plus `Launcher`, which holds what sits at the ontology's root (game modes, the player controller). Engine modules never name the project; the project composes them.
 

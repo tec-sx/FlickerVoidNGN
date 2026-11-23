@@ -60,7 +60,9 @@ public sealed partial class App : Application
     private Window CreatePicker(IClassicDesktopStyleApplicationLifetime desktop)
     {
         string folder = ProjectPickerViewModel.GetDefaultProjectsFolder();
-        ProjectPickerViewModel picker = new(folder, new DotnetProjectBuilder(), new TemplateProjectCreator());
+        string recentFile = RecentProjects.GetDefaultFile();
+        RecentProjects recent = new(recentFile);
+        ProjectPickerViewModel picker = new(folder, recent, new DotnetProjectBuilder(), new TemplateProjectCreator());
         ProjectPickerWindow window = new() { DataContext = picker };
         picker.Opened += project =>
         {

@@ -6,21 +6,28 @@ using FlickerVoid.Editor.Persistence.Projects;
 namespace FlickerVoid.Editor.Projects;
 
 /// <summary>
-/// The window the editor opens with when it is given no project: the projects in the projects folder (Documents/FlickerVoid),
-/// another project file, or a new project from the template. Opening builds the project away from the UI thread and raises
-/// <see cref="Opened"/>.
+/// The window the editor opens with when it is given no project: the projects in the projects folder (Documents/FlickerVoid) and
+/// those opened before from anywhere (<see cref="RecentProjects"/>), with the last one selected, another project file, or a new
+/// project from the template. Opening builds the project away from the UI thread, remembers it and raises <see cref="Opened"/>.
 /// </summary>
 public sealed partial class ProjectPickerViewModel : ObservableObject
 {
     private readonly IProjectBuilder _builder;
     private readonly IProjectCreator _creator;
+    private readonly RecentProjects _recent;
 
-    public ProjectPickerViewModel(string projectsFolder, IProjectBuilder builder, IProjectCreator creator)
+    public ProjectPickerViewModel(string projectsFolder, RecentProjects recent, IProjectBuilder builder, IProjectCreator creator)
     {
         ProjectsFolder = projectsFolder;
+        _recent = recent;
         _builder = builder;
         _creator = creator;
-        Projects = FindProjects(projectsFolder);
+        IReadOnlyList<string> recentFiles = recent.Files;
+        Projects = FindProjects(projectsFolder, recentFiles);
+        if (recentFiles.Count > 0)
+        {
+            SelectedProject = Projects.FirstOrDefault(project => project.File == recentFiles[0]);
+        }
     }
 
     public event Action<EditorProject>? Opened;
@@ -86,7 +93,9 @@ public sealed partial class ProjectPickerViewModel : ObservableObject
 
     private EditorProject OpenProject(string file)
     {
-        return EditorProject.Open(file, _builder);
+        EditorProject project = EditorProject.Open(file, _builder);
+        _recent.Add(file);
+        return project;
     }
 
     private async Task Run(string doing, Func<EditorProject> work)
@@ -127,21 +136,24 @@ public sealed partial class ProjectPickerViewModel : ObservableObject
         return true;
     }
 
-    private static List<ProjectEntry> FindProjects(string folder)
+    private static List<ProjectEntry> FindProjects(string folder, IReadOnlyList<string> recentFiles)
     {
-        List<ProjectEntry> projects = [];
-        if (!Directory.Exists(folder))
+        List<string> files = [];
+        if (Directory.Exists(folder))
         {
-            return projects;
+            foreach (string projectFolder in Directory.EnumerateDirectories(folder))
+            {
+                IEnumerable<string> found = Directory.EnumerateFiles(projectFolder, "*" + EditorProject.Extension);
+                files.AddRange(found.Select(Path.GetFullPath));
+            }
         }
 
-        foreach (string projectFolder in Directory.EnumerateDirectories(folder))
+        files.AddRange(recentFiles.Except(files));
+        List<ProjectEntry> projects = [];
+        foreach (string file in files)
         {
-            foreach (string file in Directory.EnumerateFiles(projectFolder, "*" + EditorProject.Extension))
-            {
-                string name = Path.GetFileNameWithoutExtension(file);
-                projects.Add(new ProjectEntry(name, file));
-            }
+            string name = Path.GetFileNameWithoutExtension(file);
+            projects.Add(new ProjectEntry(name, file));
         }
 
         projects.Sort(static (first, second) => StringComparer.OrdinalIgnoreCase.Compare(first.Name, second.Name));

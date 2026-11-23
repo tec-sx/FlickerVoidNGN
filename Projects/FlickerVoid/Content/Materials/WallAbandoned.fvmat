@@ -1,8 +1,0 @@
-// The abandoned wall painted in Rebelle, once over the wall's height and repeated along it.
-{
-  "$schema": "../.schemas/material.schema.json",
-  "parameters": {
-    "texture": "Paintings/Wall_Abandoned_01.reb",
-    "textureScale": 2.6667
-  }
-}
