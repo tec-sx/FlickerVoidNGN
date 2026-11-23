@@ -4,6 +4,7 @@ using Arch.Core;
 
 using FlickerVoid.Editor.Core.Overlays;
 using FlickerVoid.Engine.Cameras.Triggers;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Editor.Core.Shots;
@@ -20,7 +21,7 @@ public static class ShotOverlay
     private const float AreaWidth = 1.5f;
     private const float LookLength = 0.6f;
 
-    private static readonly QueryDescription Areas = new QueryDescription().WithAll<TriggerArea, Transform>();
+    private static readonly QueryDescription Areas = new QueryDescription().WithAll<TriggerArea, Transform>().WithNone<Hidden>();
     private static readonly Vector4 RailColor = new(0.35f, 0.8f, 1, 1);
     private static readonly Vector4 AreaColor = new(0.55f, 0.9f, 0.45f, 0.8f);
 

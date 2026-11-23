@@ -5,6 +5,7 @@ using Arch.Core;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Engine.Cameras.Triggers;
 using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
@@ -23,11 +24,11 @@ public sealed class EditorIcons
     public static readonly Vector4 SelectedColor = new(1, 0.55f, 0.1f, 1);
 
     private static readonly Vector4 PlainColor = new(0.9f, 0.9f, 0.9f, 1);
-    private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>();
-    private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>();
-    private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>();
-    private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
-    private static readonly QueryDescription Cues = new QueryDescription().WithAll<CameraCue, TriggerArea, Transform>();
+    private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription Cues = new QueryDescription().WithAll<CameraCue, TriggerArea, Transform>().WithNone<Hidden>();
 
     private readonly List<IconInstance> _icons = [];
 
