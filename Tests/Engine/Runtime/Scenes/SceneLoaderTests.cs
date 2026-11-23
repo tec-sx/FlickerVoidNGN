@@ -84,6 +84,43 @@ public sealed class SceneLoaderTests : IDisposable
     }
 
     [Fact]
+    public void NestsEntitiesUnderTheParentsTheSceneNames()
+    {
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Trigger" }, { "name": "Enter", "parent": "Trigger" } ] }""").Build();
+
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
+
+        _builder.World.Has<EntityParent>(entities[0]).Should().BeFalse();
+        _builder.World.Get<EntityParent>(entities[1]).Name.Should().Be("Trigger");
+    }
+
+    [Fact]
+    public void SavesTheParentsOfEntities()
+    {
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Trigger" }, { "name": "Enter", "parent": "Trigger" }, { "name": "Exit" } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
+        _builder.World.Remove<EntityParent>(entities[1]);
+        _builder.World.Add(entities[2], new EntityParent("Trigger"));
+
+        loader.Save("Room.fvscene");
+
+        string text = _builder.ReadFile("Room.fvscene");
+        text.Should().Contain("""{"name":"Exit","parent":"Trigger",""").And.Contain(""""{"name":"Enter","components"""");
+    }
+
+    [Fact]
+    public void MovesEntitiesBetweenParentsWhenTheFileChanges()
+    {
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Trigger" }, { "name": "Enter", "parent": "Trigger" }, { "name": "Exit" } ] }""").Build();
+        IReadOnlyList<Entity> entities = loader.Load("Room.fvscene");
+
+        _builder.ChangeScene("Room.fvscene", """{ "entities": [ { "name": "Trigger" }, { "name": "Enter" }, { "name": "Exit", "parent": "Trigger" } ] }""");
+
+        _builder.World.Has<EntityParent>(entities[1]).Should().BeFalse();
+        _builder.World.Get<EntityParent>(entities[2]).Name.Should().Be("Trigger");
+    }
+
+    [Fact]
     public void SpawnsEntitiesFromTheirTemplatesUnderTheirOwnValues()
     {
         SceneLoader loader = _builder

@@ -23,7 +23,7 @@ public sealed partial class Game : IDisposable
     private readonly ILogger _logger;
     private bool _initialized;
 
-    /// <summary>Creates the world and registers it, the logger factory, the scene spawner, the debug console, the events and the facts as services.</summary>
+    /// <summary>Creates the world and registers it, the logger factory, the scene spawner, the debug console, the events, the facts and the transform hierarchy as services.</summary>
     public Game(ILoggerFactory loggerFactory)
     {
         LoggerFactory = loggerFactory;
@@ -49,6 +49,7 @@ public sealed partial class Game : IDisposable
         Services.AddService(DebugConsole);
         Services.AddService(Events);
         Services.AddService(Facts);
+        Services.AddService(Hierarchy);
 
         Loop.FixedUpdate += HandleFixedUpdate;
         Loop.Update += HandleUpdate;
@@ -83,6 +84,9 @@ public sealed partial class Game : IDisposable
 
     /// <summary>Debugging commands and variables; modules add theirs to it.</summary>
     public IDebugConsole DebugConsole { get; } = new DebugConsole();
+
+    /// <summary>Moves nested entities with their parents after each fixed step and before each frame.</summary>
+    public TransformHierarchy Hierarchy { get; } = new();
 
     public GameLoop Loop { get; } = new();
 
@@ -131,10 +135,12 @@ public sealed partial class Game : IDisposable
     private void HandleFixedUpdate(GameTime time)
     {
         Run(FixedSystems, time);
+        Hierarchy.Update(World);
     }
 
     private void HandleUpdate(GameTime time)
     {
+        Hierarchy.Update(World);
         Run(FrameSystems, time);
     }
 

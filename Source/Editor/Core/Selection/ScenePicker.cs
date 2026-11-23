@@ -2,6 +2,7 @@ using System.Numerics;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
@@ -15,7 +16,7 @@ namespace FlickerVoid.Editor.Core.Selection;
 /// </summary>
 public sealed class ScenePicker : IDisposable
 {
-    private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>();
+    private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>().WithNone<Hidden>();
 
     private readonly IContentManager _content;
     private readonly Dictionary<string, PickModel?> _models = new(ContentManager.PathComparer);

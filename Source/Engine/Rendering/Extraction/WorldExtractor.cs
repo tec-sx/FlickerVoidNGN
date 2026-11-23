@@ -19,10 +19,10 @@ public sealed class WorldExtractor : IRenderExtractor
 {
     private static readonly QueryDescription ActiveCameras = new QueryDescription().WithAll<ActiveCamera>();
     private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>().WithNone<ActiveCamera>();
-    private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>().WithNone<MeshAnimator>();
-    private static readonly QueryDescription AnimatedMeshes = new QueryDescription().WithAll<MeshRenderer, Transform, MeshAnimator>();
-    private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>();
-    private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>();
+    private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>().WithNone<MeshAnimator, Hidden>();
+    private static readonly QueryDescription AnimatedMeshes = new QueryDescription().WithAll<MeshRenderer, Transform, MeshAnimator>().WithNone<Hidden>();
+    private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>().WithNone<Hidden>();
     private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
 
     public void Extract(World world, RenderScene scene)

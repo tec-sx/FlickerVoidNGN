@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:scenes="using:FlickerVoid.Editor.Core.Scenes"
+             xmlns:local="using:FlickerVoid.Editor.Scenes"
+             x:Class="FlickerVoid.Editor.Scenes.EntityTreeView"
+             x:DataType="scenes:EntityTreeViewModel">
+  <!-- The selected entity's whole tree, everything nested shown; dragged entities nest under the entity they land on, or come off
+       their parents on the empty space below. Right-click for options. -->
+  <Panel>
+    <TextBlock Text="Select an entity to see what is nested in it." Classes="menuDetail" Margin="8" TextWrapping="Wrap"
+               IsVisible="{Binding !Items.Count}" />
+    <TreeView x:Name="Tree" ItemsSource="{Binding Items}" SelectionMode="Multiple" Classes="outline" DragDrop.AllowDrop="True">
+      <TreeView.ItemContainerTheme>
+        <ControlTheme TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}" x:DataType="scenes:SceneTreeItem">
+          <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+        </ControlTheme>
+      </TreeView.ItemContainerTheme>
+      <TreeView.ItemTemplate>
+        <TreeDataTemplate DataType="scenes:SceneTreeItem" ItemsSource="{Binding Children}">
+          <local:SceneTreeRow />
+        </TreeDataTemplate>
+      </TreeView.ItemTemplate>
+    </TreeView>
+  </Panel>
+</UserControl>

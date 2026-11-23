@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:scenes="using:FlickerVoid.Editor.Core.Scenes"
+             xmlns:shell="using:FlickerVoid.Editor"
+             x:Class="FlickerVoid.Editor.Scenes.SceneTreeRow"
+             x:DataType="scenes:SceneTreeItem">
+  <!-- An outline row: icon and name, nested entities in their own colour, hidden ones faded; at the far right the button that
+       reveals what is nested under the entity, then the eye that hides it in the editor's views. -->
+  <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="5" Background="Transparent">
+    <PathIcon Width="13" Height="13" Data="{Binding Icon, Converter={x:Static shell:MaterialIcons.ByName}}"
+              Classes="outlineIcon" Classes.folder="{Binding IsFolder}" Classes.hidden="{Binding IsHidden}" />
+    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+               Classes="outlineName" Classes.nested="{Binding IsNested}" Classes.hidden="{Binding IsHidden}" />
+    <ToggleButton Grid.Column="2" Classes="icon outlineRow" IsVisible="{Binding HasNested}"
+                  IsChecked="{Binding IsRevealed, Mode=OneWay}" Command="{Binding ToggleRevealCommand}"
+                  ToolTip.Tip="Reveal the entities nested under this one">
+      <PathIcon Data="{x:Static shell:MaterialIcons.Nested}" />
+    </ToggleButton>
+    <Button Grid.Column="3" Classes="icon outlineRow" Command="{Binding ToggleHiddenCommand}" ToolTip.Tip="Hide or show in the editor's views">
+      <Panel>
+        <PathIcon Data="{x:Static shell:MaterialIcons.Visible}" IsVisible="{Binding !IsHidden}" />
+        <PathIcon Data="{x:Static shell:MaterialIcons.Invisible}" IsVisible="{Binding IsHidden}" />
+      </Panel>
+    </Button>
+  </Grid>
+</UserControl>

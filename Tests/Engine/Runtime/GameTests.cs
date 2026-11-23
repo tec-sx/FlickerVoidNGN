@@ -1,8 +1,11 @@
+using System.Numerics;
+
 using Arch.Core;
 using Arch.System;
 
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Debugging;
+using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
@@ -40,6 +43,23 @@ public class GameTests
 
         spawner.Should().BeSameAs(game.Spawner);
         registerAgain.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void MovesNestedEntitiesWithTheirParentsAsItTicks()
+    {
+        using Game game = _builder.Build();
+        Entity parent = game.World.Create(new EntityName("Trigger"), new Transform());
+        Transform start = new() { Position = new Vector3(1, 0, 0) };
+        Entity child = game.World.Create(new EntityName("Enter"), start, new EntityParent("Trigger"));
+        game.Tick(TimeSpan.FromMilliseconds(20));
+
+        Transform moved = new() { Position = new Vector3(0, 0, 2) };
+        game.World.Set(parent, moved);
+        game.Tick(TimeSpan.FromMilliseconds(20));
+
+        game.World.Get<Transform>(child).Position.Should().Be(new Vector3(1, 0, 2));
+        game.Services.GetService<TransformHierarchy>().Should().BeSameAs(game.Hierarchy);
     }
 
     [Fact]

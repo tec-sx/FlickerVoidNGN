@@ -1,11 +1,29 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:scenes="using:FlickerVoid.Editor.Core.Scenes"
+             xmlns:local="using:FlickerVoid.Editor.Scenes"
              xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Scenes.SceneTreeView"
              x:DataType="scenes:SceneTreeViewModel">
-  <!-- Folders and entities with their icons; Ctrl or Shift picks several, a folder selects everything in it, and dragged items
-       drop into a folder (or onto the empty space below, to the top). Right-click for options. -->
+  <!-- Folders and the entities at the top with their icons; Ctrl or Shift picks several, a folder selects everything in it, and
+       dragged items drop into a folder (or onto the empty space below, to the top) or onto an entity, to nest under it. Right-click
+       for options. -->
+  <DockPanel>
+  <!-- The outline's own controls: reveal every nested entity, hide or show the selection, show everything. -->
+  <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="2" Margin="2,2,2,0" HorizontalAlignment="Right">
+    <ToggleButton Classes="icon outlineRow" IsChecked="{Binding RevealAllNested}" ToolTip.Tip="Reveal every nested entity">
+      <PathIcon Data="{x:Static shell:MaterialIcons.Nested}" />
+    </ToggleButton>
+    <Button Classes="icon outlineRow" Command="{Binding HideSelectedCommand}" ToolTip.Tip="Hide the selection in the editor's views">
+      <PathIcon Data="{x:Static shell:MaterialIcons.Invisible}" />
+    </Button>
+    <Button Classes="icon outlineRow" Command="{Binding ShowSelectedCommand}" ToolTip.Tip="Show the selection again">
+      <PathIcon Data="{x:Static shell:MaterialIcons.Visible}" />
+    </Button>
+    <Button Classes="icon outlineRow" Command="{Binding ShowAllCommand}" ToolTip.Tip="Show every hidden entity" Width="NaN" Padding="4,0">
+      <TextBlock Text="Show all" FontSize="{StaticResource EditorSmallFontSize}" VerticalAlignment="Center" />
+    </Button>
+  </StackPanel>
   <TreeView x:Name="Tree" ItemsSource="{Binding Items}" SelectionMode="Multiple" Classes="outline" DragDrop.AllowDrop="True">
     <TreeView.ItemContainerTheme>
       <ControlTheme TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}" x:DataType="scenes:SceneTreeItem">
@@ -14,12 +32,9 @@
     </TreeView.ItemContainerTheme>
     <TreeView.ItemTemplate>
       <TreeDataTemplate DataType="scenes:SceneTreeItem" ItemsSource="{Binding Children}">
-        <StackPanel Orientation="Horizontal" Spacing="5" Background="Transparent">
-          <PathIcon Width="13" Height="13" Data="{Binding Icon, Converter={x:Static shell:MaterialIcons.ByName}}"
-                    Classes="outlineIcon" Classes.folder="{Binding IsFolder}" />
-          <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-        </StackPanel>
+        <local:SceneTreeRow />
       </TreeDataTemplate>
     </TreeView.ItemTemplate>
   </TreeView>
+  </DockPanel>
 </UserControl>

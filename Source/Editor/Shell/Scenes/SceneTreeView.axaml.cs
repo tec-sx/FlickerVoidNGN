@@ -15,7 +15,7 @@ namespace FlickerVoid.Editor.Scenes;
 
 /// <summary>
 /// The scene outline: keeps the tree's selection and the editor's in step, offers folder options on right-click, renames folders
-/// in place (F2), deletes with Delete and moves dragged items into folders. Refreshes twice a second, so renames in the inspector appear.
+/// in place (F2), deletes with Delete, moves dragged items into folders and nests dragged entities under the entity they land on. Refreshes twice a second, so renames in the inspector appear.
 /// </summary>
 public sealed partial class SceneTreeView : UserControl
 {
@@ -161,6 +161,13 @@ public sealed partial class SceneTreeView : UserControl
 
         if (last is not null)
         {
+            if (_tree.SelectedItems.OfType<SceneTreeItem>().Any(item => item.IsNested))
+            {
+                choices.Add(new MenuChoice("Take Off Parent", () => outline.MoveTo(GetChosenEntities(), last.Path), "Nesting", "Up"));
+            }
+
+            choices.Add(new MenuChoice("Hide", () => outline.HideSelectedCommand.Execute(null), "View", "Invisible"));
+            choices.Add(new MenuChoice("Show", () => outline.ShowSelectedCommand.Execute(null), "View", "Visible"));
             choices.Add(new MenuChoice("Move to Top", () => outline.MoveTo(GetChosenEntities(), null), "Folder", "Up"));
             choices.Add(new MenuChoice("Delete", DeleteChosen, "Edit", "Delete", "Delete"));
         }
@@ -284,7 +291,10 @@ public sealed partial class SceneTreeView : UserControl
         e.Handled = true;
     }
 
-    /// <summary>Moves the dragged items into the folder dropped on, the folder of the entity dropped on, or the top.</summary>
+    /// <summary>
+    /// Nests the dragged entities under the entity dropped on; otherwise moves the dragged items into the folder dropped on, or the
+    /// top, taking entities off their parents.
+    /// </summary>
     private void HandleDrop(object? sender, DragEventArgs e)
     {
         if (e.DataTransfer.TryGetValue(Format) is not { } dragged || Outline is not { } outline)
@@ -293,15 +303,15 @@ public sealed partial class SceneTreeView : UserControl
         }
 
         SceneTreeItem? target = (e.Source as StyledElement)?.DataContext as SceneTreeItem;
-        string? folder = null;
-        if (target is { IsFolder: true })
+        if (target?.Entity is { } parent)
         {
-            folder = target.Path;
+            IEnumerable<Entity> nested = dragged.Where(item => item.Entity is { } entity && entity != parent).Select(item => item.Entity!.Value);
+            outline.Nest(nested, parent);
+            e.Handled = true;
+            return;
         }
-        else if (target is { Path.Length: > 0 })
-        {
-            folder = target.Path;
-        }
+
+        string? folder = target?.Path;
 
         List<Entity> entities = [];
         foreach (SceneTreeItem item in dragged)
