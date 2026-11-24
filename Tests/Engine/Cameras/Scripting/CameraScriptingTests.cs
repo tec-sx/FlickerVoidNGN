@@ -132,6 +132,32 @@ public sealed class CameraScriptingTests : IDisposable
     }
 
     [Fact]
+    public void AResumedSwitchOrFadeGoesOnWithoutSwitchingOrFadingAgain()
+    {
+        FlowRun switched = _builder.Resume("node0", new SwitchShotNode { Shot = "Cellar" });
+        FlowRun faded = _builder.Resume("node0", new FadeNode { Direction = FadeDirection.Out, Duration = 0.5f });
+
+        _builder.Game.Run(0.25f);
+
+        switched.IsRunning.Should().BeFalse();
+        faded.IsRunning.Should().BeFalse();
+        _builder.Game.Director.Live.Should().Be(_builder.Hall, "the save holds the shot the switch went to");
+        _builder.Game.Extract().Transition.Fade.Should().Be(0, "the save holds the fade");
+    }
+
+    [Fact]
+    public void AResumedPlayPlaysOnToItsKey()
+    {
+        _builder.Game.Director.Switch(_builder.Cellar, ShotTransition.Cut);
+
+        FlowRun run = _builder.Resume("node0", new PlayShotNode { Shot = "Cellar", ToKey = 1 });
+        _builder.Game.Run(2);
+
+        run.IsRunning.Should().BeFalse();
+        _builder.Game.Director.GetTime(_builder.Cellar).Should().Be(1);
+    }
+
+    [Fact]
     public void AFinishedRunStopsWaiting()
     {
         FlowRun run = _builder.Run(new PlayShotNode { Shot = "Cellar" });

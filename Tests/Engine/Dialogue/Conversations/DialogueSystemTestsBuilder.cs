@@ -40,6 +40,8 @@ internal sealed class DialogueSystemTestsBuilder : IDisposable
 
     public SaveSystem Saves { get; private set; } = null!;
 
+    public SceneTravel Travel { get; private set; } = null!;
+
     public World World => Game.World;
 
     /// <summary>A dialogue graph at <c>Talk.fvflow</c> with these nodes and links, given as JSON arrays.</summary>
@@ -55,10 +57,12 @@ internal sealed class DialogueSystemTestsBuilder : IDisposable
         return this;
     }
 
-    /// <summary>Adds flow, dialogue and the content services, starts play and runs a first step.</summary>
+    /// <summary>Adds flow, dialogue, the content services and scene travel, starts play and runs a first step.</summary>
     public DialogueSystemTestsBuilder Build()
     {
         ContentManager content = new(_folder);
+        SceneLoader scenes = new(Game.Spawner, content, Game.World, NullLogger<SceneLoader>.Instance);
+        Travel = Game.AddSceneTravel(scenes);
         _data = new DataAssets(content, Game.Data);
         Game.Services.AddService(_data);
         Game.AddFlow();

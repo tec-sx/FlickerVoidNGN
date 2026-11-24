@@ -43,7 +43,7 @@ public static class CamerasGameExtensions
         game.Spawner.Register("triggerArea", CamerasJsonContext.Default.TriggerArea);
         game.Spawner.Register("triggerActivator", CamerasJsonContext.Default.TriggerActivator);
         game.Spawner.Register("cameraCue", CamerasJsonContext.Default.CameraCue);
-        TriggerAreaSystem triggers = new(game.World, game.Events);
+        TriggerAreaSystem triggers = new(game.World, game.Events, game.Services);
         game.FixedSystems.Add(triggers);
         game.Services.AddService(triggers);
         CameraDirector director = new(game);

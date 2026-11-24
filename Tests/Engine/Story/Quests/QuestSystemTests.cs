@@ -290,6 +290,80 @@ public sealed class QuestSystemTests : IDisposable
     }
 
     [Fact]
+    public void ALoadResumesAQuestsFlowWhereItWasSavedWithoutReplayingWhatCameBefore()
+    {
+        _builder.WithFile("Quests/Cellar.fvflow", """
+            {
+              "nodes": [
+                { "$type": "start", "id": "start" },
+                { "$type": "applyEffects", "id": "cutscene", "effects": { "effects": [ { "$type": "fact", "fact": "Fact.Cutscene", "write": "Add" } ] } },
+                { "$type": "waitForConditions", "id": "door", "conditions": { "conditions": [ { "$type": "fact", "fact": "Fact.Cellar.DoorOpen" } ] } },
+                { "$type": "completeObjective", "id": "done", "objective": "Quest.Cellar.OpenedDoor" }
+              ],
+              "links": [ { "from": "start", "to": "cutscene" }, { "from": "cutscene", "to": "door" }, { "from": "door", "to": "done" } ]
+            }
+            """)
+            .WithQuest(Cellar.Name, """ "flow": "Quests/Cellar.fvflow" """)
+            .Build();
+        _builder.Quests.Start(Cellar);
+        _builder.Saves.Save("Slot");
+
+        _builder.Saves.Load("Slot");
+        _builder.Game.Facts.SetFact(DoorOpen, 1);
+
+        _builder.Game.Facts.GetFact(new Tag("Fact.Cutscene")).Should().Be(1, "the cutscene played before the save and is not played again");
+        _builder.Game.Facts.GetFact(Door).Should().Be(1);
+    }
+
+    [Fact]
+    public void ALoadDoesNotRunAgainTheFlowOfAnActiveQuestThatHadFinished()
+    {
+        _builder.WithFile("Quests/Cellar.fvflow", """
+            {
+              "nodes": [
+                { "$type": "start", "id": "start" },
+                { "$type": "applyEffects", "id": "cutscene", "effects": { "effects": [ { "$type": "fact", "fact": "Fact.Cutscene", "write": "Add" } ] } },
+                { "$type": "finish", "id": "end" }
+              ],
+              "links": [ { "from": "start", "to": "cutscene" }, { "from": "cutscene", "to": "end" } ]
+            }
+            """)
+            .WithQuest(Cellar.Name, """ "flow": "Quests/Cellar.fvflow" """)
+            .Build();
+        _builder.Quests.Start(Cellar);
+        _builder.Saves.Save("Slot");
+
+        _builder.Saves.Load("Slot");
+
+        _builder.Quests.IsFlowRunning(Cellar).Should().BeFalse();
+        _builder.Game.Facts.GetFact(new Tag("Fact.Cutscene")).Should().Be(1);
+    }
+
+    [Fact]
+    public void RunningFlowsApplyTheirEffectsForANewPlayer()
+    {
+        _builder.WithFile("Quests/Cellar.fvflow", """
+            {
+              "nodes": [
+                { "$type": "start", "id": "start" },
+                { "$type": "waitForConditions", "id": "door", "conditions": { "conditions": [ { "$type": "fact", "fact": "Fact.Cellar.DoorOpen" } ] } },
+                { "$type": "applyEffects", "id": "reward", "effects": { "effects": [ { "$type": "mark", "fact": "Fact.Cellar.Reward" } ] } }
+              ],
+              "links": [ { "from": "start", "to": "door" }, { "from": "door", "to": "reward" } ]
+            }
+            """)
+            .WithQuest(Cellar.Name, """ "flow": "Quests/Cellar.fvflow" """)
+            .Build();
+        _builder.Quests.Player = QuestSystemTestsBuilder.Marked(1);
+        _builder.Quests.Start(Cellar);
+
+        _builder.Quests.Player = QuestSystemTestsBuilder.Marked(2);
+        _builder.Game.Facts.SetFact(DoorOpen, 1);
+
+        _builder.Game.Facts.GetFact(Reward).Should().Be(2, "the flow applies its effects for the player spawned again");
+    }
+
+    [Fact]
     public void QuestRulesAreAppliedForThePlayer()
     {
         _builder.WithQuest(Cellar.Name).Build();

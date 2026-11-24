@@ -148,6 +148,20 @@ public class GameTests
     }
 
     [Fact]
+    public void RunsDeferredActionsOnceBeforeTheNextTicksSystems()
+    {
+        using Game game = _builder.WithFixedSystem(_fixedSystem).Build();
+        List<string> order = [];
+        _fixedSystem.When(system => system.Update(Arg.Any<GameTime>())).Do(_ => order.Add("system"));
+        game.Defer(() => order.Add("deferred"));
+
+        game.Tick(game.Loop.FixedStep);
+        game.Tick(game.Loop.FixedStep);
+
+        order.Should().Equal("deferred", "system", "system");
+    }
+
+    [Fact]
     public void InitializesSystemsOnce()
     {
         using Game game = _builder.WithFrameSystem(_frameSystem).Build();

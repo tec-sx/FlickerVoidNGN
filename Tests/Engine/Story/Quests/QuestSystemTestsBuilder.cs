@@ -1,5 +1,7 @@
 using FlickerVoid.Engine.Flow;
 using FlickerVoid.Engine.Flow.Graphs;
+using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Entities;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -48,10 +50,23 @@ internal sealed class QuestSystemTestsBuilder : IDisposable
         return WithFile($"Quests/{id}.fvdata", $$"""{ "type": "quest", "id": "{{id}}"{{separator}} {{properties}} }""");
     }
 
+    /// <summary>An entity whose <see cref="Mark"/> is <paramref name="value"/>, which the <c>mark</c> effect writes.</summary>
+    public static IEntityView Marked(int value)
+    {
+        IEntityView view = Substitute.For<IEntityView>();
+        view.TryGet(out Arg.Any<Mark>()).Returns(call =>
+        {
+            call[0] = new Mark(value);
+            return true;
+        });
+        return view;
+    }
 
-    /// <summary>Adds flow, story and the content services, then runs the first step, which starts the quests.</summary>
+    /// <summary>Adds flow, story, the <c>mark</c> effect and the content services, then runs the first step, which starts the quests.</summary>
     public QuestSystemTestsBuilder Build()
     {
+        Game.Data.AddResolver(QuestSystemTestsJsonContext.Default);
+        Game.Data.RegisterDerived<Effect, MarkEffect>("mark");
         ContentManager content = new(_folder);
         _data = new DataAssets(content, Game.Data);
         Game.Services.AddService(_data);

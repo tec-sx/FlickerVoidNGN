@@ -23,9 +23,10 @@ public sealed partial class Game : IDisposable
 {
     private readonly ILogger _logger;
     private readonly HashSet<Tag> _pauses = [];
+    private readonly List<Action> _deferred = [];
     private bool _initialized;
 
-    /// <summary>Creates the world and registers it, the logger factory, the scene spawner (with the transform, saveable and greybox components), the debug console, the events, the facts and the transform hierarchy as services, and saves the transforms and the random source.</summary>
+    /// <summary>Creates the world and registers it, the logger factory, the scene spawner (with the transform, saveable, greybox and traveller components), the debug console, the events, the facts and the transform hierarchy as services, and saves the transforms and the random source.</summary>
     public Game(ILoggerFactory loggerFactory)
     {
         LoggerFactory = loggerFactory;
@@ -39,6 +40,7 @@ public sealed partial class Game : IDisposable
         Spawner.Register("transform", RuntimeJsonContext.Default.Transform);
         Spawner.Register("saveable", RuntimeJsonContext.Default.Saveable);
         Spawner.Register("greybox", RuntimeJsonContext.Default.Greybox);
+        Spawner.Register("traveller", RuntimeJsonContext.Default.Traveller);
         SaveStates.AddComponent("transform", RuntimeJsonContext.Default.Transform);
         SaveStates.AddGlobal("random", SaveRandom, RestoreRandom);
         Services.AddService(Spawner);
@@ -123,7 +125,13 @@ public sealed partial class Game : IDisposable
         Loop.Paused = _pauses.Count > 0;
     }
 
-    /// <summary>Advances the game by the real time since the last tick; the first tick initializes the systems.</summary>
+    /// <summary>Runs the action before the next tick advances the game, outside every system, such as travel, which replaces entities systems use.</summary>
+    public void Defer(Action action)
+    {
+        _deferred.Add(action);
+    }
+
+    /// <summary>Advances the game by the real time since the last tick, after the actions deferred to it; the first tick initializes the systems.</summary>
     public void Tick(TimeSpan elapsed)
     {
         if (!_initialized)
@@ -133,6 +141,7 @@ public sealed partial class Game : IDisposable
             _initialized = true;
         }
 
+        RunDeferred();
         if (elapsed > Loop.MaxElapsed)
         {
             LogFrameClamped(elapsed.TotalMilliseconds, Loop.MaxElapsed.TotalMilliseconds);
@@ -149,6 +158,22 @@ public sealed partial class Game : IDisposable
         FrameSystems.Dispose();
         FixedSystems.Dispose();
         World.Destroy(World);
+    }
+
+    /// <summary>Runs the deferred actions in order; those they defer in turn wait for the next tick.</summary>
+    private void RunDeferred()
+    {
+        if (_deferred.Count == 0)
+        {
+            return;
+        }
+
+        Action[] actions = [.. _deferred];
+        _deferred.Clear();
+        foreach (Action action in actions)
+        {
+            action();
+        }
     }
 
     private SavedRandom SaveRandom() => new() { State = Random.State };

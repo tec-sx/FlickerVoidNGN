@@ -75,6 +75,22 @@ public sealed class DialogueSystemTests : IDisposable
     }
 
     [Fact]
+    public void LeavingTheSceneEndsTheConversation()
+    {
+        _builder.WithGraph($"{Start}, {Greeting}, {End}", """{ "from": "start", "to": "hello" }, { "from": "hello", "to": "end" }""")
+            .WithFile("Street.fvscene", """{ "entities": [] }""")
+            .Build();
+        (Entity hero, Entity innkeeper) = _builder.Pair();
+        _builder.Travel.Travel("Street.fvscene");
+        _builder.Dialogue.Start(hero, innkeeper);
+
+        _builder.Travel.Travel("Street.fvscene");
+
+        _builder.Dialogue.IsInConversation.Should().BeFalse();
+        _builder.Saves.CanSave.Should().BeTrue();
+    }
+
+    [Fact]
     public void OnlyOneConversationRunsAtATime()
     {
         _builder.WithGraph($"{Start}, {Greeting}", """{ "from": "start", "to": "hello" }""").Build();
