@@ -7,6 +7,7 @@ using FlickerVoid.Editor.Core.Tests.Projects;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Entities;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
@@ -138,6 +139,29 @@ public sealed class EditorSceneTests : IDisposable
         world.Get<PointLight>(copy).Range.Should().Be(7);
         scene.Entities.Should().HaveCount(3);
         _builder.ReadScene("Room.fvscene").Should().Contain("Lamp 3");
+    }
+
+    [Fact]
+    public void AnEntityAddedWithATakenNameIsNumbered()
+    {
+        _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""").Open("Room.fvscene");
+
+        Entity added = _builder.Scene.AddEntity(new EntityData { Name = "Lamp" });
+
+        _builder.Scene.Game.World.Get<EntityName>(added).Value.Should().Be("Lamp 2", "names link entities, so no two share one");
+    }
+
+    [Fact]
+    public void ACopyOfASaveableEntityGetsASaveIdNoOtherEntityHas()
+    {
+        _builder
+            .WithScene("Room.fvscene", """{ "entities": [ { "name": "Crate", "components": { "transform": {}, "saveable": { "id": "Crate" } } }, { "name": "Barrel", "components": { "saveable": { "id": "Crate 2" } } } ] }""")
+            .Open("Room.fvscene");
+        Entity crate = _builder.Scene.Entities[0];
+
+        Entity copy = _builder.Scene.DuplicateEntity(crate);
+
+        _builder.Scene.Game.World.Get<Saveable>(copy).Id.Should().Be("Crate 3", "a save holds one state per id");
     }
 
     [Fact]

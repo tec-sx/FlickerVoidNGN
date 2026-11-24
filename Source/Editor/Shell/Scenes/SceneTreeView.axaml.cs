@@ -124,7 +124,7 @@ public sealed partial class SceneTreeView : UserControl
         switch (e.Key)
         {
             case Key.F2:
-                RenameChosenFolder();
+                RenameChosen();
                 e.Handled = true;
                 break;
             case Key.Delete:
@@ -166,6 +166,11 @@ public sealed partial class SceneTreeView : UserControl
                 choices.Add(new MenuChoice("Take Off Parent", () => outline.MoveTo(GetChosenEntities(), last.Path), "Nesting", "Up"));
             }
 
+            if (folder is null && last.Entity is not null)
+            {
+                choices.Add(new MenuChoice("Rename", RenameChosen, "Edit", "Rename", "F2"));
+            }
+
             choices.Add(new MenuChoice("Hide", () => outline.HideSelectedCommand.Execute(null), "View", "Invisible"));
             choices.Add(new MenuChoice("Show", () => outline.ShowSelectedCommand.Execute(null), "View", "Visible"));
             choices.Add(new MenuChoice("Move to Top", () => outline.MoveTo(GetChosenEntities(), null), "Folder", "Up"));
@@ -200,6 +205,23 @@ public sealed partial class SceneTreeView : UserControl
     /// <summary>Raised to delete the selected entities, which the viewport does.</summary>
     public event Action? DeleteRequested;
 
+    /// <summary>Renames the chosen folder, or else the last chosen entity.</summary>
+    private void RenameChosen()
+    {
+        if (ChosenFolder is not null)
+        {
+            RenameChosenFolder();
+            return;
+        }
+
+        if (_tree.SelectedItems.OfType<SceneTreeItem>().LastOrDefault() is not { Entity: not null } item || Outline is not { } outline)
+        {
+            return;
+        }
+
+        ShowRename(item, name => outline.RenameEntity(item, name));
+    }
+
     private void RenameChosenFolder()
     {
         if (ChosenFolder is not { } folder || Outline is not { } outline)
@@ -207,15 +229,32 @@ public sealed partial class SceneTreeView : UserControl
             return;
         }
 
-        Control anchor = _tree.TreeContainerFromItem(folder) ?? _tree;
-        TextBox box = new() { Text = folder.Name, Width = 180 };
+        ShowRename(folder, name =>
+        {
+            outline.RenameFolder(folder.Path, name);
+            return true;
+        });
+    }
+
+    /// <summary>Shows a box under the item to type its new name in; Enter renames, and the box stays while the name is refused.</summary>
+    private void ShowRename(SceneTreeItem item, Func<string, bool> rename)
+    {
+        Control anchor = _tree.TreeContainerFromItem(item) ?? _tree;
+        TextBox box = new() { Text = item.Name, Width = 180 };
         Flyout flyout = new() { Content = box, Placement = PlacementMode.Bottom };
         box.KeyDown += (_, e) =>
         {
             if (e.Key == Key.Enter)
             {
-                outline.RenameFolder(folder.Path, box.Text ?? "");
-                flyout.Hide();
+                if (rename(box.Text ?? ""))
+                {
+                    flyout.Hide();
+                }
+                else
+                {
+                    box.SelectAll();
+                }
+
                 e.Handled = true;
             }
             else if (e.Key == Key.Escape)

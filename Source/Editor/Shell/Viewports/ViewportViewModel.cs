@@ -292,7 +292,10 @@ public sealed partial class ViewportViewModel : ObservableObject
         Camera.Frame(center, radius);
     }
 
-    /// <summary>Adds a copy of each selected entity in the same place and selects the copies, to move them away with the gizmo.</summary>
+    /// <summary>
+    /// Adds a copy of each selected entity, with what is nested under it, in the same place and selects the copies, to move them away
+    /// with the gizmo; a selected entity nested under another selected one is copied with it, once.
+    /// </summary>
     [RelayCommand]
     public void DuplicateSelected()
     {
@@ -304,7 +307,9 @@ public sealed partial class ViewportViewModel : ObservableObject
 
         List<Entity> copies = [];
         Entity? primary = null;
-        List<Entity> selected = [.. Selection.Entities.Where(world.IsAlive)];
+        List<Entity> alive = [.. Selection.Entities.Where(world.IsAlive)];
+        HashSet<Entity> chosen = [.. alive];
+        List<Entity> selected = [.. alive.Where(entity => !IsNestedUnderAny(entity, chosen))];
         Scene.History.BeginGroup(DescribeMany("Duplicate", selected));
         foreach (Entity entity in selected)
         {
@@ -321,6 +326,22 @@ public sealed partial class ViewportViewModel : ObservableObject
         {
             Selection.SelectAll(copies, primary);
         }
+    }
+
+    private bool IsNestedUnderAny(Entity entity, HashSet<Entity> entities)
+    {
+        Entity? parent = Scene.GetParent(entity);
+        while (parent is { } current)
+        {
+            if (entities.Contains(current))
+            {
+                return true;
+            }
+
+            parent = Scene.GetParent(current);
+        }
+
+        return false;
     }
 
     /// <summary>

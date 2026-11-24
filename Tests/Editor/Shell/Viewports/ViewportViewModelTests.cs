@@ -91,6 +91,22 @@ public sealed class ViewportViewModelTests : IDisposable
     }
 
     [Fact]
+    public void DuplicatesASelectedTreeOnceWhenWhatIsNestedInItIsSelectedToo()
+    {
+        _builder.OpenScene("""{ "entities": [ { "name": "Table", "components": { "transform": {} } }, { "name": "Cup", "parent": "Table", "components": { "transform": {} } } ] }""");
+        Entity table = _builder.ViewModel.Scene.Find("Table")!.Value;
+        Entity cup = _builder.ViewModel.Scene.Find("Cup")!.Value;
+        _builder.ViewModel.Selection.SelectAll([table, cup], cup);
+
+        _builder.ViewModel.DuplicateSelected();
+
+        _builder.ViewModel.Scene.Entities.Should().HaveCount(4);
+        Entity copy = _builder.ViewModel.Scene.Find("Table 2")!.Value;
+        _builder.ViewModel.Selection.Entities.Should().Equal(copy);
+        _builder.ViewModel.Scene.GetParent(_builder.ViewModel.Scene.Find("Cup 2")!.Value).Should().Be(copy);
+    }
+
+    [Fact]
     public void DropsAModelOnTheGroundUnderTheMouseAndSelectsIt()
     {
         _builder.OpenLampScene();

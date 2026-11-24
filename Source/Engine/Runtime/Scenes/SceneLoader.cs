@@ -4,6 +4,7 @@ using System.Text.Json;
 using Arch.Core;
 
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Serialization;
 
 using Microsoft.Extensions.Logging;
@@ -226,7 +227,30 @@ public sealed partial class SceneLoader : IDisposable
     {
         IReadOnlyList<Entity> entities = _spawner.Spawn(scene, _world);
         _loaded.Add(fullPath, new LoadedScene(path, scene, entities));
+        WarnOfDuplicates(path, scene, entities);
         return entities;
+    }
+
+    /// <summary>Warns of names two entities share, as names link entities, and of save ids two share, as a save keeps one state per id.</summary>
+    private void WarnOfDuplicates(string path, SceneData scene, IReadOnlyList<Entity> entities)
+    {
+        HashSet<string> names = [];
+        foreach (EntityData entity in scene.Entities)
+        {
+            if (entity.Name.Length > 0 && !names.Add(entity.Name))
+            {
+                LogSharedName(path, entity.Name);
+            }
+        }
+
+        HashSet<string> ids = [];
+        foreach (Entity entity in entities)
+        {
+            if (_world.TryGet(entity, out Saveable saveable) && saveable.Id.Length > 0 && !ids.Add(saveable.Id))
+            {
+                LogSharedSaveId(path, saveable.Id);
+            }
+        }
     }
 
     private void Reload(string fullPath, LoadedScene loaded)
@@ -277,6 +301,12 @@ public sealed partial class SceneLoader : IDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Kept the last version of {Path}: {Problem}")]
     private partial void LogInvalid(string path, string problem);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "{Path} has two entities named {Name}; what names an entity finds the first.")]
+    private partial void LogSharedName(string path, string name);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "{Path} has two entities saved as {Id}; a save keeps one of them.")]
+    private partial void LogSharedSaveId(string path, string id);
 
     private sealed record LoadedScene(string Path, SceneData Scene, IReadOnlyList<Entity> Entities);
 }

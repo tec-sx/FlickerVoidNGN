@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FlickerVoid.Engine.Runtime.Tests.Scenes;
 
-/// <summary>Builds the scene loader under test over scene files in a temporary content folder, a new world and a spawner that knows transforms and glows.</summary>
+/// <summary>Builds the scene loader under test over scene files in a temporary content folder, a new world and a spawner that knows transforms, glows and save ids.</summary>
 internal sealed class SceneLoaderTestsBuilder : IDisposable
 {
     private readonly ContentManagerTestsBuilder _files = new();
@@ -101,6 +101,7 @@ internal sealed class SceneLoaderTestsBuilder : IDisposable
         SceneSpawner spawner = new();
         spawner.Register("transform", RuntimeJsonContext.Default.Transform);
         spawner.Register("glow", TestEntitiesJsonContext.Default.Glow);
+        spawner.Register("saveable", RuntimeJsonContext.Default.Saveable);
         return spawner;
     }
 }

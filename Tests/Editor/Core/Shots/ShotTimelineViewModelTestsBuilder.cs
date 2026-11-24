@@ -64,10 +64,4 @@ internal sealed class ShotTimelineViewModelTestsBuilder : IDisposable
         Scene.Dispose();
         Directory.Delete(_contentFolder, recursive: true);
     }
-
-    /// <summary>Adds directed cameras to the editor's game, as Bleeders' gameplay module does.</summary>
-    private sealed class CamerasModule : IGameModule
-    {
-        public void Add(Game game) => game.AddCameras();
-    }
 }

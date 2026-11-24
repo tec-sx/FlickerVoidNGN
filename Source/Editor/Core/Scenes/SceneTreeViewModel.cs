@@ -148,6 +148,17 @@ public sealed partial class SceneTreeViewModel : ObservableObject
 
     private void ShowHidden() => SceneTreeItem.ShowHidden(_scene, Items);
 
+    /// <summary>Renames the item's entity, rewriting what names it; false for a folder, an empty name or one another entity has.</summary>
+    public bool RenameEntity(SceneTreeItem item, string name)
+    {
+        if (item.Entity is not { } entity)
+        {
+            return false;
+        }
+
+        return _scene.RenameEntity(entity, name);
+    }
+
     /// <summary>Renames the folder at <paramref name="path"/>, moving everything in it and its subfolders.</summary>
     public void RenameFolder(string path, string name)
     {
