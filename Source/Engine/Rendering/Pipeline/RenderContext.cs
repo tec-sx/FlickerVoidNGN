@@ -57,6 +57,9 @@ public sealed class RenderContext
     /// <summary>The world point the depth fade is measured from; null measures from the camera.</summary>
     public Vector3? Focus { get; internal set; }
 
+    /// <summary>What the frame drew and culled so far.</summary>
+    public RenderStatistics Statistics { get; } = new();
+
     /// <summary>The scene's depth, which passes after the opaque pass can test against, such as overlays drawn over the output.</summary>
     public ITexture Depth => Targets.Depth;
 
@@ -89,6 +92,7 @@ public sealed class RenderContext
     /// <summary>Empties what the last frame's passes worked out.</summary>
     internal void Reset()
     {
+        Statistics.Reset();
         Draws.Clear();
         Lights.Clear();
         LightBounds.Clear();

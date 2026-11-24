@@ -125,6 +125,9 @@ public sealed class SceneRenderer : IDisposable
     /// <summary>The world point the depth fade is measured from in place of the scene's; null keeps the scene's.</summary>
     public Vector3? Focus { get; set; }
 
+    /// <summary>What the last frame drew and culled.</summary>
+    public RenderStatistics Statistics => _context.Statistics;
+
     /// <summary>Probes that replace the world's irradiance volume while a bake renders, or null.</summary>
     internal ProbeSource? BakeProbes { get; set; }
 

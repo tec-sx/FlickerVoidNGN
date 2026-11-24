@@ -3,6 +3,7 @@ using System.Numerics;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 
 namespace FlickerVoid.Engine.Rendering.Tests;
@@ -220,6 +221,26 @@ public sealed class SceneRendererTests : IDisposable
         (byte lit, _, _) = SceneRendererTestsBuilder.Channels(pixels[9]);
         shadowed.Should().BeInRange(62, 66, "the blocker hides the sun from that part of the floor, leaving only the ambient light");
         lit.Should().BeInRange(195, 203, "the sun lights the rest of the floor at 45 degrees");
+    }
+
+    [Fact]
+    public void CullsMeshesOutsideTheViewAndOutsideEachShadowView()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(
+            Camera,
+            Quad,
+            """{ "name": "Blocker", "components": { "transform": { "position": [2, 0, 2], "scale": [0.25, 0.25, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""",
+            """{ "name": "Far", "components": { "transform": { "position": [100, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+
+        _builder.Render();
+
+        RenderStatistics statistics = _builder.Statistics;
+        statistics.Drawn.Should().Be(1, "only the floor is in view");
+        statistics.Culled.Should().Be(2);
+        statistics.ShadowDrawn.Should().Be(2, "the blocker outside the view stands between the floor and the sun, so it casts onto it");
+        statistics.ShadowCulled.Should().Be(1, "the far quad is outside the sun's view too");
     }
 
     [Fact]

@@ -6,6 +6,7 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Geometry;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
@@ -120,6 +121,12 @@ internal sealed class MeshLibrary : IDisposable
             texture = _device.CreateTexture(description, image.Data);
         }
 
-        return new GpuMeshPart(vertices, part.Vertices.Length, indices, part.Indices.Length, skin, texture, part.Material.BaseColor);
+        Bounds bounds = Bounds.Empty;
+        foreach (MeshVertex vertex in part.Vertices)
+        {
+            bounds = bounds.Include(vertex.Position);
+        }
+
+        return new GpuMeshPart(vertices, part.Vertices.Length, indices, part.Indices.Length, skin, texture, part.Material.BaseColor, bounds);
     }
 }

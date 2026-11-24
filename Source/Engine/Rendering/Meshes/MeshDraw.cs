@@ -3,12 +3,14 @@ using System.Numerics;
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Outlines;
+using FlickerVoid.Engine.Runtime.Geometry;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
 /// <summary>
 /// A mesh part to draw this frame, at its entity's world matrix, from its own vertices or the ones skinning posed, with its
-/// material's parameters and its entity's outline, if it has one, and its <see cref="MeshFlags"/>.
+/// material's parameters and its entity's outline, if it has one, and its <see cref="MeshFlags"/>; the box around it in the world,
+/// none for a posed part, which is never culled, and whether the view draws it: neither shadow nor outline only, and not culled.
 /// </summary>
-internal readonly record struct MeshDraw(Matrix4x4 World, GpuMeshPart Part, IBuffer Vertices, IBuffer Material, Outline? Outline = null, MeshFlags Flags = MeshFlags.None);
+internal readonly record struct MeshDraw(Matrix4x4 World, GpuMeshPart Part, IBuffer Vertices, IBuffer Material, Outline? Outline, MeshFlags Flags, Bounds? Bounds, bool InView);
 

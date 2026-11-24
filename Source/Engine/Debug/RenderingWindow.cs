@@ -2,6 +2,7 @@ using System.Numerics;
 
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Rendering.Pipeline;
 
 using Hexa.NET.ImGui;
 
@@ -22,6 +23,9 @@ public sealed class RenderingWindow : DebugWindow
 
     public override void Render()
     {
+        RenderStatistics statistics = _renderer.Statistics;
+        ImGui.Text($"Mesh parts drawn {statistics.Drawn}, culled {statistics.Culled}");
+        ImGui.Text($"In shadows drawn {statistics.ShadowDrawn}, culled {statistics.ShadowCulled}");
         bool localLights = _renderer.LocalLights;
         if (ImGui.Checkbox("Point and spot lights", ref localLights))
         {

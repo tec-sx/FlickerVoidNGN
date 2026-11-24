@@ -13,6 +13,7 @@ using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -230,6 +231,9 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     }
 
     public World World => _game.World;
+
+    /// <summary>What the last <see cref="Render"/> drew and culled.</summary>
+    public RenderStatistics Statistics => _renderer!.Statistics;
 
     /// <summary>A pixel as Rgba8UNorm bytes read back little-endian.</summary>
     /// <summary>The next mip level of RGBA8 texels: each texel the average of the two by two below it.</summary>
