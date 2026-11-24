@@ -59,6 +59,17 @@ internal sealed class InspectorViewModelTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Opens a scene file holding the JSON and selects its first entity.</summary>
+    public Entity OpenScene(string json)
+    {
+        string fullPath = Path.Combine(_contentFolder, "Room.fvscene");
+        File.WriteAllText(fullPath, json);
+        _scene.Open("Room.fvscene");
+        Entity first = _scene.Entities[0];
+        _scene.Selection.Select(first);
+        return first;
+    }
+
     public void SelectNothing()
     {
         _scene.Selection.Select(null);

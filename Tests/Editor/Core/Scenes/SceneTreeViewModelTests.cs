@@ -138,6 +138,18 @@ public sealed class SceneTreeViewModelTests : IDisposable
     }
 
     [Fact]
+    public void SavesAnEntityAsATemplateInTheTemplatesFolderUnderAFreeName()
+    {
+        SceneTreeViewModel tree = new(_builder.Scene);
+        _builder.WithScene("Templates/Box.fventity", """{ "components": {} }""").WithScene("Room.fvscene", Room).Open("Room.fvscene");
+
+        string? path = tree.SaveAsTemplate(tree.Items[2]);
+
+        path.Should().Be("Templates/Box 2.fventity");
+        _builder.Scene.GetTemplate(tree.Items[2].Entity!.Value).Should().Be(path);
+    }
+
+    [Fact]
     public void DeletingAFolderKeepsItsEntitiesInItsParent()
     {
         SceneTreeViewModel tree = new(_builder.Scene);

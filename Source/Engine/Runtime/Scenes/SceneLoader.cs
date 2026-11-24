@@ -102,6 +102,26 @@ public sealed partial class SceneLoader : IDisposable
         return null;
     }
 
+    /// <summary>Makes the entity of the loaded scene file at <paramref name="path"/> start from <paramref name="template"/>, or from none, as it is saved from now on.</summary>
+    public void SetTemplate(string path, Entity entity, string? template)
+    {
+        LoadedScene loaded = GetLoaded(path, out string fullPath);
+        List<EntityData> entities = [.. loaded.Scene.Entities];
+        for (int index = 0; index < loaded.Entities.Count; index++)
+        {
+            if (loaded.Entities[index] != entity)
+            {
+                continue;
+            }
+
+            EntityData previous = entities[index];
+            entities[index] = new EntityData { Name = previous.Name, Template = template, Folder = previous.Folder, Parent = previous.Parent, Components = previous.Components };
+            SceneData scene = new() { Schema = loaded.Scene.Schema, Entities = entities };
+            _loaded[fullPath] = loaded with { Scene = scene };
+            return;
+        }
+    }
+
     /// <summary>Destroys the entities spawned from the scene file and stops following it; does nothing when it isn't loaded.</summary>
     public void Unload(string path)
     {

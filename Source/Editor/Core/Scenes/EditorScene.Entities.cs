@@ -15,6 +15,8 @@ namespace FlickerVoid.Editor.Core.Scenes;
 
 public sealed partial class EditorScene
 {
+    private const string TransformName = "transform";
+
     /// <summary>Creates an entity in the open scene, saved with it, numbering a name another entity has; throws without an open scene.</summary>
     public Entity AddEntity(EntityData data)
     {
@@ -162,6 +164,105 @@ public sealed partial class EditorScene
         RenameReferences(before, wanted);
         History.EndGroup();
         return true;
+    }
+
+    /// <summary>The entity template the entity starts from in the open scene file, or null.</summary>
+    public string? GetTemplate(Entity entity)
+    {
+        if (ScenePath is null || !Game.World.IsAlive(entity))
+        {
+            return null;
+        }
+
+        return _loader.GetTemplate(ScenePath, entity);
+    }
+
+    /// <summary>
+    /// Makes the entity start from the entity template, or from none for null, as one undo step: it keeps every component and value
+    /// it has, gains the template's components it lacks, and the scene file saves only what differs from the template.
+    /// </summary>
+    public void SetTemplate(Entity entity, string? template)
+    {
+        World world = Game.World;
+        if (ScenePath is null || !world.IsAlive(entity) || !world.TryGet(entity, out EntityName entityName))
+        {
+            return;
+        }
+
+        string? before = GetTemplate(entity);
+        if (before == template)
+        {
+            return;
+        }
+
+        string verb = $"Start {entityName.Value} from {template ?? "no template"}";
+        History.BeginGroup(verb);
+        ApplyTemplate(entityName.Value, template);
+        TemplateStep step = new(verb, this, entityName.Value, before, template);
+        History.Record(step);
+        if (template is not null)
+        {
+            AddTemplateComponents(entity, template);
+        }
+
+        History.EndGroup();
+    }
+
+    /// <summary>
+    /// Writes the entity's components, but its transform, as a new entity template at <paramref name="path"/> over the template it
+    /// starts from, and makes the entity start from it; false when a file is there already.
+    /// </summary>
+    public bool SaveAsTemplate(Entity entity, string path)
+    {
+        World world = Game.World;
+        string fullPath = Content.GetFullPath(path);
+        if (ScenePath is null || !world.IsAlive(entity) || File.Exists(fullPath))
+        {
+            return false;
+        }
+
+        EntityData data = CaptureEntity(entity);
+        data.Components.Remove(TransformName);
+        EntityData reduced = _loader.Templates.Reduce(data);
+        int depth = path.Count(static character => character == '/');
+        string schema = string.Concat(Enumerable.Repeat("../", depth)) + ".schemas/entity.schema.json";
+        EntityTemplateFile file = new() { Schema = schema, Base = data.Template, Components = reduced.Components };
+        using MemoryStream stream = new();
+        using (Utf8JsonWriter writer = new(stream, new JsonWriterOptions { Indented = true }))
+        {
+            JsonSerializer.Serialize(writer, file, RuntimeJsonContext.Default.EntityTemplateFile);
+        }
+
+        Content.Write(path, stream.ToArray());
+        SetTemplate(entity, path);
+        return true;
+    }
+
+    /// <summary>Makes the entity named <paramref name="name"/> start from the template, recording nothing.</summary>
+    internal void ApplyTemplate(string name, string? template)
+    {
+        if (ScenePath is null || Find(name) is not { } entity)
+        {
+            return;
+        }
+
+        _loader.SetTemplate(ScenePath, entity, template);
+        EntitiesChanged?.Invoke();
+        MarkEdited();
+    }
+
+    /// <summary>Gives the entity, as undo steps, the template's components it lacks.</summary>
+    private void AddTemplateComponents(Entity entity, string template)
+    {
+        World world = Game.World;
+        EntityData expanded = _loader.Templates.Expand(new EntityData { Template = template });
+        foreach (SceneComponent component in Game.Spawner.Components)
+        {
+            if (!component.Has(world, entity) && expanded.Components.TryGetValue(component.Name, out JsonElement value))
+            {
+                ReadComponent(entity, component, value);
+            }
+        }
     }
 
     /// <summary>Renames the entity named <paramref name="from"/>, nesting what was nested under it under the new name, recording nothing.</summary>

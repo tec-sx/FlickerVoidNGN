@@ -169,6 +169,7 @@ public sealed partial class SceneTreeView : UserControl
             if (folder is null && last.Entity is not null)
             {
                 choices.Add(new MenuChoice("Rename", RenameChosen, "Edit", "Rename", "F2"));
+                choices.Add(new MenuChoice("Save as Template", () => outline.SaveAsTemplate(last), "Edit", "Save"));
             }
 
             choices.Add(new MenuChoice("Hide", () => outline.HideSelectedCommand.Execute(null), "View", "Invisible"));
