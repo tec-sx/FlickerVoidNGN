@@ -81,6 +81,37 @@ public sealed class PerceptionSystemTests : IDisposable
     }
 
     [Fact]
+    public void LooksOnlyOnceEverySightInterval()
+    {
+        _builder.WithSightInterval(0.5f).Build();
+        _builder.Run(0.01f);
+        Entity fox = _builder.AddTarget(new Vector3(0, 0, 5));
+
+        _builder.Run(0.2f);
+        List<TargetSeenEvent> seenEarly = [.. _builder.Seen];
+        _builder.Run(0.4f);
+
+        seenEarly.Should().BeEmpty("the guard looked as the game started and looks again half a second later");
+        _builder.Seen.Should().ContainSingle().Which.Target.Should().Be(fox);
+    }
+
+    [Fact]
+    public void PerceiversTakeTurnsLookingSoTheyDontAllLookInTheSameStep()
+    {
+        _builder.WithSightInterval(0.5f).Build();
+        Entity second = _builder.AddGuard();
+        _builder.AddTarget(new Vector3(0, 0, 5));
+
+        _builder.Run(0.1f);
+        List<TargetSeenEvent> seenFirst = [.. _builder.Seen];
+        _builder.Run(0.4f);
+
+        seenFirst.Should().ContainSingle().Which.Perceiver.Should().Be(_builder.Guard);
+        _builder.Seen.Should().HaveCount(2);
+        _builder.Seen[1].Perceiver.Should().Be(second);
+    }
+
+    [Fact]
     public void LosesATargetThatIsGone()
     {
         _builder.Build();

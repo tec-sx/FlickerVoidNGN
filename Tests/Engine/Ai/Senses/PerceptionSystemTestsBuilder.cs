@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 using System.Text.Json;
 
@@ -23,12 +24,13 @@ internal sealed class PerceptionSystemTestsBuilder : IDisposable
 {
     private const string GuardJson = """
         { "name": "Guard", "components": { "transform": {},
-          "perception": { "sightRadius": 8, "loseSightRadius": 10, "sightAngle": 60, "hearingRange": 10, "memory": 2 }BODY } }
+          "perception": { "sightRadius": 8, "loseSightRadius": 10, "sightAngle": 60, "hearingRange": 10, "memory": 2INTERVAL }BODY } }
         """;
 
     private const string Body = """, "staticBody": { "collider": { "type": "box", "size": [0.6, 1.8, 0.4], "offset": [0, 0.9, 0] } }""";
 
     private bool _body;
+    private float? _sightInterval;
 
     public Game Game { get; } = new(NullLoggerFactory.Instance);
 
@@ -49,6 +51,13 @@ internal sealed class PerceptionSystemTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Makes guards look every so many seconds instead of at the component's default.</summary>
+    public PerceptionSystemTestsBuilder WithSightInterval(float seconds)
+    {
+        _sightInterval = seconds;
+        return this;
+    }
+
     public PerceptionSystemTestsBuilder Build()
     {
         Game.AddPhysics();
@@ -59,15 +68,28 @@ internal sealed class PerceptionSystemTestsBuilder : IDisposable
         Game.Events.Handle((in NoiseHeardEvent sent) => Heard.Add(sent));
         Game.Events.Handle((in NoiseForgottenEvent sent) => Forgotten.Add(sent));
         Game.Lifecycle.Play(Game.World);
+        Guard = AddGuard();
+        return this;
+    }
+
+    /// <summary>Another guard standing where the first does, looking the same way.</summary>
+    public Entity AddGuard()
+    {
         string body = "";
         if (_body)
         {
             body = Body;
         }
 
-        string guard = GuardJson.Replace("BODY", body, StringComparison.Ordinal);
-        Guard = SpawnPlaying(guard);
-        return this;
+        string interval = "";
+        if (_sightInterval is { } seconds)
+        {
+            interval = string.Create(CultureInfo.InvariantCulture, $""", "sightInterval": {seconds}""");
+        }
+
+        string withBody = GuardJson.Replace("BODY", body, StringComparison.Ordinal);
+        string guard = withBody.Replace("INTERVAL", interval, StringComparison.Ordinal);
+        return SpawnPlaying(guard);
     }
 
     public Entity AddTarget(Vector3 position)

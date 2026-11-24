@@ -8,4 +8,7 @@ public struct Perceived
     public List<Entity> Seen { get; set; }
 
     public List<HeardNoise> Heard { get; set; }
+
+    /// <summary>Seconds until it looks again.</summary>
+    public float UntilLook { get; set; }
 }

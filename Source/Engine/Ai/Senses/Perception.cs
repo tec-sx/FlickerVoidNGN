@@ -19,6 +19,9 @@ public struct Perception
     /// <summary>Metres above its feet that it looks from.</summary>
     public float EyeHeight { get; set; } = 1.5f;
 
+    /// <summary>Seconds between its looks, which perceivers take in turns so they don't all look in the same step; 0 looks every fixed step.</summary>
+    public float SightInterval { get; set; } = 0.1f;
+
     /// <summary>Metres within which it hears a noise of loudness 1; louder and quieter noises carry further and less far.</summary>
     public float HearingRange { get; set; } = 10;
 
