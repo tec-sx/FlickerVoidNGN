@@ -7,22 +7,18 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Core.Cameras;
-using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Editor.Core.Gizmos;
 using FlickerVoid.Editor.Core.Overlays;
-using FlickerVoid.Editor.Core.Shots;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Selection;
-using FlickerVoid.Editor.Core.Viewports;
-using FlickerVoid.Editor.Scenes;
+using FlickerVoid.Editor.Core.Shots;
 using FlickerVoid.Engine.Cameras.Shots;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Rendering.Cameras;
-using FlickerVoid.Engine.Rendering.Extraction;
-using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Geometry;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
 
@@ -36,11 +32,15 @@ namespace FlickerVoid.Editor.Viewports;
 public sealed partial class ViewportViewModel : ObservableObject
 {
     private const float SelectionLineWidth = 2;
+
     private const float ReachLineWidth = 1.5f;
+
     private const int ConeEdges = 4;
+
     private const float FrustumAspect = 16f / 9f;
 
     private static readonly QueryDescription CameraTargets = new QueryDescription().WithAll<CameraTarget, Transform>();
+
     private static readonly QueryDescription NamedEntities = new QueryDescription().WithAll<EntityName, Transform>();
 
     /// <summary>The radius framed round an entity without a mesh, such as a light.</summary>
@@ -49,6 +49,7 @@ public sealed partial class ViewportViewModel : ObservableObject
     private static readonly Vector4 SelectionColor = EditorIcons.SelectedColor;
 
     private readonly EditorCameraController _controller;
+
     private bool _draggingKey;
 
     public ViewportViewModel(EditorScene scene, bool validation)
@@ -393,164 +394,12 @@ public sealed partial class ViewportViewModel : ObservableObject
         Scene.History.EndGroup();
     }
 
-    /// <summary>
-    /// A left click without Alt: starts dragging the gizmo handle under the mouse, or selects what is there; the game view hides
-    /// gizmos and icons, so it selects meshes only.
-    /// </summary>
-    public void PointerPressed(Vector2 pixel, int width, int height)
-    {
-        World world = Scene.Game.World;
-        if (IsGameView)
-        {
-            SelectAt(pixel, width, height);
-            return;
-        }
-
-        if (PressShotKey(pixel, width, height))
-        {
-            return;
-        }
-
-        if (Selection.Selected is { } selected && world.IsAlive(selected))
-        {
-            Transform transform = world.Get<Transform>(selected);
-            if (Gizmo.BeginDrag(Camera, transform, pixel, width, height))
-            {
-                List<Entity> moved = [.. Selection.Entities];
-                string verb = Gizmo.Mode.ToString();
-                Scene.History.BeginGroup(DescribeMany(verb, moved));
-                return;
-            }
-        }
-
-        SelectAt(pixel, width, height);
-    }
-
-    /// <summary>
-    /// With a shot selected, starts dragging the gizmo on its selected key, or selects the key under the mouse; true when the
-    /// press was the key's. Anything else leaves the shot's keys unselected.
-    /// </summary>
-    private bool PressShotKey(Vector2 pixel, int width, int height)
-    {
-        if (!Timeline.HasShot)
-        {
-            return false;
-        }
-
-        if (Timeline.TryGetKeyTransform(out Transform key) && Gizmo.BeginDrag(Camera, key, pixel, width, height))
-        {
-            _draggingKey = true;
-            return true;
-        }
-
-        int? hit = Timeline.HitTestKey(Camera, pixel, width, height);
-        Timeline.SelectKey(hit);
-        return hit is not null;
-    }
-
     /// <summary>Adds a key to the selected shot where the editor's view stands, at the timeline's scrubbed time.</summary>
     [RelayCommand]
     public void AddShotKey()
     {
         Transform view = Camera.ToTransform();
         Timeline.AddKey(view);
-    }
-
-    /// <summary>Selects what is under the mouse: an icon first, then a mesh, or nothing; the game view has no icons.</summary>
-    public void SelectAt(Vector2 pixel, int width, int height)
-    {
-        World world = Scene.Game.World;
-        Entity? picked = null;
-        if (!IsGameView)
-        {
-            Icons.Collect(world, Selection.Selected);
-            picked = Icons.HitTest(Camera, pixel, width, height);
-        }
-
-        if (picked is null)
-        {
-            Ray ray = Camera.GetRay(pixel, width, height);
-            picked = Scene.Picker.Pick(world, ray);
-        }
-
-        Selection.Select(picked);
-    }
-
-    /// <summary>Drags the gizmo, or finds the handle under the mouse.</summary>
-    public void PointerMoved(Vector2 pixel, int width, int height)
-    {
-        World world = Scene.Game.World;
-        if (Selection.Selected is not { } selected || !world.IsAlive(selected))
-        {
-            return;
-        }
-
-        if (Gizmo.IsDragging && _draggingKey)
-        {
-            Transform draggedKey = Gizmo.Drag(Camera, pixel, width, height);
-            Timeline.SetKeyTransform(draggedKey);
-            return;
-        }
-
-        if (Gizmo.IsDragging)
-        {
-            Transform before = world.Get<Transform>(selected);
-            Transform dragged = Gizmo.Drag(Camera, pixel, width, height);
-            Scene.SetComponent(selected, dragged);
-            MoveOthers(world, selected, before, dragged);
-            return;
-        }
-
-        if (IsGameView)
-        {
-            return;
-        }
-
-        Transform transform = world.Get<Transform>(selected);
-        if (Timeline.TryGetKeyTransform(out Transform key))
-        {
-            transform = key;
-        }
-
-        Gizmo.Hover(Camera, transform, pixel, width, height);
-    }
-
-    /// <summary>Moves the rest of the selection with the gizmo's entity: by its move, turned about it and scaled by its scaling.</summary>
-    private void MoveOthers(World world, Entity selected, in Transform before, in Transform after)
-    {
-        Quaternion turn = after.Rotation * Quaternion.Inverse(before.Rotation);
-        Vector3 scaling = Vector3.One;
-        if (before.Scale.X != 0 && before.Scale.Y != 0 && before.Scale.Z != 0)
-        {
-            scaling = after.Scale / before.Scale;
-        }
-
-        foreach (Entity other in Selection.Entities)
-        {
-            if (other == selected || !world.IsAlive(other) || !world.Has<Transform>(other))
-            {
-                continue;
-            }
-
-            Transform transform = world.Get<Transform>(other);
-            Vector3 offset = transform.Position - before.Position;
-            Vector3 turned = Vector3.Transform(offset * scaling, turn);
-            transform.Position = after.Position + turned;
-            transform.Rotation = Quaternion.Normalize(turn * transform.Rotation);
-            transform.Scale *= scaling;
-            Scene.SetComponent(other, transform);
-        }
-    }
-
-    public void PointerReleased()
-    {
-        if (Gizmo.IsDragging)
-        {
-            Scene.History.EndGroup();
-        }
-
-        Gizmo.EndDrag();
-        _draggingKey = false;
     }
 
     /// <summary>An undo step's name for entities: "Move Lamp" for one, "Move 3 entities" for more.</summary>
@@ -563,227 +412,6 @@ public sealed partial class ViewportViewModel : ObservableObject
         }
 
         return $"{verb} {entities.Count} entities";
-    }
-
-    /// <summary>Fills the overlay with this frame's icons, the selection's outline or reach, and the gizmo.</summary>
-    public void BuildOverlay(OverlayBuilder overlay, int viewportHeight)
-    {
-        overlay.Begin(Camera, viewportHeight);
-        if (IsGameView)
-        {
-            return;
-        }
-
-        World world = Scene.Game.World;
-        Icons.Collect(world, Selection.Selected);
-        foreach (IconInstance icon in Icons.Icons)
-        {
-            overlay.AddIcon(icon.Position, icon.Icon, icon.Color);
-        }
-
-        foreach (Entity entity in Selection.Entities)
-        {
-            if (world.IsAlive(entity) && world.TryGet(entity, out Transform shown))
-            {
-                DrawSelection(overlay, world, entity, shown);
-            }
-        }
-
-        ShotOverlay.Draw(overlay, world, Timeline);
-        if (Selection.Selected is not { } selected || !world.IsAlive(selected))
-        {
-            return;
-        }
-
-        Transform transform = world.Get<Transform>(selected);
-        if (Timeline.TryGetKeyTransform(out Transform key))
-        {
-            transform = key;
-        }
-
-        Gizmo.Draw(overlay, Camera, transform, viewportHeight);
-    }
-
-    /// <summary>
-    /// The selected camera and where it looks from, shown live in a corner of the viewport, a shot where its timeline is scrubbed;
-    /// none in the game view.
-    /// </summary>
-    public RenderCamera? GetPreviewCamera()
-    {
-        World world = Scene.Game.World;
-        if (IsGameView || Selection.Selected is not { } selected || !world.IsAlive(selected) || !world.Has<Camera, Transform>(selected))
-        {
-            return null;
-        }
-
-        if (Timeline.HasShot)
-        {
-            return Timeline.GetPreview();
-        }
-
-        Camera camera = world.Get<Camera>(selected);
-        Transform transform = world.Get<Transform>(selected);
-        return new RenderCamera(camera, transform);
-    }
-
-    /// <summary>The depth fade the viewport draws: the main camera's, without any camera's override; none while it is switched off.</summary>
-    public DepthFade GetDepthFade()
-    {
-        if (!ShowDepthFade)
-        {
-            return default;
-        }
-
-        return MainCamera.Find(Scene.Game.World);
-    }
-
-    /// <summary>The depth fade the selected camera's preview draws: the main camera's changed by the camera's override.</summary>
-    public DepthFade GetPreviewDepthFade()
-    {
-        if (!ShowDepthFade || Selection.Selected is not { } selected)
-        {
-            return default;
-        }
-
-        return MainCamera.FindFor(Scene.Game.World, selected);
-    }
-
-    /// <summary>
-    /// Where the depth fade is measured from, as the game does: the selected shot's named target, else the first camera target,
-    /// at its aim height; without one, the editor camera's pivot.
-    /// </summary>
-    public Vector3 GetDepthFocus()
-    {
-        World world = Scene.Game.World;
-        string target = string.Empty;
-        if (Selection.Selected is { } selected && world.IsAlive(selected) && world.TryGet(selected, out Shot shot))
-        {
-            target = shot.Target;
-        }
-
-        Entity found = Entity.Null;
-        if (string.IsNullOrEmpty(target))
-        {
-            world.Query(in CameraTargets, (Entity entity) =>
-            {
-                if (found == Entity.Null || entity.Id < found.Id)
-                {
-                    found = entity;
-                }
-            });
-        }
-        else
-        {
-            world.Query(in NamedEntities, (Entity entity, ref EntityName name) =>
-            {
-                if (found == Entity.Null && name.Value == target)
-                {
-                    found = entity;
-                }
-            });
-        }
-
-        if (found == Entity.Null)
-        {
-            return Camera.Pivot;
-        }
-
-        Vector3 aim = world.Get<Transform>(found).Position;
-        if (world.TryGet(found, out CameraTarget cameraTarget))
-        {
-            aim.Y += cameraTarget.Height;
-        }
-
-        return aim;
-    }
-
-    /// <summary>A mesh's box, a point light's reach as three circles, a spot light's cone, or an irradiance volume's box.</summary>
-    private void DrawSelection(OverlayBuilder overlay, World world, Entity selected, in Transform transform)
-    {
-        if (Scene.Picker.TryGetBounds(world, selected, out Vector3 min, out Vector3 max))
-        {
-            Matrix4x4 matrix = transform.ToMatrix();
-            overlay.AddBox(min, max, matrix, SelectionColor, SelectionLineWidth);
-        }
-
-        Vector3 position = transform.Position;
-        if (world.TryGet(selected, out PointLight point))
-        {
-            overlay.AddCircle(position, Vector3.UnitX, point.Range, SelectionColor, ReachLineWidth);
-            overlay.AddCircle(position, Vector3.UnitY, point.Range, SelectionColor, ReachLineWidth);
-            overlay.AddCircle(position, Vector3.UnitZ, point.Range, SelectionColor, ReachLineWidth);
-        }
-
-        if (world.TryGet(selected, out SpotLight spot))
-        {
-            DrawCone(overlay, transform, spot);
-        }
-
-        if (world.TryGet(selected, out FlickerVoid.Engine.Rendering.Cameras.Camera camera))
-        {
-            DrawFrustum(overlay, transform, camera);
-        }
-
-        if (world.TryGet(selected, out IrradianceVolume volume))
-        {
-            Vector3 half = volume.Size / 2;
-            Matrix4x4 moved = Matrix4x4.CreateTranslation(position);
-            overlay.AddBox(-half, half, moved, SelectionColor, SelectionLineWidth);
-        }
-    }
-
-    /// <summary>The spot light's outer cone along its -Z, out to its range.</summary>
-    private static void DrawCone(OverlayBuilder overlay, in Transform transform, in SpotLight spot)
-    {
-        Vector3 apex = transform.Position;
-        Vector3 direction = Vector3.Transform(-Vector3.UnitZ, transform.Rotation);
-        float angle = float.DegreesToRadians(spot.OuterConeAngle);
-        float radius = spot.Range * MathF.Tan(angle);
-        Vector3 baseCentre = apex + (direction * spot.Range);
-        overlay.AddCircle(baseCentre, direction, radius, SelectionColor, ReachLineWidth);
-        OverlayBuilder.GetPlaneAxes(direction, out Vector3 first, out Vector3 second);
-        for (int edge = 0; edge < ConeEdges; edge++)
-        {
-            float around = MathF.Tau * edge / ConeEdges;
-            Vector3 offset = (first * MathF.Cos(around)) + (second * MathF.Sin(around));
-            Vector3 rim = baseCentre + (offset * radius);
-            overlay.AddLine(apex, rim, SelectionColor, ReachLineWidth);
-        }
-    }
-
-    /// <summary>The camera's view volume along its -Z, from its near to its far plane, framed at a 16:9 aspect.</summary>
-    private static void DrawFrustum(OverlayBuilder overlay, in Transform transform, in Camera camera)
-    {
-        Span<Vector3> near = stackalloc Vector3[4];
-        Span<Vector3> far = stackalloc Vector3[4];
-        GetFrustumCorners(camera, camera.NearPlane, near);
-        GetFrustumCorners(camera, camera.FarPlane, far);
-        for (int corner = 0; corner < 4; corner++)
-        {
-            near[corner] = transform.Position + Vector3.Transform(near[corner], transform.Rotation);
-            far[corner] = transform.Position + Vector3.Transform(far[corner], transform.Rotation);
-        }
-
-        for (int corner = 0; corner < 4; corner++)
-        {
-            int next = (corner + 1) % 4;
-            overlay.AddLine(near[corner], near[next], SelectionColor, ReachLineWidth);
-            overlay.AddLine(far[corner], far[next], SelectionColor, ReachLineWidth);
-            overlay.AddLine(near[corner], far[corner], SelectionColor, ReachLineWidth);
-        }
-    }
-
-    /// <summary>The corners of the camera's view at a distance, in its own space, going round.</summary>
-    private static void GetFrustumCorners(in Camera camera, float distance, Span<Vector3> corners)
-    {
-        float halfHeight = camera.Projection == CameraProjection.Perspective
-            ? distance * MathF.Tan(float.DegreesToRadians(camera.FieldOfView) / 2)
-            : camera.OrthographicHeight / 2;
-        float halfWidth = halfHeight * FrustumAspect;
-        corners[0] = new Vector3(-halfWidth, -halfHeight, -distance);
-        corners[1] = new Vector3(halfWidth, -halfHeight, -distance);
-        corners[2] = new Vector3(halfWidth, halfHeight, -distance);
-        corners[3] = new Vector3(-halfWidth, halfHeight, -distance);
     }
 
     /// <summary>Saves the world into its scene file.</summary>

@@ -1,8 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
 
@@ -10,28 +8,19 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Assets;
-using FlickerVoid.Editor.Assets.Data;
-using FlickerVoid.Editor.Assets.Flows;
-using FlickerVoid.Editor.Assets.Materials;
 using FlickerVoid.Editor.Assets.Moods;
 using FlickerVoid.Editor.Assets.Textures;
-using FlickerVoid.Editor.Core.Data;
 using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Core.Viewports;
-using FlickerVoid.Editor.Inspector;
-using FlickerVoid.Editor.Materials;
 using FlickerVoid.Editor.Persistence.Projects;
 using FlickerVoid.Editor.Projects;
-using FlickerVoid.Editor.Scenes;
 using FlickerVoid.Editor.Viewports;
-using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Content;
-using FlickerVoid.Engine.Runtime.Data;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
 
@@ -47,13 +36,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public const string DefaultMoodHeading = "Default mood (not saved)";
 
     private readonly ScenePlayer? _player;
+
     private readonly GameCompiler? _compiler;
+
     private readonly string? _solution;
+
     private readonly UnsavedContent _content;
+
     private MoodDocument? _mood;
+
     private string? _dataPath;
+
     private UndoHistory? _watchedHistory;
+
     private string? _sceneMood;
+
     private readonly HashSet<string> _openFlows = new(ContentManager.PathComparer);
 
     /// <summary>
@@ -161,107 +158,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// <summary>The index of the Data tab under the scene outliner.</summary>
     public const int DataTab = 2;
 
-    /// <summary>
-    /// The history Ctrl+Z works on: the mood's or the data asset's when the keyboard is in the View or Data tab, else the scene's.
-    /// </summary>
-    public UndoHistory? GetHistory(bool sidePanelFocused)
-    {
-        if (sidePanelFocused && SideTab == ViewTab)
-        {
-            if (_mood is null)
-            {
-                return null;
-            }
-
-            return _content.GetHistory(_mood.Path);
-        }
-
-        if (sidePanelFocused && SideTab == DataTab)
-        {
-            if (_dataPath is null)
-            {
-                return null;
-            }
-
-            return _content.GetHistory(_dataPath);
-        }
-
-        return Viewport.Scene.History;
-    }
-
     /// <summary>Whether the keyboard is in the side panel, which makes the top bar's undo and redo work on the View or Data tab's file.</summary>
     [ObservableProperty]
     public partial bool SidePanelFocused { get; set; }
 
-    /// <summary>The top bar's undo tooltip, naming the step it undoes.</summary>
-    public string UndoTip => DescribeStep("Undo", GetHistory(SidePanelFocused)?.UndoName, "Ctrl+Z");
-
-    /// <summary>The top bar's redo tooltip, naming the step it redoes.</summary>
-    public string RedoTip => DescribeStep("Redo", GetHistory(SidePanelFocused)?.RedoName, "Ctrl+Y");
-
-    /// <summary>Undoes the last step of what the keyboard is in, as Ctrl+Z does.</summary>
-    [RelayCommand(CanExecute = nameof(CanUndo))]
-    public void Undo() => GetHistory(SidePanelFocused)?.Undo();
-
-    /// <summary>Redoes the last undone step of what the keyboard is in, as Ctrl+Y does.</summary>
-    [RelayCommand(CanExecute = nameof(CanRedo))]
-    public void Redo() => GetHistory(SidePanelFocused)?.Redo();
-
-    private bool CanUndo() => GetHistory(SidePanelFocused)?.CanUndo == true;
-
-    private bool CanRedo() => GetHistory(SidePanelFocused)?.CanRedo == true;
-
-    private static string DescribeStep(string action, string? step, string key)
-    {
-        if (step is null)
-        {
-            return $"{action} ({key}): nothing to {action.ToLowerInvariant()}.";
-        }
-
-        return $"{action} {step} ({key}).";
-    }
-
     partial void OnSidePanelFocusedChanged(bool value) => WatchHistory();
 
     partial void OnSideTabChanged(int value) => WatchHistory();
-
-    /// <summary>Follows the history the top bar's undo and redo work on, so their state and tooltips stay current.</summary>
-    private void WatchHistory()
-    {
-        UndoHistory? history = GetHistory(SidePanelFocused);
-        if (history == _watchedHistory)
-        {
-            RefreshUndo();
-            return;
-        }
-
-        if (_watchedHistory is not null)
-        {
-            _watchedHistory.Changed -= RefreshUndo;
-        }
-
-        _watchedHistory = history;
-        if (history is not null)
-        {
-            history.Changed += RefreshUndo;
-        }
-
-        RefreshUndo();
-    }
-
-    private void RefreshUndo()
-    {
-        UndoCommand.NotifyCanExecuteChanged();
-        RedoCommand.NotifyCanExecuteChanged();
-        OnPropertyChanged(nameof(UndoTip));
-        OnPropertyChanged(nameof(RedoTip));
-    }
-
-    /// <summary>The flow graph's undo and redo steps, for its editor window.</summary>
-    public UndoHistory GetFlowHistory(string path) => _content.GetHistory(path);
-
-    /// <summary>Forgets a flow graph whose editor window closed, so undo there no longer opens it.</summary>
-    public void CloseFlow(string path) => _openFlows.Remove(path);
 
     /// <summary>The open tab under the scene outliner: 0 inspector, 1 view, 2 data.</summary>
     [ObservableProperty]
@@ -279,30 +182,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     /// <summary>The content folder's files; opening a scene shows it, opening a material shows it in the material editor.</summary>
     public AssetBrowserViewModel Assets { get; }
-
-    /// <summary>A material editor over the scene's content, previewing on the GPU when there is one.</summary>
-    public MaterialEditorViewModel CreateMaterialEditor()
-    {
-        EditorScene scene = Viewport.Scene;
-        MaterialPreview? preview = null;
-        string status = "";
-        try
-        {
-            preview = new MaterialPreview(scene.Game.LoggerFactory, _content.RootDirectory);
-        }
-        catch (GraphicsUnavailableException exception)
-        {
-            status = exception.Message;
-        }
-
-        MaterialEditorViewModel editor = new(_content, preview);
-        if (status.Length > 0)
-        {
-            editor.Status = status;
-        }
-
-        return editor;
-    }
 
     /// <summary>Runs the project's game on the open scene as it is now, without saving it.</summary>
     [RelayCommand(CanExecute = nameof(CanPlay))]
@@ -480,236 +359,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         string path = Path.GetRelativePath(_content.RootDirectory, fullPath);
         Viewport.Status = $"{path} changed on disk; its unsaved edits are kept. Save to overwrite it or discard to take the change.";
-    }
-
-    /// <summary>Shows the content file in the asset browser and opens it as a double-click would; a missing file is reported.</summary>
-    public void OpenContentFile(string path)
-    {
-        AssetEntry? asset = Assets.Reveal(path);
-        if (asset is null)
-        {
-            Viewport.Status = $"{path} is not in the content folder.";
-            return;
-        }
-
-        OpenAsset(asset);
-    }
-
-    private async void OpenAsset(AssetEntry asset)
-    {
-        switch (asset.Kind)
-        {
-            case AssetKind.Scene:
-                await OpenScene(asset.Path);
-                break;
-            case AssetKind.Material:
-                MaterialRequested?.Invoke(asset.Path);
-                break;
-            case AssetKind.Mood:
-                OpenMood(asset.Path);
-                break;
-            case AssetKind.Texture:
-            case AssetKind.Canvas:
-                OpenTexture(asset.Path);
-                break;
-            case AssetKind.Data:
-                OpenData(asset.Path);
-                break;
-            case AssetKind.Table:
-                OpenTable(asset.Path);
-                break;
-            case AssetKind.Flow:
-                OpenFlow(asset.Path);
-                break;
-            case AssetKind.Code:
-                OpenCode(asset);
-                break;
-        }
-    }
-
-    /// <summary>Edits an image's settings or a canvas in a texture editor window, previewed from the source images.</summary>
-    private void OpenTexture(string path)
-    {
-        if (path.EndsWith(".dds", StringComparison.OrdinalIgnoreCase))
-        {
-            Viewport.Status = $"{path} is built; open its source image instead.";
-            return;
-        }
-
-        ContentFileFinder files = new(_content);
-        TextureEditorViewModel editor;
-        try
-        {
-            editor = new TextureEditorViewModel(_content, path, Assets.GetSourcePath, files.Find);
-        }
-        catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
-        {
-            Viewport.Status = $"Can't open {path}: {exception.Message}";
-            return;
-        }
-
-        TextureRequested?.Invoke(editor);
-    }
-
-    /// <summary>Opens a code file in the program the system opens it with, the IDE.</summary>
-    private void OpenCode(AssetEntry asset)
-    {
-        string fullPath = Assets.GetFullPath(asset);
-        ProcessStartInfo start = new(fullPath) { UseShellExecute = true };
-        try
-        {
-            using Process? process = Process.Start(start);
-        }
-        catch (Win32Exception exception)
-        {
-            Viewport.Status = $"Can't open {fullPath}: {exception.Message}";
-        }
-    }
-
-    /// <summary>Edits the data asset in the Data tab, its edits held unsaved like a material's; a file that can't be read is reported.</summary>
-    private void OpenData(string path)
-    {
-        EditorScene scene = Viewport.Scene;
-        DataTypes types = scene.Game.Data;
-        DataDocument document;
-        try
-        {
-            document = new DataDocument(_content, types, path);
-        }
-        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
-        {
-            Viewport.Status = $"Can't open {path}: {exception.Message}";
-            return;
-        }
-
-        JsonTypeInfo typeInfo = types.Options.GetTypeInfo(document.Asset.GetType());
-        ContentFileFinder files = new(_content);
-        string title = Path.GetFileNameWithoutExtension(path);
-        ShowData(path, new DataObjectViewModel(title, document.Asset, typeInfo, document.Hold, files.Find));
-    }
-
-    /// <summary>Edits the flow graph in a graph editor window, its edits held unsaved like a data asset's.</summary>
-    private void OpenFlow(string path)
-    {
-        EditorScene scene = Viewport.Scene;
-        DataTypes types = scene.Game.Data;
-        FlowDocument document;
-        try
-        {
-            document = new FlowDocument(_content, types, path);
-        }
-        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
-        {
-            Viewport.Status = $"Can't open {path}: {exception.Message}";
-            return;
-        }
-
-        ContentFileFinder files = new(_content);
-        string title = Path.GetFileNameWithoutExtension(path);
-        FlowGraphViewModel graph = new(title, document.Graph, types, document.Hold, files.Find);
-        _openFlows.Add(path);
-        FlowRequested?.Invoke(path, graph);
-    }
-
-    /// <summary>Edits the table's rows in the Data tab, held unsaved like a data asset's.</summary>
-    private void OpenTable(string path)
-    {
-        EditorScene scene = Viewport.Scene;
-        TableDocument document;
-        try
-        {
-            document = new TableDocument(_content, scene.Game.Data, path);
-        }
-        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
-        {
-            Viewport.Status = $"Can't open {path}: {exception.Message}";
-            return;
-        }
-
-        ContentFileFinder files = new(_content);
-        ShowData(path, new TableViewModel(document, files.Find));
-    }
-
-    private void ShowData(string path, object content)
-    {
-        _dataPath = path;
-        DataContent = content;
-        OnPropertyChanged(nameof(DataHeading));
-        SideTab = DataTab;
-        WatchHistory();
-    }
-
-    /// <summary>Draws the viewport with the mood file and edits it in the View tab; a file that can't be read leaves the view as it is.</summary>
-    private void OpenMood(string path)
-    {
-        try
-        {
-            _mood = new MoodDocument(_content, path);
-        }
-        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
-        {
-            Viewport.Status = $"Can't open {path}: {exception.Message}";
-            return;
-        }
-
-        ContentFileFinder files = new(_content);
-        ViewSettingsViewModel settings = new(_mood.Mood, files.Find);
-        settings.Edited += _mood.Hold;
-        Viewport.Mood = _mood.Mood;
-        ViewSettings = settings;
-        OnPropertyChanged(nameof(MoodHeading));
-        Viewport.Status = $"Lighting the viewport with {path}.";
-        WatchHistory();
-    }
-
-    /// <summary>Shows the open mood again when its file changed other than by an edit here: discarded or changed on disk.</summary>
-    private void HandleContentChanged(string fullPath)
-    {
-        if (_mood is null || _content.IsUnsaved(_mood.Path))
-        {
-            return;
-        }
-
-        string open = _content.GetFullPath(_mood.Path);
-        if (ContentManager.PathComparer.Equals(open, fullPath))
-        {
-            OpenMood(_mood.Path);
-        }
-    }
-
-    /// <summary>Shows the mood, data asset, table or flow graph again after an undo or redo changed its file.</summary>
-    private void HandleRestored(string fullPath)
-    {
-        if (_mood is not null && IsPath(_mood.Path, fullPath))
-        {
-            OpenMood(_mood.Path);
-        }
-
-        if (_dataPath is not null && IsPath(_dataPath, fullPath))
-        {
-            if (_dataPath.EndsWith(".fvtable", StringComparison.OrdinalIgnoreCase))
-            {
-                OpenTable(_dataPath);
-            }
-            else
-            {
-                OpenData(_dataPath);
-            }
-        }
-
-        foreach (string flow in _openFlows.ToList())
-        {
-            if (IsPath(flow, fullPath))
-            {
-                OpenFlow(flow);
-            }
-        }
-    }
-
-    private bool IsPath(string path, string fullPath)
-    {
-        string full = _content.GetFullPath(path);
-        return ContentManager.PathComparer.Equals(full, fullPath);
     }
 
     /// <summary>Opens a scene in place of the open one, first asking what to do with the open scene's unsaved edits.</summary>
