@@ -87,6 +87,40 @@ jobs:
           $display ./artifacts/aot/SceneViewer/FlickerVoid.Samples.SceneViewer --validation --frames 120 --lights 8 --moods Moods/Day.fvmood,Moods/Night.fvmood
           $display ./artifacts/aot/SceneViewer/FlickerVoid.Samples.SceneViewer --validation --frames 60 --scene Scenes/PaintedRoom.fvscene --moods Moods/Night.fvmood
 
+  # The game built and tested on the engine as this change leaves it: Bleeders' branch of the same name when there is one, else its main.
+  game:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+      FLICKERVOID_ENGINE: ${{ github.workspace }}/FlickerVoidNGN
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: FlickerVoidNGN
+      - name: Find the game's branch
+        id: game
+        shell: bash
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          ref=main
+          if git ls-remote --exit-code --heads https://github.com/tec-sx/Bleeders.git "$BRANCH" > /dev/null; then ref="$BRANCH"; fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v6
+        with:
+          repository: tec-sx/Bleeders
+          ref: ${{ steps.game.outputs.ref }}
+          path: Bleeders
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: Bleeders/global.json
+      - name: Build and test the game
+        working-directory: Bleeders
+        run: |
+          dotnet build Bleeders.slnx -c Release
+          dotnet test --solution Bleeders.slnx -c Release --no-build
+
   # When main's engine version (Source/Directory.Build.props) has no tag yet, tag the commit v<Version> and pack the engine modules.
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
