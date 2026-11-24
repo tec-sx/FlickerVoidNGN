@@ -30,7 +30,7 @@ public sealed class GameCompilerTests : IDisposable
 
         await compiler.Compile();
 
-        _builder.Builder.Received(1).Build(GameCompilerTestsBuilder.GameProject);
+        _builder.Builder.Received(1).Build(GameCompilerTestsBuilder.GameProject, null);
         scene.Game.Should().NotBeSameAs(before);
         Entity reloaded = scene.Find("Lamp")!.Value;
         scene.Game.World.Get<Transform>(reloaded).Position.Should().Be(new Vector3(2, 1, 0));
@@ -56,7 +56,7 @@ public sealed class GameCompilerTests : IDisposable
         _builder.Scenes.WithScene("Room.fvscene", Room).Open("Room.fvscene");
         EditorScene scene = _builder.Scenes.Scene;
         Game before = scene.Game;
-        _builder.Builder.Build(GameCompilerTestsBuilder.GameProject).Returns(_ => throw new ProjectBuildException("Door.cs(3,1): error CS1002: ; expected"));
+        _builder.Builder.Build(GameCompilerTestsBuilder.GameProject, null).Returns(_ => throw new ProjectBuildException("Door.cs(3,1): error CS1002: ; expected"));
         GameCompiler compiler = _builder.Build();
 
         Func<Task> compile = compiler.Compile;

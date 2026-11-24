@@ -21,7 +21,7 @@ public sealed class GameCompiler(EditorScene scene, string gameProject, IProject
     /// </summary>
     public async Task<int> Compile()
     {
-        string program = await Task.Run(() => builder.Build(gameProject));
+        string program = await Task.Run(() => builder.Build(gameProject, null));
         GameCode next = GameCode.Load(program);
         try
         {

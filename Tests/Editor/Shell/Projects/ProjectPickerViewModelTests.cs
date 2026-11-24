@@ -61,17 +61,59 @@ public sealed class ProjectPickerViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task AFailedBuildShowsItsOutput()
+    public async Task OpeningShowsTheProjectsSplashWhileItBuilds()
+    {
+        ProjectPickerViewModel picker = _builder.WithProject("Hollow", splash: "Splash.jpg").Build();
+        SplashViewModel? splash = null;
+        picker.Opening += shown => splash = shown;
+
+        await picker.OpenCommand.ExecuteAsync(picker.Projects[0]);
+
+        splash!.Project.Should().Be("Hollow");
+        splash.Image.Should().Be(Path.Combine(_builder.Folder, "Hollow", "Splash.jpg"));
+    }
+
+    [Fact]
+    public async Task TheSplashShowsHowFarTheBuildCame()
+    {
+        ProjectPickerViewModel picker = _builder.WithProject("Hollow").WithBuildReporting(new BuildProgress(3, 4, "Building Hollow.Gameplay")).Build();
+        Task<string> status = _builder.NextSplashStatus(picker);
+
+        await picker.OpenFile(picker.Projects[0].File);
+
+        string shown = await status.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        shown.Should().Be("Building Hollow.Gameplay");
+    }
+
+    [Fact]
+    public async Task AFailedBuildShowsItsLog()
     {
         ProjectPickerViewModel picker = _builder.WithProject("Hollow").WithFailingBuild("error CS1002").Build();
+        ProjectOpenFailure? failure = null;
         bool opened = false;
+        picker.Failed += failed => failure = failed;
         picker.Opened += _ => opened = true;
 
         await picker.OpenCommand.ExecuteAsync(picker.Projects[0]);
 
         opened.Should().BeFalse();
-        picker.Status.Should().Contain("error CS1002");
+        failure!.Project.Should().Be("Hollow");
+        failure.Log.Should().Contain("error CS1002");
+        picker.IsBusy.Should().BeFalse();
         _builder.Recent.Files.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ShowsAnyExceptionWhileOpeningInsteadOfEndingTheEditor()
+    {
+        InvalidOperationException stopped = new("The build server stopped.");
+        ProjectPickerViewModel picker = _builder.WithProject("Hollow").WithBuildThrowing(stopped).Build();
+        ProjectOpenFailure? failure = null;
+        picker.Failed += failed => failure = failed;
+
+        await picker.OpenCommand.ExecuteAsync(picker.Projects[0]);
+
+        failure!.Log.Should().Contain(nameof(InvalidOperationException)).And.Contain("The build server stopped.");
     }
 
     [Fact]

@@ -15,9 +15,10 @@ internal sealed class EditorProjectTestsBuilder : IDisposable
         Directory.CreateDirectory(Folder);
         OutputFolder = Path.Combine(Folder, "bin");
         Program = Path.Combine(OutputFolder, "Hollow.Launcher.dll");
-        _builder.Build(Arg.Any<string>()).Returns(call =>
+        _builder.Build(Arg.Any<string>(), Arg.Any<IProgress<BuildProgress>?>()).Returns(call =>
         {
-            _built.Add(call.Arg<string>());
+            _built.Add(call.ArgAt<string>(0));
+            Progress = call.ArgAt<IProgress<BuildProgress>?>(1);
             return Program;
         });
     }
@@ -29,6 +30,9 @@ internal sealed class EditorProjectTestsBuilder : IDisposable
     public string Program { get; }
 
     public IReadOnlyList<string> Built => _built;
+
+    /// <summary>The progress the last build was given to report to.</summary>
+    public IProgress<BuildProgress>? Progress { get; private set; }
 
     public string WithProjectFile(string name, string json)
     {
@@ -44,7 +48,7 @@ internal sealed class EditorProjectTestsBuilder : IDisposable
         return this;
     }
 
-    public EditorProject Open(string file) => EditorProject.Open(file, _builder);
+    public EditorProject Open(string file, IProgress<BuildProgress>? progress = null) => EditorProject.Open(file, _builder, progress);
 
     public void Dispose()
     {

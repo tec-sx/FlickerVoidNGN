@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:projects="using:FlickerVoid.Editor.Projects"
+        x:Class="FlickerVoid.Editor.Projects.SplashWindow"
+        x:DataType="projects:SplashViewModel"
+        Title="{Binding Project}"
+        Width="960" Height="540" CanResize="False" WindowDecorations="None"
+        WindowStartupLocation="CenterOwner" Background="Black">
+  <!-- 16:9, after Unreal's splash: the project's image (black without one), and along the bottom what the build does now, how
+       far it has come and a thin bar. -->
+  <Grid>
+    <Image x:Name="Picture" Stretch="UniformToFill" />
+    <StackPanel VerticalAlignment="Bottom" Margin="20,0,20,14" Spacing="6">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis" Foreground="#E0E0E6" FontSize="12" />
+        <TextBlock Grid.Column="1" Text="{Binding Percent, StringFormat='{}{0:0}%'}" IsVisible="{Binding !IsIndeterminate}"
+                   Foreground="#E0E0E6" FontSize="12" />
+      </Grid>
+      <ProgressBar Value="{Binding Percent}" IsIndeterminate="{Binding IsIndeterminate}" Minimum="0" Maximum="100"
+                   Height="3" MinHeight="3" CornerRadius="0" Foreground="#E0E0E6" Background="#26FFFFFF" />
+    </StackPanel>
+  </Grid>
+</Window>

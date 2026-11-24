@@ -68,8 +68,11 @@ public sealed class EditorProject
         }
     }
 
-    /// <summary>Reads the project file and builds its game; throws <see cref="InvalidDataException"/> for a bad file and <see cref="ProjectBuildException"/> for a failed build.</summary>
-    public static EditorProject Open(string file, IProjectBuilder builder)
+    /// <summary>
+    /// Reads the project file and builds its game, reporting the build's progress; throws <see cref="InvalidDataException"/> for a
+    /// bad file and <see cref="ProjectBuildException"/> for a failed build.
+    /// </summary>
+    public static EditorProject Open(string file, IProjectBuilder builder, IProgress<BuildProgress>? progress)
     {
         string fullPath = Path.GetFullPath(file);
         ProjectFile project = Read(fullPath);
@@ -80,8 +83,22 @@ public sealed class EditorProject
 
         string folder = Path.GetDirectoryName(fullPath)!;
         string game = Path.GetFullPath(project.Game, folder);
-        string program = builder.Build(game);
+        string program = builder.Build(game, progress);
         return new EditorProject(fullPath, game, program, project.StartupScene);
+    }
+
+    /// <summary>The image the project file names for the editor's splash, as a full path; null when it names none.</summary>
+    public static string? ReadSplash(string file)
+    {
+        string fullPath = Path.GetFullPath(file);
+        ProjectFile project = Read(fullPath);
+        if (string.IsNullOrEmpty(project.Splash))
+        {
+            return null;
+        }
+
+        string folder = Path.GetDirectoryName(fullPath)!;
+        return Path.GetFullPath(project.Splash, folder);
     }
 
     private static ProjectFile Read(string fullPath)

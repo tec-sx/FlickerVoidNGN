@@ -20,7 +20,7 @@ if (options.Project is not null)
     try
     {
         DotnetProjectBuilder builder = new();
-        EditorProject project = EditorProject.Open(options.Project, builder);
+        EditorProject project = EditorProject.Open(options.Project, builder, null);
         string recentFile = RecentProjects.GetDefaultFile();
         RecentProjects recent = new(recentFile);
         recent.Add(options.Project);

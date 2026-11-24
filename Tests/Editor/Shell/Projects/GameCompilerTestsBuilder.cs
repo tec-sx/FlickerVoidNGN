@@ -12,7 +12,7 @@ internal sealed class GameCompilerTestsBuilder : IDisposable
     public GameCompilerTestsBuilder()
     {
         string program = typeof(GameCompilerTestsBuilder).Assembly.Location;
-        Builder.Build(GameProject).Returns(program);
+        Builder.Build(GameProject, null).Returns(program);
     }
 
     public EditorSceneTestsBuilder Scenes { get; } = new();
