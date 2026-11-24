@@ -161,6 +161,38 @@ public sealed class MainWindowViewModelTests : IDisposable
     }
 
     [Fact]
+    public void UndoesAndRedoesTheSceneFromTheTopBar()
+    {
+        _builder.ViewModel.UndoCommand.CanExecute(null).Should().BeFalse();
+        _builder.EditScene();
+
+        _builder.ViewModel.UndoCommand.CanExecute(null).Should().BeTrue();
+        _builder.ViewModel.UndoCommand.Execute(null);
+
+        _builder.Scene.History.CanRedo.Should().BeTrue();
+        _builder.ViewModel.UndoCommand.CanExecute(null).Should().BeFalse();
+        _builder.ViewModel.RedoCommand.CanExecute(null).Should().BeTrue();
+        _builder.ViewModel.RedoCommand.Execute(null);
+        _builder.Scene.History.CanUndo.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TheTopBarUndoesWhatTheKeyboardIsIn()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetKind.Data);
+        NumberFieldViewModel hours = (NumberFieldViewModel)((Core.Data.DataObjectViewModel)_builder.ViewModel.DataContent!).Fields.Single();
+        hours.Value = 9;
+        _builder.ViewModel.UndoCommand.CanExecute(null).Should().BeFalse();
+
+        _builder.ViewModel.SidePanelFocused = true;
+
+        _builder.ViewModel.UndoTip.Should().Contain("Ctrl+Z");
+        _builder.ViewModel.UndoCommand.CanExecute(null).Should().BeTrue();
+        _builder.ViewModel.UndoCommand.Execute(null);
+        _builder.ViewModel.UnsavedPaths.Should().BeEmpty();
+    }
+
+    [Fact]
     public void OpensFlowGraphsInAGraphEditorWithTheirEditsHeldUnsaved()
     {
         Core.Flows.FlowGraphViewModel? requested = null;

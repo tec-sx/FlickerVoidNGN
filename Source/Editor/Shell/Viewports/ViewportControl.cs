@@ -201,8 +201,8 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
             ViewModel?.KeyPressed(key, _buttons);
         }
 
-        // Alt alone would otherwise move focus to the window's access keys.
-        e.Handled = true;
+        // Alt alone would otherwise move focus to the window's access keys; Ctrl shortcuts (undo, save) go on to the window.
+        e.Handled = !e.KeyModifiers.HasFlag(KeyModifiers.Control);
     }
 
     protected override void OnKeyUp(KeyEventArgs e)

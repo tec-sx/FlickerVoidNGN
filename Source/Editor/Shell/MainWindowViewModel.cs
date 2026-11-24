@@ -52,6 +52,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly UnsavedContent _content;
     private MoodDocument? _mood;
     private string? _dataPath;
+    private UndoHistory? _watchedHistory;
     private string? _sceneMood;
     private readonly HashSet<string> _openFlows = new(ContentManager.PathComparer);
 
@@ -90,6 +91,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         viewport.Scene.UnsavedChanged += HandleUnsavedChanged;
         viewport.Scene.Edited += HandleSceneEdited;
         ShowSceneMood();
+        WatchHistory();
     }
 
     /// <summary>Raised to show a flow graph opened in the content browser in a graph editor window.</summary>
@@ -185,6 +187,74 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         return Viewport.Scene.History;
+    }
+
+    /// <summary>Whether the keyboard is in the side panel, which makes the top bar's undo and redo work on the View or Data tab's file.</summary>
+    [ObservableProperty]
+    public partial bool SidePanelFocused { get; set; }
+
+    /// <summary>The top bar's undo tooltip, naming the step it undoes.</summary>
+    public string UndoTip => DescribeStep("Undo", GetHistory(SidePanelFocused)?.UndoName, "Ctrl+Z");
+
+    /// <summary>The top bar's redo tooltip, naming the step it redoes.</summary>
+    public string RedoTip => DescribeStep("Redo", GetHistory(SidePanelFocused)?.RedoName, "Ctrl+Y");
+
+    /// <summary>Undoes the last step of what the keyboard is in, as Ctrl+Z does.</summary>
+    [RelayCommand(CanExecute = nameof(CanUndo))]
+    public void Undo() => GetHistory(SidePanelFocused)?.Undo();
+
+    /// <summary>Redoes the last undone step of what the keyboard is in, as Ctrl+Y does.</summary>
+    [RelayCommand(CanExecute = nameof(CanRedo))]
+    public void Redo() => GetHistory(SidePanelFocused)?.Redo();
+
+    private bool CanUndo() => GetHistory(SidePanelFocused)?.CanUndo == true;
+
+    private bool CanRedo() => GetHistory(SidePanelFocused)?.CanRedo == true;
+
+    private static string DescribeStep(string action, string? step, string key)
+    {
+        if (step is null)
+        {
+            return $"{action} ({key}): nothing to {action.ToLowerInvariant()}.";
+        }
+
+        return $"{action} {step} ({key}).";
+    }
+
+    partial void OnSidePanelFocusedChanged(bool value) => WatchHistory();
+
+    partial void OnSideTabChanged(int value) => WatchHistory();
+
+    /// <summary>Follows the history the top bar's undo and redo work on, so their state and tooltips stay current.</summary>
+    private void WatchHistory()
+    {
+        UndoHistory? history = GetHistory(SidePanelFocused);
+        if (history == _watchedHistory)
+        {
+            RefreshUndo();
+            return;
+        }
+
+        if (_watchedHistory is not null)
+        {
+            _watchedHistory.Changed -= RefreshUndo;
+        }
+
+        _watchedHistory = history;
+        if (history is not null)
+        {
+            history.Changed += RefreshUndo;
+        }
+
+        RefreshUndo();
+    }
+
+    private void RefreshUndo()
+    {
+        UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(UndoTip));
+        OnPropertyChanged(nameof(RedoTip));
     }
 
     /// <summary>The flow graph's undo and redo steps, for its editor window.</summary>
@@ -566,6 +636,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         DataContent = content;
         OnPropertyChanged(nameof(DataHeading));
         SideTab = DataTab;
+        WatchHistory();
     }
 
     /// <summary>Draws the viewport with the mood file and edits it in the View tab; a file that can't be read leaves the view as it is.</summary>
@@ -588,6 +659,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ViewSettings = settings;
         OnPropertyChanged(nameof(MoodHeading));
         Viewport.Status = $"Lighting the viewport with {path}.";
+        WatchHistory();
     }
 
     /// <summary>Shows the open mood again when its file changed other than by an edit here: discarded or changed on disk.</summary>
@@ -693,6 +765,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ContentFileFinder files = new(_content);
         ViewSettings = new ViewSettingsViewModel(Viewport.Mood, files.Find);
         OnPropertyChanged(nameof(MoodHeading));
+        WatchHistory();
     }
 
     /// <summary>Draws with the mood the scene is given in the inspector, once the name changes.</summary>

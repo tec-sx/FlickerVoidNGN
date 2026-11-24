@@ -34,6 +34,7 @@ public sealed partial class MainWindow : Window
         this.GetControl<SceneTreeView>("SceneTree").DeleteRequested += HandleOutlineDelete;
         this.GetControl<EntityTreeView>("EntityTree").DeleteRequested += HandleOutlineDelete;
         UndoShortcuts.Attach(this, FindHistory);
+        AddHandler(GotFocusEvent, (_, _) => TrackSidePanelFocus(), RoutingStrategies.Bubble, handledEventsToo: true);
     }
 
     /// <summary>The history of what the keyboard is in: the View or Data tab's file, else the scene.</summary>
@@ -44,9 +45,20 @@ public sealed partial class MainWindow : Window
             return null;
         }
 
+        TrackSidePanelFocus();
+        return main.GetHistory(main.SidePanelFocused);
+    }
+
+    /// <summary>Tells the view model whether the keyboard is in the side panel, so the top bar's undo and redo follow it.</summary>
+    private void TrackSidePanelFocus()
+    {
+        if (DataContext is not MainWindowViewModel main)
+        {
+            return;
+        }
+
         TabControl side = this.GetControl<TabControl>("SidePanel");
-        bool sideFocused = FocusManager?.GetFocusedElement() is Visual focused && side.IsVisualAncestorOf(focused);
-        return main.GetHistory(sideFocused);
+        main.SidePanelFocused = FocusManager?.GetFocusedElement() is Visual focused && side.IsVisualAncestorOf(focused);
     }
 
     private void HandleOutlineDelete()
