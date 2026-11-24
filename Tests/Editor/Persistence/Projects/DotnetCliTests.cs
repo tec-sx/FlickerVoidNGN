@@ -44,6 +44,16 @@ public sealed class DotnetCliTests : IDisposable
         found.Should().BeNull();
     }
 
+    [Fact]
+    public void PassesEachLineOfTheOutputOnAsItComes()
+    {
+        List<string> lines = [];
+
+        string output = DotnetCli.Run(lines.Add, "--version");
+
+        lines.Should().ContainSingle().Which.Should().Be(output.Trim());
+    }
+
     [Theory]
     [InlineData("MSBuildSDKsPath")]
     [InlineData("MSBuildExtensionsPath")]

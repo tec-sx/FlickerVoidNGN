@@ -35,14 +35,36 @@ internal static class DotnetCli
         return null;
     }
 
-    public static string Run(params string[] arguments)
+    public static string Run(params string[] arguments) => Run(null, arguments);
+
+    /// <summary>
+    /// Runs <c>dotnet</c> and returns its output, passing each line to <paramref name="onLine"/> as it comes; throws
+    /// <see cref="ProjectBuildException"/> with the output when dotnet fails.
+    /// </summary>
+    public static string Run(Action<string>? onLine, params string[] arguments)
     {
         ProcessStartInfo start = CreateStartInfo(arguments);
 
         using Process process = Process.Start(start) ?? throw new ProjectBuildException("dotnet could not be started.");
         StringBuilder output = new();
-        process.OutputDataReceived += (_, e) => output.AppendLine(e.Data);
-        process.ErrorDataReceived += (_, e) => output.AppendLine(e.Data);
+        Lock outputLock = new();
+        void Add(string? line)
+        {
+            // Standard output and error arrive on two threads; the end of each stream comes as null.
+            if (line is null)
+            {
+                return;
+            }
+
+            lock (outputLock)
+            {
+                output.AppendLine(line);
+                onLine?.Invoke(line);
+            }
+        }
+
+        process.OutputDataReceived += (_, e) => Add(e.Data);
+        process.ErrorDataReceived += (_, e) => Add(e.Data);
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
         process.WaitForExit();

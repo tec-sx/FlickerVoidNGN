@@ -24,6 +24,37 @@ public sealed class EditorProjectTests : IDisposable
     }
 
     [Fact]
+    public void PassesTheBuildsProgressOn()
+    {
+        string file = _builder.WithProjectFile("Hollow.fvproject", """{ "game": "Source/Launcher/Hollow.Launcher.csproj" }""");
+        IProgress<BuildProgress> progress = Substitute.For<IProgress<BuildProgress>>();
+
+        _builder.Open(file, progress);
+
+        _builder.Progress.Should().BeSameAs(progress);
+    }
+
+    [Fact]
+    public void ReadsTheSplashImageTheProjectFileNamesBesideIt()
+    {
+        string file = _builder.WithProjectFile("Hollow.fvproject", """{ "game": "Source/Launcher/Hollow.Launcher.csproj", "splash": "Splash.jpg" }""");
+
+        string? splash = EditorProject.ReadSplash(file);
+
+        splash.Should().Be(Path.Combine(_builder.Folder, "Splash.jpg"));
+    }
+
+    [Fact]
+    public void AProjectFileWithoutASplashImageNamesNone()
+    {
+        string file = _builder.WithProjectFile("Hollow.fvproject", """{ "game": "Source/Launcher/Hollow.Launcher.csproj" }""");
+
+        string? splash = EditorProject.ReadSplash(file);
+
+        splash.Should().BeNull();
+    }
+
+    [Fact]
     public void AProjectFileWithoutAGameIsInvalid()
     {
         string file = _builder.WithProjectFile("Hollow.fvproject", """{ "startupScene": "Scenes/Main.fvscene" }""");
