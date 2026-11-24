@@ -9,13 +9,14 @@ namespace FlickerVoid.Engine.Cameras.Triggers;
 
 /// <summary>
 /// Hears activators enter and leave trigger areas with a <see cref="CameraCue"/> and asks the director for what the cue says;
-/// saves keep which saveable cues that fire once already fired.
+/// a cue on both goes back on leaving from what it did on entering, and saves keep which saveable cues that fire once already fired.
 /// </summary>
 public sealed class CameraCueSystem
 {
     private readonly Game _game;
     private readonly CameraDirector _director;
     private readonly HashSet<Entity> _fired = [];
+    private readonly Dictionary<Entity, Entity> _entered = [];
 
     public CameraCueSystem(Game game, CameraDirector director)
     {
@@ -29,7 +30,19 @@ public sealed class CameraCueSystem
     private void Fire(Entity area, CueMoment moment)
     {
         World world = _game.World;
-        if (!world.IsAlive(area) || !world.TryGet(area, out CameraCue cue) || cue.On != moment || _fired.Contains(area))
+        if (!world.IsAlive(area) || !world.TryGet(area, out CameraCue cue))
+        {
+            return;
+        }
+
+        bool both = cue.On == CueMoment.Both;
+        if (both && moment == CueMoment.Exit)
+        {
+            GoBack(area, cue);
+            return;
+        }
+
+        if ((cue.On != moment && !both) || _fired.Contains(area))
         {
             return;
         }
@@ -48,6 +61,11 @@ public sealed class CameraCueSystem
             _fired.Add(area);
         }
 
+        if (both)
+        {
+            _entered[area] = _director.Live;
+        }
+
         Entity shot = _director.FindShot(cue.Shot);
         bool named = !string.IsNullOrEmpty(cue.Shot);
         if (cue.Mode == ShotSwitchMode.Return || shot != Entity.Null)
@@ -63,6 +81,32 @@ public sealed class CameraCueSystem
         if (cue.ShakeStrength > 0)
         {
             _director.Shake(cue.ShakeStrength, cue.ShakeDuration);
+        }
+    }
+
+    /// <summary>Undoes on leaving what a cue on both did on entering, when it fired then.</summary>
+    private void GoBack(Entity area, in CameraCue cue)
+    {
+        if (!_entered.Remove(area, out Entity before))
+        {
+            return;
+        }
+
+        if (cue.Mode == ShotSwitchMode.Push)
+        {
+            _director.Return(cue.ExitTransition);
+            return;
+        }
+
+        Entity shot = _director.FindShot(cue.ExitShot);
+        if (shot == Entity.Null && string.IsNullOrEmpty(cue.ExitShot))
+        {
+            shot = before;
+        }
+
+        if (shot != Entity.Null && _game.World.IsAlive(shot))
+        {
+            _director.Switch(shot, cue.ExitTransition);
         }
     }
 

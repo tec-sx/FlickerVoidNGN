@@ -37,6 +37,58 @@ public sealed class CameraCueSystemTests : IDisposable
     }
 
     [Fact]
+    public void ACueOnBothGoesBackToTheShotLiveBeforeOnLeaving()
+    {
+        _builder.Build("""{ "shot": "Window", "on": "Both" }""");
+
+        _builder.WalkInto();
+        bool entered = _builder.Game.Director.Live == _builder.Window;
+        _builder.WalkOut();
+
+        entered.Should().BeTrue();
+        _builder.Game.Director.Live.Should().Be(_builder.Room);
+    }
+
+    [Fact]
+    public void ACueOnBothThatPushesReturnsOnLeaving()
+    {
+        _builder.Build("""{ "shot": "Window", "mode": "Push", "on": "Both" }""");
+
+        _builder.WalkInto();
+        _builder.WalkOut();
+
+        _builder.Game.Director.Live.Should().Be(_builder.Room);
+        _builder.Game.Director.Stack.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ACueOnBothCanLeaveToAnotherShotWithItsOwnTransition()
+    {
+        _builder.Build("""
+            { "shot": "Window", "on": "Both", "exitShot": "Street", "exitTransition": { "kind": "Blend", "duration": 1 } }
+            """);
+        Arch.Core.Entity street = _builder.Game.SpawnShot("Street", 20);
+
+        _builder.WalkInto();
+        _builder.WalkOut();
+
+        _builder.Game.Director.Live.Should().Be(street);
+        _builder.Game.Director.IsTransitioning.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ACueOnBothLeavesOnlyWhenItFiredOnEntering()
+    {
+        _builder.Build("""{ "shot": "Window", "on": "Both", "when": [ { "fact": "Fact.Window", "value": 1 } ] }""");
+
+        _builder.WalkInto();
+        _builder.Game.Director.Switch(_builder.Window, ShotTransition.Cut);
+        _builder.WalkOut();
+
+        _builder.Game.Director.Live.Should().Be(_builder.Window);
+    }
+
+    [Fact]
     public void ACueCanPlayItsShotWithATransition()
     {
         _builder.Build("""{ "shot": "Window", "play": true, "transition": { "kind": "Blend", "duration": 0.5 } }""");

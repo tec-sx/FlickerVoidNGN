@@ -77,9 +77,15 @@ public sealed partial class EntityTreeView : UserControl
             return;
         }
 
+        // The view sets its items itself: a new list makes the tree drop its selection, which must not read as the user's choice.
         _syncing = true;
         try
         {
+            if (!ReferenceEquals(_tree.ItemsSource, tree.Items))
+            {
+                _tree.ItemsSource = tree.Items;
+            }
+
             _tree.SelectedItems.Clear();
             foreach (SceneTreeItem item in tree.SelectedItems)
             {

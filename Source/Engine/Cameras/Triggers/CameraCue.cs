@@ -6,7 +6,8 @@ namespace FlickerVoid.Engine.Cameras.Triggers;
 
 /// <summary>
 /// Turns a trigger area into a camera request: switching to, pushing or returning from a shot with a transition, playing it, and
-/// shaking the camera, as an activator enters or leaves, while its facts hold, optionally once.
+/// shaking the camera, as an activator enters or leaves, or both (one area that goes back on the way out), while its facts hold,
+/// optionally once.
 /// </summary>
 public struct CameraCue
 {
@@ -23,6 +24,15 @@ public struct CameraCue
     public ShotTransition Transition { get; set; } = ShotTransition.Cut;
 
     public CueMoment On { get; set; }
+
+    /// <summary>
+    /// On <see cref="CueMoment.Both"/>, the shot to switch to on leaving; empty goes back to the shot that was live on entering, and a
+    /// cue that pushes returns.
+    /// </summary>
+    public string ExitShot { get; set; } = string.Empty;
+
+    /// <summary>On <see cref="CueMoment.Both"/>, the transition on leaving.</summary>
+    public ShotTransition ExitTransition { get; set; } = ShotTransition.Cut;
 
     /// <summary>Whether to play the shot as well, to <see cref="ToKey"/> or its end.</summary>
     public bool Play { get; set; }
