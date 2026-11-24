@@ -8,7 +8,7 @@ using FlickerVoid.Engine.Runtime.Loop;
 namespace FlickerVoid.Engine.Ai;
 
 /// <summary>
-/// Adds AI to a game: paths around obstacles, which characters then walk when added after <c>AddCharacters</c>, and the
+/// Adds AI to a game: paths around obstacles (a fixed system following the obstacles that move), which characters then walk when added after <c>AddCharacters</c>, and the
 /// <c>perception</c> and <c>perceivable</c> components with the system that lets perceivers see and hear (both services).
 /// </summary>
 public static class AiGameExtensions
@@ -18,6 +18,7 @@ public static class AiGameExtensions
         game.Spawner.Register("perception", AiJsonContext.Default.Perception);
         game.Spawner.Register("perceivable", AiJsonContext.Default.Perceivable);
         PathSystem paths = new(game.World, game.Lifecycle, settings ?? new NavigationSettings());
+        game.FixedSystems.Add(paths);
         game.Services.AddService(paths);
         CharacterMovementSystem? movement = game.Services.GetService<CharacterMovementSystem>();
         if (movement is not null)

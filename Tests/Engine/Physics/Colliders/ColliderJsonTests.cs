@@ -39,6 +39,20 @@ public class ColliderJsonTests
         body.Kinematic.Should().BeFalse();
     }
 
+    [Fact]
+    public void PathsGoAroundStaticBodiesButNotRigidOnesUnlessTheySaySo()
+    {
+        StaticBody wall = JsonSerializer.Deserialize("""{ "collider": { "type": "box" } }""", PhysicsJsonContext.Default.StaticBody);
+        StaticBody key = JsonSerializer.Deserialize("""{ "collider": { "type": "box" }, "obstacle": false }""", PhysicsJsonContext.Default.StaticBody);
+        RigidBody innkeeper = Read("""{ "kinematic": true, "collider": { "type": "box" } }""");
+        RigidBody door = Read("""{ "kinematic": true, "obstacle": true, "collider": { "type": "box" } }""");
+
+        wall.Obstacle.Should().BeTrue();
+        key.Obstacle.Should().BeFalse();
+        innkeeper.Obstacle.Should().BeFalse();
+        door.Obstacle.Should().BeTrue();
+    }
+
     [Theory]
     [InlineData("""{ }""")]
     [InlineData("""{ "collider": { "type": "cone" } }""")]

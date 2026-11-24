@@ -117,6 +117,24 @@ public sealed class PhysicsSystemTests : IDisposable
     }
 
     [Fact]
+    public void BodiesAtRestOnStaticBodiesThatStayPutFallAsleep()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 2, 0] },
+                "rigidBody": { "mass": 10, "collider": { "type": "box" } } } },
+            { "name": "Floor", "components": {
+                "transform": { "rotation": [0, 0.2588, 0, 0.9659] },
+                "staticBody": { "collider": { "type": "box", "size": [20, 1, 20] } } } }
+            """);
+
+        Run(seconds: 4);
+
+        BodyHandle crate = _game.World.Get<BodyHandle>(entities[0]);
+        _physics.Simulation.Bodies[crate].Awake.Should().BeFalse("nothing moved the floor, so nothing woke the crate");
+    }
+
+    [Fact]
     public void SolidGreyboxesBlockWhilePlaying()
     {
         _game.Lifecycle.Play(_game.World);
@@ -178,6 +196,67 @@ public sealed class PhysicsSystemTests : IDisposable
 
         Transform transform = _game.World.Get<Transform>(entities[0]);
         transform.Position.Y.Should().Be(3);
+    }
+
+    [Fact]
+    public void KinematicBodiesFollowTheirTransform()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Innkeeper", "components": {
+                "transform": {},
+                "rigidBody": { "kinematic": true, "collider": { "type": "box", "size": [0.6, 1.7, 0.4], "offset": [0, 0.85, 0] } } } }
+            """);
+        Step();
+
+        _game.World.Get<Transform>(entities[0]).Position = new Vector3(4, 0, 0);
+        Step();
+        bool hitWhereItWas = _physics.RayCast(new Ray(new Vector3(0, 10, 0), -Vector3.UnitY), 100, out _);
+        bool hitWhereItIs = _physics.RayCast(new Ray(new Vector3(4, 10, 0), -Vector3.UnitY), 100, out RayHit hit);
+
+        hitWhereItWas.Should().BeFalse();
+        hitWhereItIs.Should().BeTrue();
+        hit.Point.Y.Should().BeApproximately(1.7f, 1e-3f);
+        _game.World.Get<Transform>(entities[0]).Position.Should().Be(new Vector3(4, 0, 0));
+    }
+
+    [Fact]
+    public void KinematicBodiesTurnAboutTheirEntityWithItsTransform()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Door", "components": {
+                "transform": {},
+                "rigidBody": { "kinematic": true, "collider": { "type": "box", "size": [1, 2, 0.1], "offset": [0.5, 1, 0] } } } }
+            """);
+        Step();
+
+        _game.World.Get<Transform>(entities[0]).Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2);
+        Step();
+        bool hitClosed = _physics.RayCast(new Ray(new Vector3(0.5f, 1, 5), -Vector3.UnitZ), 100, out _);
+        bool hitOpen = _physics.RayCast(new Ray(new Vector3(5, 1, -0.5f), -Vector3.UnitX), 100, out RayHit open);
+
+        hitClosed.Should().BeFalse();
+        hitOpen.Should().BeTrue();
+        open.Point.X.Should().BeApproximately(0.05f, 1e-3f);
+    }
+
+    [Fact]
+    public void StaticBodiesMoveToATransformThatMoved()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 0.5, 0] },
+                "staticBody": { "collider": { "type": "box" } } } }
+            """);
+        Step();
+
+        _game.World.Get<Transform>(entities[0]).Position = new Vector3(3, 0.5f, 0);
+        Step();
+        bool hitWhereItWas = _physics.RayCast(new Ray(new Vector3(0, 10, 0), -Vector3.UnitY), 100, out _);
+        bool hitWhereItIs = _physics.RayCast(new Ray(new Vector3(3, 10, 0), -Vector3.UnitY), 100, out RayHit hit);
+
+        hitWhereItWas.Should().BeFalse();
+        hitWhereItIs.Should().BeTrue();
+        hit.Entity.Should().Be(entities[0]);
     }
 
     [Fact]

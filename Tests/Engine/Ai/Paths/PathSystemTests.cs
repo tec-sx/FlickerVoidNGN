@@ -132,6 +132,56 @@ public sealed class PathSystemTests : IDisposable
     }
 
     [Fact]
+    public void GoesStraightAcrossTheTilesOfALongFloor()
+    {
+        PathSystem paths = _builder.WithLongFloor().Build();
+        List<Vector3> corners = [];
+
+        bool found = paths.TryFindPath(new Vector3(-15, 0, 0), new Vector3(15, 0, 0), corners);
+
+        found.Should().BeTrue();
+        corners.Should().ContainSingle();
+        corners[0].X.Should().BeApproximately(15, 0.1f);
+    }
+
+    [Fact]
+    public void GoesThroughBodiesThatAreNoObstacles()
+    {
+        PathSystem paths = _builder.WithFloor().Build();
+        _builder.AddBody("Innkeeper", Vector3.Zero, """{ "kinematic": true, "collider": { "type": "box", "size": [0.6, 1.7, 0.4], "offset": [0, 0.85, 0] } }""");
+        _builder.AddStaticBody("Key", new Vector3(1, 0, 0), """{ "obstacle": false, "collider": { "type": "box", "size": [2, 0.1, 6] } }""");
+        List<Vector3> corners = [];
+
+        paths.TryFindPath(West, East, corners);
+
+        corners.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void GoesAroundAMovedObstacleOnceItComesToRest()
+    {
+        PathSystem paths = _builder.WithFloor().Build();
+        Quaternion alongX = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2);
+        Entity gate = _builder.AddBody("Gate", new Vector3(0, 0, 4), """{ "kinematic": true, "obstacle": true, "collider": { "type": "box", "size": [0.4, 2, 6], "offset": [0, 1, 0] } }""", alongX);
+        _builder.Run(1 / 60f);
+        List<Vector3> aside = [];
+        paths.TryFindPath(West, East, aside);
+
+        _builder.Place(gate, Vector3.Zero, Quaternion.Identity);
+        _builder.Run(1 / 60f);
+        List<Vector3> moving = [];
+        paths.TryFindPath(West, East, moving);
+        _builder.Run(1 / 60f);
+        List<Vector3> resting = [];
+        paths.TryFindPath(West, East, resting);
+
+        aside.Should().ContainSingle();
+        moving.Should().ContainSingle("paths wait until it stops moving");
+        resting.Count.Should().BeGreaterThan(1);
+        resting.Should().Contain(corner => MathF.Abs(corner.Z) >= 3, "the way round passes the gate's end");
+    }
+
+    [Fact]
     public void WalksCharactersAroundObstacles()
     {
         _builder.WithFloor().WithWall().Build();

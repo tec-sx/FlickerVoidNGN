@@ -19,6 +19,9 @@ public sealed class NavigationSettings
 
     public float CellHeight { get; set; } = 0.05f;
 
+    /// <summary>The width of a tile of the mesh in cells; an obstacle that moves builds only the tiles it touches again.</summary>
+    public int TileSize { get; set; } = 64;
+
     /// <summary>How far from a point, across and up or down, a path looks for ground to start or end on.</summary>
     public float SearchDistance { get; set; } = 1;
 

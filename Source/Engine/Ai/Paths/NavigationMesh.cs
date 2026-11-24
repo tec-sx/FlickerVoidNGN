@@ -5,15 +5,18 @@ using DotRecast.Detour;
 using DotRecast.Recast;
 using DotRecast.Recast.Geom;
 
+using FlickerVoid.Engine.Runtime.Geometry;
+
 namespace FlickerVoid.Engine.Ai.Paths;
 
 /// <summary>
-/// The ground characters can walk on, built by Recast from triangles (a single tile), and the paths across it found by Detour: the
-/// corners of the shortest way from one point to another, or to the nearest point that can be reached.
+/// The ground characters can walk on, built by Recast from triangles in square tiles, and the paths across it found by Detour: the
+/// corners of the shortest way from one point to another, or to the nearest point that can be reached. When obstacles change, only the
+/// tiles they touch are built again.
 /// </summary>
 public sealed class NavigationMesh
 {
-    private const int MaxPolygons = 256;
+    private const int MaxPolygons = 1024;
     private const int VerticesPerPolygon = 6;
     private const int RegionMinSize = 8;
     private const int RegionMergeSize = 20;
@@ -22,74 +25,125 @@ public sealed class NavigationMesh
     private const float DetailSampleDistance = 6;
     private const float DetailSampleMaxError = 1;
     private const int WalkableFlag = 1;
+    private const int MaxTileBits = 14;
+    private const int PolygonAndTileBits = 22;
 
+    private readonly DtNavMesh _mesh;
     private readonly DtNavMeshQuery _query;
     private readonly DtQueryDefaultFilter _filter = new();
+    private readonly RcConfig _config;
+    private readonly NavigationSettings _settings;
+    private readonly RcVec3f _min;
+    private readonly RcVec3f _max;
+    private readonly int _tilesX;
+    private readonly int _tilesZ;
     private readonly RcVec3f _searchExtents;
     private readonly long[] _polygons = new long[MaxPolygons];
     private readonly DtStraightPath[] _straight = new DtStraightPath[MaxPolygons];
 
-    private NavigationMesh(DtNavMesh mesh, NavigationSettings settings)
+    private NavigationMesh(DtNavMesh mesh, RcConfig config, NavigationSettings settings, RcVec3f min, RcVec3f max, int tilesX, int tilesZ)
     {
+        _mesh = mesh;
         _query = new DtNavMeshQuery(mesh);
+        _config = config;
+        _settings = settings;
+        _min = min;
+        _max = max;
+        _tilesX = tilesX;
+        _tilesZ = tilesZ;
         _searchExtents = new RcVec3f(settings.SearchDistance, settings.SearchHeight, settings.SearchDistance);
     }
 
+    /// <summary>How many tiles hold walkable ground.</summary>
+    public int TileCount { get; private set; }
+
     /// <summary>Builds the walkable ground of the triangles (three vertex indices each); null when nothing can be walked on.</summary>
-    public static NavigationMesh? Build(float[] vertices, int[] triangles, NavigationSettings settings)
+    public static NavigationMesh? Build(List<float> vertices, List<int> triangles, NavigationSettings settings)
     {
-        if (triangles.Length == 0)
+        if (triangles.Count == 0)
         {
             return null;
         }
 
         RcSampleInputGeomProvider geometry = new(vertices, triangles);
-        RcAreaModification walkable = new(RcRecast.RC_WALKABLE_AREA);
-        RcConfig config = new(
-            RcPartition.WATERSHED,
-            settings.CellSize,
-            settings.CellHeight,
-            settings.MaxSlope,
-            settings.AgentHeight,
-            settings.AgentRadius,
-            settings.MaxClimb,
-            RegionMinSize,
-            RegionMergeSize,
-            EdgeMaxLength,
-            EdgeMaxError,
-            VerticesPerPolygon,
-            DetailSampleDistance,
-            DetailSampleMaxError,
-            true,
-            true,
-            true,
-            walkable,
-            true);
+        RcConfig config = CreateConfig(settings);
         RcVec3f min = geometry.GetMeshBoundsMin();
         RcVec3f max = geometry.GetMeshBoundsMax();
-        RcBuilderConfig builderConfig = new(config, min, max);
-        RcBuilder builder = new();
-        RcBuilderResult result = builder.Build(geometry, builderConfig, false);
-        RcPolyMesh polygons = result.Mesh;
-        if (polygons.npolys == 0)
+        RcRecast.CalcTileCount(min, max, config.Cs, config.TileSizeX, config.TileSizeZ, out int tilesX, out int tilesZ);
+        int tileBits = Math.Min(DtUtils.Ilog2(DtUtils.NextPow2(tilesX * tilesZ)), MaxTileBits);
+        float tileWidth = config.TileSizeX * config.Cs;
+        DtNavMeshParams parameters = new()
+        {
+            orig = min,
+            tileWidth = tileWidth,
+            tileHeight = tileWidth,
+            maxTiles = 1 << tileBits,
+            maxPolys = 1 << (PolygonAndTileBits - tileBits),
+        };
+        DtNavMesh mesh = new();
+        mesh.Init(parameters, VerticesPerPolygon);
+        NavigationMesh navigation = new(mesh, config, settings, min, max, tilesX, tilesZ);
+        for (int z = 0; z < tilesZ; z++)
+        {
+            for (int x = 0; x < tilesX; x++)
+            {
+                navigation.BuildTile(geometry, x, z);
+            }
+        }
+
+        if (navigation.TileCount == 0)
         {
             return null;
         }
 
-        for (int index = 0; index < polygons.npolys; index++)
+        return navigation;
+    }
+
+    /// <summary>
+    /// Builds again, from the triangles as they are now, the tiles within reach of the areas that changed (what an obstacle covered
+    /// before and covers now); false, building nothing, when the triangles reach past the mesh's bounds, so it must be built anew.
+    /// </summary>
+    public bool Rebuild(List<float> vertices, List<int> triangles, IReadOnlyList<Bounds> changed)
+    {
+        if (triangles.Count == 0)
         {
-            if (polygons.areas[index] != RcRecast.RC_NULL_AREA)
+            return false;
+        }
+
+        RcSampleInputGeomProvider geometry = new(vertices, triangles);
+        RcVec3f min = geometry.GetMeshBoundsMin();
+        RcVec3f max = geometry.GetMeshBoundsMax();
+        bool inside = min.X >= _min.X && min.Y >= _min.Y && min.Z >= _min.Z && max.X <= _max.X && max.Y <= _max.Y && max.Z <= _max.Z;
+        if (!inside)
+        {
+            return false;
+        }
+
+        float tileWidth = _config.TileSizeX * _config.Cs;
+        float reach = _config.BorderSize * _config.Cs;
+        HashSet<(int X, int Z)> tiles = [];
+        foreach (Bounds area in changed)
+        {
+            int firstX = Math.Clamp((int)MathF.Floor((area.Min.X - reach - _min.X) / tileWidth), 0, _tilesX - 1);
+            int lastX = Math.Clamp((int)MathF.Floor((area.Max.X + reach - _min.X) / tileWidth), 0, _tilesX - 1);
+            int firstZ = Math.Clamp((int)MathF.Floor((area.Min.Z - reach - _min.Z) / tileWidth), 0, _tilesZ - 1);
+            int lastZ = Math.Clamp((int)MathF.Floor((area.Max.Z + reach - _min.Z) / tileWidth), 0, _tilesZ - 1);
+            for (int z = firstZ; z <= lastZ; z++)
             {
-                polygons.flags[index] = WalkableFlag;
+                for (int x = firstX; x <= lastX; x++)
+                {
+                    tiles.Add((x, z));
+                }
             }
         }
 
-        DtNavMeshCreateParams parameters = CreateParameters(config, polygons, result.MeshDetail, settings);
-        DtDetourBuilder detour = new();
-        DtMeshData data = detour.Build(parameters, 0, 0);
-        DtNavMesh mesh = new();
-        mesh.Init(data, VerticesPerPolygon, 0);
-        return new NavigationMesh(mesh, settings);
+        foreach ((int x, int z) in tiles)
+        {
+            RemoveTile(x, z);
+            BuildTile(geometry, x, z);
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -177,7 +231,80 @@ public sealed class NavigationMesh
         return true;
     }
 
-    private static DtNavMeshCreateParams CreateParameters(RcConfig config, RcPolyMesh polygons, RcPolyMeshDetail detail, NavigationSettings settings)
+    private static RcConfig CreateConfig(NavigationSettings settings)
+    {
+        float cellArea = settings.CellSize * settings.CellSize;
+        RcAreaModification walkable = new(RcRecast.RC_WALKABLE_AREA);
+        return new RcConfig(
+            true,
+            settings.TileSize,
+            settings.TileSize,
+            RcConfig.CalcBorder(settings.AgentRadius, settings.CellSize),
+            RcPartition.WATERSHED,
+            settings.CellSize,
+            settings.CellHeight,
+            settings.MaxSlope,
+            settings.AgentHeight,
+            settings.AgentRadius,
+            settings.MaxClimb,
+            RegionMinSize * RegionMinSize * cellArea,
+            RegionMergeSize * RegionMergeSize * cellArea,
+            EdgeMaxLength,
+            EdgeMaxError,
+            VerticesPerPolygon,
+            DetailSampleDistance,
+            DetailSampleMaxError,
+            true,
+            true,
+            true,
+            walkable,
+            true);
+    }
+
+    private void RemoveTile(int x, int z)
+    {
+        long tile = _mesh.GetTileRefAt(x, z, 0);
+        if (tile == 0)
+        {
+            return;
+        }
+
+        _mesh.RemoveTile(tile);
+        TileCount--;
+    }
+
+    private void BuildTile(RcSampleInputGeomProvider geometry, int x, int z)
+    {
+        RcBuilderConfig builderConfig = new(_config, _min, _max, x, z);
+        RcBuilder builder = new();
+        RcBuilderResult result = builder.Build(geometry, builderConfig, false);
+        RcPolyMesh polygons = result.Mesh;
+        if (polygons.npolys == 0)
+        {
+            return;
+        }
+
+        for (int index = 0; index < polygons.npolys; index++)
+        {
+            if (polygons.areas[index] != RcRecast.RC_NULL_AREA)
+            {
+                polygons.flags[index] = WalkableFlag;
+            }
+        }
+
+        DtNavMeshCreateParams parameters = CreateParameters(polygons, result.MeshDetail, x, z);
+        DtDetourBuilder detour = new();
+        DtMeshData? data = detour.Build(parameters, x, z);
+        if (data is null)
+        {
+            return;
+        }
+
+        _mesh.AddTile(data, 0, 0, out _);
+        TileCount++;
+    }
+
+    private DtNavMeshCreateParams CreateParameters(RcPolyMesh polygons, RcPolyMeshDetail detail, int x, int z)
     {
         return new DtNavMeshCreateParams
         {
@@ -193,14 +320,16 @@ public sealed class NavigationMesh
             detailVertsCount = detail.nverts,
             detailTris = detail.tris,
             detailTriCount = detail.ntris,
-            walkableHeight = settings.AgentHeight,
-            walkableRadius = settings.AgentRadius,
-            walkableClimb = settings.MaxClimb,
+            walkableHeight = _settings.AgentHeight,
+            walkableRadius = _settings.AgentRadius,
+            walkableClimb = _settings.MaxClimb,
             bmin = polygons.bmin,
             bmax = polygons.bmax,
-            cs = config.Cs,
-            ch = config.Ch,
+            cs = _config.Cs,
+            ch = _config.Ch,
             buildBvTree = true,
+            tileX = x,
+            tileZ = z,
         };
     }
 
