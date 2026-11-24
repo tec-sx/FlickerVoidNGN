@@ -9,7 +9,7 @@
   <Panel>
     <TextBlock Text="Select an entity to see what is nested in it." Classes="menuDetail" Margin="8" TextWrapping="Wrap"
                IsVisible="{Binding !Items.Count}" />
-    <TreeView x:Name="Tree" ItemsSource="{Binding Items}" SelectionMode="Multiple" Classes="outline" DragDrop.AllowDrop="True">
+    <TreeView x:Name="Tree" SelectionMode="Multiple" Classes="outline" DragDrop.AllowDrop="True">
       <TreeView.ItemContainerTheme>
         <ControlTheme TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}" x:DataType="scenes:SceneTreeItem">
           <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />

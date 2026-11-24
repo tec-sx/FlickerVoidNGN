@@ -177,4 +177,32 @@ public sealed class SceneTreeNestingTests : IDisposable
         _builder.Scene.Selection.Selected.Should().Be(Named("Exit"));
         entityTree.Items[0].Name.Should().Be("Trigger");
     }
+
+    [Fact]
+    public void RevealsWhatANestedEntitySelectedElsewhereIsNestedInAndShowsItSelected()
+    {
+        SceneTreeViewModel tree = OpenTree();
+        tree.Items[0].IsExpanded = false;
+
+        _builder.Scene.Selection.Select(Named("Handle"));
+
+        tree.Items[0].IsExpanded.Should().BeTrue("the Cellar folder holds the selection");
+        SceneTreeItem trigger = Trigger(tree);
+        trigger.IsRevealed.Should().BeTrue();
+        trigger.Children[0].IsExpanded.Should().BeTrue();
+        tree.SelectedItems.Select(item => item.Name).Should().Equal("Handle");
+    }
+
+    [Fact]
+    public void ExpandsTheFolderOfATopEntitySelectedElsewhere()
+    {
+        SceneTreeViewModel tree = OpenTree();
+        tree.Items[0].IsExpanded = false;
+
+        _builder.Scene.Selection.Select(Named("Trigger"));
+
+        tree.Items[0].IsExpanded.Should().BeTrue();
+        Trigger(tree).IsRevealed.Should().BeFalse("nothing nested is selected");
+        tree.SelectedItems.Select(item => item.Name).Should().Equal("Trigger");
+    }
 }
