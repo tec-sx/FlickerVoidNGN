@@ -24,7 +24,7 @@
       <TextBlock Text="Show all" FontSize="{StaticResource EditorSmallFontSize}" VerticalAlignment="Center" />
     </Button>
   </StackPanel>
-  <TreeView x:Name="Tree" ItemsSource="{Binding Items}" SelectionMode="Multiple" Classes="outline" DragDrop.AllowDrop="True">
+  <TreeView x:Name="Tree" SelectionMode="Multiple" Classes="outline" DragDrop.AllowDrop="True">
     <TreeView.ItemContainerTheme>
       <ControlTheme TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}" x:DataType="scenes:SceneTreeItem">
         <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />

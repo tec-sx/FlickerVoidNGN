@@ -10,7 +10,7 @@ namespace FlickerVoid.Editor.Core.Scenes;
 /// <summary>
 /// The open scene's outline: folders (from each entity's <see cref="EntityFolder"/>, plus new empty ones until something goes in),
 /// subfolders before entities, entities in the file's order. Choosing items selects their entities, a folder all of its own;
-/// a selection made elsewhere shows as <see cref="SelectedItems"/>. Folders are created, renamed and deleted here. Only entities at
+/// a selection made elsewhere shows as <see cref="SelectedItems"/>, its folders expanded and what it is nested under revealed. Folders are created, renamed and deleted here. Only entities at
 /// the top are listed: what is nested under one shows under it, marked nested, while it is revealed (or all are,
 /// <see cref="RevealAllNested"/>), and the Entity tab (<see cref="EntityTreeViewModel"/>) shows the whole tree of the selection.
 /// </summary>
@@ -30,7 +30,7 @@ public sealed partial class SceneTreeViewModel : ObservableObject
         _scene = scene;
         _scene.EntitiesChanged += Rebuild;
         _scene.Opened += HandleOpened;
-        _scene.Selection.Changed += ShowSelection;
+        _scene.Selection.Changed += HandleSelectionChanged;
         _scene.VisibilityChanged += ShowHidden;
         Rebuild();
     }
@@ -357,6 +357,77 @@ public sealed partial class SceneTreeViewModel : ObservableObject
         }
 
         return items;
+    }
+
+    /// <summary>A selection made elsewhere, such as in the viewport: reveals the trees it is nested in and expands what holds it.</summary>
+    private void HandleSelectionChanged()
+    {
+        if (_choosing)
+        {
+            return;
+        }
+
+        if (RevealSelection())
+        {
+            Rebuild();
+        }
+        else
+        {
+            ShowSelection();
+        }
+
+        ExpandToSelection();
+    }
+
+    /// <summary>Reveals the top entity of each selected nested entity; true when one was concealed.</summary>
+    private bool RevealSelection()
+    {
+        World world = _scene.Game.World;
+        bool revealed = false;
+        foreach (Entity entity in _scene.Selection.Entities)
+        {
+            if (RevealAllNested || !world.IsAlive(entity) || _scene.GetParent(entity) is null)
+            {
+                continue;
+            }
+
+            Entity root = entity;
+            HashSet<Entity> seen = [root];
+            while (_scene.GetParent(root) is { } parent && seen.Add(parent))
+            {
+                root = parent;
+            }
+
+            string name = NameOf(world, root);
+            revealed |= _revealed.Add(name);
+        }
+
+        return revealed;
+    }
+
+    /// <summary>Expands every folder and entity the selected items sit in, so the tree shows them.</summary>
+    private void ExpandToSelection()
+    {
+        foreach (SceneTreeItem item in Items)
+        {
+            ExpandTo(item);
+        }
+    }
+
+    private bool ExpandTo(SceneTreeItem item)
+    {
+        bool holds = false;
+        foreach (SceneTreeItem child in item.Children)
+        {
+            holds |= ExpandTo(child);
+        }
+
+        if (holds)
+        {
+            item.IsExpanded = true;
+        }
+
+        return holds || SelectedItems.Contains(item);
     }
 
     private void ShowSelection()

@@ -93,9 +93,15 @@ public sealed partial class SceneTreeView : UserControl
             return;
         }
 
+        // The view sets its items itself: a new list makes the tree drop its selection, which must not read as the user's choice.
         _syncing = true;
         try
         {
+            if (!ReferenceEquals(_tree.ItemsSource, outline.Items))
+            {
+                _tree.ItemsSource = outline.Items;
+            }
+
             _tree.SelectedItems.Clear();
             foreach (SceneTreeItem item in outline.SelectedItems)
             {
@@ -105,6 +111,11 @@ public sealed partial class SceneTreeView : UserControl
         finally
         {
             _syncing = false;
+        }
+
+        if (outline.SelectedItems.LastOrDefault() is { } last)
+        {
+            Dispatcher.UIThread.Post(() => _tree.TreeContainerFromItem(last)?.BringIntoView(), DispatcherPriority.Loaded);
         }
     }
 
