@@ -48,7 +48,7 @@ public static class InventoryGameExtensions
         game.Services.AddService(pickups);
         EquipmentSystem equipment = new(game, inventories);
         game.Services.AddService(equipment);
-        LootSystem loot = new(game, inventories, random ?? Random.Shared);
+        LootSystem loot = new(game, inventories, random ?? game.Random);
         game.Services.AddService(loot);
         return inventories;
     }

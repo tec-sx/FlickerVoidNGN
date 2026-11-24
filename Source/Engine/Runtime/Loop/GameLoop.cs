@@ -24,6 +24,9 @@ public sealed class GameLoop
     /// <summary>Longest frame the loop accepts; a longer one (a hitch or a breakpoint) counts as this long, so the simulation doesn't try to catch up.</summary>
     public TimeSpan MaxElapsed { get; init; } = DefaultMaxElapsed;
 
+    /// <summary>Whether the simulation is held: no fixed steps run and no time builds up for them, while frames go on, marked paused.</summary>
+    public bool Paused { get; set; }
+
     /// <summary>Fraction of the next fixed step already elapsed, for drawing between the last two fixed states.</summary>
     public float Interpolation => (float)((double)_accumulated.Ticks / FixedStep.Ticks);
 
@@ -38,6 +41,19 @@ public sealed class GameLoop
             elapsed = MaxElapsed;
         }
 
+        if (!Paused)
+        {
+            Step(elapsed);
+        }
+
+        _frameTotal += elapsed;
+        _frameCount++;
+        GameTime frame = new(elapsed, _frameTotal, _frameCount, Paused);
+        Update?.Invoke(frame);
+    }
+
+    private void Step(TimeSpan elapsed)
+    {
         // A frame within 1/64 of a step counts as exactly one step, so timer noise doesn't skip or double steps.
         TimeSpan stepTime = elapsed;
         long offset = Math.Abs(elapsed.Ticks - FixedStep.Ticks);
@@ -55,11 +71,6 @@ public sealed class GameLoop
             GameTime step = new(FixedStep, _fixedTotal, _fixedCount);
             FixedUpdate?.Invoke(step);
         }
-
-        _frameTotal += elapsed;
-        _frameCount++;
-        GameTime frame = new(elapsed, _frameTotal, _frameCount);
-        Update?.Invoke(frame);
     }
 }
 

@@ -3,6 +3,7 @@ using Arch.System;
 
 using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Facts;
+using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Debugging;
@@ -21,9 +22,10 @@ namespace FlickerVoid.Engine.Runtime.Loop;
 public sealed partial class Game : IDisposable
 {
     private readonly ILogger _logger;
+    private readonly HashSet<Tag> _pauses = [];
     private bool _initialized;
 
-    /// <summary>Creates the world and registers it, the logger factory, the scene spawner (with the transform, saveable and greybox components), the debug console, the events, the facts and the transform hierarchy as services.</summary>
+    /// <summary>Creates the world and registers it, the logger factory, the scene spawner (with the transform, saveable and greybox components), the debug console, the events, the facts and the transform hierarchy as services, and saves the transforms and the random source.</summary>
     public Game(ILoggerFactory loggerFactory)
     {
         LoggerFactory = loggerFactory;
@@ -38,10 +40,12 @@ public sealed partial class Game : IDisposable
         Spawner.Register("saveable", RuntimeJsonContext.Default.Saveable);
         Spawner.Register("greybox", RuntimeJsonContext.Default.Greybox);
         SaveStates.AddComponent("transform", RuntimeJsonContext.Default.Transform);
+        SaveStates.AddGlobal("random", SaveRandom, RestoreRandom);
         Services.AddService(Spawner);
         Schemas.Add("scene", Spawner.GetSchema);
         Schemas.Add("entity", Spawner.GetTemplateSchema);
         Data.AddResolver(GameplayJsonContext.Default);
+        Data.AddResolver(SavesJsonContext.Default);
         Data.RegisterDerived<Condition, FactCondition>("fact");
         Data.RegisterDerived<Condition, GroupCondition>("group");
         Data.RegisterDerived<Effect, FactEffect>("fact");
@@ -91,11 +95,33 @@ public sealed partial class Game : IDisposable
 
     public GameLoop Loop { get; } = new();
 
+    /// <summary>The game's one source of chance, saved with it; modules roll from it unless a test gives them a random of its own.</summary>
+    public GameRandom Random { get; } = new();
+
     /// <summary>Systems run once per fixed step: simulation, physics and gameplay rules that must not depend on the frame rate.</summary>
     public Group<GameTime> FixedSystems { get; } = new("Fixed");
 
     /// <summary>Systems run once per frame, after the frame's fixed steps: input, animation, presentation.</summary>
     public Group<GameTime> FrameSystems { get; } = new("Frame");
+
+    /// <summary>Whether anything holds the game paused.</summary>
+    public bool IsPaused => _pauses.Count > 0;
+
+    /// <summary>
+    /// Holds the game paused for a reason, such as the hub being open, until every reason held is resumed: fixed systems stop, and frames
+    /// go on marked paused, so the interface still runs.
+    /// </summary>
+    public void Pause(Tag reason)
+    {
+        _pauses.Add(reason);
+        Loop.Paused = true;
+    }
+
+    public void Resume(Tag reason)
+    {
+        _pauses.Remove(reason);
+        Loop.Paused = _pauses.Count > 0;
+    }
 
     /// <summary>Advances the game by the real time since the last tick; the first tick initializes the systems.</summary>
     public void Tick(TimeSpan elapsed)
@@ -123,6 +149,13 @@ public sealed partial class Game : IDisposable
         FrameSystems.Dispose();
         FixedSystems.Dispose();
         World.Destroy(World);
+    }
+
+    private SavedRandom SaveRandom() => new() { State = Random.State };
+
+    private void RestoreRandom(SavedRandom saved)
+    {
+        Random.State = saved.State;
     }
 
     private void Run(Group<GameTime> systems, GameTime time)

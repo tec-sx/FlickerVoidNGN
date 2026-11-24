@@ -46,4 +46,20 @@ public sealed class RenderScene
         DepthFade = default;
         Focus = null;
     }
+
+    /// <summary>Replaces what this scene holds with everything <paramref name="other"/> holds, such as a dissolve drawing another renderer's scene.</summary>
+    public void CopyFrom(RenderScene other)
+    {
+        Clear();
+        Cameras.AddRange(other.Cameras);
+        Meshes.AddRange(other.Meshes);
+        PointLights.AddRange(other.PointLights);
+        SpotLights.AddRange(other.SpotLights);
+        ProbeVolumes.AddRange(other.ProbeVolumes);
+        Indoors.AddRange(other.Indoors);
+        Cutaway = other.Cutaway;
+        Transition = other.Transition;
+        DepthFade = other.DepthFade;
+        Focus = other.Focus;
+    }
 }

@@ -57,4 +57,15 @@ public sealed class TurntableSystemTests : IDisposable
 
         _builder.Yaw(entity).Should().BeApproximately(30, 0.01f);
     }
+
+    [Fact]
+    public void HoldsTheGamesTurntablesWhileTheGameIsPaused()
+    {
+        Entity entity = _builder.WithTurntable(new Turntable { Speed = 60 }).Build();
+        TurntableSystem system = new(_builder.World);
+
+        system.Update(new Runtime.Loop.GameTime(TimeSpan.FromSeconds(0.5), TimeSpan.FromSeconds(1), 1, Paused: true));
+
+        _builder.Yaw(entity).Should().BeApproximately(0, 0.01f);
+    }
 }

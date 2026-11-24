@@ -77,6 +77,33 @@ public class GameLoopTests
     }
 
     [Fact]
+    public void APausedLoopTakesNoStepsButKeepsItsFrames()
+    {
+        _loop.Paused = true;
+
+        _loop.Advance(Step * 2);
+
+        _steps.Should().BeEmpty();
+        _frames.Should().ContainSingle();
+        _frames[0].Paused.Should().BeTrue();
+        _frames[0].Elapsed.Should().Be(Step * 2);
+    }
+
+    [Fact]
+    public void ResumingDoesNotCatchUpOnThePausedTime()
+    {
+        _loop.Paused = true;
+        _loop.Advance(Step * 3);
+
+        _loop.Paused = false;
+        _loop.Advance(Step);
+
+        _steps.Should().ContainSingle();
+        _steps[0].Should().Be(new GameTime(Step, Step, 1));
+        _frames[1].Paused.Should().BeFalse();
+    }
+
+    [Fact]
     public void IgnoresNegativeTime()
     {
         _loop.Advance(TimeSpan.FromSeconds(-1));
