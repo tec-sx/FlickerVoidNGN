@@ -11,6 +11,8 @@ namespace FlickerVoid.Engine.Rendering.Materials;
 /// </summary>
 public sealed record MaterialFile
 {
+    public const string Extension = ".fvmat";
+
     [JsonPropertyName(JsonSchemas.SchemaProperty)]
     public string? Schema { get; set; }
 

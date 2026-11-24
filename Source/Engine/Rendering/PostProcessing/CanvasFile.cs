@@ -14,6 +14,8 @@ namespace FlickerVoid.Engine.Rendering.PostProcessing;
 /// </summary>
 public sealed record CanvasFile
 {
+    public const string Extension = ".fvcanvas";
+
     [JsonPropertyName(JsonSchemas.SchemaProperty)]
     public string? Schema { get; set; }
 

@@ -20,6 +20,6 @@ public static class FlowGameExtensions
         game.Data.RegisterDerived<FlowNode, WaitForConditionsNode>("waitForConditions");
         game.Data.RegisterDerived<FlowNode, TravelNode>("travel");
         game.Data.RegisterDerived<Effect, TravelEffect>("travel");
-        game.Schemas.Add("flow", () => FlowGraphs.GetSchema(game.Data));
+        game.Schemas.AddFile("flow", FlowGraph.Extension, () => game.Data.Options.GetTypeInfo(typeof(FlowGraph)));
     }
 }
