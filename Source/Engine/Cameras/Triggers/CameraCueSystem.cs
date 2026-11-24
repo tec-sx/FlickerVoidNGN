@@ -24,20 +24,25 @@ public sealed class CameraCueSystem
         _director = director;
         game.Events.Handle((in AreaEnteredEvent area) => Fire(area.Area, CueMoment.Enter));
         game.Events.Handle((in AreaExitedEvent area) => Fire(area.Area, CueMoment.Exit));
-        game.Events.Handle((in AreaExitedEvent area) => Leave(area.Area));
         game.SaveStates.Add<SavedCue>("cameraCue", Save, Restore);
     }
 
     private void Fire(Entity area, CueMoment moment)
     {
         World world = _game.World;
-        if (!world.IsAlive(area) || !world.TryGet(area, out CameraCue cue) || _fired.Contains(area))
+        if (!world.IsAlive(area) || !world.TryGet(area, out CameraCue cue))
         {
             return;
         }
 
-        bool both = cue.On == CueMoment.Both && moment == CueMoment.Enter;
-        if (cue.On != moment && !both)
+        bool both = cue.On == CueMoment.Both;
+        if (both && moment == CueMoment.Exit)
+        {
+            GoBack(area, cue);
+            return;
+        }
+
+        if ((cue.On != moment && !both) || _fired.Contains(area))
         {
             return;
         }
@@ -79,9 +84,10 @@ public sealed class CameraCueSystem
         }
     }
 
-    private void Leave(Entity area)
+    /// <summary>Undoes on leaving what a cue on both did on entering, when it fired then.</summary>
+    private void GoBack(Entity area, in CameraCue cue)
     {
-        if (!_entered.Remove(area, out Entity before) || !_game.World.IsAlive(area) || !_game.World.TryGet(area, out CameraCue cue))
+        if (!_entered.Remove(area, out Entity before))
         {
             return;
         }
