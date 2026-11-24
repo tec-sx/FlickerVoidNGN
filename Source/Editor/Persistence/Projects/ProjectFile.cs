@@ -15,6 +15,6 @@ public sealed class ProjectFile
     /// <summary>The scene to open, as a content path; none opens an empty world.</summary>
     public string? StartupScene { get; set; }
 
-    /// <summary>The image the editor's splash shows while the project builds, relative to the project file; none shows black.</summary>
+    /// <summary>The image the editor's splash shows while the project builds, relative to the project file; none shows a star.</summary>
     public string? Splash { get; set; }
 }

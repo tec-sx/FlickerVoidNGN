@@ -6,10 +6,10 @@
         Title="{Binding Project}"
         Width="960" Height="540" CanResize="False" WindowDecorations="None"
         WindowStartupLocation="CenterOwner" Background="Black">
-  <!-- 16:9, after Unreal's splash: the project's image (black without one), and along the bottom what the build does now, how
-       far it has come and a thin bar. -->
+  <!-- 16:9, after Unreal's splash: the project's image (the editor's star in a dreamy void without one), and along the bottom what
+       the build does now, how far it has come and a thin bar. -->
   <Grid>
-    <Image x:Name="Picture" Stretch="UniformToFill" />
+    <Image x:Name="Picture" Source="/Projects/DefaultSplash.jpg" Stretch="UniformToFill" />
     <StackPanel VerticalAlignment="Bottom" Margin="20,0,20,14" Spacing="6">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
         <TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis" Foreground="#E0E0E6" FontSize="12" />

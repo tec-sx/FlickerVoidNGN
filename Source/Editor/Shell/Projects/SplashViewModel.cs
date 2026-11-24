@@ -5,14 +5,14 @@ using FlickerVoid.Editor.Persistence.Projects;
 namespace FlickerVoid.Editor.Projects;
 
 /// <summary>
-/// The splash shown while a project opens, after Unreal's: the project's image (black without one), a progress bar and one line
+/// The splash shown while a project opens, after Unreal's: the project's image (the editor's star without one), a progress bar and one line
 /// saying what the build does now.
 /// </summary>
 public sealed partial class SplashViewModel(string project, string? image, string status) : ObservableObject
 {
     public string Project { get; } = project;
 
-    /// <summary>The image file the project names for its splash; null shows black.</summary>
+    /// <summary>The image file the project names for its splash; null shows the editor's star.</summary>
     public string? Image { get; } = image;
 
     [ObservableProperty]

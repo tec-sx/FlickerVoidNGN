@@ -29,6 +29,22 @@ public sealed class ProjectPickerWindowTests : IDisposable
     }
 
     [Fact]
+    public async Task AProjectWithoutAnImageShowsTheEditorsStar()
+    {
+        await _builder.WithBuildWaiting().Run(async window =>
+        {
+            Task opening = _builder.Picker.OpenFile(_builder.ProjectFile);
+            SplashWindow splash = window.OwnedWindows.OfType<SplashWindow>().Single();
+            Image picture = splash.GetControl<Image>("Picture");
+            bool pictured = picture.Source is not null;
+            _builder.FinishBuild();
+            await opening;
+
+            pictured.Should().BeTrue();
+        });
+    }
+
+    [Fact]
     public async Task AFailedOpenClosesTheSplashAndShowsTheLog()
     {
         await _builder.WithFailingBuild("Door.cs(3,1): error CS1002: ; expected").Run(async window =>

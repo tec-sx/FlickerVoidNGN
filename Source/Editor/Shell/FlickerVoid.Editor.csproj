@@ -22,6 +22,9 @@
   <ItemGroup>
     <InternalsVisibleTo Include="FlickerVoid.Editor.Tests" />
   </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Projects/DefaultSplash.jpg" />
+  </ItemGroup>
   <!-- The editor's own shaders and icons (Material Symbols, Apache-2.0), kept in Core, go beside the engine modules' shaders in Content/Engine. -->
   <ItemGroup>
     <FlickerVoidContent Include="../Core/Shaders" OutputFolder="Engine/Editor" />

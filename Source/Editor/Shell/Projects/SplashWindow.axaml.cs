@@ -17,11 +17,11 @@ public sealed partial class SplashWindow : Window
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        if (DataContext is SplashViewModel { Image: { } file })
+        if (DataContext is SplashViewModel { Image: { } file } && LoadImage(file) is { } image)
         {
-            _image = LoadImage(file);
+            _image = image;
             Image picture = this.GetControl<Image>("Picture");
-            picture.Source = _image;
+            picture.Source = image;
         }
     }
 
@@ -31,7 +31,7 @@ public sealed partial class SplashWindow : Window
         _image?.Dispose();
     }
 
-    /// <summary>The project's image, or none (black) when it can't be read: a splash never keeps a project from opening.</summary>
+    /// <summary>The project's image, or none if it can't be read, leaving the star: a splash never keeps a project from opening.</summary>
     private static Bitmap? LoadImage(string file)
     {
         try
