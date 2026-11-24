@@ -1,5 +1,7 @@
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Flow.Nodes;
+using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Facts;
 using FlickerVoid.Engine.Gameplay.Tags;
 
 namespace FlickerVoid.Engine.Flow.Tests.Graphs;
@@ -173,6 +175,74 @@ public sealed class FlowRunTests : IDisposable
         run.Start();
 
         _builder.Facts.GetFact(Opened).Should().Be(3, "a and the b after it run before c");
+    }
+
+    [Fact]
+    public void AResumedRunPicksUpAtTheNodesThatWereActiveWithoutStartingAgain()
+    {
+        const string Graph = """
+            {
+              "nodes": [
+                { "$type": "start", "id": "start" },
+                { "$type": "applyEffects", "id": "begin", "effects": { "effects": [ { "$type": "fact", "fact": "Fact.Begun", "write": "Add" } ] } },
+                { "$type": "waitForConditions", "id": "key", "conditions": { "conditions": [ { "$type": "fact", "fact": "Item.Key.Cellar" } ] } },
+                { "$type": "applyEffects", "id": "open", "effects": { "effects": [ { "$type": "fact", "fact": "Quest.Cellar.Opened" } ] } }
+              ],
+              "links": [ { "from": "start", "to": "begin" }, { "from": "begin", "to": "key" }, { "from": "key", "to": "open" } ]
+            }
+            """;
+        FlowRun first = _builder.Build(Graph);
+        first.Start();
+        IReadOnlyList<string> active = first.GetActiveIds();
+        first.Finish();
+        FlowRun resumed = _builder.Build(Graph);
+
+        resumed.Resume(active);
+        _builder.Facts.SetFact(HasKey, 1);
+
+        active.Should().Equal("key");
+        _builder.Facts.GetFact(new Tag("Fact.Begun")).Should().Be(1);
+        _builder.Facts.GetFact(Opened).Should().Be(1);
+    }
+
+    [Fact]
+    public void ARunChecksAndAppliesItsRulesAgainstTheConditionsItIsGivenFromThen()
+    {
+        FlowRun run = _builder.Build("""
+            {
+              "nodes": [
+                { "$type": "start", "id": "start" },
+                { "$type": "waitForConditions", "id": "key", "conditions": { "conditions": [ { "$type": "fact", "fact": "Item.Key.Cellar" } ] } },
+                { "$type": "applyEffects", "id": "open", "effects": { "effects": [ { "$type": "fact", "fact": "Quest.Cellar.Opened" } ] } }
+              ],
+              "links": [ { "from": "start", "to": "key" }, { "from": "key", "to": "open" } ]
+            }
+            """);
+        run.Start();
+        FactDatabase other = new(new FactSettings());
+
+        run.SetConditions(new ConditionContext(other));
+        _builder.Facts.SetFact(HasKey, 1);
+        other.SetFact(HasKey, 1);
+
+        _builder.Facts.GetFact(Opened).Should().Be(0);
+        other.GetFact(Opened).Should().Be(1);
+    }
+
+    [Fact]
+    public void ResumingSkipsNodesTheGraphNoLongerHas()
+    {
+        FlowRun run = _builder.Build("""
+            {
+              "nodes": [ { "$type": "start", "id": "start" } ],
+              "links": []
+            }
+            """);
+
+        run.Resume(["gone"]);
+
+        run.IsRunning.Should().BeTrue();
+        run.ActiveNodes.Should().BeEmpty();
     }
 
     [Fact]

@@ -9,7 +9,7 @@ using FlickerVoid.Engine.Rendering.Pipeline;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
-/// <summary>Draws every mesh of the frame but shadow-only ones with the pipeline already set, reading the frame's data buffer.</summary>
+/// <summary>Draws the meshes of the frame its view draws with the pipeline already set, reading the frame's data buffer.</summary>
 internal static class MeshDrawing
 {
     public static void Draw(RenderContext context)
@@ -17,7 +17,7 @@ internal static class MeshDrawing
         ICommandList commands = context.Commands;
         foreach (MeshDraw draw in context.Draws)
         {
-            if ((draw.Flags & (MeshFlags.ShadowOnly | MeshFlags.OutlineOnly)) != 0)
+            if (!draw.InView)
             {
                 continue;
             }

@@ -10,7 +10,8 @@ namespace FlickerVoid.Engine.Runtime.Entities;
 /// Moves nested entities (<see cref="EntityParent"/>) with their parents, parents first: each child keeps where it stands in its
 /// parent's space, a child moved on its own keeps its new place there, and transforms stay in world space for every other system.
 /// A missing parent or a loop of parents leaves the child where it is. A game service, which <c>Game</c> updates after each fixed
-/// step and before each frame; the editor updates it after each edit.
+/// step and before each frame; the editor updates it after each edit. A child keeps the parent it found while that parent lives and
+/// keeps its name, so names are looked up only for children that have none.
 /// </summary>
 public sealed class TransformHierarchy
 {
@@ -23,6 +24,7 @@ public sealed class TransformHierarchy
     private readonly List<Entity> _detached = [];
     private readonly HashSet<Entity> _done = [];
     private readonly HashSet<Entity> _visiting = [];
+    private bool _named;
 
     public TransformHierarchy()
     {
@@ -33,11 +35,7 @@ public sealed class TransformHierarchy
     public void Update(World world)
     {
         Detach(world);
-        _byName.Clear();
-        world.Query(in Named, (Entity entity, ref EntityName name) =>
-        {
-            _byName.TryAdd(name.Value, entity);
-        });
+        _named = false;
         _children.Clear();
         world.Query(in Children, (Entity entity) => _children.Add(entity));
         _done.Clear();
@@ -82,7 +80,8 @@ public sealed class TransformHierarchy
     private bool Place(World world, Entity child)
     {
         EntityParent parentName = world.Get<EntityParent>(child);
-        bool found = _byName.TryGetValue(parentName.Name, out Entity parent) && parent != child && world.Has<Transform>(parent);
+        Entity parent = FindParent(world, child, parentName.Name);
+        bool found = parent != Entity.Null && parent != child && world.Has<Transform>(parent);
         if (found && world.Has<EntityParent>(parent))
         {
             found = Follow(world, parent);
@@ -120,6 +119,29 @@ public sealed class TransformHierarchy
         world.Set(child, placed);
         world.Set(child, attachment);
         return true;
+    }
+
+    /// <summary>The parent the child found before while it lives under that name, else the first entity with the name, else <see cref="Entity.Null"/>.</summary>
+    private Entity FindParent(World world, Entity child, string name)
+    {
+        if (world.TryGet(child, out Attachment attachment) && world.IsAlive(attachment.Parent) && world.TryGet(attachment.Parent, out EntityName parentName) && parentName.Value == name)
+        {
+            return attachment.Parent;
+        }
+
+        if (!_named)
+        {
+            _byName.Clear();
+            world.Query(in Named, (Entity entity, ref EntityName named) => _byName.TryAdd(named.Value, entity));
+            _named = true;
+        }
+
+        if (_byName.TryGetValue(name, out Entity parent))
+        {
+            return parent;
+        }
+
+        return Entity.Null;
     }
 
     private static bool Same(in Transform first, in Transform second)

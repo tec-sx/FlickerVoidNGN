@@ -24,6 +24,28 @@ public sealed class InspectorViewModelTests : IDisposable
     public void Dispose() => _builder.Dispose();
 
     [Fact]
+    public void TheTemplatePickerShowsAndSetsTheTemplateTheSelectedEntityStartsFrom()
+    {
+        _builder.WithContentFile("Templates/Glow.fventity");
+        Entity box = _builder.OpenScene("""{ "entities": [ { "name": "Box", "components": { "transform": {} } } ] }""");
+        AssetPickerViewModel? before = _builder.ViewModel.Template;
+
+        before!.Choose("Templates/Glow.fventity");
+
+        before.Current.Should().Be("Templates/Glow.fventity");
+        _builder.Scene.GetTemplate(box).Should().Be("Templates/Glow.fventity");
+        _builder.ViewModel.Template!.Current.Should().Be("Templates/Glow.fventity");
+    }
+
+    [Fact]
+    public void AnEntityOutsideTheSceneFileHasNoTemplatePicker()
+    {
+        _builder.Select(new Transform());
+
+        _builder.ViewModel.Template.Should().BeNull();
+    }
+
+    [Fact]
     public void ShowsTheRegisteredComponentsOfTheSelectedEntity()
     {
         _builder.Select("Lamp", new Transform(), new PointLight());

@@ -65,6 +65,14 @@ internal sealed class ViewportViewModelTestsBuilder : IDisposable
         return _scene.Entities[0];
     }
 
+    /// <summary>Opens a scene file holding the JSON, at Room.fvscene.</summary>
+    public void OpenScene(string json)
+    {
+        string fullPath = Path.Combine(_contentFolder, "Room.fvscene");
+        File.WriteAllText(fullPath, json);
+        _scene.Open("Room.fvscene");
+    }
+
     /// <summary>The pixel a world point shows at.</summary>
     public Vector2 PixelOf(Vector3 point)
     {

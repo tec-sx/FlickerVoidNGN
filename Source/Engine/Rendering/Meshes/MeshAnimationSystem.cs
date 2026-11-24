@@ -5,7 +5,7 @@ using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
-/// <summary>Advances every <see cref="MeshAnimator"/> by the frame's time at its speed.</summary>
+/// <summary>Advances every <see cref="MeshAnimator"/> by the frame's time at its speed, holding them while the game is paused.</summary>
 public sealed class MeshAnimationSystem : ISystem<GameTime>
 {
     private static readonly QueryDescription Animators = new QueryDescription().WithAll<MeshAnimator>();
@@ -27,6 +27,11 @@ public sealed class MeshAnimationSystem : ISystem<GameTime>
 
     public void Update(in GameTime t)
     {
+        if (t.Paused)
+        {
+            return;
+        }
+
         float seconds = (float)t.Elapsed.TotalSeconds;
         _world.Query(in Animators, (ref MeshAnimator animator) => animator.Time += seconds * animator.Speed);
     }

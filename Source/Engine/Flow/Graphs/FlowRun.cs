@@ -6,6 +6,7 @@ namespace FlickerVoid.Engine.Flow.Graphs;
 /// <summary>
 /// One run of a flow graph, like a Flow plugin asset instance: it runs the nodes without inputs as it starts, passes signals along
 /// the links, keeps latent nodes active and tells them when facts change, and ends when a finish node is reached or it is stopped.
+/// A run can also resume the active nodes another run of its graph saved, such as after a load.
 /// </summary>
 public sealed class FlowRun : IDisposable
 {
@@ -55,7 +56,7 @@ public sealed class FlowRun : IDisposable
 
     public FlowGraph Graph { get; }
 
-    public ConditionContext Conditions { get; }
+    public ConditionContext Conditions { get; private set; }
 
     public bool IsRunning { get; private set; }
 
@@ -83,6 +84,55 @@ public sealed class FlowRun : IDisposable
                 node.Execute(this, -1);
             }
         }
+    }
+
+    /// <summary>
+    /// Starts the run where a run of the same graph was saved: each node of <paramref name="active"/> still in the graph is active
+    /// again and resumes, in order, while nodes without inputs do not run again; ids the graph no longer has are skipped.
+    /// </summary>
+    public void Resume(IReadOnlyList<string> active)
+    {
+        if (IsRunning)
+        {
+            throw new InvalidOperationException("The flow run has already started.");
+        }
+
+        IsRunning = true;
+        Conditions.Facts.FactChanged += HandleFactChanged;
+        foreach (string id in active)
+        {
+            if (!IsRunning)
+            {
+                break;
+            }
+
+            FlowNode? node = Graph.Nodes.FirstOrDefault(node => node.Id == id);
+            node?.Resume(this);
+        }
+    }
+
+    /// <summary>Checks and applies the run's rules against <paramref name="conditions"/> from now on, such as for a player spawned again.</summary>
+    public void SetConditions(ConditionContext conditions)
+    {
+        if (IsRunning)
+        {
+            Conditions.Facts.FactChanged -= HandleFactChanged;
+            conditions.Facts.FactChanged += HandleFactChanged;
+        }
+
+        Conditions = conditions;
+    }
+
+    /// <summary>The ids of the active nodes, which a save keeps so that a later run of the graph can resume them.</summary>
+    public IReadOnlyList<string> GetActiveIds()
+    {
+        List<string> ids = [];
+        foreach (FlowNode node in _active)
+        {
+            ids.Add(node.Id);
+        }
+
+        return ids;
     }
 
     /// <summary>Ends the run: active nodes clean up and <see cref="Finished"/> is raised.</summary>

@@ -59,6 +59,7 @@ public sealed partial class SceneHost : IDisposable
         string saveFolder = options.SaveFolder ?? Path.Combine(localData, "FlickerVoid", title, "Saves");
         SaveSettings saveSettings = new() { Folder = saveFolder };
         Saves = Game.AddSaves(saveSettings);
+        Travel = Game.AddSceneTravel(Scenes);
         ContentWatcher watcher = new(Content, Game.Schemas);
         Game.FrameSystems.Add(watcher);
         if (options.Mood is { } mood)
@@ -89,6 +90,9 @@ public sealed partial class SceneHost : IDisposable
     /// <summary>Writes the game to save slots and reads it back.</summary>
     public SaveSystem Saves { get; }
 
+    /// <summary>Moves the game from scene to scene; <see cref="Start"/> travels to the options' scene.</summary>
+    public SceneTravel Travel { get; }
+
     /// <summary>The mood the renderer starts with: the options' mood file, else the one the scene names (<see cref="SceneMood"/>), else the default.</summary>
     public LightingMood Mood { get; set; } = new();
 
@@ -96,7 +100,7 @@ public sealed partial class SceneHost : IDisposable
     public SceneRenderSystem? Renderer { get; private set; }
 
     /// <summary>
-    /// Spawns the options' scene, starts play (activating its entities) and creates the renderer, with an overlay when <paramref name="createOverlay"/> makes one;
+    /// Travels to the options' scene, starts play (activating its entities) and creates the renderer, with an overlay when <paramref name="createOverlay"/> makes one;
     /// <see cref="Run"/> calls it when nothing has.
     /// </summary>
     public SceneRenderSystem Start(Func<PixelFormat, SceneRenderer, IFrameOverlay?>? createOverlay = null)
@@ -108,7 +112,7 @@ public sealed partial class SceneHost : IDisposable
 
         if (_options.Scene is { } scene)
         {
-            Scenes.Load(scene);
+            Travel.Travel(scene);
         }
 
         Game.Lifecycle.Play(Game.World);

@@ -125,6 +125,9 @@ public sealed class SceneRenderer : IDisposable
     /// <summary>The world point the depth fade is measured from in place of the scene's; null keeps the scene's.</summary>
     public Vector3? Focus { get; set; }
 
+    /// <summary>What the last frame drew and culled.</summary>
+    public RenderStatistics Statistics => _context.Statistics;
+
     /// <summary>Probes that replace the world's irradiance volume while a bake renders, or null.</summary>
     internal ProbeSource? BakeProbes { get; set; }
 
@@ -147,7 +150,7 @@ public sealed class SceneRenderer : IDisposable
     {
         if (!ReferenceEquals(scene, _scene))
         {
-            CopyScene(scene);
+            _scene.CopyFrom(scene);
         }
 
         if (_scene.Cameras.Count == 0)
@@ -168,7 +171,7 @@ public sealed class SceneRenderer : IDisposable
     {
         if (!ReferenceEquals(scene, _scene))
         {
-            CopyScene(scene);
+            _scene.CopyFrom(scene);
         }
 
         RenderView(commands, colorTarget, camera, cameraTransform);
@@ -233,18 +236,5 @@ public sealed class SceneRenderer : IDisposable
         }
 
         return _probes.Find(_scene);
-    }
-
-    private void CopyScene(RenderScene scene)
-    {
-        _scene.Clear();
-        _scene.Cameras.AddRange(scene.Cameras);
-        _scene.Meshes.AddRange(scene.Meshes);
-        _scene.PointLights.AddRange(scene.PointLights);
-        _scene.SpotLights.AddRange(scene.SpotLights);
-        _scene.ProbeVolumes.AddRange(scene.ProbeVolumes);
-        _scene.Transition = scene.Transition;
-        _scene.DepthFade = scene.DepthFade;
-        _scene.Focus = scene.Focus;
     }
 }

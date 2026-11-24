@@ -139,4 +139,55 @@ public sealed class EditorSceneHierarchyTests : IDisposable
 
         _builder.ReadScene("Stairs.fvscene").Should().Contain("\"name\":\"Lamp\"").And.NotContain("hidden");
     }
+
+    [Fact]
+    public void DuplicatingAnEntityCopiesWhatIsNestedUnderItUnderTheCopies()
+    {
+        _builder.WithScene("Stairs.fvscene", Stairs).Open("Stairs.fvscene");
+
+        Entity copy = _builder.Scene.DuplicateEntity(Named("Trigger"));
+
+        World.Get<EntityName>(copy).Value.Should().Be("Trigger 2");
+        _builder.Scene.GetChildren(copy).Should().Equal(Named("Enter 2"), Named("Exit 2"));
+        _builder.Scene.GetParent(Named("Handle 2")).Should().Be(Named("Enter 2"));
+        _builder.Scene.GetChildren(Named("Trigger")).Should().Equal(Named("Enter"), Named("Exit"));
+        _builder.Scene.Entities.Should().HaveCount(9);
+    }
+
+    [Fact]
+    public void DuplicatingANestedEntityPutsTheCopyBesideIt()
+    {
+        _builder.WithScene("Stairs.fvscene", Stairs).Open("Stairs.fvscene");
+
+        Entity copy = _builder.Scene.DuplicateEntity(Named("Enter"));
+
+        _builder.Scene.GetParent(copy).Should().Be(Named("Trigger"));
+        _builder.Scene.GetParent(Named("Handle 2")).Should().Be(copy);
+    }
+
+    [Fact]
+    public void DuplicatingATreeIsOneUndoStep()
+    {
+        _builder.WithScene("Stairs.fvscene", Stairs).Open("Stairs.fvscene");
+        _builder.Scene.DuplicateEntity(Named("Trigger"));
+
+        _builder.Scene.History.Undo();
+
+        _builder.Scene.Entities.Should().HaveCount(5);
+    }
+
+    [Fact]
+    public void DeletingAnEntityDeletesWhatIsNestedUnderItAndUndoBringsItAllBack()
+    {
+        _builder.WithScene("Stairs.fvscene", Stairs).Open("Stairs.fvscene");
+
+        _builder.Scene.DestroyEntity(Named("Trigger"));
+        IReadOnlyList<Entity> left = _builder.Scene.Entities;
+        _builder.Scene.History.Undo();
+
+        left.Should().Equal(Named("Lamp"));
+        _builder.Scene.GetChildren(Named("Trigger")).Should().Equal(Named("Enter"), Named("Exit"));
+        _builder.Scene.GetParent(Named("Handle")).Should().Be(Named("Enter"));
+        World.Get<Transform>(Named("Handle")).Position.Should().Be(new Vector3(1, 1, 0));
+    }
 }

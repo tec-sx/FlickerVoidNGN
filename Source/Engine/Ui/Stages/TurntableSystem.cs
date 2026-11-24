@@ -8,7 +8,7 @@ using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Ui.Stages;
 
-/// <summary>Spins the turntables of a world each frame; stages spin and drag theirs through the same rules.</summary>
+/// <summary>Spins the turntables of a world each frame unless the game is paused; stages spin and drag theirs through the same rules.</summary>
 public sealed class TurntableSystem(World world) : BaseSystem<World, GameTime>(world)
 {
     private static readonly QueryDescription Turntables = new QueryDescription().WithAll<Transform, Turntable>();
@@ -31,6 +31,11 @@ public sealed class TurntableSystem(World world) : BaseSystem<World, GameTime>(w
 
     public override void Update(in GameTime t)
     {
+        if (t.Paused)
+        {
+            return;
+        }
+
         float seconds = (float)t.Elapsed.TotalSeconds;
         Spin(World, seconds);
     }

@@ -48,5 +48,8 @@ public sealed class FadeNode : FlowNode<FlowOutput>
         director.WhenTransitionEnds(owner, () => context.Trigger(FlowOutput.Out));
     }
 
+    /// <summary>Passes the signal on, as the save keeps the fade.</summary>
+    protected override void Resume(FlowContext<FlowOutput> context) => context.Trigger(FlowOutput.Out);
+
     protected override void Cleanup(FlowContext<FlowOutput> context) => FlowWaiter.Cancel(context.Run, this, context.Conditions);
 }

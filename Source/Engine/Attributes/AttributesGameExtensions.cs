@@ -11,7 +11,7 @@ namespace FlickerVoid.Engine.Attributes;
 /// <summary>Adds attributes to a game: the <c>attribute</c>, <c>modifier</c> and <c>check</c> data asset types, the attribute conditions and effects, the <c>attributes</c> component, and the attribute and check services.</summary>
 public static class AttributesGameExtensions
 {
-    /// <summary>Adds attributes; <paramref name="random"/> rolls the checks, so tests can seed it.</summary>
+    /// <summary>Adds attributes; checks roll from <paramref name="random"/>, so tests can seed it, or else from the game's saved random.</summary>
     public static AttributeSystem AddAttributes(this Game game, Random? random = null)
     {
         game.Data.AddResolver(AttributesJsonContext.Default);
@@ -28,7 +28,7 @@ public static class AttributesGameExtensions
 
         AttributeSystem attributes = new(game);
         game.Services.AddService(attributes);
-        CheckSystem checks = new(attributes, random ?? Random.Shared);
+        CheckSystem checks = new(attributes, random ?? game.Random);
         game.Services.AddService(checks);
         return attributes;
     }

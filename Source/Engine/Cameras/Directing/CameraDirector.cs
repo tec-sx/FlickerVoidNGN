@@ -316,7 +316,12 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
             GoLive(start);
         }
 
-        float seconds = (float)t.Elapsed.TotalSeconds;
+        float seconds = 0;
+        if (!t.Paused)
+        {
+            seconds = (float)t.Elapsed.TotalSeconds;
+        }
+
         UpdateFade(seconds);
         _driver.Drive(Live, seconds, sendMarkers: true);
         UpdateDissolve(seconds);

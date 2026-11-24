@@ -52,6 +52,18 @@ public sealed class SaveSystemTests : IDisposable
     }
 
     [Fact]
+    public void ALoadRollsWhatTheGamesRandomWouldHaveRolledAfterTheSave()
+    {
+        _builder.Build();
+        _builder.Saves.Save("Slot1");
+        int[] rolled = GameRandomTestsBuilder.Roll(_builder.Game.Random, 4);
+
+        _builder.Saves.Load("Slot1");
+
+        GameRandomTestsBuilder.Roll(_builder.Game.Random, 4).Should().Equal(rolled);
+    }
+
+    [Fact]
     public void SaveableEntitiesComeBackAsTheyWereSaved()
     {
         _builder.Build();

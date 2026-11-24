@@ -15,7 +15,10 @@ using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Physics;
 
-/// <summary>Runs the physics simulation each fixed step: creates bodies for new rigid and static bodies, removes those whose entity or component is gone, steps, and copies body poses to transforms.</summary>
+/// <summary>
+/// Runs the physics simulation each fixed step: creates bodies for new rigid and static bodies, removes those whose entity or component
+/// is gone, moves kinematic and static bodies to transforms that moved, steps, and copies dynamic bodies' poses to their transforms.
+/// </summary>
 public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
 {
     private const float SleepThreshold = 0.01f;
@@ -23,6 +26,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
     private static readonly QueryDescription NewRigidBodies = new QueryDescription().WithAll<RigidBody, Transform>().WithNone<BodyHandle>();
     private static readonly QueryDescription NewStaticBodies = new QueryDescription().WithAll<StaticBody, Transform>().WithNone<StaticHandle>();
     private static readonly QueryDescription SimulatedBodies = new QueryDescription().WithAll<Transform, BodyHandle, RigidBody>();
+    private static readonly QueryDescription PlacedStatics = new QueryDescription().WithAll<Transform, StaticHandle, StaticBody>();
 
     private readonly BufferPool _pool = new();
     private readonly ThreadDispatcher _dispatcher;
@@ -31,6 +35,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
     private readonly Dictionary<BodyHandle, Entity> _bodyEntities = [];
     private readonly Dictionary<StaticHandle, Entity> _staticEntities = [];
     private readonly List<Entity> _pending = [];
+    private readonly List<(StaticHandle Handle, StaticDescription Description)> _movedStatics = [];
 
     public PhysicsSystem(World world)
         : base(world)
@@ -51,6 +56,8 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         RemoveDepartedBodies();
         AddRigidBodies();
         AddStaticBodies();
+        FollowKinematicBodies();
+        FollowStaticBodies();
 
         float dt = (float)t.Elapsed.TotalSeconds;
         Simulation.Timestep(dt, _dispatcher);
@@ -219,13 +226,61 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         World.Query(in query, (Entity entity) => _pending.Add(entity));
     }
 
+    /// <summary>Puts each kinematic body where its transform now places it, waking it so the broad phase follows.</summary>
+    private void FollowKinematicBodies()
+    {
+        Bodies bodies = Simulation.Bodies;
+        World.Query(in SimulatedBodies, (ref Transform transform, ref BodyHandle handle, ref RigidBody rigidBody) =>
+        {
+            if (!rigidBody.Kinematic)
+            {
+                return;
+            }
+
+            RigidPose pose = rigidBody.Collider.GetPose(transform.Position, transform.Rotation);
+            BodyReference body = bodies[handle];
+            if (body.Pose.Position == pose.Position && body.Pose.Orientation == pose.Orientation)
+            {
+                return;
+            }
+
+            body.Pose = pose;
+            body.Velocity = default;
+            body.Awake = true;
+        });
+    }
+
+    /// <summary>Moves the static bodies whose transform moved, such as a building placed again; this is rare, so it checks rather than tracks.</summary>
+    private void FollowStaticBodies()
+    {
+        Statics statics = Simulation.Statics;
+        _movedStatics.Clear();
+        World.Query(in PlacedStatics, (ref Transform transform, ref StaticHandle handle, ref StaticBody staticBody) =>
+        {
+            RigidPose pose = staticBody.Collider.GetPose(transform.Position, transform.Rotation);
+            StaticReference current = statics[handle];
+            if (current.Pose.Position == pose.Position && current.Pose.Orientation == pose.Orientation)
+            {
+                return;
+            }
+
+            StaticDescription description = new(pose, current.Shape);
+            _movedStatics.Add((handle, description));
+        });
+
+        foreach ((StaticHandle handle, StaticDescription description) in _movedStatics)
+        {
+            statics.ApplyDescription(handle, description);
+        }
+    }
+
     private void CopyPosesToTransforms()
     {
         Bodies bodies = Simulation.Bodies;
         World.Query(in SimulatedBodies, (ref Transform transform, ref BodyHandle handle, ref RigidBody rigidBody) =>
         {
             BodyReference body = bodies[handle];
-            if (!body.Awake)
+            if (rigidBody.Kinematic || !body.Awake)
             {
                 return;
             }

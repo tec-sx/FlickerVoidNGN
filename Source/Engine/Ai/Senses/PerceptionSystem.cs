@@ -13,15 +13,19 @@ using FlickerVoid.Engine.Runtime.Loop;
 namespace FlickerVoid.Engine.Ai.Senses;
 
 /// <summary>
-/// Lets perceivers see and hear each fixed step (a service): a <see cref="Perceivable"/> within the sight radius and angle with nothing
+/// Lets perceivers see and hear (a fixed system and service): a <see cref="Perceivable"/> within the sight radius and angle with nothing
 /// in between is seen (<see cref="TargetSeenEvent"/>) until it passes the lose-sight radius, leaves the view, is hidden or is gone
 /// (<see cref="TargetLostEvent"/>); a <see cref="NoiseEvent"/> within hearing is heard (<see cref="NoiseHeardEvent"/>) and remembered
 /// for the perceiver's memory (<see cref="NoiseForgottenEvent"/>). Bodies other than the perceiver's own hide what is behind them when the game has physics.
+/// Each perceiver looks once every sight interval, and they take turns, so their rays spread over the fixed steps.
 /// </summary>
 public sealed class PerceptionSystem : BaseSystem<World, GameTime>
 {
     /// <summary>Metres short of a target where a hit no longer hides it, so a body under the target's own point doesn't.</summary>
     private const float Clearance = 0.05f;
+
+    /// <summary>The share of a sight interval each new perceiver's first look comes after the one before it: the golden ratio's, which spreads any number of them evenly.</summary>
+    private const float TurnShare = 0.618034f;
 
     private static readonly QueryDescription Perceivers = new QueryDescription().WithAll<Perception, Perceived, Transform>();
     private static readonly QueryDescription Targets = new QueryDescription().WithAll<Perceivable, Transform>();
@@ -29,6 +33,7 @@ public sealed class PerceptionSystem : BaseSystem<World, GameTime>
     private readonly EventBus _events;
     private readonly IPhysicsSystem? _physics;
     private readonly List<(Entity Entity, Vector3 Point)> _targets = [];
+    private float _turn;
 
     public PerceptionSystem(World world, EventBus events, EntityLifecycle lifecycle, IPhysicsSystem? physics)
         : base(world)
@@ -75,7 +80,13 @@ public sealed class PerceptionSystem : BaseSystem<World, GameTime>
 
         World.Query(in Perceivers, (Entity entity, ref Perception perception, ref Perceived perceived, ref Transform transform) =>
         {
-            Look(entity, perception, perceived, transform);
+            perceived.UntilLook -= seconds;
+            if (perceived.UntilLook <= 0)
+            {
+                perceived.UntilLook = MathF.Max(perceived.UntilLook + perception.SightInterval, 0);
+                Look(entity, perception, perceived, transform);
+            }
+
             Remember(entity, perception, perceived, seconds);
         });
     }
@@ -221,7 +232,9 @@ public sealed class PerceptionSystem : BaseSystem<World, GameTime>
     {
         if (!World.Has<Perceived>(entity))
         {
-            World.Add(entity, new Perceived { Seen = [], Heard = [] });
+            Perception perception = World.Get<Perception>(entity);
+            World.Add(entity, new Perceived { Seen = [], Heard = [], UntilLook = perception.SightInterval * _turn });
+            _turn = (_turn + TurnShare) % 1;
         }
     }
 

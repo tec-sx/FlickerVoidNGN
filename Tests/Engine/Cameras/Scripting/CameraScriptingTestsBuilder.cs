@@ -36,6 +36,26 @@ internal sealed class CameraScriptingTestsBuilder : IDisposable
     /// <summary>Starts a run of the nodes, each wired from the one before, after a start node; the run is finished when it ends.</summary>
     public FlowRun Run(params FlowNode[] nodes)
     {
+        FlowGraph graph = CreateGraph(nodes);
+        FlowRun run = new(graph, Game.Context);
+        run.Start();
+        return run;
+    }
+
+    /// <summary>Resumes a run of the nodes wired as <see cref="Run"/> wires them at the node <paramref name="active"/>, as a load does.</summary>
+    public FlowRun Resume(string active, params FlowNode[] nodes)
+    {
+        FlowGraph graph = CreateGraph(nodes);
+        FlowRun run = new(graph, Game.Context);
+        run.Resume([active]);
+        return run;
+    }
+
+    public void Dispose() => Game.Dispose();
+
+    /// <summary>The nodes, named node0, node1 and so on, each wired from the one before, between a start and a finish node.</summary>
+    private static FlowGraph CreateGraph(FlowNode[] nodes)
+    {
         FlowGraph graph = new();
         Flow.Nodes.StartNode start = new() { Id = "start" };
         graph.Nodes.Add(start);
@@ -52,10 +72,6 @@ internal sealed class CameraScriptingTestsBuilder : IDisposable
         Flow.Nodes.FinishNode finish = new() { Id = "finish" };
         graph.Nodes.Add(finish);
         graph.Links.Add(new FlowLink { From = previous, To = finish.Id });
-        FlowRun run = new(graph, Game.Context);
-        run.Start();
-        return run;
+        return graph;
     }
-
-    public void Dispose() => Game.Dispose();
 }

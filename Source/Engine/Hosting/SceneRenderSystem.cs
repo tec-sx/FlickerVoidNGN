@@ -18,7 +18,7 @@ namespace FlickerVoid.Engine.Hosting;
 
 /// <summary>
 /// Draws the world to the window each frame with a scene renderer and an optional overlay, following the window's size, and times the frames;
-/// Escape or the frame limit closes the window.
+/// the frame limit closes the window, and so does Escape unless the game takes it (<see cref="CloseOnEscape"/>).
 /// </summary>
 public sealed class SceneRenderSystem : ISystem<GameTime>
 {
@@ -58,6 +58,9 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
     public IFrameOverlay? Overlay => _overlay;
 
     public int Frames { get; private set; }
+
+    /// <summary>Whether Escape closes the window; a game that gives Escape to its own menus turns it off and closes the window itself.</summary>
+    public bool CloseOnEscape { get; set; } = true;
 
     /// <summary>The mean time between frames after the first, which pays for loading and compiling.</summary>
     public TimeSpan AverageFrameTime
@@ -102,7 +105,8 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
         }
 
         bool limitReached = _frameLimit > 0 && Frames >= _frameLimit;
-        if (_window.Input.WasPressed(Key.Escape) || limitReached)
+        bool escaped = CloseOnEscape && _window.Input.WasPressed(Key.Escape);
+        if (escaped || limitReached)
         {
             _window.Close();
         }

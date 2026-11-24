@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Scenes;
 
 namespace FlickerVoid.Editor.Core.Scenes;
 
@@ -147,6 +148,45 @@ public sealed partial class SceneTreeViewModel : ObservableObject
     private void ToggleHidden(SceneTreeItem item) => SceneTreeItem.ToggleHidden(_scene, item);
 
     private void ShowHidden() => SceneTreeItem.ShowHidden(_scene, Items);
+
+    /// <summary>Renames the item's entity, rewriting what names it; false for a folder, an empty name or one another entity has.</summary>
+    public bool RenameEntity(SceneTreeItem item, string name)
+    {
+        if (item.Entity is not { } entity)
+        {
+            return false;
+        }
+
+        return _scene.RenameEntity(entity, name);
+    }
+
+    /// <summary>
+    /// Saves the item's entity as an entity template in the content folder's <c>Templates</c> folder, named after it (numbered when
+    /// taken), which it then starts from; returns the template's path, or null for a folder.
+    /// </summary>
+    public string? SaveAsTemplate(SceneTreeItem item)
+    {
+        if (item.Entity is not { } entity)
+        {
+            return null;
+        }
+
+        string name = item.Name;
+        string path = $"Templates/{name}{EntityTemplates.Extension}";
+        int number = 2;
+        while (File.Exists(_scene.Content.GetFullPath(path)))
+        {
+            path = $"Templates/{name} {number}{EntityTemplates.Extension}";
+            number++;
+        }
+
+        if (!_scene.SaveAsTemplate(entity, path))
+        {
+            return null;
+        }
+
+        return path;
+    }
 
     /// <summary>Renames the folder at <paramref name="path"/>, moving everything in it and its subfolders.</summary>
     public void RenameFolder(string path, string name)

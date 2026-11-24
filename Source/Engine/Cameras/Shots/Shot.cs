@@ -20,6 +20,7 @@ public struct Shot
     public bool Start { get; set; }
 
     /// <summary>The name of the entity a tracked shot follows and the shot looks at; empty takes the first <see cref="CameraTarget"/>.</summary>
+    [EntityReference]
     public string Target { get; set; } = string.Empty;
 
     /// <summary>Whether the camera turns to look at the target instead of taking the keys' rotations.</summary>

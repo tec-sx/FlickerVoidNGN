@@ -79,7 +79,7 @@
                     KeyDown="HandlePromptKeyDown">
           <PathIcon Width="14" Height="14" Data="{x:Static shell:MaterialIcons.Code}" Foreground="#B48EC9" />
           <TextBlock Text="New Flow Node" VerticalAlignment="Center" FontWeight="SemiBold" />
-          <TextBox x:Name="PromptName" Width="180" Text="{Binding Name}" Watermark="Name, such as Open Gate" />
+          <TextBox x:Name="PromptName" Width="180" Text="{Binding Name}" PlaceholderText="Name, such as Open Gate" />
           <TextBlock Text="in" VerticalAlignment="Center" Opacity="0.6" />
           <ComboBox MinWidth="220" ItemsSource="{Binding Folders}" SelectedItem="{Binding Folder}"
                     ToolTip.Tip="The code folder the class goes in; its namespace follows the folder." />

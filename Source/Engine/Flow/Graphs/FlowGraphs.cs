@@ -55,10 +55,4 @@ public sealed class FlowGraphs(IContentManager content, DataTypes types)
         stream.WriteByte((byte)'\n');
         return stream.ToArray();
     }
-
-    public static JsonObject GetSchema(DataTypes types)
-    {
-        JsonTypeInfo typeInfo = types.Options.GetTypeInfo(typeof(FlowGraph));
-        return JsonSchemas.Create(typeInfo);
-    }
 }

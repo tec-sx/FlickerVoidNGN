@@ -37,6 +37,10 @@ public sealed partial class InspectorViewModel : ObservableObject
     [ObservableProperty]
     public partial string Title { get; set; } = NothingSelected;
 
+    /// <summary>The entity template the selected entity starts from, picked from the content folder's; null when it isn't in the scene file.</summary>
+    [ObservableProperty]
+    public partial AssetPickerViewModel? Template { get; set; }
+
     [ObservableProperty]
     public partial IReadOnlyList<ComponentViewModel> Components { get; set; } = [];
 
@@ -99,6 +103,7 @@ public sealed partial class InspectorViewModel : ObservableObject
         if (_scene.Selection.Selected is not { } entity || !world.IsAlive(entity))
         {
             Title = NothingSelected;
+            Template = null;
             Components = [];
             AddableComponents = [];
             AddChoices = [];
@@ -114,6 +119,7 @@ public sealed partial class InspectorViewModel : ObservableObject
             Title = $"Entity {entity.Id}";
         }
 
+        Template = CreateTemplatePicker(entity);
         List<ComponentViewModel> components = [];
         List<SceneComponent> addable = [];
         foreach (SceneComponent component in _scene.Game.Spawner.Components)
@@ -132,5 +138,25 @@ public sealed partial class InspectorViewModel : ObservableObject
         Components = components;
         AddableComponents = addable;
         AddChoices = ComponentChoices.Build(addable, AddComponent);
+    }
+
+    private AssetPickerViewModel? CreateTemplatePicker(Entity entity)
+    {
+        if (!_scene.Entities.Contains(entity))
+        {
+            return null;
+        }
+
+        AssetPickerViewModel picker = new(FindTemplates, acceptsNone: true, path => SetTemplate(entity, path));
+        picker.Current = _scene.GetTemplate(entity);
+        return picker;
+    }
+
+    private IReadOnlyList<string> FindTemplates() => _files([EntityTemplates.Extension]);
+
+    private void SetTemplate(Entity entity, string? path)
+    {
+        _scene.SetTemplate(entity, path);
+        Rebuild();
     }
 }

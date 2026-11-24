@@ -14,6 +14,8 @@ namespace FlickerVoid.Engine.Rendering.Lighting;
 /// </summary>
 public sealed record LightingMood
 {
+    public const string Extension = ".fvmood";
+
     /// <summary>The schema the file names for text editors; the game ignores it.</summary>
     [JsonPropertyName(JsonSchemas.SchemaProperty)]
     public string? Schema { get; set; }

@@ -33,6 +33,8 @@ public abstract class FlowNode
     internal abstract void OnFactChanged(FlowRun run);
 
     internal abstract void Cleanup(FlowRun run);
+
+    internal abstract void Resume(FlowRun run);
 }
 
 /// <summary>A flow node with the one input <see cref="FlowInput.In"/> and the output pins of <typeparamref name="TOut"/>.</summary>
@@ -68,6 +70,15 @@ public abstract class FlowNode<TIn, TOut> : FlowNode
     {
     }
 
+    /// <summary>
+    /// Called when a run is resumed, such as after a load, with this node active when it was saved: by default it runs again from its
+    /// first input, as a wait checks again; a node whose work was already done, such as a camera switch the save holds, passes the signal on.
+    /// </summary>
+    protected virtual void Resume(FlowContext<TOut> context)
+    {
+        Execute(context, default);
+    }
+
     internal sealed override void Execute(FlowRun run, int input)
     {
         TIn pin = default;
@@ -90,6 +101,12 @@ public abstract class FlowNode<TIn, TOut> : FlowNode
     {
         FlowContext<TOut> context = new(run, this);
         Cleanup(context);
+    }
+
+    internal sealed override void Resume(FlowRun run)
+    {
+        FlowContext<TOut> context = new(run, this);
+        Resume(context);
     }
 }
 

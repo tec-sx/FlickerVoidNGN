@@ -2,10 +2,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:local="using:FlickerVoid.Editor.Inspector"
              x:Class="FlickerVoid.Editor.Inspector.InspectorView"
              x:DataType="inspector:InspectorViewModel">
   <DockPanel>
     <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" Classes="heading" />
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" ColumnSpacing="6" Margin="4,0,4,2"
+          IsVisible="{Binding Template, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <TextBlock Text="Template" VerticalAlignment="Center" ToolTip.Tip="The entity template it starts from; the scene saves only what differs" />
+      <local:AssetPickerView Grid.Column="1" DataContext="{Binding Template}" />
+    </Grid>
     <Button DockPanel.Dock="Bottom" Content="Add Component" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2"
             IsEnabled="{Binding !!AddChoices.Count}" Click="OnAddComponentClick" />
     <Border Classes="well">

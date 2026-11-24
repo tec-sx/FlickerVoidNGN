@@ -14,6 +14,7 @@ namespace FlickerVoid.Engine.Story.Serialization;
 [JsonSerializable(typeof(SetQuestStateNode))]
 [JsonSerializable(typeof(CompleteObjectiveNode))]
 [JsonSerializable(typeof(WaitForQuestStateNode))]
+[JsonSerializable(typeof(SavedQuestFlows))]
 [JsonSerializable(typeof(KnowledgeDefinition))]
 [JsonSerializable(typeof(KnowsCondition))]
 [JsonSerializable(typeof(LearnEffect))]

@@ -20,8 +20,8 @@ namespace FlickerVoid.Engine.Story.Quests;
 
 /// <summary>
 /// Runs the quests of the content folder: starts them by their conditions or rules, completes their objectives and them as facts
-/// change, fails them, and runs each active quest's flow graph. A quest's state lives in its fact, so a save holds it; the system
-/// starts with the game's first step and after each load, running the flows of the quests the facts say are active.
+/// change, fails them, and runs each active quest's flow graph. A quest's state lives in its fact, so a save holds it, and the save
+/// keeps where each flow was; the system starts with the game's first step and after each load resumes the active quests' flows there.
 /// </summary>
 public sealed partial class QuestSystem : BaseSystem<World, GameTime>
 {
@@ -34,9 +34,12 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
     private readonly ILogger<QuestSystem> _logger;
     private readonly Dictionary<Tag, FlowRun> _flows = [];
     private SaveSystem? _saves;
+    private IEntityView? _player;
+    private Dictionary<string, List<string>>? _savedFlows;
     private bool _started;
     private bool _evaluating;
     private bool _dirty;
+    private bool _loading;
 
     public QuestSystem(Game game)
         : base(game.World)
@@ -45,10 +48,26 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
         _services = game.Services;
         _events = game.Events;
         _logger = game.LoggerFactory.CreateLogger<QuestSystem>();
+        game.SaveStates.AddGlobal<SavedQuestFlows>("questFlows", SaveFlows, RestoreFlows);
     }
 
-    /// <summary>Who quest rules are checked for and effects applied to, as their instigator: the player, which the game sets.</summary>
-    public IEntityView? Player { get; set; }
+    /// <summary>
+    /// Who quest rules are checked for and effects applied to, as their instigator: the player, which the game sets. Running flows
+    /// follow a new one, such as the player a scene travel spawned again.
+    /// </summary>
+    public IEntityView? Player
+    {
+        get => _player;
+        set
+        {
+            _player = value;
+            ConditionContext context = CreateContext();
+            foreach (FlowRun run in _flows.Values)
+            {
+                run.SetConditions(context);
+            }
+        }
+    }
 
     public QuestState GetState(Tag quest)
     {
@@ -195,6 +214,7 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
         _saves = _services.GetService<SaveSystem>();
         if (_saves is not null)
         {
+            _saves.Loading += HandleLoading;
             _saves.Loaded += HandleLoaded;
         }
 
@@ -212,6 +232,7 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
             _facts.FactChanged -= HandleFactChanged;
             if (_saves is not null)
             {
+                _saves.Loading -= HandleLoading;
                 _saves.Loaded -= HandleLoaded;
             }
 
@@ -342,7 +363,8 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
         _events.Send(changed);
     }
 
-    private void StartFlow(QuestDefinition quest)
+    /// <summary>Starts the quest's flow from its start, or resumes it at the <paramref name="active"/> nodes a save kept.</summary>
+    private void StartFlow(QuestDefinition quest, IReadOnlyList<string>? active = null)
     {
         FlowGraphs? graphs = _services.GetService<FlowGraphs>();
         if (quest.Flow is not { Length: > 0 } path || graphs is null || _flows.ContainsKey(quest.Id))
@@ -355,7 +377,14 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
         FlowRun run = new(graph, context);
         _flows.Add(quest.Id, run);
         run.Finished += _ => _flows.Remove(quest.Id);
-        run.Start();
+        if (active is null)
+        {
+            run.Start();
+        }
+        else
+        {
+            run.Resume(active);
+        }
     }
 
     private void StopFlow(Tag quest)
@@ -368,25 +397,61 @@ public sealed partial class QuestSystem : BaseSystem<World, GameTime>
 
     private ConditionContext CreateContext() => new(_facts) { Services = _services, Instigator = Player };
 
-    private void HandleFactChanged(Tag tag, int oldValue, int newValue) => Evaluate();
-
-    /// <summary>Stops the flows of quests the save doesn't hold active and starts the active ones' from their start.</summary>
-    private void HandleLoaded(SaveGame save)
+    private void HandleFactChanged(Tag tag, int oldValue, int newValue)
     {
-        foreach ((Tag quest, FlowRun run) in _flows.ToList())
+        if (!_loading)
         {
-            if (GetState(quest) != QuestState.Active)
-            {
-                run.Finish();
-            }
+            Evaluate();
+        }
+    }
+
+    private SavedQuestFlows SaveFlows()
+    {
+        SavedQuestFlows saved = new();
+        foreach ((Tag quest, FlowRun run) in _flows)
+        {
+            saved.Running[quest.Name] = [.. run.GetActiveIds()];
         }
 
+        return saved;
+    }
+
+    private void RestoreFlows(SavedQuestFlows saved) => _savedFlows = saved.Running;
+
+    /// <summary>Stops every flow and the quests' rules until the save is back, so nothing runs on the world being replaced.</summary>
+    private void HandleLoading(SaveGame save)
+    {
+        _loading = true;
+        _savedFlows = null;
+        foreach (FlowRun run in _flows.Values.ToList())
+        {
+            run.Finish();
+        }
+    }
+
+    /// <summary>
+    /// Resumes the active quests' flows where the save kept them, leaving finished ones finished; a save that kept no flows (from
+    /// before they were saved) starts them from their start.
+    /// </summary>
+    private void HandleLoaded(SaveGame save)
+    {
+        _loading = false;
         Evaluate();
         foreach (QuestDefinition quest in GetQuests(QuestState.Active))
         {
-            StartFlow(quest);
+            if (_savedFlows is null)
+            {
+                StartFlow(quest);
+            }
+            else if (_savedFlows.TryGetValue(quest.Id.Name, out List<string>? active))
+            {
+                StartFlow(quest, active);
+            }
+
             Notify(quest.Id);
         }
+
+        _savedFlows = null;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Quests still changed after {Passes} passes; check quests whose effects start or finish each other.")]

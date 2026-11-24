@@ -11,6 +11,7 @@ using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Saves;
+using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Services;
 
 using Microsoft.Extensions.Logging;
@@ -21,7 +22,7 @@ namespace FlickerVoid.Engine.Dialogue.Conversations;
 /// Runs the one conversation at a time: starts a participant's dialogue graph, plays its lines and presents its choices through
 /// events the interface handles, which answers with <see cref="Advance"/>, <see cref="Choose"/> and <see cref="End"/>. The
 /// conversation ends when its graph finishes or has nothing left to do, when it is ended, or when its owner is gone. The game can't
-/// be saved during a conversation (<see cref="SaveBlock"/>), and a load ends it.
+/// be saved during a conversation (<see cref="SaveBlock"/>), and a load or leaving the scene ends it.
 /// </summary>
 public sealed partial class DialogueSystem : BaseSystem<World, GameTime>
 {
@@ -33,10 +34,11 @@ public sealed partial class DialogueSystem : BaseSystem<World, GameTime>
     private readonly IFactDatabase _facts;
     private readonly IServiceRegistry _services;
     private readonly EventBus _events;
-    private SaveSystem? _saves;
     private readonly DialogueSettings _settings;
     private readonly ILogger<DialogueSystem> _logger;
     private readonly List<Wait> _waits = [];
+    private SaveSystem? _saves;
+    private SceneTravel? _travel;
     private readonly Dictionary<Entity, string> _lastBarks = [];
     private FlowRun? _run;
     private FlowRun? _pendingRun;
@@ -173,13 +175,19 @@ public sealed partial class DialogueSystem : BaseSystem<World, GameTime>
         CloseIfIdle();
     }
 
-    /// <summary>Follows loads, which end the conversation, as the game they bring back has none.</summary>
+    /// <summary>Follows loads and travel, which end the conversation, as the game a load brings back has none and travel takes its owner away.</summary>
     public override void Initialize()
     {
         _saves = _services.GetService<SaveSystem>();
         if (_saves is not null)
         {
-            _saves.Loaded += HandleLoaded;
+            _saves.Loading += HandleLoading;
+        }
+
+        _travel = _services.GetService<SceneTravel>();
+        if (_travel is not null)
+        {
+            _travel.Leaving += HandleLeaving;
         }
     }
 
@@ -187,7 +195,12 @@ public sealed partial class DialogueSystem : BaseSystem<World, GameTime>
     {
         if (_saves is not null)
         {
-            _saves.Loaded -= HandleLoaded;
+            _saves.Loading -= HandleLoading;
+        }
+
+        if (_travel is not null)
+        {
+            _travel.Leaving -= HandleLeaving;
         }
 
         Close(stopGraph: true);
@@ -384,7 +397,9 @@ public sealed partial class DialogueSystem : BaseSystem<World, GameTime>
 
     private void HandleRunFinished(FlowRun run) => Close(stopGraph: false);
 
-    private void HandleLoaded(SaveGame save) => End();
+    private void HandleLoading(SaveGame save) => End();
+
+    private void HandleLeaving(string scene) => End();
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Can't start a conversation with entity {Owner}: one is running, or it has no dialogue participant with a dialogue.")]
     private partial void LogCantStart(int owner);

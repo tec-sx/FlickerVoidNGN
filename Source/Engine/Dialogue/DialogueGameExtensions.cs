@@ -23,7 +23,7 @@ public static class DialogueGameExtensions
         game.Data.RegisterDerived<Effect, StartConversationEffect>("startConversation");
         game.Spawner.Register("dialogueParticipant", DialogueJsonContext.Default.DialogueParticipant);
 
-        DialogueSystem dialogue = new(game, settings ?? new DialogueSettings(), random ?? Random.Shared);
+        DialogueSystem dialogue = new(game, settings ?? new DialogueSettings(), random ?? game.Random);
         game.FixedSystems.Add(dialogue);
         game.Services.AddService(dialogue);
         return dialogue;

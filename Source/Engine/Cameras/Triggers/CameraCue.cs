@@ -1,5 +1,6 @@
 using FlickerVoid.Engine.Cameras.Directing;
 using FlickerVoid.Engine.Gameplay.Facts;
+using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Cameras.Triggers;
 
@@ -15,6 +16,7 @@ public struct CameraCue
     }
 
     /// <summary>The name of the shot entity; empty changes no shot (a return needs none).</summary>
+    [EntityReference]
     public string Shot { get; set; } = string.Empty;
 
     public ShotSwitchMode Mode { get; set; }

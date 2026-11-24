@@ -265,6 +265,24 @@ public sealed class SceneLoaderTests : IDisposable
     }
 
     [Fact]
+    public void WarnsOfEntitiesThatShareANameOrASaveId()
+    {
+        SceneLoader loader = _builder.WithScene("Room.fvscene", """
+            { "entities": [
+              { "name": "Lamp", "components": { "saveable": { "id": "Crate" } } },
+              { "name": "Lamp", "components": { "saveable": { "id": "Crate" } } },
+              { "name": "Box", "components": { "saveable": { "id": "Box" } } }
+            ] }
+            """).Build();
+
+        loader.Load("Room.fvscene");
+
+        string[] warnings = [.. _builder.Warnings.Select(static arguments => arguments[2]?.ToString() ?? "")];
+        warnings.Should().HaveCount(2);
+        warnings.Should().Contain(warning => warning.Contains("Lamp")).And.Contain(warning => warning.Contains("Crate"));
+    }
+
+    [Fact]
     public void IgnoresChangesToOtherFiles()
     {
         SceneLoader loader = _builder.WithScene("Room.fvscene", """{ "entities": [ { "name": "Lamp" } ] }""").Build();

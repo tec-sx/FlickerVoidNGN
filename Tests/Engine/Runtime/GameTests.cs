@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.System;
 
+using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Debugging;
 using FlickerVoid.Engine.Runtime.Entities;
@@ -18,6 +19,9 @@ public class GameTests
 {
     private readonly ISystem<GameTime> _fixedSystem = Substitute.For<ISystem<GameTime>>();
     private readonly ISystem<GameTime> _frameSystem = Substitute.For<ISystem<GameTime>>();
+    private static readonly Tag HubPause = new("Pause.Hub");
+    private static readonly Tag MenuPause = new("Pause.Menu");
+
     private readonly GameTestsBuilder _builder = new();
 
     [Fact]
@@ -120,6 +124,41 @@ public class GameTests
             _frameSystem.Update(Arg.Any<GameTime>());
             _frameSystem.AfterUpdate(Arg.Any<GameTime>());
         });
+    }
+
+    [Fact]
+    public void PausingStopsFixedSystemsUntilEveryReasonResumes()
+    {
+        using Game game = _builder.WithFixedSystem(_fixedSystem).WithFrameSystem(_frameSystem).Build();
+        game.Pause(HubPause);
+        game.Pause(MenuPause);
+        game.Tick(game.Loop.FixedStep);
+        game.Resume(HubPause);
+        game.Tick(game.Loop.FixedStep);
+        bool pausedWithOneLeft = game.IsPaused;
+
+        game.Resume(MenuPause);
+        game.Tick(game.Loop.FixedStep);
+
+        pausedWithOneLeft.Should().BeTrue();
+        game.IsPaused.Should().BeFalse();
+        _fixedSystem.Received(1).Update(Arg.Any<GameTime>());
+        _frameSystem.Received(2).Update(Arg.Is<GameTime>(time => time.Paused));
+        _frameSystem.Received(1).Update(Arg.Is<GameTime>(time => !time.Paused));
+    }
+
+    [Fact]
+    public void RunsDeferredActionsOnceBeforeTheNextTicksSystems()
+    {
+        using Game game = _builder.WithFixedSystem(_fixedSystem).Build();
+        List<string> order = [];
+        _fixedSystem.When(system => system.Update(Arg.Any<GameTime>())).Do(_ => order.Add("system"));
+        game.Defer(() => order.Add("deferred"));
+
+        game.Tick(game.Loop.FixedStep);
+        game.Tick(game.Loop.FixedStep);
+
+        order.Should().Equal("deferred", "system", "system");
     }
 
     [Fact]

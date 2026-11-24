@@ -22,6 +22,7 @@ namespace FlickerVoid.Engine.Ai.Tests.Paths;
 internal sealed class PathSystemTestsBuilder : IDisposable
 {
     private const string Floor = """{ "name": "Floor", "components": { "transform": { "position": [0, -0.1, 0] }, "staticBody": { "collider": { "type": "box", "size": [10, 0.2, 10] } } } }""";
+    private const string LongFloor = """{ "name": "Floor", "components": { "transform": { "position": [0, -0.1, 0] }, "staticBody": { "collider": { "type": "box", "size": [40, 0.2, 10] } } } }""";
     private const string Wall = """{ "name": "Wall", "components": { "transform": { "position": [0, 1, 0] }, "staticBody": { "collider": { "type": "box", "size": [0.4, 2, 6] } } } }""";
 
     private readonly List<string> _entities = [];
@@ -33,6 +34,13 @@ internal sealed class PathSystemTestsBuilder : IDisposable
     public PathSystemTestsBuilder WithFloor()
     {
         _entities.Add(Floor);
+        return this;
+    }
+
+    /// <summary>A floor 40 metres along X, longer than a tile.</summary>
+    public PathSystemTestsBuilder WithLongFloor()
+    {
+        _entities.Add(LongFloor);
         return this;
     }
 
@@ -54,6 +62,25 @@ internal sealed class PathSystemTestsBuilder : IDisposable
 
     public Entity AddWall() => SpawnPlaying(Wall);
 
+    /// <summary>A playing entity with a rigid body written as JSON, standing at the position.</summary>
+    public Entity AddBody(string name, Vector3 position, string bodyJson, Quaternion? rotation = null)
+    {
+        return SpawnPlaying(name, position, rotation ?? Quaternion.Identity, $$""" "rigidBody": {{bodyJson}} """);
+    }
+
+    /// <summary>A playing entity with a static body written as JSON, standing at the position.</summary>
+    public Entity AddStaticBody(string name, Vector3 position, string bodyJson)
+    {
+        return SpawnPlaying(name, position, Quaternion.Identity, $$""" "staticBody": {{bodyJson}} """);
+    }
+
+    public void Place(Entity entity, Vector3 position, Quaternion rotation)
+    {
+        ref Transform transform = ref Game.World.Get<Transform>(entity);
+        transform.Position = position;
+        transform.Rotation = rotation;
+    }
+
     public Entity AddWalker(Vector3 position)
     {
         string json = $$"""{ "name": "Hero", "components": { "transform": { "position": [{{position.X}}, {{position.Y}}, {{position.Z}}] }, "characterMover": { "speed": 2 } } }""";
@@ -74,6 +101,16 @@ internal sealed class PathSystemTestsBuilder : IDisposable
     }
 
     public void Dispose() => Game.Dispose();
+
+    private Entity SpawnPlaying(string name, Vector3 position, Quaternion rotation, string componentJson)
+    {
+        string json = $$"""
+            { "name": "{{name}}", "components": {
+                "transform": { "position": [{{position.X}}, {{position.Y}}, {{position.Z}}], "rotation": [{{rotation.X}}, {{rotation.Y}}, {{rotation.Z}}, {{rotation.W}}] },
+                {{componentJson}} } }
+            """;
+        return SpawnPlaying(json);
+    }
 
     private Entity SpawnPlaying(string entityJson)
     {

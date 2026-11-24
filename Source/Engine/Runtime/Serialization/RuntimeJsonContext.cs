@@ -22,5 +22,6 @@ namespace FlickerVoid.Engine.Runtime.Serialization;
 [JsonSerializable(typeof(Transform))]
 [JsonSerializable(typeof(Saveable))]
 [JsonSerializable(typeof(Greybox))]
+[JsonSerializable(typeof(Traveller))]
 [JsonSerializable(typeof(JsonObject))]
 public sealed partial class RuntimeJsonContext : JsonSerializerContext;

@@ -22,9 +22,15 @@ public sealed class InputActionsTests : IDisposable
             },
             { "id": "Input.Look", "bindings": [ { "mouseMovement": true, "value": [0.5, -0.5] } ] },
             { "id": "Input.Interact", "bindings": [ { "key": "E" }, { "button": "Left" } ] }
+          ],
+          "contexts": [
+            { "id": "Input.Context.Menu", "actions": [ "Input.Interact" ] }
           ]
         }
         """;
+
+    private static readonly Tag MenuContext = new("Input.Context.Menu");
+    private static readonly Tag UnknownContext = new("Input.Context.Unknown");
 
     private static readonly Tag Move = new("Input.Move");
     private static readonly Tag Look = new("Input.Look");
@@ -113,5 +119,87 @@ public sealed class InputActionsTests : IDisposable
 
         clickedThrough.Should().BeFalse();
         actions.IsDown(Interact).Should().BeTrue("keys still reach the game");
+    }
+
+    [Fact]
+    public void AContextLetsOnlyItsOwnActionsThrough()
+    {
+        InputActions actions = _builder.Build(Map);
+        actions.Enter(MenuContext);
+        _builder.Input.PressKey(Key.W);
+        _builder.Input.PressKey(Key.E);
+
+        _builder.Frame(actions);
+
+        actions.IsDown(Move).Should().BeFalse();
+        actions.GetValue(Move).Should().Be(Vector2.Zero);
+        actions.IsDown(Interact).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EnteringAContextReleasesTheHeldActionsItBlocks()
+    {
+        InputActions actions = _builder.Build(Map);
+        _builder.Input.PressKey(Key.W);
+        _builder.Frame(actions);
+
+        actions.Enter(MenuContext);
+        _builder.Frame(actions);
+
+        actions.WasReleased(Move).Should().BeTrue();
+        _builder.Events.Should().EndWith(new InputActionEvent(Move, InputPhase.Released));
+    }
+
+    [Fact]
+    public void LeavingTheInnermostContextGoesBackToTheOneUnderIt()
+    {
+        InputActions actions = _builder.Build(Map);
+        actions.Enter(MenuContext);
+        actions.Enter(UnknownContext);
+        _builder.Input.PressKey(Key.E);
+        _builder.Frame(actions);
+        bool blocked = !actions.IsDown(Interact);
+
+        actions.Leave(UnknownContext);
+        _builder.Frame(actions);
+
+        blocked.Should().BeTrue("a context the map doesn't list lets nothing through");
+        actions.Context.Should().Be(MenuContext);
+        actions.IsDown(Interact).Should().BeTrue();
+    }
+
+    [Fact]
+    public void LeavingEveryContextLetsEveryActionThroughAgain()
+    {
+        InputActions actions = _builder.Build(Map);
+        actions.Enter(MenuContext);
+        _builder.Input.PressKey(Key.W);
+        _builder.Frame(actions);
+
+        actions.Leave(MenuContext);
+        _builder.Frame(actions);
+
+        actions.Context.IsValid.Should().BeFalse();
+        actions.IsDown(Move).Should().BeTrue();
+        actions.IsInContext(MenuContext).Should().BeFalse();
+    }
+
+    [Fact]
+    public void KeysUnderAKeyboardCaptureAreLeftToIt()
+    {
+        InputActions actions = _builder.Build(Map);
+        IKeyboardCapture console = Substitute.For<IKeyboardCapture>();
+        console.CapturesKeyboard.Returns(true);
+        actions.KeyboardCaptures.Add(console);
+        _builder.Input.PressKey(Key.W);
+        _builder.Input.PressKey(Key.E);
+        _builder.Frame(actions);
+        bool typedThrough = actions.IsDown(Move) || actions.IsDown(Interact);
+        _builder.Input.PressButton(MouseButton.Left);
+
+        _builder.Frame(actions);
+
+        typedThrough.Should().BeFalse();
+        actions.IsDown(Interact).Should().BeTrue("mouse buttons still reach the game");
     }
 }

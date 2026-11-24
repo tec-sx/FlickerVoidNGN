@@ -98,11 +98,10 @@ public sealed class FlowGraphsTests : IDisposable
     [Fact]
     public void AddsTheFlowSchemaWithEveryNodeType()
     {
-        JsonObject schema = FlowGraphs.GetSchema(_builder.Game.Data);
-
-        string text = schema.ToJsonString();
-        text.Should().Contain("waitForConditions").And.Contain("applyEffects");
         string folder = _builder.WriteSchemas();
-        File.Exists(Path.Combine(folder, "flow.schema.json")).Should().BeTrue();
+
+        string path = Path.Combine(folder, "flow.schema.json");
+        string text = File.ReadAllText(path);
+        text.Should().Contain("waitForConditions").And.Contain("applyEffects");
     }
 }

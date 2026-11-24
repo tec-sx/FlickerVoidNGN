@@ -89,6 +89,25 @@ public sealed class CameraDirectorTests : IDisposable
     }
 
     [Fact]
+    public void HoldsAPlayingShotWhileTheGameIsPaused()
+    {
+        CameraDirector director = _builder.Build();
+        Entity hall = _builder.SpawnShot("Hall", Line);
+        _builder.Run(1 / 60f);
+        director.Play(hall, 1);
+        _builder.Run(1);
+
+        _builder.Game.Pause(new Gameplay.Tags.Tag("Pause.Hub"));
+        _builder.Run(1);
+        float paused = director.GetTime(hall);
+        _builder.Game.Resume(new Gameplay.Tags.Tag("Pause.Hub"));
+        _builder.Run(2);
+
+        paused.Should().BeApproximately(1, 0.02f);
+        director.GetTime(hall).Should().Be(2);
+    }
+
+    [Fact]
     public void PlaysToTheEndWithoutAKey()
     {
         CameraDirector director = _builder.Build();
