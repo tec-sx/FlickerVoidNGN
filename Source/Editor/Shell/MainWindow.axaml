@@ -44,6 +44,13 @@
             <PathIcon Data="{x:Static shell:MaterialIcons.Discard}" />
           </Button>
           <Separator />
+          <Button Classes="icon" Command="{Binding UndoCommand}" Focusable="False" ToolTip.Tip="{Binding UndoTip}">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Undo}" />
+          </Button>
+          <Button Classes="icon" Command="{Binding RedoCommand}" Focusable="False" ToolTip.Tip="{Binding RedoTip}">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Redo}" />
+          </Button>
+          <Separator />
           <Button Classes="icon" Command="{Binding Viewport.DuplicateSelectedCommand}" ToolTip.Tip="Duplicate the selected entity (Ctrl+D).">
             <PathIcon Data="{x:Static shell:MaterialIcons.Duplicate}" />
           </Button>
