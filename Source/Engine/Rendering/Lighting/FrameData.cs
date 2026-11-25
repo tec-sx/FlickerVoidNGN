@@ -4,10 +4,11 @@ using System.Runtime.InteropServices;
 namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>
-/// The start of the frame buffer (Shaders/Frame.hlsl): the view, the sun, the shadow atlas, the irradiance volume, and where the
-/// lights, shadows and clusters follow, the camera, the fog, the screen shadows, the depth fade, the cutaway and where the indoor
-/// volumes follow, the traced shadows and occlusion, the view of the frame before, where the draws follow, the scene's depth and
-/// G-buffer, and the scene's acceleration structure while the frame traces rays. 512 bytes.
+/// The start of the frame buffer (Shaders/Frame.hlsl): the view, jittered for an upscaler, the sun, the shadow atlas, the
+/// irradiance volume, and where the lights, shadows and clusters follow, the jitter, the camera, the fog, the screen shadows, the
+/// depth fade, the jitter of the frame before, the cutaway and where the indoor volumes follow, the traced shadows and occlusion,
+/// the view of the frame before, where the draws follow, the scene's depth and G-buffer, and the scene's acceleration structure
+/// while the frame traces rays. 512 bytes.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
 internal readonly record struct FrameData(
@@ -32,8 +33,7 @@ internal readonly record struct FrameData(
     uint ProbeCountX,
     uint ProbeCountY,
     uint ProbeCountZ,
-    uint Padding0,
-    uint Padding1,
+    Vector2 Jitter,
     Vector3 CameraPosition,
     float NearPlane,
     Vector3 FogColor,
@@ -55,8 +55,7 @@ internal readonly record struct FrameData(
     float FarStart,
     float FarEnd,
     float FarAmount,
-    uint Padding3,
-    uint Padding4,
+    Vector2 PreviousJitter,
     Vector3 CutMin,
     uint Cut,
     Vector3 CutMax,

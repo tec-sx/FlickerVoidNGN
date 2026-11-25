@@ -1,38 +1,28 @@
-using System.Numerics;
-
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Pipeline;
+using FlickerVoid.Engine.Rendering.PostProcessing;
 
 namespace FlickerVoid.Engine.Rendering.Sky;
 
 /// <summary>
-/// Fills what the scene left empty with a sky-like gradient, lighter above the horizon; over a mood's paper it is a thin wash
-/// laid over the paper (multiplied), so the paper shows through. It draws after post-processing while the renderer's
-/// <see cref="SceneRenderer.Sky"/> is on.
+/// Fills what the scene left empty in the lit scene with a sky-like gradient, lighter above the horizon, before the depth fade,
+/// the upscale and the grade, while the renderer's <see cref="SceneRenderer.Sky"/> is on. It looks on screen as its colours were
+/// picked whatever the mood's grade, and over a mood's canvas it is a thin wash the paper shows through.
 /// </summary>
 public sealed class SkyPass : IRenderPass
 {
-    private readonly IPipeline _pipeline;
-    private readonly IPipeline _wash;
+    private const int GroupSize = 8;
 
-    public SkyPass(IGraphicsDevice device, ShaderLibrary shaders, PixelFormat colorFormat)
+    private readonly IPipeline _pipeline;
+
+    public SkyPass(IGraphicsDevice device, ShaderLibrary shaders)
     {
-        GraphicsPipelineDescription description = new()
-        {
-            VertexShader = shaders.Load("Sky", "VertexMain"),
-            PixelShader = shaders.Load("Sky", "PixelMain"),
-            ColorFormats = [colorFormat],
-            DepthFormat = SceneRenderer.DepthFormat,
-            Depth = new DepthState(Test: true, Write: false),
-            CullMode = CullMode.None,
-            Name = "Sky",
-        };
-        _pipeline = device.CreateGraphicsPipeline(description);
-        GraphicsPipelineDescription wash = description with { Blend = BlendMode.Multiply, Name = "Sky wash" };
-        _wash = device.CreateGraphicsPipeline(wash);
+        ComputePipelineDescription description = new() { ComputeShader = shaders.Load("Sky", "ComputeMain"), Name = "Sky" };
+        _pipeline = device.CreateComputePipeline(description);
     }
 
     public void Prepare(RenderContext context)
@@ -47,35 +37,31 @@ public sealed class SkyPass : IRenderPass
         }
 
         ICommandList commands = context.Commands;
-        commands.Barrier(context.Depth, ResourceState.DepthWrite);
-        commands.Barrier(context.ColorTarget, ResourceState.RenderTarget);
-        ColorTarget color = new(context.ColorTarget, LoadAction.Load);
-        DepthTarget depth = new(context.Depth, LoadAction.Load);
-        commands.BeginRendering([color], depth);
-        commands.SetViewport(new Viewport(0, 0, context.Width, context.Height));
-        commands.SetScissor(0, 0, context.Width, context.Height);
-        bool onPaper = context.Mood.Canvas is not null;
-        if (onPaper)
+        ScreenTargets targets = context.Targets;
+        commands.Barrier(targets.Depth, ResourceState.ShaderRead);
+        commands.Barrier(targets.Hdr, ResourceState.ShaderWrite);
+        commands.SetPipeline(_pipeline);
+        uint canvas = GpuLight.None;
+        if (context.Canvas.Image is { } image)
         {
-            commands.SetPipeline(_wash);
-        }
-        else
-        {
-            commands.SetPipeline(_pipeline);
+            canvas = image.BindlessIndex;
         }
 
-        Matrix4x4 viewProjection = context.View.ViewProjection;
-        Matrix4x4.Invert(viewProjection, out Matrix4x4 inverse);
-        bool orthographic = context.View.Projection.M34 == 0;
-        SkyConstants constants = new(inverse, orthographic ? 1 : 0, onPaper ? 1 : 0);
+        float orthographic = 0;
+        if (context.View.Projection.M34 == 0)
+        {
+            orthographic = 1;
+        }
+
+        Grading grade = Grading.From(context.Mood);
+        SkyConstants constants = new(grade, context.Canvas.File.Tint, canvas, context.FrameBuffer, targets.Hdr.BindlessIndex, context.Sampler.BindlessIndex, orthographic);
         commands.PushConstants(constants);
-        commands.Draw(3);
-        commands.EndRendering();
+        commands.Dispatch((targets.Width + GroupSize - 1) / GroupSize, (targets.Height + GroupSize - 1) / GroupSize);
+        commands.Barrier(targets.Hdr, ResourceState.ShaderRead);
     }
 
     public void Dispose()
     {
         _pipeline.Dispose();
-        _wash.Dispose();
     }
 }

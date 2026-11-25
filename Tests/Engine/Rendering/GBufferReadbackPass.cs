@@ -11,6 +11,9 @@ internal sealed class GBufferReadbackPass(Func<GBuffer, ITexture> target, IBuffe
     /// <summary>The format of the target it copied, known once it ran.</summary>
     public PixelFormat Format { get; private set; }
 
+    /// <summary>The target it copied, known once it ran.</summary>
+    public ITexture? Texture { get; private set; }
+
     public void Prepare(RenderContext context)
     {
     }
@@ -18,6 +21,7 @@ internal sealed class GBufferReadbackPass(Func<GBuffer, ITexture> target, IBuffe
     public void Execute(RenderContext context)
     {
         ITexture texture = target(context.GBuffer);
+        Texture = texture;
         Format = texture.Description.Format;
         context.Commands.Barrier(texture, ResourceState.CopySource);
         context.Commands.CopyTextureToBuffer(texture, readback, 0);

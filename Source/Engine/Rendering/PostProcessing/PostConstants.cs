@@ -6,10 +6,7 @@ namespace FlickerVoid.Engine.Rendering.PostProcessing;
 /// <summary>The push constants of Shaders/Post.hlsl.</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal readonly record struct PostConstants(
-    Vector3 Tint,
-    float Exposure,
-    float Contrast,
-    float Saturation,
+    Grading Grade,
     float Bloom,
     float CanvasIntensity,
     uint Scene,
@@ -17,12 +14,7 @@ internal readonly record struct PostConstants(
     uint Canvas,
     uint ClampSampler,
     uint WrapSampler,
-    uint Tonemapper,
-    float WhitePoint,
     float CanvasImageHeight,
     Vector3 CanvasTint,
     float CanvasPanRight,
-    float CanvasPanUp,
-    uint Frame,
-    uint Depth);
-
+    float CanvasPanUp);

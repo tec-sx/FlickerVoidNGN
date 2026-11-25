@@ -9,7 +9,10 @@ using FlickerVoid.Engine.Rendering.Pipeline;
 
 namespace FlickerVoid.Editor.Core.Viewports;
 
-/// <summary>Draws the ground grid through the origin over the finished image, hidden by the scene in front of it; add it after the post-processing pass.</summary>
+/// <summary>
+/// Draws the ground grid through the origin over the finished image, hidden by the scene in front of it, whose depth it reads at
+/// the render size; add it after the post-processing pass.
+/// </summary>
 public sealed class GridPass : IRenderPass
 {
     private readonly IPipeline _pipeline;
@@ -21,8 +24,6 @@ public sealed class GridPass : IRenderPass
             VertexShader = shaders.Load("Grid", "VertexMain"),
             PixelShader = shaders.Load("Grid", "PixelMain"),
             ColorFormats = [colorFormat],
-            DepthFormat = SceneRenderer.DepthFormat,
-            Depth = new DepthState(Test: true, Write: false),
             CullMode = CullMode.None,
             Blend = BlendMode.AlphaBlend,
             Name = "Grid",
@@ -52,11 +53,10 @@ public sealed class GridPass : IRenderPass
         }
 
         ICommandList commands = context.Commands;
-        commands.Barrier(context.Depth, ResourceState.DepthWrite);
+        commands.Barrier(context.Depth, ResourceState.ShaderRead);
         commands.Barrier(context.ColorTarget, ResourceState.RenderTarget);
         ColorTarget color = new(context.ColorTarget, LoadAction.Load);
-        DepthTarget depth = new(context.Depth, LoadAction.Load);
-        commands.BeginRendering([color], depth);
+        commands.BeginRendering([color]);
         commands.SetViewport(new Viewport(0, 0, context.Width, context.Height));
         commands.SetScissor(0, 0, context.Width, context.Height);
         commands.SetPipeline(_pipeline);
@@ -64,7 +64,8 @@ public sealed class GridPass : IRenderPass
         Matrix4x4.Invert(viewProjection, out Matrix4x4 inverse);
         Vector4 depthColumn = new(viewProjection.M13, viewProjection.M23, viewProjection.M33, viewProjection.M43);
         Vector4 wColumn = new(viewProjection.M14, viewProjection.M24, viewProjection.M34, viewProjection.M44);
-        GridConstants constants = new(inverse, depthColumn, wColumn, CellSize, MajorCellSize, Opacity);
+        Vector2 depthScale = new Vector2(context.RenderWidth, context.RenderHeight) / new Vector2(context.Width, context.Height);
+        GridConstants constants = new(inverse, depthColumn, wColumn, CellSize, MajorCellSize, Opacity, context.Depth.BindlessIndex, depthScale);
         commands.PushConstants(constants);
         commands.Draw(3);
         commands.EndRendering();

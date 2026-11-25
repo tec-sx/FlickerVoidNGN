@@ -1,3 +1,7 @@
+using System.Numerics;
+
+using FlickerVoid.Engine.Rendering.PostProcessing;
+
 namespace FlickerVoid.Engine.Rendering.Tests;
 
 public sealed class SkyPassTests : IDisposable
@@ -47,6 +51,27 @@ public sealed class SkyPassTests : IDisposable
         int light = SkyPassTestsBuilder.Brightness(onLight[(TopRow * Size) + Centre]);
         int darker = SkyPassTestsBuilder.Brightness(onDark[(TopRow * Size) + Centre]);
         light.Should().BeGreaterThan(darker + 60, "the sky is laid over the paper, not over it like a wall");
+    }
+
+    [Theory]
+    [InlineData(Tonemapper.Uncharted2)]
+    [InlineData(Tonemapper.Aces)]
+    public void KeepsItsColoursOnScreenWhateverTheMoodsGrade(Tonemapper tonemapper)
+    {
+        using SkyPassTestsBuilder graded = new();
+        graded.WithMood(mood => mood with { Exposure = 2, Contrast = 1.2f, Saturation = 0.8f, Tint = new Vector3(1, 0.9f, 0.8f), Tonemapper = tonemapper });
+
+        uint[] plain = _builder.Render();
+        uint[] gradedPixels = graded.Render();
+
+        foreach (int row in (int[])[TopRow, Centre, BottomRow])
+        {
+            (byte red, byte green, byte blue) = SkyPassTestsBuilder.Channels(plain[(row * Size) + Centre]);
+            (byte gradedRed, byte gradedGreen, byte gradedBlue) = SkyPassTestsBuilder.Channels(gradedPixels[(row * Size) + Centre]);
+            gradedRed.Should().BeCloseTo(red, 2, "the sky's colours are picked for the screen, and the grade gives them back");
+            gradedGreen.Should().BeCloseTo(green, 2);
+            gradedBlue.Should().BeCloseTo(blue, 2);
+        }
     }
 
     [Fact]

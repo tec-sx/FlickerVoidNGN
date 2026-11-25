@@ -5,6 +5,7 @@ using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Presentation;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Upscaling;
 
 namespace FlickerVoid.Engine.Graphics.Devices;
 
@@ -42,6 +43,12 @@ public interface IGraphicsDevice : IDisposable
     /// throws <see cref="NotSupportedException"/> without <see cref="GraphicsFeatures.RayQueries"/>.
     /// </summary>
     IAccelerationStructure CreateTopLevel(in TopLevelDescription description);
+
+    /// <summary>
+    /// Creates a DLSS upscaler for the mode and output size, which picks the size frames are drawn at; throws
+    /// <see cref="NotSupportedException"/> without <see cref="GraphicsFeatures.Dlss"/> or for <see cref="UpscaleMode.Off"/>.
+    /// </summary>
+    IUpscaler CreateUpscaler(in UpscalerDescription description);
 
     ICommandList CreateCommandList();
 

@@ -59,3 +59,9 @@ Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-
 https://simpleicons.org (v9.21.0)
 
 Used in: `Source/Editor/Shell/MaterialIcons.cs` (the Visual Studio logo of the editor's Open in Visual Studio button). Simple Icons are released under CC0 1.0 Universal; the logo is a trademark of Microsoft, used only to name the program the button opens.
+
+## NVIDIA DLSS SDK
+
+https://github.com/NVIDIA/DLSS (v310.9.16)
+
+Used in: `Source/Native/Dlss` (the engine's DLSS library links the SDK's NGX static library, and NVIDIA's DLSS runtime is copied beside programs). Nothing of the SDK is in this repository: the library's build scripts fetch it under the NVIDIA RTX SDKs license (the SDK's `LICENSE.txt`). A game that ships with DLSS must attribute it and show the NVIDIA marks on its splash screen, in its about box and in its credits (the license's exhibit, section 7.1 (b)).

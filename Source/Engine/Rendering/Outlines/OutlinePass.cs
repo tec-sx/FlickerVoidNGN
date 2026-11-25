@@ -30,7 +30,7 @@ public sealed class OutlinePass : IRenderPass
         _device = device;
         GraphicsPipelineDescription silhouettes = new()
         {
-            VertexShader = shaders.Load("Scene", "VertexMain"),
+            VertexShader = shaders.Load("Scene", "SilhouetteVertexMain"),
             PixelShader = shaders.Load("Scene", "OutlineMain"),
             ColorFormats = [MaskFormat],
             CullMode = CullMode.None,

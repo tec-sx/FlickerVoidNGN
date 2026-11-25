@@ -35,6 +35,7 @@ internal sealed class SkyPassTestsBuilder : IDisposable
     private IGraphicsDevice? _device;
     private SceneRenderer? _renderer;
     private string? _paper;
+    private Func<LightingMood, LightingMood> _changeMood = static mood => mood;
 
     public SkyPassTestsBuilder()
     {
@@ -73,6 +74,13 @@ internal sealed class SkyPassTestsBuilder : IDisposable
 
         File.WriteAllText(Path.Combine(_contentFolder, "Paper.fvcanvas"), """{ "image": "Paper.tga" }""");
         _paper = "Paper.fvcanvas";
+        return this;
+    }
+
+    /// <summary>Changes the mood the renderer draws with, such as its grade.</summary>
+    public SkyPassTestsBuilder WithMood(Func<LightingMood, LightingMood> change)
+    {
+        _changeMood = change;
         return this;
     }
 
@@ -134,7 +142,8 @@ internal sealed class SkyPassTestsBuilder : IDisposable
     private SceneRenderer BuildRenderer(IGraphicsDevice device)
     {
         ContentManager content = new(_contentFolder);
-        LightingMood mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0, Tonemapper = Tonemapper.None, Canvas = _paper };
+        LightingMood plain = new() { AmbientOcclusion = 0, ContactShadowLength = 0, Tonemapper = Tonemapper.None, Canvas = _paper };
+        LightingMood mood = _changeMood(plain);
         return new SceneRenderer(device, content, Format) { Mood = mood, Sky = true };
     }
 

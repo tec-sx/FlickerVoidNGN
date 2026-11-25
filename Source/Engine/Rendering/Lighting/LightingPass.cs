@@ -43,7 +43,7 @@ internal sealed class LightingPass : IRenderPass
         commands.SetPipeline(_pipeline);
         LightingConstants constants = new(context.FrameBuffer, targets.Hdr.BindlessIndex);
         commands.PushConstants(constants);
-        commands.Dispatch((context.Width + GroupSize - 1) / GroupSize, (context.Height + GroupSize - 1) / GroupSize);
+        commands.Dispatch((context.RenderWidth + GroupSize - 1) / GroupSize, (context.RenderHeight + GroupSize - 1) / GroupSize);
         commands.Barrier(targets.Hdr, ResourceState.ShaderRead);
     }
 

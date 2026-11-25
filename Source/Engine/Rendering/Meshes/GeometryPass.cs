@@ -47,12 +47,12 @@ internal sealed class GeometryPass : IRenderPass
             _targets[index] = new ColorTarget(target, LoadAction.Clear);
         }
 
-        ITexture depthTarget = context.Depth;
+        ITexture depthTarget = context.Targets.Depth;
         commands.Barrier(depthTarget, ResourceState.DepthWrite);
         DepthTarget clearDepth = new(depthTarget, LoadAction.Clear);
         commands.BeginRendering(_targets, clearDepth);
-        commands.SetViewport(new Viewport(0, 0, context.Width, context.Height));
-        commands.SetScissor(0, 0, context.Width, context.Height);
+        commands.SetViewport(new Viewport(0, 0, context.RenderWidth, context.RenderHeight));
+        commands.SetScissor(0, 0, context.RenderWidth, context.RenderHeight);
         commands.SetPipeline(_pipeline);
         DrawMeshes(context);
         commands.EndRendering();

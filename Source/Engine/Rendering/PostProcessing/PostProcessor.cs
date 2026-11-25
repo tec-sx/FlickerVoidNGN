@@ -9,7 +9,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 
 namespace FlickerVoid.Engine.Rendering.PostProcessing;
 
-/// <summary>Blurs the lit scene into bloom and grades it into the output target over the mood's paper, as the mood says, fading it by depth as the camera says.</summary>
+/// <summary>Blurs the lit scene into bloom and grades it into the output target over the mood's paper, as the mood says.</summary>
 internal sealed class PostProcessor : IDisposable
 {
     private const string BloomShader = "Bloom";
@@ -37,11 +37,11 @@ internal sealed class PostProcessor : IDisposable
         _composite = device.CreateGraphicsPipeline(composite);
     }
 
-    /// <summary>Leaves the output in the RenderTarget state.</summary>
-    public void Run(ICommandList commands, ScreenTargets targets, ITexture output, LightingMood mood, PostCanvas canvas, ISampler clamp, ISampler wrap, uint frame)
+    /// <summary>Post-processes the lit scene at the output's size (<see cref="ScreenTargets.Lit"/>); leaves the output in the RenderTarget state.</summary>
+    public void Run(ICommandList commands, ScreenTargets targets, ITexture output, LightingMood mood, PostCanvas canvas, ISampler clamp, ISampler wrap)
     {
-        commands.Barrier(targets.Hdr, ResourceState.ShaderRead);
-        commands.Barrier(targets.Depth, ResourceState.ShaderRead);
+        ITexture lit = targets.Lit;
+        commands.Barrier(lit, ResourceState.ShaderRead);
         uint bloom = GpuLight.None;
         if (mood.Bloom > 0)
         {
@@ -64,25 +64,18 @@ internal sealed class PostProcessor : IDisposable
         commands.SetScissor(0, 0, width, height);
         commands.SetPipeline(_composite);
         PostConstants constants = new(
-            mood.Tint,
-            mood.Exposure,
-            mood.Contrast,
-            mood.Saturation,
+            Grading.From(mood),
             mood.Bloom,
             canvas.File.Intensity,
-            targets.Hdr.BindlessIndex,
+            lit.BindlessIndex,
             bloom,
             canvasIndex,
             clamp.BindlessIndex,
             wrap.BindlessIndex,
-            (uint)mood.Tonemapper,
-            mood.WhitePoint,
             canvas.View.ImageHeight,
             canvas.File.Tint,
             canvas.View.PanRight,
-            canvas.View.PanUp,
-            frame,
-            targets.Depth.BindlessIndex);
+            canvas.View.PanUp);
         commands.PushConstants(constants);
         commands.Draw(3);
         commands.EndRendering();
@@ -99,7 +92,7 @@ internal sealed class PostProcessor : IDisposable
     {
         ITexture[] levels = targets.Bloom;
         commands.SetPipeline(_down);
-        ITexture source = targets.Hdr;
+        ITexture source = targets.Lit;
         foreach (ITexture level in levels)
         {
             commands.Barrier(level, ResourceState.ShaderWrite);

@@ -8,6 +8,7 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
@@ -20,6 +21,7 @@ using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Rendering.RayTracing;
 using FlickerVoid.Engine.Rendering.Shadows;
 using FlickerVoid.Engine.Rendering.Sky;
+using FlickerVoid.Engine.Rendering.Upscaling;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 
@@ -29,9 +31,9 @@ namespace FlickerVoid.Engine.Rendering;
 /// Draws a frame: extracts the world into a <see cref="RenderScene"/>, lets every pass of the <see cref="Pipeline"/> prepare,
 /// uploads the frame's view, lights, shadows, clusters and probes, then records the passes in order. The default passes skin
 /// meshes, gather lights, draw the shadow atlas, build the scene's acceleration structures and trace its irradiance probes when it
-/// traces rays, draw the depth and G-buffer and the screen shadows, light the G-buffer into HDR, post-process it graded as the
-/// <see cref="Mood"/> says, show a <see cref="DebugView"/> in its place when one is asked for, and draw the outlines of outlined
-/// meshes.
+/// traces rays, draw the depth and G-buffer and the screen shadows, light the G-buffer into HDR, fill the sky and lay the depth
+/// fade on it, post-process it graded as the <see cref="Mood"/> says, show a <see cref="DebugView"/> in its place when one is
+/// asked for, and draw the outlines of outlined meshes.
 /// </summary>
 public sealed class SceneRenderer : IDisposable
 {
@@ -55,6 +57,11 @@ public sealed class SceneRenderer : IDisposable
     private readonly ProbePass _probePass;
     private readonly RenderScene _scene = new();
     private readonly RenderContext _context;
+    private readonly JitterSequence _jitter = new();
+    private IUpscaler? _upscaler;
+    private ISampler? _sharpSampler;
+    private uint _cuts;
+    private bool _drawn;
 
     public SceneRenderer(IGraphicsDevice device, IContentManager content, PixelFormat colorFormat)
     {
@@ -91,8 +98,10 @@ public sealed class SceneRenderer : IDisposable
         Pipeline.Add(new ShadowRayPass(device, shaders));
         Pipeline.Add(new ScreenShadowPass(device, shaders));
         Pipeline.Add(new LightingPass(device, shaders));
+        Pipeline.Add(new SkyPass(device, shaders));
+        Pipeline.Add(new DepthFadePass(device, shaders));
+        Pipeline.Add(new UpscalePass(device, shaders));
         Pipeline.Add(new PostProcessPass(device, shaders, colorFormat, content));
-        Pipeline.Add(new SkyPass(device, shaders, colorFormat));
         Pipeline.Add(new DebugViewPass(device, shaders, colorFormat));
         Pipeline.Add(new OutlinePass(device, shaders, colorFormat));
     }
@@ -146,6 +155,12 @@ public sealed class SceneRenderer : IDisposable
     /// draw without. Ignored on devices without ray queries.
     /// </summary>
     public bool RayTracing { get; set; }
+
+    /// <summary>
+    /// How frames are upscaled where the device has DLSS: off by default, drawing at the output's size; Quality draws at about
+    /// two thirds of it and DLAA at its size, jittered, and DLSS fills the output in. Ignored on devices without DLSS.
+    /// </summary>
+    public UpscaleMode Upscaling { get; set; }
 
     /// <summary>Whether the depth fade is drawn; on by default.</summary>
     public bool DepthFades { get; set; } = true;
@@ -216,6 +231,8 @@ public sealed class SceneRenderer : IDisposable
 
     public void Dispose()
     {
+        _upscaler?.Dispose();
+        _sharpSampler?.Dispose();
         Pipeline.Dispose();
         _frameData.Dispose();
         _probes.Dispose();
@@ -230,7 +247,24 @@ public sealed class SceneRenderer : IDisposable
     {
         int width = colorTarget.Description.Width;
         int height = colorTarget.Description.Height;
-        _targets.Ensure(width, height);
+        bool newUpscaler = EnsureUpscaler(width, height);
+        int renderWidth = width;
+        int renderHeight = height;
+        Vector2 jitter = Vector2.Zero;
+        ISampler materialSampler = _sampler;
+        if (_upscaler is { } upscaler)
+        {
+            renderWidth = upscaler.RenderWidth;
+            renderHeight = upscaler.RenderHeight;
+            int phases = JitterSequence.Phases(renderWidth, width);
+            jitter = _jitter.Next(phases);
+            materialSampler = _sharpSampler!;
+        }
+
+        bool upscaled = _upscaler is not null;
+        bool newTargets = _targets.Ensure(renderWidth, renderHeight, width, height, upscaled);
+        bool cut = _scene.Cuts != _cuts;
+        _cuts = _scene.Cuts;
 
         RenderContext context = _context;
         context.Reset();
@@ -238,6 +272,19 @@ public sealed class SceneRenderer : IDisposable
         context.ColorTarget = colorTarget;
         context.Width = width;
         context.Height = height;
+        context.RenderWidth = renderWidth;
+        context.RenderHeight = renderHeight;
+        context.Jitter = jitter;
+        context.Upscaler = _upscaler;
+        context.MaterialSampler = materialSampler;
+        context.ResetsHistory = !_drawn || newUpscaler || newTargets || cut;
+        _drawn = true;
+        RenderStatistics statistics = context.Statistics;
+        statistics.RenderWidth = renderWidth;
+        statistics.RenderHeight = renderHeight;
+        statistics.OutputWidth = width;
+        statistics.OutputHeight = height;
+        statistics.Upscaled = upscaled;
         context.Camera = camera;
         context.View = CameraView.Create(camera, cameraTransform, width, height);
         context.Mood = Mood;
@@ -262,5 +309,40 @@ public sealed class SceneRenderer : IDisposable
         IBuffer frame = _frameData.Write(context);
         context.FrameBuffer = frame.BindlessIndex;
         Pipeline.Execute(context);
+    }
+
+    /// <summary>
+    /// Makes an upscaler, with a sampler sharpening textures by its mip bias, when the mode or the output's size changed, or drops
+    /// them while upscaling is off or the device has no DLSS; says whether it made one.
+    /// </summary>
+    private bool EnsureUpscaler(int width, int height)
+    {
+        UpscaleMode mode = Upscaling;
+        if (!Device.Features.HasFlag(GraphicsFeatures.Dlss))
+        {
+            mode = UpscaleMode.Off;
+        }
+
+        UpscalerDescription description = new(mode, width, height);
+        if (_upscaler is not null && _upscaler.Description == description)
+        {
+            return false;
+        }
+
+        _upscaler?.Dispose();
+        _upscaler = null;
+        _sharpSampler?.Dispose();
+        _sharpSampler = null;
+        if (mode == UpscaleMode.Off)
+        {
+            return false;
+        }
+
+        _upscaler = Device.CreateUpscaler(description);
+        float renderShare = (float)_upscaler.RenderWidth / width;
+        float bias = MathF.Log2(renderShare) - 1;
+        SamplerDescription sharp = new(SamplerFilter.Linear, SamplerAddressMode.Wrap) { MipBias = bias };
+        _sharpSampler = Device.CreateSampler(sharp);
+        return true;
     }
 }

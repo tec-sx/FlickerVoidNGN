@@ -4,6 +4,7 @@ using FlickerVoid.Engine.Flow;
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Platform.Windowing;
@@ -23,8 +24,9 @@ using Microsoft.Extensions.Logging;
 namespace FlickerVoid.Engine.Hosting;
 
 /// <summary>
-/// Runs a game in a window: a Vulkan device, a game with rendering, its built content (reloaded when it changes), the options'
-/// scene and lighting mood, and a <see cref="SceneRenderSystem"/> that draws after every other frame system.
+/// Runs a game in a window: a Vulkan device (DLSS Quality upscaling where the GPU has it), a game with rendering, its built content
+/// (reloaded when it changes), the options' scene and lighting mood, and a <see cref="SceneRenderSystem"/> that draws after every
+/// other frame system.
 /// </summary>
 public sealed partial class SceneHost : IDisposable
 {
@@ -40,7 +42,8 @@ public sealed partial class SceneHost : IDisposable
         _options = options;
         _logger = loggerFactory.CreateLogger<SceneHost>();
         Content = new ContentManager(options.ContentFolder);
-        GraphicsDeviceOptions deviceOptions = new() { Validation = options.Validation };
+        GraphicsFeatures features = GraphicsFeatures.RayQueries | GraphicsFeatures.Dlss;
+        GraphicsDeviceOptions deviceOptions = new() { Validation = options.Validation, Features = features };
         Device = new VulkanGraphicsDevice(deviceOptions, loggerFactory);
         Game = new Game(loggerFactory);
         Game.Services.AddService<IContentManager>(Content);
@@ -160,7 +163,7 @@ public sealed partial class SceneHost : IDisposable
 
     private SceneRenderer CreateRenderer(PixelFormat format)
     {
-        SceneRenderer renderer = new(Device, Content, format) { Mood = Mood, Sky = true, RayTracing = true };
+        SceneRenderer renderer = new(Device, Content, format) { Mood = Mood, Sky = true, RayTracing = true, Upscaling = UpscaleMode.Quality };
         SceneRendererSetup? setup = Game.Services.GetService<SceneRendererSetup>();
         setup?.Apply(renderer);
         return renderer;

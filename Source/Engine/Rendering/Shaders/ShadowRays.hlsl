@@ -250,8 +250,9 @@ void FilterMain(uint3 id : SV_DispatchThreadID)
     float4 previous = current;
     float previousOcclusion = currentOcclusion;
     float count = 0;
+    // The motion is without the jitter, and each frame's samples were moved by its own.
     float2 motion = Textures[frame.GBufferMotion].Load(texel).xy;
-    float2 previousPixel = pixel + motion;
+    float2 previousPixel = pixel + motion - frame.Jitter + frame.PreviousJitter;
     bool onScreen = all(previousPixel >= 0) && all(previousPixel < frame.TargetSize);
     if (Pass.PreviousHistory != None && onScreen)
     {

@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Runtime.InteropServices;
 
 using FlickerVoid.Editor.Core.Cameras;
@@ -14,6 +15,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Greyboxes;
 using FlickerVoid.Engine.Runtime.Loop;
 
 using Microsoft.Extensions.Logging;
@@ -21,8 +23,8 @@ using Microsoft.Extensions.Logging;
 namespace FlickerVoid.Editor.Core.Tests.Viewports;
 
 /// <summary>
-/// Renders an empty world with the grid pass after the scene renderer's own passes, through an editor camera, on a Vulkan device
-/// with validation on; skips the test without Vulkan 1.3 and fails it on any logged error.
+/// Renders a world, empty unless boxes are stood in it, with the grid pass after the scene renderer's own passes, through an
+/// editor camera, on a Vulkan device with validation on; skips the test without Vulkan 1.3 and fails it on any logged error.
 /// </summary>
 internal sealed class GridPassTestsBuilder : IDisposable
 {
@@ -48,6 +50,15 @@ internal sealed class GridPassTestsBuilder : IDisposable
     }
 
     public EditorCamera Camera { get; } = new();
+
+    /// <summary>Stands a greybox of that size on the point.</summary>
+    public GridPassTestsBuilder WithBox(Vector3 position, Vector3 size)
+    {
+        Transform transform = new() { Position = position };
+        Greybox box = new() { Size = size };
+        _game.World.Create(transform, box);
+        return this;
+    }
 
     /// <summary>Renders into a new target and reads it back as Rgba8 pixels, top row first.</summary>
     public uint[] Render()

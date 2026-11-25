@@ -1,5 +1,7 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Pipeline;
@@ -9,12 +11,14 @@ using Hexa.NET.ImGui;
 namespace FlickerVoid.Engine.Debug;
 
 /// <summary>
-/// Switches the scene renderer's features (lights, probes, ray tracing), shows the G-buffer's targets in place of the frame and
-/// tweaks its lighting mood live: the sun, ambient light, shadows, fog, screen-space shadows, bloom and grade.
+/// Switches the scene renderer's features (lights, probes, ray tracing, DLSS) and shows the size it draws at, shows the G-buffer's
+/// targets in place of the frame and tweaks its lighting mood live: the sun, ambient light, shadows, fog, screen-space shadows,
+/// bloom and grade.
 /// </summary>
 public sealed class RenderingWindow : DebugWindow
 {
     private static readonly string[] ViewNames = ["Lit", "Albedo", "Normal", "Material", "Object depth", "Motion", "Depth"];
+    private static readonly string[] UpscalingNames = ["Off", "DLSS Quality", "DLAA"];
 
     private readonly SceneRenderer _renderer;
     private readonly LightingMood _initial;
@@ -55,6 +59,7 @@ public sealed class RenderingWindow : DebugWindow
             _renderer.LiveProbes = liveProbes;
         }
 
+        RenderUpscaling(statistics);
         int view = (int)_renderer.DebugView;
         if (ImGui.Combo("View", ref view, ViewNames, ViewNames.Length))
         {
@@ -180,6 +185,29 @@ public sealed class RenderingWindow : DebugWindow
             {
                 mood.Tint = tint;
             }
+        }
+    }
+
+    private void RenderUpscaling(RenderStatistics statistics)
+    {
+        int upscaling = (int)_renderer.Upscaling;
+        if (ImGui.Combo("Upscaling", ref upscaling, UpscalingNames, UpscalingNames.Length))
+        {
+            _renderer.Upscaling = (UpscaleMode)upscaling;
+        }
+
+        string drawnAt = $"Drawn at {statistics.RenderWidth}x{statistics.RenderHeight} for {statistics.OutputWidth}x{statistics.OutputHeight}";
+        if (statistics.Upscaled)
+        {
+            ImGui.Text($"{drawnAt}, upscaled by DLSS");
+        }
+        else if (_renderer.Device.Features.HasFlag(GraphicsFeatures.Dlss))
+        {
+            ImGui.Text(drawnAt);
+        }
+        else
+        {
+            ImGui.Text($"{drawnAt}; no DLSS on this GPU");
         }
     }
 }
