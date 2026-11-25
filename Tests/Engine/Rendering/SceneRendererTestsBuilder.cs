@@ -148,6 +148,14 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Moves every animated mesh's animation to the given time, as the animation system would between frames.</summary>
+    public SceneRendererTestsBuilder WithAnimationTime(float time)
+    {
+        QueryDescription animated = new QueryDescription().WithAll<MeshAnimator>();
+        _game.World.Query(in animated, (ref MeshAnimator animator) => animator.Time = time);
+        return this;
+    }
+
     /// <summary>Without a call, the ambient light is full, so meshes show their plain base color.</summary>
     public SceneRendererTestsBuilder WithLight(Vector3 sunDirection, float ambient)
     {

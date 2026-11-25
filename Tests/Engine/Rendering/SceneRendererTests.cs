@@ -102,6 +102,34 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void PosesSkinnedMeshesAnewInEveryFrame()
+    {
+        _builder.WithModel("Walker.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red).WithMovingJoint(Vector3.Zero, new Vector3(1, 1, 0), 2));
+        _builder.WithScene(Camera, """{ "name": "Walker", "components": { "transform": {}, "meshRenderer": { "mesh": "Walker.glb" }, "meshAnimator": { "time": 0 } } }""");
+        _builder.Render();
+
+        uint[] moved = _builder.WithAnimationTime(1).Render();
+        uint[] back = _builder.WithAnimationTime(0).Render();
+
+        uint[] movedWalker =
+        [
+            EmptyPixel, EmptyPixel, RedPixel, RedPixel,
+            EmptyPixel, EmptyPixel, RedPixel, RedPixel,
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
+        ];
+        uint[] centeredWalker =
+        [
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
+            EmptyPixel, RedPixel, RedPixel, EmptyPixel,
+            EmptyPixel, RedPixel, RedPixel, EmptyPixel,
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
+        ];
+        moved.Should().Equal(movedWalker);
+        back.Should().Equal(centeredWalker);
+    }
+
+    [Fact]
     public void CullsMeshesFacingAway()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));

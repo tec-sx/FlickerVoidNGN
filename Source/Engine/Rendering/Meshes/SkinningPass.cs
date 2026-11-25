@@ -13,14 +13,15 @@ using FlickerVoid.Engine.Runtime.Geometry;
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
 /// <summary>
-/// Turns the scene's meshes into draws, posing animated ones and culling those wholly outside the view, then runs the skinning
-/// compute work that writes their posed vertex buffers.
+/// Turns the scene's meshes into draws, posing animated ones and culling those wholly outside the view, with where each mesh
+/// stood and how it was posed in the frame before, then runs the skinning compute work that writes their posed vertex buffers.
 /// </summary>
 internal sealed class SkinningPass : IRenderPass
 {
     private readonly MeshLibrary _meshes;
     private readonly MeshSkinner _skinner;
     private readonly MaterialLibrary _materials;
+    private readonly PreviousWorlds _previousWorlds = new();
 
     public SkinningPass(IGraphicsDevice device, ShaderLibrary shaders, IContentManager content)
     {
@@ -33,17 +34,19 @@ internal sealed class SkinningPass : IRenderPass
     public void Prepare(RenderContext context)
     {
         _skinner.Begin();
+        _previousWorlds.Begin();
         Frustum view = new(context.View.ViewProjection);
         foreach (RenderMesh mesh in context.Scene.Meshes)
         {
             GpuModel model = _meshes.Get(mesh.Mesh, context.Meshes);
-            IBuffer[]? posed = null;
+            PosedVertices? posed = null;
             if (mesh.Animator is MeshAnimator animator)
             {
                 posed = _skinner.Pose(mesh.Id, model, animator);
             }
 
-            AddDraws(context, mesh, model, posed, view);
+            Matrix4x4 previousWorld = _previousWorlds.Remember(mesh.Id, mesh.World);
+            AddDraws(context, mesh, previousWorld, model, posed, view);
         }
     }
 
@@ -77,15 +80,17 @@ internal sealed class SkinningPass : IRenderPass
         return true;
     }
 
-    private void AddDraws(RenderContext context, RenderMesh mesh, GpuModel model, IBuffer[]? posed, in Frustum view)
+    private void AddDraws(RenderContext context, RenderMesh mesh, in Matrix4x4 previousWorld, GpuModel model, PosedVertices? posed, in Frustum view)
     {
         for (int index = 0; index < model.Parts.Count; index++)
         {
             GpuMeshPart part = model.Parts[index];
             IBuffer vertices = part.Vertices;
-            if (posed is not null)
+            IBuffer previousVertices = part.Vertices;
+            if (posed is { } pose)
             {
-                vertices = posed[index];
+                vertices = pose.Current[index];
+                previousVertices = pose.Previous[index];
             }
 
             string? materialPath = null;
@@ -108,7 +113,7 @@ internal sealed class SkinningPass : IRenderPass
             }
 
             bool inView = IsInView(context.Statistics, mesh.Flags, bounds, view);
-            context.Draws.Add(new MeshDraw(mesh.World, part, vertices, material, outline, mesh.Flags, bounds, inView));
+            context.Draws.Add(new MeshDraw(mesh.World, previousWorld, part, vertices, previousVertices, material, outline, mesh.Flags, bounds, inView));
         }
     }
 }

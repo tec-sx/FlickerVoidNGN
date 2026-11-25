@@ -1,24 +1,36 @@
-// Draws a mesh part whose vertices (float3 position, float3 normal, float2 uv) are pulled from a bindless buffer: its base
-// color times its texture and its material's tint, shaded by the material's controls (Scene.fvshader) and lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster,
+// Draws a mesh part whose vertices (float3 position, float3 normal, float2 uv) are pulled from a bindless buffer, as its record
+// among the frame buffer's draws says (pushed by its number): its base color times its texture and its material's tint, shaded by the material's controls (Scene.fvshader) and lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster,
 // shadowed through the shadow atlas and tinted by spot light cookies, plus bounced light from irradiance probes, seen
 // through fog lit by the same lights. Indoor volumes scale the ambient light inside them, and while the camera looks into one
 // (the cutaway) whatever stands in front of its box is cut away and the world outside it muted.
 // The frame buffer holds FrameData (Frame.hlsl), then the lights, the shadows, each cluster's
-// range of light indices, the indices and the indoor volumes. ScreenShadows.hlsl gives each pixel its ambient occlusion and contact shadow.
+// range of light indices, the indices, the indoor volumes and the draws. ScreenShadows.hlsl gives each pixel its ambient occlusion and contact shadow.
 
 #include "Frame.hlsl"
 
 struct SceneConstants
 {
-    row_major float4x4 World;
-    float4 BaseColor;
     uint Frame;
+    uint Draw;
+};
+
+// A draw's record (GpuDraw.cs): where its mesh stands this frame and the frame before, its vertices then and now, its looks,
+// its outline's color and its MeshFlags.
+struct Draw
+{
+    float4x4 World;
+    float4x4 PreviousWorld;
+    float4 BaseColor;
+    float4 OutlineColor;
     uint Vertices;
+    uint PreviousVertices;
     uint Texture;
     uint Sampler;
     uint Material;
     uint Flags;
 };
+
+static const uint DrawSize = 192;
 
 // MeshFlags.Uncut: the cutaway keeps the mesh, such as a door.
 static const uint FlagUncut = 4;
@@ -93,17 +105,37 @@ struct VertexOutput
     float2 Uv : TEXCOORD0;
 };
 
+// The draw's record; its matrices are the rows of System.Numerics matrices, which multiply row vectors.
+Draw LoadDraw(FrameData frame, uint index)
+{
+    ByteAddressBuffer buffer = Buffers[frame.Buffer];
+    uint offset = frame.DrawsOffset + index * DrawSize;
+    Draw draw;
+    draw.World = float4x4(buffer.Load<float4>(offset), buffer.Load<float4>(offset + 16), buffer.Load<float4>(offset + 32), buffer.Load<float4>(offset + 48));
+    draw.PreviousWorld = float4x4(buffer.Load<float4>(offset + 64), buffer.Load<float4>(offset + 80), buffer.Load<float4>(offset + 96), buffer.Load<float4>(offset + 112));
+    draw.BaseColor = buffer.Load<float4>(offset + 128);
+    draw.OutlineColor = buffer.Load<float4>(offset + 144);
+    draw.Vertices = buffer.Load<uint>(offset + 160);
+    draw.PreviousVertices = buffer.Load<uint>(offset + 164);
+    draw.Texture = buffer.Load<uint>(offset + 168);
+    draw.Sampler = buffer.Load<uint>(offset + 172);
+    draw.Material = buffer.Load<uint>(offset + 176);
+    draw.Flags = buffer.Load<uint>(offset + 180);
+    return draw;
+}
+
 VertexOutput VertexMain(uint vertexId : SV_VertexID)
 {
     FrameData frame = LoadFrame(Scene.Frame);
-    ByteAddressBuffer vertices = Buffers[Scene.Vertices];
+    Draw draw = LoadDraw(frame, Scene.Draw);
+    ByteAddressBuffer vertices = Buffers[draw.Vertices];
     uint offset = vertexId * VertexStride;
     float3 position = vertices.Load<float3>(offset);
     float3 normal = vertices.Load<float3>(offset + 12);
-    float4 world = mul(float4(position, 1), Scene.World);
+    float4 world = mul(float4(position, 1), draw.World);
 
     // The cofactor matrix keeps normals at right angles to surfaces under non-uniform scale; mirroring flips its sign.
-    float3x3 basis = (float3x3)Scene.World;
+    float3x3 basis = (float3x3)draw.World;
     float3x3 cofactor = float3x3(cross(basis[1], basis[2]), cross(basis[2], basis[0]), cross(basis[0], basis[1]));
     float mirror = sign(dot(basis[0], cofactor[0]));
 
@@ -116,9 +148,9 @@ VertexOutput VertexMain(uint vertexId : SV_VertexID)
 }
 
 // The material's parameters, packed tightly in declared order by MaterialLayout.
-Material LoadMaterial()
+Material LoadMaterial(uint index)
 {
-    ByteAddressBuffer buffer = Buffers[Scene.Material];
+    ByteAddressBuffer buffer = Buffers[index];
     Material material;
     material.Tint = buffer.Load<float3>(0);
     material.RampSoftness = buffer.Load<float>(12);
@@ -542,26 +574,28 @@ float2 BlurScreenShadows(FrameData frame, float2 pixel)
 void DepthMain(VertexOutput input)
 {
     FrameData frame = LoadFrame(Scene.Frame);
-    if ((Scene.Flags & FlagUncut) == 0 && IsCutAway(frame, input.WorldPosition))
+    Draw draw = LoadDraw(frame, Scene.Draw);
+    if ((draw.Flags & FlagUncut) == 0 && IsCutAway(frame, input.WorldPosition))
     {
         discard;
     }
 }
 
-// The outline pass draws outlined meshes' silhouettes in their outline's color, which it passes as the base color.
+// The outline pass draws outlined meshes' silhouettes in their outline's color.
 float4 OutlineMain(VertexOutput input) : SV_Target
 {
-    return float4(Scene.BaseColor.rgb, 1);
+    FrameData frame = LoadFrame(Scene.Frame);
+    Draw draw = LoadDraw(frame, Scene.Draw);
+    return float4(draw.OutlineColor.rgb, 1);
 }
 
 // Tilts the normal by the slope of a painting's relief, so its impasto catches the light without tangents: the relief's
 // slope across the uvs, turned into the screen's by the uvs' derivatives, bends the normal by Mikkelsen's surface gradient
 // over the position's derivatives. The derivatives come from the caller, outside the branch that reads the relief. Gives how
 // high the paint stands there too.
-float RaiseRelief(Material material, float2 uv, float2 uvX, float2 uvY, float3 positionX, float3 positionY, inout float3 normal)
+float RaiseRelief(Material material, SamplerState sampler, float2 uv, float2 uvX, float2 uvY, float3 positionX, float3 positionY, inout float3 normal)
 {
     Texture2D relief = Textures[material.Relief];
-    SamplerState sampler = Samplers[Scene.Sampler];
     float width;
     float height;
     relief.GetDimensions(width, height);
@@ -596,13 +630,15 @@ static const float ImpastoCover = 0.1;
 float4 PixelMain(VertexOutput input) : SV_Target
 {
     FrameData frame = LoadFrame(Scene.Frame);
-    if ((Scene.Flags & FlagUncut) == 0 && IsCutAway(frame, input.WorldPosition))
+    Draw draw = LoadDraw(frame, Scene.Draw);
+    if ((draw.Flags & FlagUncut) == 0 && IsCutAway(frame, input.WorldPosition))
     {
         discard;
     }
 
-    Material material = LoadMaterial();
-    uint texture = Scene.Texture;
+    Material material = LoadMaterial(draw.Material);
+    SamplerState sampler = Samplers[draw.Sampler];
+    uint texture = draw.Texture;
     float2 uv = input.Uv;
     if (material.Texture != None)
     {
@@ -610,7 +646,7 @@ float4 PixelMain(VertexOutput input) : SV_Target
         uv *= material.TextureScale;
     }
 
-    float4 albedo = Textures[texture].Sample(Samplers[Scene.Sampler], uv) * Scene.BaseColor;
+    float4 albedo = Textures[texture].Sample(sampler, uv) * draw.BaseColor;
     albedo.rgb *= material.Tint;
     float3 normal = normalize(input.Normal);
     float2 uvX = ddx(uv);
@@ -620,7 +656,7 @@ float4 PixelMain(VertexOutput input) : SV_Target
     float impasto = 0;
     if (material.Texture != None && material.Relief != None)
     {
-        float height = RaiseRelief(material, uv, uvX, uvY, positionX, positionY, normal);
+        float height = RaiseRelief(material, sampler, uv, uvX, uvY, positionX, positionY, normal);
         impasto = saturate(height / ImpastoCover);
     }
 
@@ -654,7 +690,7 @@ float4 PixelMain(VertexOutput input) : SV_Target
     }
 
     color = MuteOutside(frame, color, input.WorldPosition);
-    if ((Scene.Flags & FlagGreyed) != 0)
+    if ((draw.Flags & FlagGreyed) != 0)
     {
         color = dot(color, float3(0.2126, 0.7152, 0.0722));
     }

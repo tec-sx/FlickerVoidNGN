@@ -5,7 +5,8 @@ namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>
 /// The start of Shaders/Scene.hlsl's frame buffer: the view, the sun, the shadow atlas, the irradiance volume, and where the
-/// lights, shadows and clusters follow, the camera, the fog, the screen shadows, the depth fade, the cutaway and where the indoor volumes follow. 416 bytes.
+/// lights, shadows and clusters follow, the camera, the fog, the screen shadows, the depth fade, the cutaway and where the indoor
+/// volumes follow, the view of the frame before and where the draws follow. 496 bytes.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
 internal readonly record struct FrameData(
@@ -62,5 +63,10 @@ internal readonly record struct FrameData(
     uint IndoorCount,
     uint IndoorsOffset,
     uint Padding5,
-    uint Padding6);
+    uint Padding6,
+    Matrix4x4 PreviousViewProjection,
+    uint DrawsOffset,
+    uint Padding7,
+    uint Padding8,
+    uint Padding9);
 
