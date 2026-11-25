@@ -37,6 +37,7 @@ Each module's behaviour, API and decisions are in `Docs/Modules`; read the one y
 - `Characters.md`: point and click movement, bodies, paths and perception.
 - `Physics.md`: the physics interface, bodies and colliders, and the move to Jolt.
 - `Cameras.md`: shots, the director, layers, triggers, cues, scripting, the depth fade and cutaways.
+- `Environment.md`: curves of numbers and colors over time.
 - `Interaction.md`, `Maps.md`, `Inventory.md`, `Attributes.md` (attributes and abilities), `Flow.md`, `Story.md` (quests, knowledge and dialogue), `Saves.md` and `Ui.md` (the game's interface and stages).
 - `Creations.md`: the parts of creations: kinds, spawning under a placed entity and patching by part id.
 - `Projects.md`: users' projects, the solutions, `.fvproject` files, the editor's project picker and splash, Compile and Play, and the template.
