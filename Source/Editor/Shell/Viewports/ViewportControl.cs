@@ -477,7 +477,7 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         }
 
         renderer.ShowGrid = viewModel.IsGridVisible;
-        renderer.Mood = viewModel.Mood;
+        renderer.Mood = viewModel.GetDrawnMood();
         renderer.Meshes = viewModel.Scene.Meshes;
         viewModel.BuildOverlay(renderer.Overlay, size.Height);
         Camera camera = viewModel.Camera.ToCamera();

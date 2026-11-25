@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using System.Numerics;
 using System.Text.Json.Serialization;
 
+using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Serialization;
@@ -101,59 +103,67 @@ public sealed record LightingMood
     [ContentFile(".fvcanvas")]
     public string? Canvas { get; set; }
 
+    /// <summary>How far in front of the focus things start to darken.</summary>
+    public float DepthNearStart { get; set; } = 1;
+
+    /// <summary>How far in front of the focus things are darkened by the whole <see cref="DepthNearAmount"/>.</summary>
+    public float DepthNearEnd { get; set; } = 6;
+
+    /// <summary>How much the nearest things darken, from 0 (not at all) to 1 (black).</summary>
+    [Range(0, 1)]
+    public float DepthNearAmount { get; set; }
+
+    /// <summary>How far behind the focus things start to melt into <see cref="DepthFarColor"/>.</summary>
+    public float DepthFarStart { get; set; } = 2;
+
+    /// <summary>How far behind the focus things melt into <see cref="DepthFarColor"/> by the whole <see cref="DepthFarAmount"/>.</summary>
+    public float DepthFarEnd { get; set; } = 20;
+
+    /// <summary>How much the farthest things melt into <see cref="DepthFarColor"/>, from 0 (not at all) to 1 (all colour).</summary>
+    [Range(0, 1)]
+    public float DepthFarAmount { get; set; }
+
+    /// <summary>The haze far things melt into, as graded colour.</summary>
+    [Color]
+    public Vector3 DepthFarColor { get; set; } = new(0.82f, 0.8f, 0.76f);
+
     /// <summary>
     /// The mood <paramref name="amount"/> of the way from <paramref name="from"/> to <paramref name="to"/>: numbers and
     /// colors blend, the sun turns between its directions, and the paper and tonemapper swap halfway.
     /// </summary>
     public static LightingMood Lerp(LightingMood from, LightingMood to, float amount)
     {
-        Vector3 sunDirection = Vector3.Lerp(from.SunDirection, to.SunDirection, amount);
-        if (sunDirection.LengthSquared() > 1e-12f)
+        LightingMood blended = new();
+        IReadOnlyList<MoodValue> values = MoodValues.All;
+        for (int index = 0; index < values.Count; index++)
         {
-            sunDirection = Vector3.Normalize(sunDirection);
-        }
-        else
-        {
-            sunDirection = to.SunDirection;
+            values[index].Blend(from, to, amount, blended);
         }
 
-        string? canvas = from.Canvas;
-        Tonemapper tonemapper = from.Tonemapper;
-        if (amount >= 0.5f)
-        {
-            canvas = to.Canvas;
-            tonemapper = to.Tonemapper;
-        }
+        return blended;
+    }
 
-        return new LightingMood
-        {
-            SunDirection = sunDirection,
-            Ambient = float.Lerp(from.Ambient, to.Ambient, amount),
-            SunShadowDistance = float.Lerp(from.SunShadowDistance, to.SunShadowDistance, amount),
-            SunAngle = float.Lerp(from.SunAngle, to.SunAngle, amount),
-            FogDensity = float.Lerp(from.FogDensity, to.FogDensity, amount),
-            FogColor = Vector3.Lerp(from.FogColor, to.FogColor, amount),
-            FogAnisotropy = float.Lerp(from.FogAnisotropy, to.FogAnisotropy, amount),
-            FogHeight = float.Lerp(from.FogHeight, to.FogHeight, amount),
-            FogHeightFalloff = float.Lerp(from.FogHeightFalloff, to.FogHeightFalloff, amount),
-            AmbientOcclusion = float.Lerp(from.AmbientOcclusion, to.AmbientOcclusion, amount),
-            AmbientOcclusionRadius = float.Lerp(from.AmbientOcclusionRadius, to.AmbientOcclusionRadius, amount),
-            ContactShadowLength = float.Lerp(from.ContactShadowLength, to.ContactShadowLength, amount),
-            Bloom = float.Lerp(from.Bloom, to.Bloom, amount),
-            Exposure = float.Lerp(from.Exposure, to.Exposure, amount),
-            Contrast = float.Lerp(from.Contrast, to.Contrast, amount),
-            Saturation = float.Lerp(from.Saturation, to.Saturation, amount),
-            Tint = Vector3.Lerp(from.Tint, to.Tint, amount),
-            Tonemapper = tonemapper,
-            WhitePoint = float.Lerp(from.WhitePoint, to.WhitePoint, amount),
-            Canvas = canvas,
-        };
+    /// <summary>The painter's fade by depth its depth values spell.</summary>
+    public DepthFade ToDepthFade()
+    {
+        return new DepthFade(DepthNearStart, DepthNearEnd, DepthNearAmount, DepthFarStart, DepthFarEnd, DepthFarAmount, DepthFarColor);
     }
 
     /// <summary>This mood with neutral post-processing, for captures that need the light as it is.</summary>
     public LightingMood WithoutPost()
     {
-        return this with { Bloom = 0, Exposure = 1, Contrast = 1, Saturation = 1, Tint = Vector3.One, Tonemapper = Tonemapper.None, Canvas = null };
+        return this with
+        {
+            Bloom = 0,
+            Exposure = 1,
+            Contrast = 1,
+            Saturation = 1,
+            Tint = Vector3.One,
+            Tonemapper = Tonemapper.None,
+            Canvas = null,
+            DepthNearAmount = 0,
+            DepthFarAmount = 0,
+        };
     }
 }
 

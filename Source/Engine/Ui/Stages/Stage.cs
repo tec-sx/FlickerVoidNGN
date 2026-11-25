@@ -11,6 +11,7 @@ using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Rendering.Serialization;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -50,7 +51,8 @@ public sealed class Stage : IDisposable
         string? mood = SceneMood.Find(World);
         if (mood is not null)
         {
-            _renderer.Mood = content.Load(mood, RenderingJsonContext.Default.LightingMood);
+            MoodOverride file = content.Load(mood, RenderingJsonContext.Default.MoodOverride);
+            _renderer.Mood = file.ToMood();
         }
 
         _commands = device.CreateCommandList();

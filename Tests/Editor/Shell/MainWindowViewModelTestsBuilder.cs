@@ -8,6 +8,8 @@ using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Persistence.Layout;
+using FlickerVoid.Editor.Persistence.Projects;
+using FlickerVoid.Editor.Projects;
 using FlickerVoid.Editor.Viewports;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Scenes;
@@ -20,7 +22,7 @@ namespace FlickerVoid.Editor.Tests;
 
 /// <summary>
 /// Builds the main window's view model over a temporary content folder holding Room.fvscene and Hall.fvscene, each with a Lamp,
-/// Paper.fvmat, Night.fvmood, whose exposure is 0.5, Lantern.fvdata, a lantern of 6 hours, Cellar.fvflow, a flow with a start node, and Lit.fvscene, which names Night.fvmood as its mood; the user's answer to the unsaved files prompt is <see cref="Answer"/>.
+/// Paper.fvmat, Night.fvmood, whose exposure is 0.5, Lantern.fvdata, a lantern of 6 hours, Cellar.fvflow, a flow with a start node, and Lit.fvscene, which names Night.fvmood as its mood; the user's answer to the unsaved files prompt is <see cref="Answer"/>, and playing starts the substitute <see cref="Launcher"/>.
 /// <see cref="OpenStreet"/> opens a street with a van of a car file at the origin and a crate, seen in a 640x480 viewport.
 /// </summary>
 internal sealed class MainWindowViewModelTestsBuilder : IDisposable
@@ -34,6 +36,7 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
     public const string Cellar = "Cellar.fvflow";
     public const string Street = "Street.fvscene";
     public const string Van = "Vans/Van.fvvehicle";
+    public const string Program = "/game/Game.dll";
     public const int Width = 640;
     public const int Height = 480;
 
@@ -72,11 +75,22 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         InspectorViewModel inspector = new(_scene, files.Find);
         LayoutFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName(), "Layout.json");
         EditorLayout layout = new(LayoutFile);
-        ViewModel = new MainWindowViewModel(viewport, inspector, _content, layout: layout);
+        ScenePlayer player = new(_scene, Program, Launcher);
+        ViewModel = new MainWindowViewModel(viewport, inspector, _content, player, layout: layout);
         ViewModel.AskUnsaved = Ask;
     }
 
     public MainWindowViewModel ViewModel { get; }
+
+    /// <summary>Starts the game when the view model plays the scene.</summary>
+    public IGameLauncher Launcher { get; } = Substitute.For<IGameLauncher>();
+
+    /// <summary>The arguments of the last time the game was started.</summary>
+    public IReadOnlyList<string> PlayedArguments()
+    {
+        NSubstitute.Core.ICall call = Launcher.ReceivedCalls().Last();
+        return (IReadOnlyList<string>)call.GetArguments()[1]!;
+    }
 
     /// <summary>The editor layout's file, in a temporary folder of its own.</summary>
     public string LayoutFile { get; }

@@ -7,6 +7,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Runtime.Serialization;
@@ -24,15 +25,18 @@ namespace FlickerVoid.Engine.Rendering.Serialization;
     Converters = [typeof(Vector3JsonConverter)])]
 [JsonSerializable(typeof(Camera))]
 [JsonSerializable(typeof(MainCamera))]
-[JsonSerializable(typeof(DepthFadeOverride))]
 [JsonSerializable(typeof(MeshRenderer))]
 [JsonSerializable(typeof(MeshAnimator))]
 [JsonSerializable(typeof(PointLight))]
 [JsonSerializable(typeof(SpotLight))]
 [JsonSerializable(typeof(IrradianceVolume))]
 [JsonSerializable(typeof(LightingMood))]
+[JsonSerializable(typeof(MoodOverride))]
+[JsonSerializable(typeof(LightingEnvironment))]
+[JsonSerializable(typeof(CameraLens))]
 [JsonSerializable(typeof(TextureSettings))]
 [JsonSerializable(typeof(SceneMood))]
+[JsonSerializable(typeof(SceneEnvironment))]
 [JsonSerializable(typeof(IndoorVolume))]
 [JsonSerializable(typeof(Uncut))]
 [JsonSerializable(typeof(Doorway))]

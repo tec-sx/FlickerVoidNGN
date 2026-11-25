@@ -216,6 +216,45 @@ public sealed class MainWindowViewModelTests : IDisposable
     }
 
     [Fact]
+    public void PlaysASceneWithoutAMoodInTheGamesOwnLight()
+    {
+        _builder.ViewModel.Play();
+
+        _builder.PlayedArguments().Should().NotContain("--mood", "the game draws the scene's environment and clock");
+    }
+
+    [Fact]
+    public void PlaysTheScenesSavedMoodFromItsFile()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lit);
+
+        _builder.ViewModel.Play();
+
+        _builder.PlayedArguments().Should().NotContain("--mood");
+    }
+
+    [Fact]
+    public void PlaysWithTheViewportsMoodWhileItHasUnsavedEdits()
+    {
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lit);
+        _builder.Exposure().Value = 2;
+
+        _builder.ViewModel.Play();
+
+        _builder.PlayedArguments().Should().Contain("--mood");
+    }
+
+    [Fact]
+    public void PlaysWithTheDefaultMoodOnceItIsEdited()
+    {
+        _builder.Exposure().Value = 2;
+
+        _builder.ViewModel.Play();
+
+        _builder.PlayedArguments().Should().Contain("--mood");
+    }
+
+    [Fact]
     public void OpeningAMoodShowsItInTheViewportAndTheViewTab()
     {
         _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetTypes.Mood);
