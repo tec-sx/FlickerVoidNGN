@@ -10,8 +10,8 @@ namespace FlickerVoid.Editor.Core.Gizmos;
 /// <summary>
 /// The handles that move, rotate and scale a transform along the world axes or the transform's own (<see cref="Space"/>; scale
 /// handles always follow the transform's own, as its scale is along them): arrows, rings or cube-tipped lines that keep their
-/// size on screen, and for moving a square in the corner between each two arrows that moves on their plane, coloured as the axis
-/// it stands across, as in Unity and Godot. Finds the handle under the mouse, works out the transform as a handle is dragged, and draws itself. While
+/// size on screen, and for moving and scaling a small square in the corner between each two handles that moves or scales along
+/// both, coloured as the axis it stands across, as in Unity and Godot. Finds the handle under the mouse, works out the transform as a handle is dragged, and draws itself. While
 /// snapping is on, a move puts the dragged world axis on the grid (or moves in grid steps along a local one), a turn goes in
 /// steps of degrees, and a scale in steps of the scale the drag started from.
 /// </summary>
@@ -35,8 +35,8 @@ public sealed class TransformGizmo
     private const float MinScale = 0.001f;
 
     /// <summary>Where a plane handle's square starts and ends along both its axes, in handle lengths.</summary>
-    private const float PlaneNear = 0.2f;
-    private const float PlaneFar = 0.45f;
+    private const float PlaneNear = 0.15f;
+    private const float PlaneFar = 0.3f;
     private const float PlaneFill = 0.35f;
 
     private static readonly GizmoAxis[] Planes = [GizmoAxis.XY, GizmoAxis.YZ, GizmoAxis.XZ];
@@ -159,6 +159,8 @@ public sealed class TransformGizmo
                 return DragMove(ray);
             case GizmoMode.Rotate:
                 return DragRotate(ray);
+            case GizmoMode.Scale when IsPlane(Hovered):
+                return DragScaleOnPlane(ray);
             case GizmoMode.Scale:
                 return DragScale(ray, pixel);
             default:
@@ -211,7 +213,7 @@ public sealed class TransformGizmo
             overlay.AddCube(centre, CentreCube, centreColor);
         }
 
-        if (Mode == GizmoMode.Move)
+        if (Mode is GizmoMode.Move or GizmoMode.Scale)
         {
             DrawPlanes(overlay, centre, orientation, length);
         }
@@ -416,7 +418,7 @@ public sealed class TransformGizmo
         }
 
         // The arrows win where a square shows behind or over them, so a grab on an arrow always moves along it.
-        if (nearest == GizmoAxis.None && Mode == GizmoMode.Move && FindPlane(camera, centre, orientation, length, pixel, width, height) is { } plane)
+        if (nearest == GizmoAxis.None && (Mode is GizmoMode.Move or GizmoMode.Scale) && FindPlane(camera, centre, orientation, length, pixel, width, height) is { } plane)
         {
             return plane;
         }
@@ -522,6 +524,30 @@ public sealed class TransformGizmo
         float onAxis = Vector3.Dot(position, direction);
         float snapped = MoveSnap.Apply(onAxis);
         return position + (direction * (snapped - onAxis));
+    }
+
+    /// <summary>Scales both axes of the dragged plane handle alike, by how far the drag went along their diagonal.</summary>
+    private Transform DragScaleOnPlane(Ray ray)
+    {
+        Vector3 normal = GetPlaneNormal(Hovered, _orientation);
+        if (!ray.IntersectPlane(_start.Position, normal, out Vector3 hit))
+        {
+            return _start;
+        }
+
+        (GizmoAxis first, GizmoAxis second) = GetPlaneAxes(Hovered);
+        Vector3 firstDirection = GetDirection(first, _orientation);
+        Vector3 secondDirection = GetDirection(second, _orientation);
+        Vector3 diagonal = Vector3.Normalize(firstDirection + secondDirection);
+        float along = Vector3.Dot(hit - _startHit, diagonal);
+        float dragged = 1 + (along / _handleLength);
+        float factor = ScaleSnap.Apply(dragged);
+        Vector3 units = GetUnit(first) + GetUnit(second);
+        Vector3 factors = Vector3.One + (units * (factor - 1));
+        Transform scaled = _start;
+        Vector3 result = _start.Scale * factors;
+        scaled.Scale = Vector3.Max(result, new Vector3(MinScale));
+        return scaled;
     }
 
     private Transform DragRotate(Ray ray)
