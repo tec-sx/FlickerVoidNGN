@@ -1,4 +1,5 @@
 using FlickerVoid.Editor.Core.Menus;
+using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Assets.Tests;
 
@@ -33,7 +34,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
         AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.fvscene").WithFile("Moods/Night.fvmood").Build();
 
         browser.Items.Select(static item => item.Path).Should().Equal("Moods", "Scenes", "Room.glb");
-        browser.Items[0].Kind.Should().Be(AssetKind.Folder);
+        browser.Items[0].Type.Should().Be(AssetTypes.Folder);
     }
 
     [Fact]
@@ -138,7 +139,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     {
         AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.fvscene").WithFile("Scenes/Hall.fvscene").Build();
 
-        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Kind == AssetKind.Scene);
+        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Type == AssetTypes.Scene);
         browser.Assets.Should().HaveCount(2);
         browser.SearchText = "room";
 
@@ -174,7 +175,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
         AssetBrowserViewModel browser = _builder.WithFile("Scenes/Room.fvscene").Build();
         browser.SelectedFolder = browser.Folders[0].Children[0];
 
-        browser.CreateSceneCommand.Execute(null);
+        browser.Create(AssetTypes.Scene);
 
         browser.SelectedAsset!.Path.Should().Be("Scenes/New Scene.fvscene");
         browser.Assets.Should().Contain(browser.SelectedAsset);
@@ -186,8 +187,8 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     {
         AssetBrowserViewModel browser = _builder.Build();
 
-        browser.CreateMaterialCommand.Execute(null);
-        browser.CreateMaterialCommand.Execute(null);
+        browser.Create(AssetTypes.Material);
+        browser.Create(AssetTypes.Material);
 
         browser.Assets.Select(static asset => asset.Path).Should().Equal("New Material 2.fvmat", "New Material.fvmat");
         _builder.ReadFile("New Material.fvmat").Should().Contain("\"parameters\": {}");
@@ -228,7 +229,36 @@ public sealed class AssetBrowserViewModelTests : IDisposable
         AssetBrowserViewModel browser = _builder.Build();
 
         browser.NewChoices.Select(static choice => $"{choice.Group}/{choice.Name}").Should()
-            .Equal("/Folder", "/Scene", "Look/Material", "Look/Mood", "Look/Canvas", "Flow/Flow Graph");
+            .Equal("/Folder", "/Scene", "/Vehicle", "Look/Material", "Look/Mood", "Look/Canvas", "Flow/Flow Graph");
+    }
+
+    [Fact]
+    public void CreatesACarOnFourWheelsUnderAFreeName()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Vehicles/Van.fvvehicle").Build();
+        browser.SelectedFolder = browser.Folders[0].Children[0];
+        MenuChoice vehicle = browser.NewChoices.Single(static choice => choice.Name == "Vehicle");
+
+        vehicle.Run();
+        vehicle.Run();
+
+        browser.Assets.Select(static asset => asset.Path).Should().Equal("Vehicles/New Vehicle 2.fvvehicle", "Vehicles/New Vehicle.fvvehicle", "Vehicles/Van.fvvehicle");
+        browser.SelectedAsset!.Path.Should().Be("Vehicles/New Vehicle 2.fvvehicle");
+        VehicleFile made = _builder.ReadVehicle("Vehicles/New Vehicle.fvvehicle");
+        made.Schema.Should().Be("../.schemas/vehicle.schema.json");
+        made.Type.Should().Be(VehicleType.Car);
+        made.GetParts().Select(static part => part.Id).Should().Equal("body", "wheel.1L", "wheel.1R", "wheel.2L", "wheel.2R");
+    }
+
+    [Fact]
+    public void FiltersVehiclesByTheirOwnType()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Vehicles/Van.fvvehicle").WithFile("Room.glb").Build();
+
+        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Type == AssetTypes.Vehicle);
+
+        browser.Assets.Should().ContainSingle().Which.Path.Should().Be("Vehicles/Van.fvvehicle");
+        browser.Assets[0].Type.Icon.Should().Be("Vehicle");
     }
 
     [Fact]
@@ -236,9 +266,9 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     {
         AssetBrowserViewModel browser = _builder.Build();
 
-        browser.CreateFlowCommand.Execute(null);
+        browser.Create(AssetTypes.Flow);
 
-        browser.Assets.Should().ContainSingle().Which.Kind.Should().Be(AssetKind.Flow);
+        browser.Assets.Should().ContainSingle().Which.Type.Should().Be(AssetTypes.Flow);
         string text = _builder.ReadFile("New Flow.fvflow");
         text.Should().Contain("flow.schema.json").And.Contain("\"$type\": \"start\"");
     }
@@ -248,7 +278,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     {
         AssetBrowserViewModel browser = _builder.Build();
 
-        browser.CreateMoodCommand.Execute(null);
+        browser.Create(AssetTypes.Mood);
         browser.Assets.Select(static asset => asset.Path).Should().Equal("New Mood.fvmood");
 
         browser.CreateFolderCommand.Execute(null);
@@ -262,7 +292,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     {
         AssetBrowserViewModel browser = _builder.Build();
 
-        browser.CreateCanvasCommand.Execute(null);
+        browser.Create(AssetTypes.Canvas);
 
         browser.Assets.Select(static asset => asset.Path).Should().Equal("New Canvas.fvcanvas");
         _builder.ReadFile("New Canvas.fvcanvas").Should().Contain("canvas.schema.json");
@@ -338,7 +368,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     {
         AssetBrowserViewModel browser = _builder.WithFile("Room.fvmodel").WithSourceFile(outputFolder, "Room.glb").Build();
 
-        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Kind == AssetKind.Model);
+        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Type == AssetTypes.Model);
 
         browser.Assets.Select(static asset => asset.Path).Should().Equal(path);
     }

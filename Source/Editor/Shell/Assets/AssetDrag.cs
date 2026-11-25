@@ -25,7 +25,7 @@ public static class AssetDrag
     public static string? GetModel(IDataTransfer transfer)
     {
         AssetEntry? asset = transfer.TryGetValue(Format);
-        if (asset is not { Kind: AssetKind.Model })
+        if (asset is null || asset.Type != AssetTypes.Model)
         {
             return null;
         }

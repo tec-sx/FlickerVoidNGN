@@ -341,7 +341,7 @@ public sealed partial class AssetBrowserView : UserControl
         StyledElement? target = e.Source as StyledElement;
         switch (target?.DataContext)
         {
-            case AssetEntry { Kind: AssetKind.Folder } tile:
+            case AssetEntry tile when tile.Type == AssetTypes.Folder:
                 return tile.Path;
             case AssetFolder folder:
                 return folder.Path;

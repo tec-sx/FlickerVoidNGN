@@ -15,15 +15,14 @@ using FlickerVoid.Engine.Runtime.Data;
 namespace FlickerVoid.Editor.Assets;
 
 /// <summary>
-/// The asset browser: the content folder's tree, the files of the selected folder, and a kind filter and search that look
-/// through everything below it. Opening a file raises <see cref="Opened"/>, which the editor answers by kind. It creates,
+/// The asset browser: the content folder's tree, the files of the selected folder, and a type filter and search that look
+/// through everything below it. Opening a file raises <see cref="Opened"/>, which the editor answers by type. It creates,
 /// renames and deletes files and folders through the content manager, so their source files follow in a development build.
 /// Given the project's code folder, it shows it as a second root, Code, where it only writes new flow node classes.
 /// </summary>
 public sealed partial class AssetBrowserViewModel : ObservableObject
 {
     private const string SchemaFolder = ".schemas/";
-    private const string LookGroup = "Look";
     private const string FlowGroup = "Flow";
     private const string DataGroup = "Data Asset";
     private const string TableGroup = "Table";
@@ -52,14 +51,9 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         }
 
         List<AssetFilter> filters = [new AssetFilter("All", null)];
-        foreach (AssetKind kind in Enum.GetValues<AssetKind>())
+        foreach (AssetType type in AssetTypes.Files)
         {
-            if (kind == AssetKind.Folder)
-            {
-                continue;
-            }
-
-            filters.Add(new AssetFilter(kind.ToString(), kind));
+            filters.Add(new AssetFilter(type.Name, type));
         }
 
         Filters = filters;
@@ -67,19 +61,21 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         Refresh();
     }
 
-    /// <summary>Lists what <see cref="NewChoices"/> creates, with the data asset and table types <paramref name="data"/> registers, as again after the project's code is reloaded.</summary>
+    /// <summary>
+    /// Lists what <see cref="NewChoices"/> creates: a folder, each asset type New makes, and the data asset and table types
+    /// <paramref name="data"/> registers, as again after the project's code is reloaded.
+    /// </summary>
     [MemberNotNull(nameof(NewChoices))]
     public void ListDataTypes(DataTypes? data)
     {
-        List<MenuChoice> choices =
-        [
-            new("Folder", CreateFolder, Icon: "NewFolder"),
-            new("Scene", CreateScene, Icon: "Scene"),
-            new("Material", CreateMaterial, LookGroup, "Materials"),
-            new("Mood", CreateMood, LookGroup, "Mood"),
-            new("Canvas", CreateCanvas, LookGroup, "Canvas"),
-            new("Flow Graph", CreateFlow, FlowGroup, "Flow"),
-        ];
+        List<MenuChoice> choices = [new("Folder", CreateFolder, Icon: "NewFolder")];
+        foreach (AssetType type in AssetTypes.Files)
+        {
+            if (type.New is { } made)
+            {
+                choices.Add(new MenuChoice(made.Label, () => Create(type), made.Group, type.Icon));
+            }
+        }
         if (_hasCode)
         {
             choices.Add(new MenuChoice("Flow Node", NewFlowNode, FlowGroup, "Code"));
@@ -172,7 +168,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
             return;
         }
 
-        if (asset.Kind == AssetKind.Folder)
+        if (asset.Type == AssetTypes.Folder)
         {
             SelectFolder(asset.Path);
             return;
@@ -218,7 +214,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         }
 
         bool intoItself = folder == item.Path || folder.StartsWith(item.Path + "/", StringComparison.Ordinal);
-        if (item.Kind == AssetKind.Folder && intoItself)
+        if (item.Type == AssetTypes.Folder && intoItself)
         {
             Status = $"{item.Name} can't go into itself.";
             return;
@@ -253,48 +249,27 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         SelectFolder(path);
     }
 
-    [RelayCommand]
-    public void CreateScene()
+    /// <summary>Creates a file of the type, as its <see cref="AssetType.New"/> writes one, in the selected folder and selects it.</summary>
+    public void Create(AssetType type)
     {
-        CreateFile("New Scene", ".fvscene", "scene", "\"entities\": []");
-    }
-
-    [RelayCommand]
-    public void CreateMaterial()
-    {
-        CreateFile("New Material", ".fvmat", "material", "\"parameters\": {}");
-    }
-
-    [RelayCommand]
-    public void CreateMood()
-    {
-        CreateFile("New Mood", ".fvmood", "mood", null);
-    }
-
-    [RelayCommand]
-    public void CreateCanvas()
-    {
-        CreateFile("New Canvas", ".fvcanvas", "canvas", null);
-    }
-
-    [RelayCommand]
-    public void CreateFlow()
-    {
-        CreateFile("New Flow", FlowGraph.Extension, "flow", "\"nodes\": [ { \"$type\": \"start\", \"id\": \"start\" } ],\n  \"links\": []");
+        AssetNew made = type.New ?? throw new ArgumentException($"New makes no {type.Name} files.", nameof(type));
+        CreateFile(made.FileName, type.Extensions[0], made.Schema, made.Write);
     }
 
     /// <summary>Creates a data asset of the type registered under <paramref name="type"/>, with its default values.</summary>
     public void CreateData(string type)
     {
         string name = DisplayNames.FromIdentifier(type);
-        CreateFile($"New {name}", DataAssets.AssetExtension, "data", $"\"type\": \"{type}\"");
+        Func<string, string> write = AssetNew.Json($"\"type\": \"{type}\"");
+        CreateFile($"New {name}", DataAssets.AssetExtension, "data", write);
     }
 
     /// <summary>Creates an empty data table of the row type registered under <paramref name="type"/>.</summary>
     public void CreateTable(string type)
     {
         string name = DisplayNames.FromIdentifier(type);
-        CreateFile($"New {name} Table", DataAssets.TableExtension, "table", $"\"type\": \"{type}\",\n  \"rows\": {{}}");
+        Func<string, string> write = AssetNew.Json($"\"type\": \"{type}\",\n  \"rows\": {{}}");
+        CreateFile($"New {name} Table", DataAssets.TableExtension, "table", write);
     }
 
     /// <summary>Renames the selected file, keeping its extensions, or the selected folder when no file is selected.</summary>
@@ -320,7 +295,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
             string newPath = Combine(GetFolder(asset.Path), name + extension);
             if (Move(asset.Path, newPath))
             {
-                if (asset.Kind == AssetKind.Folder)
+                if (asset.Type == AssetTypes.Folder)
                 {
                     Refresh();
                 }
@@ -360,7 +335,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
             _imports.Remove(asset.Path);
             DeleteSettings(asset.Path);
             SelectedAsset = null;
-            if (asset.Kind == AssetKind.Folder)
+            if (asset.Type == AssetTypes.Folder)
             {
                 Refresh();
             }
@@ -551,11 +526,11 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         }
 
         string folder = SelectedFolder?.Path ?? Folders[0].Path;
-        AssetKind? kind = SelectedFilter?.Kind;
+        AssetType? type = SelectedFilter?.Type;
         string text = SearchText ?? "";
-        bool recursive = kind is not null || text.Length > 0;
+        bool recursive = type is not null || text.Length > 0;
         AssetCatalog catalog = FindCatalog(folder);
-        Assets = catalog.Find(folder, recursive, kind, text);
+        Assets = catalog.Find(folder, recursive, type, text);
         if (recursive || SelectedFolder is null)
         {
             Items = Assets;
@@ -565,14 +540,14 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         List<AssetEntry> items = [];
         foreach (AssetFolder child in SelectedFolder.Children)
         {
-            items.Add(new AssetEntry(child.Path, child.Name, AssetKind.Folder));
+            items.Add(new AssetEntry(child.Path, child.Name, AssetTypes.Folder));
         }
 
         items.AddRange(Assets);
         Items = items;
     }
 
-    private void CreateFile(string name, string extension, string schema, string? body)
+    private void CreateFile(string name, string extension, string schema, Func<string, string> write)
     {
         Status = "";
         string folder = SelectedFolder?.Path ?? "";
@@ -585,16 +560,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         AssetCatalog catalog = FindCatalog(folder);
         string local = folder[catalog.Prefix.Length..].TrimStart('/');
         string schemaPath = GetSchemaPath(local, schema);
-        StringBuilder text = new();
-        text.Append("{\n");
-        text.Append($"  \"$schema\": \"{schemaPath}\"");
-        if (body is not null)
-        {
-            text.Append($",\n  {body}");
-        }
-
-        text.Append("\n}\n");
-        string contents = text.ToString();
+        string contents = write(schemaPath);
         byte[] bytes = Encoding.UTF8.GetBytes(contents);
         _content.Write(path, bytes);
         SearchText = "";
@@ -666,7 +632,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
     private bool Exists(string path)
     {
-        AssetEntry entry = new(path, "", AssetKind.Other);
+        AssetEntry entry = new(path, "", AssetTypes.Other);
         string fullPath = GetFullPath(entry);
         return File.Exists(fullPath) || Directory.Exists(fullPath);
     }

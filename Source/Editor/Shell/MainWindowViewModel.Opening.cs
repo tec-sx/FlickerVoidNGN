@@ -65,36 +65,35 @@ public sealed partial class MainWindowViewModel
         OpenAsset(asset);
     }
 
-    private async void OpenAsset(AssetEntry asset)
+    private void OpenAsset(AssetEntry asset)
     {
-        switch (asset.Kind)
+        _openers ??= CreateOpeners();
+        if (_openers.TryGetValue(asset.Type, out Action<AssetEntry>? open))
         {
-            case AssetKind.Scene:
-                await OpenScene(asset.Path);
-                break;
-            case AssetKind.Material:
-                MaterialRequested?.Invoke(asset.Path);
-                break;
-            case AssetKind.Mood:
-                OpenMood(asset.Path);
-                break;
-            case AssetKind.Texture:
-            case AssetKind.Canvas:
-                OpenTexture(asset.Path);
-                break;
-            case AssetKind.Data:
-                OpenData(asset.Path);
-                break;
-            case AssetKind.Table:
-                OpenTable(asset.Path);
-                break;
-            case AssetKind.Flow:
-                OpenFlow(asset.Path);
-                break;
-            case AssetKind.Code:
-                OpenCode(asset);
-                break;
+            open(asset);
         }
+    }
+
+    /// <summary>The editor each type of file opens in; files of other types open nothing.</summary>
+    private Dictionary<AssetType, Action<AssetEntry>> CreateOpeners()
+    {
+        return new Dictionary<AssetType, Action<AssetEntry>>
+        {
+            [AssetTypes.Scene] = OpenSceneAsset,
+            [AssetTypes.Material] = asset => MaterialRequested?.Invoke(asset.Path),
+            [AssetTypes.Mood] = asset => OpenMood(asset.Path),
+            [AssetTypes.Texture] = asset => OpenTexture(asset.Path),
+            [AssetTypes.Canvas] = asset => OpenTexture(asset.Path),
+            [AssetTypes.Data] = asset => OpenData(asset.Path),
+            [AssetTypes.Table] = asset => OpenTable(asset.Path),
+            [AssetTypes.Flow] = asset => OpenFlow(asset.Path),
+            [AssetTypes.Code] = OpenCode,
+        };
+    }
+
+    private async void OpenSceneAsset(AssetEntry asset)
+    {
+        await OpenScene(asset.Path);
     }
 
     /// <summary>Edits an image's settings or a canvas in a texture editor window, previewed from the source images.</summary>
