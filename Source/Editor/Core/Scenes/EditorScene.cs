@@ -10,6 +10,7 @@ using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
+using FlickerVoid.Engine.Vehicles;
 
 using Microsoft.Extensions.Logging;
 
@@ -37,7 +38,7 @@ public sealed partial class EditorScene : IDisposable
     {
         _loggerFactory = loggerFactory;
         Content = content;
-        Game = CreateGame(loggerFactory, modules);
+        Game = CreateGame(loggerFactory, content, modules);
         Picker = new ScenePicker(Content) { Meshes = Meshes };
         _loader = CreateLoader(Game);
         _watcher = CreateWatcher();
@@ -165,7 +166,7 @@ public sealed partial class EditorScene : IDisposable
     {
         string? path = ScenePath;
         byte[]? captured = Capture();
-        Game game = CreateGame(_loggerFactory, modules);
+        Game game = CreateGame(_loggerFactory, Content, modules);
         SceneLoader loader = CreateLoader(game);
         try
         {
@@ -200,14 +201,17 @@ public sealed partial class EditorScene : IDisposable
         Picker.Dispose();
     }
 
-    private static Game CreateGame(ILoggerFactory loggerFactory, IReadOnlyList<IGameModule> modules)
+    /// <summary>A game over the content with what the editor shows (rendering, flows, input and vehicles), then the project's modules.</summary>
+    private static Game CreateGame(ILoggerFactory loggerFactory, IContentManager content, IReadOnlyList<IGameModule> modules)
     {
         Game game = new(loggerFactory);
         try
         {
+            game.Services.AddService(content);
             game.AddRendering();
             game.AddFlow();
             game.AddInput();
+            game.AddVehicles();
             foreach (IGameModule module in modules)
             {
                 module.Add(game);
