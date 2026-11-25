@@ -16,6 +16,9 @@ public sealed class SceneRendererTests : IDisposable
 
     private const string Quad = """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb" } } }""";
 
+    /// <summary>A part a module's mesh source makes, standing two metres below the view's centre, so a box four high covers the view.</summary>
+    private const string VanBody = """{ "name": "Van", "components": { "transform": { "position": [0, -2, 0] }, "meshRenderer": { "mesh": "Van.fvtest#body" } } }""";
+
     private static readonly Vector4 Red = new(1, 0, 0, 1);
     private static readonly uint RedPixel = SceneRendererTestsBuilder.Rgba(255, 0, 0, 255);
     private static readonly uint BlackPixel = SceneRendererTestsBuilder.Rgba(0, 0, 0, 255);
@@ -810,6 +813,37 @@ public sealed class SceneRendererTests : IDisposable
 
         uint bluePixel = SceneRendererTestsBuilder.Rgba(0, 0, 255, 255);
         pixels.Should().AllBeEquivalentTo(bluePixel);
+    }
+
+    [Fact]
+    public void DrawsTheMeshesAModuleMakes()
+    {
+        _builder.WithFile("Van.fvtest", "4");
+        _builder.WithMeshSource(new TestMeshSource());
+        _builder.WithScene(Camera, VanBody);
+
+        uint[] pixels = _builder.Render();
+
+        pixels.Should().OnlyContain(pixel => pixel != EmptyPixel && pixel != BlackPixel, "the box covers the whole view");
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        green.Should().Be(red, "a made solid is grey");
+        blue.Should().Be(red);
+    }
+
+    [Fact]
+    public void MakesAMeshAgainWhenItsFileChanges()
+    {
+        _builder.WithFile("Van.fvtest", "1");
+        _builder.WithMeshSource(new TestMeshSource());
+        _builder.WithScene(Camera, VanBody);
+        uint[] small = _builder.Render();
+
+        _builder.WithFile("Van.fvtest", "4");
+        _builder.NotifyChanged("Van.fvtest");
+        uint[] large = _builder.Render();
+
+        small.Should().AllBeEquivalentTo(EmptyPixel, "a box one metre high stands below the view");
+        large.Should().OnlyContain(pixel => pixel != EmptyPixel, "the box made again covers the view");
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using Arch.Core;
 
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -182,12 +183,13 @@ public sealed partial class EditorScene
     public bool IsHidden(Entity entity) => Game.World.IsAlive(entity) && Game.World.Has<Hidden>(entity);
 
     /// <summary>
-    /// Hides the entities and everything nested under them in the editor's views, or shows them again; only the editor's views
-    /// change, so it is neither saved nor undone, and the game shows them.
+    /// Hides the entities and everything nested under them in the editor's views, with the parts of creations, or shows them again;
+    /// only the editor's views change, so it is neither saved nor undone, and the game shows them.
     /// </summary>
     public void SetHidden(IEnumerable<Entity> entities, bool hidden)
     {
         World world = Game.World;
+        CreationParts? parts = Game.Services.GetService<CreationParts>();
         foreach (Entity entity in entities.ToList())
         {
             if (!world.IsAlive(entity))
@@ -196,10 +198,15 @@ public sealed partial class EditorScene
             }
 
             IReadOnlyList<Entity> descendants = GetDescendants(entity);
-            SetHidden(world, entity, hidden);
-            foreach (Entity descendant in descendants)
+            List<Entity> tree = [entity, .. descendants];
+            foreach (Entity member in tree)
             {
-                SetHidden(world, descendant, hidden);
+                SetHidden(world, member, hidden);
+                IReadOnlyList<Entity> memberParts = parts?.FindAll(member) ?? [];
+                foreach (Entity part in memberParts)
+                {
+                    SetHidden(world, part, hidden);
+                }
             }
         }
 

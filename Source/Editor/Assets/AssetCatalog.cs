@@ -1,44 +1,19 @@
-using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Editor.Assets;
 
 /// <summary>
 /// Lists the files and folders of a content folder for the asset browser, skipping hidden ones (a leading dot, such as the
-/// schemas and build caches), and tells each file's kind by its extension. Paths are content paths: a source folder built into
-/// a folder of the content folder lists its files under that folder's path, the <paramref name="prefix"/>. A code catalog
-/// (<see cref="ForCode"/>) lists a game project's source folder instead, without its build output.
+/// schemas and build caches), and tells each file's type by its extension (<see cref="AssetTypes"/>). A file owns the files in
+/// its folder named after it (<see cref="AssetType.IsCreation"/>), which are listed with it rather than on their own. Paths are
+/// content paths: a source folder built into a folder of the content folder lists its files under that folder's path, the
+/// <paramref name="prefix"/>. A code catalog (<see cref="ForCode"/>) lists a game project's source folder instead, without its
+/// build output.
 /// </summary>
 public sealed class AssetCatalog(string root, string prefix = "", string? name = null)
 {
     /// <summary>The path a code catalog lists its files under, which no content path starts with.</summary>
     public const string CodePrefix = "/Code";
-
-    private static readonly (string Suffix, AssetKind Kind)[] Suffixes =
-    [
-        (".fvscene", AssetKind.Scene),
-        (".fvmat", AssetKind.Material),
-        (".fvshader", AssetKind.Shader),
-        (".fvmood", AssetKind.Mood),
-        (".fvcanvas", AssetKind.Canvas),
-        (".fvdata", AssetKind.Data),
-        (".fvtable", AssetKind.Table),
-        (".fvflow", AssetKind.Flow),
-        (".glb", AssetKind.Model),
-        (".gltf", AssetKind.Model),
-        (".fvmodel", AssetKind.Model),
-        (".png", AssetKind.Texture),
-        (".jpg", AssetKind.Texture),
-        (".jpeg", AssetKind.Texture),
-        (".tga", AssetKind.Texture),
-        (".bmp", AssetKind.Texture),
-        (".reb", AssetKind.Texture),
-        (".dds", AssetKind.Texture),
-        (".hlsl", AssetKind.Shader),
-        (".hlsli", AssetKind.Shader),
-        (".spv", AssetKind.Shader),
-        (".cs", AssetKind.Code),
-    ];
 
     public string Root { get; } = root;
 
@@ -67,10 +42,11 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
     }
 
     /// <summary>
-    /// The visible files in the folder (or below it too when <paramref name="recursive"/>) of the kind, or of any kind when
-    /// null, whose name holds the text, ignoring case; sorted by path.
+    /// The visible files in the folder (or below it too when <paramref name="recursive"/>) of the type, or of any type when
+    /// null, whose name holds the text, ignoring case; sorted by path. A file owned by one that doesn't match is listed on its own
+    /// when it matches.
     /// </summary>
-    public IReadOnlyList<AssetEntry> Find(string folder, bool recursive, AssetKind? kind, string text)
+    public IReadOnlyList<AssetEntry> Find(string folder, bool recursive, AssetType? type, string text)
     {
         string fullFolder = GetFullPath(folder);
         List<AssetEntry> found = [];
@@ -79,7 +55,7 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
             return found;
         }
 
-        Collect(fullFolder, recursive, kind, text, found);
+        Collect(fullFolder, recursive, type, text, found);
         found.Sort(static (first, second) => StringComparer.OrdinalIgnoreCase.Compare(first.Path, second.Path));
         return found;
     }
@@ -144,43 +120,24 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
         return catalogs;
     }
 
-    /// <summary>The kind of the file at the full path.</summary>
-    public static AssetKind GetKind(string fullPath)
+    private void Collect(string fullFolder, bool recursive, AssetType? type, string text, List<AssetEntry> found)
     {
-        foreach ((string suffix, AssetKind kind) in Suffixes)
+        List<AssetEntry> groups = ReadGroups(fullFolder);
+        foreach (AssetEntry entry in groups)
         {
-            if (fullPath.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            if (Matches(entry, type, text))
             {
-                return kind;
-            }
-        }
-
-        return AssetKind.Other;
-    }
-
-    private void Collect(string fullFolder, bool recursive, AssetKind? kind, string text, List<AssetEntry> found)
-    {
-        foreach (string fullPath in Directory.EnumerateFiles(fullFolder))
-        {
-            if (IsHidden(fullPath) || fullPath.EndsWith(TextureSettings.Extension, StringComparison.OrdinalIgnoreCase))
-            {
+                found.Add(entry);
                 continue;
             }
 
-            string name = GetName(fullPath);
-            if (!name.Contains(text, StringComparison.OrdinalIgnoreCase))
+            foreach (AssetEntry owned in entry.Owned)
             {
-                continue;
+                if (Matches(owned, type, text))
+                {
+                    found.Add(owned);
+                }
             }
-
-            AssetKind fileKind = GetKind(fullPath);
-            if (kind is not null && fileKind != kind)
-            {
-                continue;
-            }
-
-            string path = ToContentPath(fullPath);
-            found.Add(new AssetEntry(path, name, fileKind));
         }
 
         if (!recursive)
@@ -192,9 +149,104 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
         {
             if (!IsSkipped(subfolder))
             {
-                Collect(subfolder, recursive, kind, text, found);
+                Collect(subfolder, recursive, type, text, found);
             }
         }
+    }
+
+    private static bool Matches(AssetEntry entry, AssetType? type, string text)
+    {
+        return entry.Name.Contains(text, StringComparison.OrdinalIgnoreCase) && (type is null || entry.Type == type);
+    }
+
+    /// <summary>The folder's visible files that no other file owns, each with the files it owns, sorted by name.</summary>
+    private List<AssetEntry> ReadGroups(string fullFolder)
+    {
+        List<string> fileNames = [];
+        foreach (string fullPath in Directory.EnumerateFiles(fullFolder))
+        {
+            if (!IsHidden(fullPath))
+            {
+                string fileName = Path.GetFileName(fullPath);
+                fileNames.Add(fileName);
+            }
+        }
+
+        fileNames.Sort(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> owners = [];
+        foreach (string fileName in fileNames)
+        {
+            if (FindOwner(fileName, fileNames) is { } owner)
+            {
+                owners.Add(fileName, owner);
+            }
+        }
+
+        List<AssetEntry> groups = [];
+        foreach (string fileName in fileNames)
+        {
+            if (owners.ContainsKey(fileName))
+            {
+                continue;
+            }
+
+            AssetEntry entry = CreateEntry(fullFolder, fileName);
+            List<AssetEntry> owned = [];
+            foreach (string ownedName in fileNames)
+            {
+                if (owners.GetValueOrDefault(ownedName) == fileName)
+                {
+                    AssetEntry file = CreateEntry(fullFolder, ownedName);
+                    owned.Add(file with { Owner = entry.Path });
+                }
+            }
+
+            groups.Add(entry with { Owned = owned });
+        }
+
+        return groups;
+    }
+
+    /// <summary>
+    /// The file that owns the named one: of the files whose key (<see cref="GetKey"/>) and a dot start its name, the one with the
+    /// shortest key, shorter than its own, so the files of a group all start with the group's name.
+    /// </summary>
+    private static string? FindOwner(string fileName, List<string> fileNames)
+    {
+        string? owner = null;
+        int ownerKeyLength = GetKey(fileName).Length;
+        foreach (string other in fileNames)
+        {
+            string key = GetKey(other);
+            if (key.Length < ownerKeyLength && fileName.StartsWith(key + ".", StringComparison.OrdinalIgnoreCase))
+            {
+                owner = other;
+                ownerKeyLength = key.Length;
+            }
+        }
+
+        return owner;
+    }
+
+    /// <summary>What a file's owned files are named after: a creation's name without extensions, else the whole file name.</summary>
+    private static string GetKey(string fileName)
+    {
+        AssetType type = AssetTypes.Find(fileName);
+        if (type.IsCreation)
+        {
+            return GetName(fileName);
+        }
+
+        return fileName;
+    }
+
+    private AssetEntry CreateEntry(string fullFolder, string fileName)
+    {
+        string fullPath = Path.Combine(fullFolder, fileName);
+        string path = ToContentPath(fullPath);
+        string name = GetName(fileName);
+        AssetType type = AssetTypes.Find(fileName);
+        return new AssetEntry(path, name, type);
     }
 
     private AssetFolder ReadFolder(string fullFolder, string path, string name)
@@ -251,9 +303,9 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
     }
 
     /// <summary>The file name without its extensions: Room for Room.fvscene.</summary>
-    private static string GetName(string fullPath)
+    private static string GetName(string fileName)
     {
-        string name = Path.GetFileName(fullPath);
+        string name = Path.GetFileName(fileName);
         int dot = name.IndexOf('.', StringComparison.Ordinal);
         if (dot > 0)
         {

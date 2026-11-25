@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Creations/FlickerVoid.Engine.Creations.csproj" />
+    <ProjectReference Include="../Rendering/FlickerVoid.Engine.Rendering.csproj" />
+  </ItemGroup>
+</Project>

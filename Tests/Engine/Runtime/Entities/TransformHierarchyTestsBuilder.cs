@@ -26,6 +26,12 @@ internal sealed class TransformHierarchyTestsBuilder : IDisposable
         return entity;
     }
 
+    public Entity AddUnnamed(Vector3 position)
+    {
+        Transform transform = new() { Position = position };
+        return World.Create(transform);
+    }
+
     public void Move(Entity entity, Vector3 position, Quaternion? rotation = null, Vector3? scale = null)
     {
         Transform transform = World.Get<Transform>(entity);

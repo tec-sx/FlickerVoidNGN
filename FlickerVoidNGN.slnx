@@ -15,6 +15,7 @@
     <Project Path="Source/Engine/Attributes/FlickerVoid.Engine.Attributes.csproj" />
     <Project Path="Source/Engine/Cameras/FlickerVoid.Engine.Cameras.csproj" />
     <Project Path="Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
+    <Project Path="Source/Engine/Creations/FlickerVoid.Engine.Creations.csproj" />
     <Project Path="Source/Engine/Interaction/FlickerVoid.Engine.Interaction.csproj" />
     <Project Path="Source/Engine/Inventory/FlickerVoid.Engine.Inventory.csproj" />
     <Project Path="Source/Engine/Maps/FlickerVoid.Engine.Maps.csproj" />
@@ -31,6 +32,7 @@
     <Project Path="Source/Engine/Runtime/FlickerVoid.Engine.Runtime.csproj" />
     <Project Path="Source/Engine/Story/FlickerVoid.Engine.Story.csproj" />
     <Project Path="Source/Engine/Ui/FlickerVoid.Engine.Ui.csproj" />
+    <Project Path="Source/Engine/Vehicles/FlickerVoid.Engine.Vehicles.csproj" />
   </Folder>
   <Folder Name="/Source/Tools/">
     <Project Path="Source/Tools/Builder/FlickerVoid.Tools.Builder.csproj" />
@@ -50,6 +52,7 @@
     <Project Path="Tests/Engine/Attributes/FlickerVoid.Engine.Attributes.Tests.csproj" />
     <Project Path="Tests/Engine/Cameras/FlickerVoid.Engine.Cameras.Tests.csproj" />
     <Project Path="Tests/Engine/Characters/FlickerVoid.Engine.Characters.Tests.csproj" />
+    <Project Path="Tests/Engine/Creations/FlickerVoid.Engine.Creations.Tests.csproj" />
     <Project Path="Tests/Engine/Interaction/FlickerVoid.Engine.Interaction.Tests.csproj" />
     <Project Path="Tests/Engine/Inventory/FlickerVoid.Engine.Inventory.Tests.csproj" />
     <Project Path="Tests/Engine/Maps/FlickerVoid.Engine.Maps.Tests.csproj" />
@@ -65,6 +68,7 @@
     <Project Path="Tests/Engine/Runtime/FlickerVoid.Engine.Runtime.Tests.csproj" />
     <Project Path="Tests/Engine/Story/FlickerVoid.Engine.Story.Tests.csproj" />
     <Project Path="Tests/Engine/Ui/FlickerVoid.Engine.Ui.Tests.csproj" />
+    <Project Path="Tests/Engine/Vehicles/FlickerVoid.Engine.Vehicles.Tests.csproj" />
   </Folder>
   <Folder Name="/Tests/Tools/">
     <Project Path="Tests/Tools/Builder/FlickerVoid.Tools.Builder.Tests.csproj" />
