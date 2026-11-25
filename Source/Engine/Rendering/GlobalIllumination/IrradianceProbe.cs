@@ -5,7 +5,7 @@ namespace FlickerVoid.Engine.Rendering.GlobalIllumination;
 
 /// <summary>
 /// The light arriving at a point from every direction, as first-order spherical harmonics already convolved for diffuse
-/// surfaces: per color channel, the constant term and the x, y and z terms. 48 bytes, as Shaders/Scene.hlsl reads it.
+/// surfaces: per color channel, the constant term and the x, y and z terms. 48 bytes, as Shaders/Lighting.hlsl reads it.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public readonly record struct IrradianceProbe(Vector4 Red, Vector4 Green, Vector4 Blue)

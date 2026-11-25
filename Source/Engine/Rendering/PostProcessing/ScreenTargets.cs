@@ -22,7 +22,7 @@ internal sealed class ScreenTargets : IDisposable
 
     public int Height { get; private set; }
 
-    /// <summary>The geometry pass draws into it, the scene pass tests against it and the screen shadows pass reads it.</summary>
+    /// <summary>The geometry pass draws into it; the screen shadows and lighting passes read it.</summary>
     public ITexture Depth { get; private set; } = null!;
 
     /// <summary>What the geometry pass leaves at every pixel for lighting.</summary>
@@ -48,7 +48,7 @@ internal sealed class ScreenTargets : IDisposable
         Dispose();
         Width = width;
         Height = height;
-        TextureDescription hdr = new(width, height, HdrFormat, TextureUsage.RenderTarget | TextureUsage.ShaderRead) { Name = "Scene HDR" };
+        TextureDescription hdr = new(width, height, HdrFormat, TextureUsage.RenderTarget | TextureUsage.ShaderRead | TextureUsage.ShaderWrite) { Name = "Scene HDR" };
         Hdr = _device.CreateTexture(hdr);
         TextureDescription depth = new(width, height, SceneRenderer.DepthFormat, TextureUsage.DepthStencil | TextureUsage.ShaderRead) { Name = "Scene depth" };
         Depth = _device.CreateTexture(depth);
