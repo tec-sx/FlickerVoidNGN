@@ -244,6 +244,71 @@ public sealed class MoodSystemTests : IDisposable
     }
 
     [Fact]
+    public void ShowsAShotsMoodAtOnceWhenItCutsEvenAfterTheFramesUpdate()
+    {
+        _builder.Spawn(DayScene);
+        MoodSystem moods = _builder.Build();
+        _builder.Update();
+
+        moods.SetShotMood(MoodSystemTestsBuilder.Night, 0);
+
+        moods.Current.Exposure.Should().Be(MoodSystemTestsBuilder.NightExposure);
+    }
+
+    [Fact]
+    public void BlendsToAShotsMoodOverTheSecondsGiven()
+    {
+        _builder.Spawn(DayScene);
+        MoodSystem moods = _builder.Build();
+        _builder.Update();
+
+        moods.SetShotMood(MoodSystemTestsBuilder.Night, 1);
+        _builder.Update(0.5f);
+
+        float halfway = (MoodSystemTestsBuilder.DayExposure + MoodSystemTestsBuilder.NightExposure) / 2;
+        moods.Current.Exposure.Should().BeApproximately(halfway, Precision);
+    }
+
+    [Fact]
+    public void ReturnsToTheScenesMoodWhenTheShotsMoodIsTakenOff()
+    {
+        _builder.Spawn(DayScene);
+        MoodSystem moods = _builder.Build();
+        _builder.Update();
+        moods.SetShotMood(MoodSystemTestsBuilder.Night, 0);
+
+        moods.SetShotMood(null, 0);
+
+        moods.Current.Exposure.Should().Be(MoodSystemTestsBuilder.DayExposure);
+    }
+
+    [Fact]
+    public void LaysTheShotsMoodOverTheStorys()
+    {
+        _builder.WithNightRule();
+        MoodSystem moods = _builder.Build();
+        _builder.SetNight(1);
+        _builder.Update();
+
+        moods.SetShotMood(MoodSystemTestsBuilder.Storm, 0);
+
+        moods.Current.Exposure.Should().Be(MoodSystemTestsBuilder.StormExposure);
+    }
+
+    [Fact]
+    public void AppliesAnEditedShotMoodAtOnce()
+    {
+        MoodSystem moods = _builder.Build();
+        _builder.Update();
+        moods.SetShotMood(MoodSystemTestsBuilder.Night, 0);
+
+        _builder.EditFile(MoodSystemTestsBuilder.Night, """{ "exposure": 0.7 }""");
+        _builder.Update(0.01f);
+
+        moods.Current.Exposure.Should().Be(0.7f);
+    }
+
+    [Fact]
     public void DrawsWithoutAMoodThatIsMissingAndLogsIt()
     {
         _builder.Spawn("""{ "sceneMood": { "mood": "Lost.fvmood" } }""");

@@ -89,6 +89,12 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
     /// <summary>The shot drawn now, or <see cref="Entity.Null"/> before the first frame or without shots.</summary>
     public Entity Live { get; private set; } = Entity.Null;
 
+    /// <summary>
+    /// The seconds the switch to the live shot moves over on screen: a cross-fade's or blend's duration, and 0 after a cut, a fade
+    /// (whose shot goes live while the world is dark), the scene's start or a load.
+    /// </summary>
+    public float SwitchSeconds { get; private set; }
+
     /// <summary>The shots <see cref="Return"/> goes back to, the latest last.</summary>
     public IReadOnlyList<Entity> Stack => _stack;
 
@@ -222,11 +228,11 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
                 break;
             case TransitionKind.CrossFade:
                 StartCrossFade(transition.Duration);
-                GoLive(shot);
+                GoLive(shot, transition.Duration);
                 break;
             case TransitionKind.Blend:
                 StartBlend(transition);
-                GoLive(shot);
+                GoLive(shot, transition.Duration);
                 break;
             default:
                 EndMoves();
@@ -538,13 +544,15 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         _blend = 1;
     }
 
-    private void GoLive(Entity shot)
+    private void GoLive(Entity shot, float seconds = 0)
     {
         Entity previous = Live;
         if (previous == shot)
         {
             return;
         }
+
+        SwitchSeconds = MathF.Max(seconds, 0);
 
         if (World.IsAlive(previous) && World.Has<ActiveCamera>(previous))
         {
