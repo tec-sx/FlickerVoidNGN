@@ -51,6 +51,9 @@ public sealed class RenderContext
     /// <summary>Whether the sky fills what the scene left empty.</summary>
     public bool Sky { get; internal set; }
 
+    /// <summary>What the frame shows: the lit frame, or one of the G-buffer's targets or the depth in its place.</summary>
+    public DebugView DebugView { get; internal set; }
+
     /// <summary>The depth fade post-processing draws.</summary>
     public DepthFade DepthFade { get; internal set; }
 
@@ -63,7 +66,7 @@ public sealed class RenderContext
     /// <summary>What the frame drew and culled so far.</summary>
     public RenderStatistics Statistics { get; } = new();
 
-    /// <summary>The scene's depth, which passes after the opaque pass can test against, such as overlays drawn over the output.</summary>
+    /// <summary>The scene's depth, which passes after the geometry pass can test against, such as overlays drawn over the output.</summary>
     public ITexture Depth => Targets.Depth;
 
     /// <summary>What the geometry pass left at every pixel for lighting, beside the depth.</summary>

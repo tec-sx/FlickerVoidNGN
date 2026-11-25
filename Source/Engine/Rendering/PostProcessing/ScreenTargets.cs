@@ -48,7 +48,7 @@ internal sealed class ScreenTargets : IDisposable
         Dispose();
         Width = width;
         Height = height;
-        TextureDescription hdr = new(width, height, HdrFormat, TextureUsage.RenderTarget | TextureUsage.ShaderRead | TextureUsage.ShaderWrite) { Name = "Scene HDR" };
+        TextureDescription hdr = new(width, height, HdrFormat, TextureUsage.ShaderRead | TextureUsage.ShaderWrite) { Name = "Scene HDR" };
         Hdr = _device.CreateTexture(hdr);
         TextureDescription depth = new(width, height, SceneRenderer.DepthFormat, TextureUsage.DepthStencil | TextureUsage.ShaderRead) { Name = "Scene depth" };
         Depth = _device.CreateTexture(depth);

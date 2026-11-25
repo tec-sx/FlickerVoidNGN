@@ -28,7 +28,8 @@ namespace FlickerVoid.Engine.Rendering;
 /// Draws a frame: extracts the world into a <see cref="RenderScene"/>, lets every pass of the <see cref="Pipeline"/> prepare,
 /// uploads the frame's view, lights, shadows, clusters and probes, then records the passes in order. The default passes skin
 /// meshes, gather lights, draw the shadow atlas, the depth and G-buffer and the screen shadows, light the G-buffer into HDR,
-/// post-process it graded as the <see cref="Mood"/> says, and draw the outlines of outlined meshes.
+/// post-process it graded as the <see cref="Mood"/> says, show a <see cref="DebugView"/> in its place when one is asked for, and
+/// draw the outlines of outlined meshes.
 /// </summary>
 public sealed class SceneRenderer : IDisposable
 {
@@ -85,6 +86,7 @@ public sealed class SceneRenderer : IDisposable
         Pipeline.Add(new LightingPass(device, shaders));
         Pipeline.Add(new PostProcessPass(device, shaders, colorFormat, content));
         Pipeline.Add(new SkyPass(device, shaders, colorFormat));
+        Pipeline.Add(new DebugViewPass(device, shaders, colorFormat));
         Pipeline.Add(new OutlinePass(device, shaders, colorFormat));
     }
 
@@ -115,6 +117,9 @@ public sealed class SceneRenderer : IDisposable
     /// previews and probe bakes leave the background empty.
     /// </summary>
     public bool Sky { get; set; }
+
+    /// <summary>What it shows: the lit frame by default, or one of the G-buffer's targets or the depth in its place.</summary>
+    public DebugView DebugView { get; set; }
 
     /// <summary>Whether the depth fade is drawn; on by default.</summary>
     public bool DepthFades { get; set; } = true;
@@ -213,6 +218,7 @@ public sealed class SceneRenderer : IDisposable
         context.LocalLights = LocalLights;
         context.Probes = Probes;
         context.Sky = Sky;
+        context.DebugView = DebugView;
         context.DepthFade = default;
         if (DepthFades)
         {
