@@ -61,6 +61,12 @@ internal sealed class WorldExtractorTestsBuilder : IDisposable
         return this;
     }
 
+    public WorldExtractorTestsBuilder WithDoorway(Doorway doorway, Transform transform)
+    {
+        _world.Create(doorway, transform);
+        return this;
+    }
+
     public WorldExtractorTestsBuilder WithGreybox(Greybox greybox, Transform transform)
     {
         _world.Create(greybox, transform);

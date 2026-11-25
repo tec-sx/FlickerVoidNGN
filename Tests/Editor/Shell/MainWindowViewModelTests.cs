@@ -130,7 +130,8 @@ public sealed class MainWindowViewModelTests : IDisposable
         NumberFieldViewModel hours = (NumberFieldViewModel)((Core.Data.DataObjectViewModel)_builder.ViewModel.DataContent!).Fields.Single();
         hours.Value = 9;
 
-        _builder.ViewModel.GetHistory(sidePanelFocused: true)!.Undo();
+        _builder.ViewModel.SidePanelFocused = true;
+        _builder.ViewModel.GetHistory()!.Undo();
 
         NumberFieldViewModel shown = (NumberFieldViewModel)((Core.Data.DataObjectViewModel)_builder.ViewModel.DataContent!).Fields.Single();
         shown.Value.Should().Be(6);
@@ -155,7 +156,7 @@ public sealed class MainWindowViewModelTests : IDisposable
     {
         _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetTypes.Data);
 
-        UndoHistory? history = _builder.ViewModel.GetHistory(sidePanelFocused: false);
+        UndoHistory? history = _builder.ViewModel.GetHistory();
 
         history.Should().BeSameAs(_builder.Scene.History);
     }

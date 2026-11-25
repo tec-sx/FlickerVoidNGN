@@ -37,7 +37,7 @@ public sealed partial class MainWindow : Window
         AddHandler(GotFocusEvent, (_, _) => TrackSidePanelFocus(), RoutingStrategies.Bubble, handledEventsToo: true);
     }
 
-    /// <summary>The history of what the keyboard is in: the View or Data tab's file, else the scene.</summary>
+    /// <summary>The history of what the keyboard is in: the View or Data tab's file, else the viewport's.</summary>
     private UndoHistory? FindHistory()
     {
         if (DataContext is not MainWindowViewModel main)
@@ -46,10 +46,10 @@ public sealed partial class MainWindow : Window
         }
 
         TrackSidePanelFocus();
-        return main.GetHistory(main.SidePanelFocused);
+        return main.GetHistory();
     }
 
-    /// <summary>Tells the view model whether the keyboard is in the side panel, so the top bar's undo and redo follow it.</summary>
+    /// <summary>Tells the view model whether the keyboard is in the context panel or the outliner, so the top bar's undo and redo follow it.</summary>
     private void TrackSidePanelFocus()
     {
         if (DataContext is not MainWindowViewModel main)
@@ -58,7 +58,10 @@ public sealed partial class MainWindow : Window
         }
 
         TabControl side = this.GetControl<TabControl>("SidePanel");
-        main.SidePanelFocused = FocusManager?.GetFocusedElement() is Visual focused && side.IsVisualAncestorOf(focused);
+        TabControl outliner = this.GetControl<TabControl>("Outliner");
+        Visual? focused = FocusManager?.GetFocusedElement() as Visual;
+        main.SidePanelFocused = focused is not null && side.IsVisualAncestorOf(focused);
+        main.OutlinerFocused = focused is not null && outliner.IsVisualAncestorOf(focused);
     }
 
     private void HandleOutlineDelete()

@@ -15,12 +15,42 @@ namespace FlickerVoid.Editor;
 
 public sealed partial class MainWindowViewModel
 {
-    /// <summary>The index of the Vehicle tab under the scene outliner, shown while a vehicle is made.</summary>
-    public const int CreatorTab = 3;
-
     /// <summary>The vehicle creator's panel while a vehicle is made, else null.</summary>
     [ObservableProperty]
     public partial VehiclePanelViewModel? CreatorPanel { get; private set; }
+
+    partial void OnCreatorPanelChanged(VehiclePanelViewModel? oldValue, VehiclePanelViewModel? newValue)
+    {
+        if (oldValue is not null)
+        {
+            oldValue.PropertyChanged -= HandleCreatorPanelChanged;
+        }
+
+        if (newValue is not null)
+        {
+            newValue.PropertyChanged += HandleCreatorPanelChanged;
+        }
+
+        OnPropertyChanged(nameof(CreatorParts));
+    }
+
+    private void HandleCreatorPanelChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(VehiclePanelViewModel.Parts))
+        {
+            OnPropertyChanged(nameof(CreatorParts));
+        }
+    }
+
+    /// <summary>The ids of the creation's parts, for the outliner's Parts tab; empty in the scene.</summary>
+    public IReadOnlyList<string> CreatorParts => CreatorPanel?.Parts ?? [];
+
+    /// <summary>The part selected in the Parts tab and the viewport alike, or null.</summary>
+    public string? CreatorPart
+    {
+        get => Viewport.Creator?.SelectedPart;
+        set => Viewport.Creator?.SelectPart(value);
+    }
 
     /// <summary>The file of the creation being made, marked with an asterisk when it has unsaved edits; empty in the scene.</summary>
     public string CreatorHeading
@@ -115,8 +145,10 @@ public sealed partial class MainWindowViewModel
     private void EnterCreator(CreatorMode creator, string file, VehiclePanelViewModel panel)
     {
         Viewport.EnterCreator(creator, file);
+        creator.PartSelected += () => OnPropertyChanged(nameof(CreatorPart));
         CreatorPanel = panel;
-        SideTab = CreatorTab;
+        ShowContext(CreatorTab);
+        OutlinerTab = PartsTab;
         Viewport.Status = $"Making {file}. Escape, or a double-click beside it, goes back to the level.";
     }
 
@@ -167,13 +199,15 @@ public sealed partial class MainWindowViewModel
         if (Viewport.Creator is null)
         {
             CreatorPanel = null;
-            if (SideTab == CreatorTab)
+            HideContext(CreatorTab);
+            if (OutlinerTab == PartsTab)
             {
-                SideTab = 0;
+                OutlinerTab = SceneTab;
             }
         }
 
         OnPropertyChanged(nameof(CreatorHeading));
+        OnPropertyChanged(nameof(CreatorPart));
         DuplicateAndEditCommand.NotifyCanExecuteChanged();
         WatchHistory();
     }

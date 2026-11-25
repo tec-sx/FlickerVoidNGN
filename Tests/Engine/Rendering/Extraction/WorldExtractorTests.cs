@@ -63,6 +63,18 @@ public sealed class WorldExtractorTests : IDisposable
     }
 
     [Fact]
+    public void DrawsNeitherTheOutlinesNorTheDoorwaysOfGreyedEntities()
+    {
+        Outline outline = new() { Color = new Vector3(1, 0, 0) };
+        Doorway doorway = new();
+
+        RenderScene scene = _builder.WithMesh("Door.glb", new Transform(), outline).WithDoorway(doorway, new Transform()).MarkAll(new Greyed()).Extract();
+
+        scene.Meshes.Should().ContainSingle("a greyed level shows no markers");
+        scene.Meshes[0].Outline.Should().BeNull();
+    }
+
+    [Fact]
     public void LeavesOutTheMeshesAndLightsOfUndrawnEntities()
     {
         Greybox greybox = new();

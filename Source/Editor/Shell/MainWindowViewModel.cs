@@ -16,6 +16,7 @@ using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Core.Viewports;
+using FlickerVoid.Editor.Persistence.Layout;
 using FlickerVoid.Editor.Persistence.Projects;
 using FlickerVoid.Editor.Projects;
 using FlickerVoid.Editor.Viewports;
@@ -58,7 +59,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// Shows the scene over <paramref name="content"/>, the scene's content with its unsaved edits; <paramref name="player"/>
     /// plays it in the project's game, when a project is open, and the asset browser shows <paramref name="codeFolder"/>, the
     /// project's source folder; <paramref name="compiler"/> builds the project's code again and reloads it, and
-    /// <paramref name="solution"/> is the project's solution, opened in Visual Studio.
+    /// <paramref name="solution"/> is the project's solution, opened in Visual Studio; <paramref name="layout"/> remembers how the panels
+    /// are arranged.
     /// </summary>
     public MainWindowViewModel(
         ViewportViewModel viewport,
@@ -67,8 +69,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ScenePlayer? player = null,
         string? codeFolder = null,
         GameCompiler? compiler = null,
-        string? solution = null)
+        string? solution = null,
+        EditorLayout? layout = null)
     {
+        _layout = layout;
         _player = player;
         _compiler = compiler;
         _solution = solution;
@@ -90,6 +94,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         viewport.Scene.Edited += HandleSceneEdited;
         viewport.CreationRequested += EditCreation;
         viewport.PropertyChanged += HandleViewportChanged;
+        viewport.Selection.Changed += HandleSelectionChanged;
         ShowSceneMood();
         WatchHistory();
     }
@@ -132,7 +137,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    /// <summary>What the Data tab edits: the form of the data asset or the rows of the table last opened in the content browser.</summary>
+    /// <summary>What the Data tab edits: the form of the data asset or the rows of the table last opened in the content browser, until it is closed.</summary>
     [ObservableProperty]
     public partial object? DataContent { get; private set; }
 
@@ -154,24 +159,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return _dataPath;
         }
     }
-
-    /// <summary>The index of the View tab under the scene outliner.</summary>
-    public const int ViewTab = 1;
-
-    /// <summary>The index of the Data tab under the scene outliner.</summary>
-    public const int DataTab = 2;
-
-    /// <summary>Whether the keyboard is in the side panel, which makes the top bar's undo and redo work on the View or Data tab's file.</summary>
-    [ObservableProperty]
-    public partial bool SidePanelFocused { get; set; }
-
-    partial void OnSidePanelFocusedChanged(bool value) => WatchHistory();
-
-    partial void OnSideTabChanged(int value) => WatchHistory();
-
-    /// <summary>The open tab under the scene outliner: 0 inspector, 1 view, 2 data, 3 the creator's.</summary>
-    [ObservableProperty]
-    public partial int SideTab { get; set; }
 
     public ViewportViewModel Viewport { get; }
 

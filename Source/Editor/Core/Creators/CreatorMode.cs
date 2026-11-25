@@ -96,6 +96,12 @@ public sealed class CreatorMode : IViewportMode, IDisposable
             id = world.Get<CreationPart>(part).Id;
         }
 
+        SelectPart(id);
+    }
+
+    /// <summary>Selects the creation's part with the id, or none, as a click on it does.</summary>
+    public void SelectPart(string? id)
+    {
         if (id == SelectedPart)
         {
             return;
@@ -103,6 +109,24 @@ public sealed class CreatorMode : IViewportMode, IDisposable
 
         SelectedPart = id;
         PartSelected?.Invoke();
+    }
+
+    /// <summary>The entity of the selected part, or null when none is selected or the creation no longer has it.</summary>
+    public Entity? FindSelectedPart()
+    {
+        CreationParts? parts = _scene.Game.Services.GetService<CreationParts>();
+        if (SelectedPart is not { } id || parts is null)
+        {
+            return null;
+        }
+
+        Entity part = parts.Find(Root, id);
+        if (part == Entity.Null)
+        {
+            return null;
+        }
+
+        return part;
     }
 
     public void PointerMoved(Vector2 pixel, int width, int height)

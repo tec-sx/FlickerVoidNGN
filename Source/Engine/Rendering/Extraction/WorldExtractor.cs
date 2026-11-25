@@ -25,7 +25,7 @@ public sealed class WorldExtractor : IRenderExtractor
     private static readonly QueryDescription Greyboxes = new QueryDescription().WithAll<Greybox, Transform>().WithNone<MeshRenderer, Hidden, Undrawn>();
     private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>().WithNone<Hidden, Undrawn>();
     private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>().WithNone<Hidden, Undrawn>();
-    private static readonly QueryDescription Doorways = new QueryDescription().WithAll<Doorway, Transform>().WithNone<Hidden, Undrawn>();
+    private static readonly QueryDescription Doorways = new QueryDescription().WithAll<Doorway, Transform>().WithNone<Hidden, Undrawn, Greyed>();
     private static readonly QueryDescription IndoorVolumes = new QueryDescription().WithAll<IndoorVolume, Transform>();
     private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
 
@@ -140,9 +140,10 @@ public sealed class WorldExtractor : IRenderExtractor
         return flags;
     }
 
+    /// <summary>The entity's outline; none on a greyed entity, as the creator's greyed level shows no markers.</summary>
     private static Outline? FindOutline(World world, Entity entity)
     {
-        if (world.TryGet(entity, out Outline outline))
+        if (!world.Has<Greyed>(entity) && world.TryGet(entity, out Outline outline))
         {
             return outline;
         }

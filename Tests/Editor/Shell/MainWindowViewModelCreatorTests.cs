@@ -38,7 +38,10 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         Viewport.CreatorFile.Should().Be(MainWindowViewModelTestsBuilder.Van);
         ViewModel.CreatorPanel.Should().NotBeNull();
         ViewModel.CreatorPanel!.Type.Should().Be(VehicleType.Car);
-        ViewModel.SideTab.Should().Be(MainWindowViewModel.CreatorTab, "the creator's tools take the side panel");
+        ViewModel.SideTab.Should().Be(MainWindowViewModel.CreatorTab, "the creator's tools come in front");
+        ViewModel.ShowsInspector.Should().BeFalse("nothing in the level is selected");
+        ViewModel.OutlinerTab.Should().Be(MainWindowViewModel.PartsTab, "the parts take the scene's place");
+        ViewModel.CreatorParts.Should().Equal("body", "wheel.1L", "wheel.1R", "wheel.2L", "wheel.2R");
         ViewModel.CreatorHeading.Should().Be(MainWindowViewModelTestsBuilder.Van);
     }
 
@@ -75,7 +78,31 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         Viewport.Mode.Should().BeSameAs(Viewport.SceneMode);
         Viewport.CreatorFile.Should().BeNull();
         ViewModel.CreatorPanel.Should().BeNull();
-        ViewModel.SideTab.Should().Be(0, "the inspector comes back");
+        ViewModel.ShowsCreator.Should().BeFalse();
+        ViewModel.SideTab.Should().Be(MainWindowViewModel.NoTab, "nothing is selected");
+        ViewModel.OutlinerTab.Should().Be(MainWindowViewModel.SceneTab, "the scene comes back");
+    }
+
+    [Fact]
+    public void ThePartsListAndTheViewportSelectTheSamePart()
+    {
+        _builder.DoubleClick(_builder.MiddleOf("Van"));
+        List<string?> raised = [];
+        ViewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainWindowViewModel.CreatorPart))
+            {
+                raised.Add(ViewModel.CreatorPart);
+            }
+        };
+
+        ViewModel.CreatorPart = "wheel.2L";
+        string? inViewport = Viewport.Creator!.SelectedPart;
+        Viewport.Creator.SelectPart("body");
+
+        inViewport.Should().Be("wheel.2L");
+        ViewModel.CreatorPart.Should().Be("body");
+        raised.Should().Equal("wheel.2L", "body");
     }
 
     [Fact]
