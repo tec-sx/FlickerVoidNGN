@@ -3,8 +3,6 @@ using System.Text.Json;
 
 using Arch.Core;
 
-using BepuPhysics;
-
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -130,8 +128,49 @@ public sealed class PhysicsSystemTests : IDisposable
 
         Run(seconds: 4);
 
-        BodyHandle crate = _game.World.Get<BodyHandle>(entities[0]);
-        _physics.Simulation.Bodies[crate].Awake.Should().BeFalse("nothing moved the floor, so nothing woke the crate");
+        bool awake = _physics.IsAwake(entities[0]);
+        awake.Should().BeFalse("nothing moved the floor, so nothing woke the crate");
+    }
+
+    [Fact]
+    public void BodiesRestingOnAStaticBodyWakeWhenItMovesAway()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 2, 0] },
+                "rigidBody": { "mass": 10, "collider": { "type": "box" } } } },
+            { "name": "Shelf", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "box", "size": [4, 1, 4] } } } }
+            """);
+        Run(seconds: 4);
+        bool asleepOnShelf = !_physics.IsAwake(entities[0]);
+
+        _game.World.Get<Transform>(entities[1]).Position = new Vector3(50, 0, 0);
+        Run(seconds: 1);
+
+        asleepOnShelf.Should().BeTrue();
+        Transform crate = _game.World.Get<Transform>(entities[0]);
+        crate.Position.Y.Should().BeLessThan(0, "the shelf moved out from under it, so it fell");
+    }
+
+    [Fact]
+    public void FallingBodiesAreAwakeAndStaticBodiesNeverAre()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Ball", "components": { "transform": { "position": [0, 10, 0] }, "rigidBody": { "collider": { "type": "sphere" } } } },
+            { "name": "Floor", "components": { "transform": {}, "staticBody": { "collider": { "type": "box" } } } },
+            { "name": "Marker", "components": { "transform": {} } }
+            """);
+
+        Step();
+
+        bool ballAwake = _physics.IsAwake(entities[0]);
+        bool floorAwake = _physics.IsAwake(entities[1]);
+        bool markerAwake = _physics.IsAwake(entities[2]);
+        ballAwake.Should().BeTrue();
+        floorAwake.Should().BeFalse();
+        markerAwake.Should().BeFalse();
     }
 
     [Fact]
@@ -181,6 +220,84 @@ public sealed class PhysicsSystemTests : IDisposable
         panel.Point.Z.Should().BeApproximately(0, 1e-3f);
         Transform crate = _game.World.Get<Transform>(entities[1]);
         crate.Position.Y.Should().BeInRange(-0.05f, 0.05f);
+    }
+
+    [Fact]
+    public void HullsCollideAsTheShapeTheirPointsSpanInTheEntitysSpace()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 4, 0] },
+                "rigidBody": { "collider": { "type": "hull", "points": [
+                    [-0.5, 0, -0.5], [0.5, 0, -0.5], [0.5, 0, 0.5], [-0.5, 0, 0.5],
+                    [-0.5, 1, -0.5], [0.5, 1, -0.5], [0.5, 1, 0.5], [-0.5, 1, 0.5]] } } } },
+            { "name": "Floor", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "box", "size": [20, 1, 20] } } } }
+            """);
+
+        Run(seconds: 3);
+
+        Transform crate = _game.World.Get<Transform>(entities[0]);
+        crate.Position.Y.Should().BeInRange(0.45f, 0.55f);
+    }
+
+    [Fact]
+    public void TrianglesWoundAsTheEnginesModelsStandFacingTheirFront()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Ball", "components": {
+                "transform": { "position": [0, 3, 0] },
+                "rigidBody": { "collider": { "type": "sphere" } } } },
+            { "name": "Ground", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "triangles",
+                    "positions": [[-10, 0, -10], [10, 0, -10], [10, 0, 10], [-10, 0, 10]], "indices": [0, 1, 2, 0, 2, 3] } } } }
+            """);
+        Step();
+        Ray down = new(new Vector3(4, 10, 4), -Vector3.UnitY);
+
+        bool hit = _physics.RayCast(down, 100, entities[0], out RayHit ground);
+        Run(seconds: 3);
+
+        hit.Should().BeTrue();
+        ground.Entity.Should().Be(entities[1]);
+        ground.Point.Y.Should().BeApproximately(0, 1e-3f);
+        ground.Normal.Y.Should().BeApproximately(1, 1e-3f);
+        Transform ball = _game.World.Get<Transform>(entities[0]);
+        ball.Position.Y.Should().BeInRange(0.45f, 0.55f);
+    }
+
+    [Fact]
+    public void MovingBodiesRefuseTriangles()
+    {
+        Spawn("""
+            { "name": "Platform", "components": {
+                "transform": {},
+                "rigidBody": { "kinematic": true, "collider": { "type": "triangles",
+                    "positions": [[0, 0, 0], [1, 0, 0], [0, 0, 1]], "indices": [0, 1, 2] } } } }
+            """);
+
+        Action step = Step;
+
+        step.Should().Throw<InvalidOperationException>().WithMessage("*'Platform'*hull*");
+    }
+
+    [Theory]
+    [InlineData("[[0, 0, 0], [1, 0, 0], [2, 0, 0], [3, 0, 0]]")]
+    [InlineData("[[0, 0, 0], [1, 0, 0], [0, 0, 1], [1, 0, 1]]")]
+    [InlineData("[[0, 0, 0], [1, 0, 0], [0, 1, 0]]")]
+    public void RefusesAHullOfPointsOnALineOrAPlane(string points)
+    {
+        Spawn($$"""
+            { "name": "Sheet", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "hull", "points": {{points}} } } } }
+            """);
+
+        Action step = Step;
+
+        step.Should().Throw<InvalidOperationException>().WithMessage("*'Sheet'*hull*");
     }
 
     [Fact]
@@ -260,20 +377,23 @@ public sealed class PhysicsSystemTests : IDisposable
     }
 
     [Fact]
-    public void GivesEachBodyAHandleToItsSimulationBody()
+    public void GivesEachRigidAndStaticBodyABodyInTheSimulation()
     {
         IReadOnlyList<Entity> entities = Spawn("""
             { "name": "Ball", "components": { "transform": {}, "rigidBody": { "collider": { "type": "sphere" } } } },
-            { "name": "Floor", "components": { "transform": {}, "staticBody": { "collider": { "type": "box" } } } }
+            { "name": "Floor", "components": { "transform": {}, "staticBody": { "collider": { "type": "box" } } } },
+            { "name": "Marker", "components": { "transform": {} } }
             """);
 
         Step();
 
-        BodyHandle ball = _game.World.Get<BodyHandle>(entities[0]);
-        bool floorHasStaticHandle = _game.World.Has<StaticHandle>(entities[1]);
-        bool ballExists = _physics.Simulation.Bodies.BodyExists(ball);
-        ballExists.Should().BeTrue();
-        floorHasStaticHandle.Should().BeTrue();
+        bool ballHasBody = _physics.HasBody(entities[0]);
+        bool floorHasBody = _physics.HasBody(entities[1]);
+        bool markerHasBody = _physics.HasBody(entities[2]);
+        ballHasBody.Should().BeTrue();
+        floorHasBody.Should().BeTrue();
+        markerHasBody.Should().BeFalse();
+        _physics.BodyCount.Should().Be(2);
     }
 
     [Fact]
@@ -289,8 +409,7 @@ public sealed class PhysicsSystemTests : IDisposable
         _game.World.Destroy(entities[1]);
         Step();
 
-        _physics.Simulation.Bodies.ActiveSet.Count.Should().Be(0);
-        _physics.Simulation.Statics.Count.Should().Be(0);
+        _physics.BodyCount.Should().Be(0);
     }
 
     [Fact]
@@ -304,9 +423,30 @@ public sealed class PhysicsSystemTests : IDisposable
         _game.World.Remove<RigidBody>(entities[0]);
         Step();
 
-        bool hasHandle = _game.World.Has<BodyHandle>(entities[0]);
-        hasHandle.Should().BeFalse();
-        _physics.Simulation.Bodies.ActiveSet.Count.Should().Be(0);
+        bool hasBody = _physics.HasBody(entities[0]);
+        hasBody.Should().BeFalse();
+        _physics.BodyCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void SleepingBodiesStillCount()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 2, 0] },
+                "rigidBody": { "mass": 10, "collider": { "type": "box" } } } },
+            { "name": "Floor", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "box", "size": [20, 1, 20] } } } }
+            """);
+
+        Run(seconds: 4);
+
+        bool awake = _physics.IsAwake(entities[0]);
+        bool hasBody = _physics.HasBody(entities[0]);
+        awake.Should().BeFalse();
+        hasBody.Should().BeTrue();
+        _physics.BodyCount.Should().Be(2);
     }
 
     [Fact]
@@ -317,6 +457,23 @@ public sealed class PhysicsSystemTests : IDisposable
             """);
 
         spawn.Should().Throw<InvalidDataException>().WithMessage("*'Ball'*'rigidBody'*");
+    }
+
+    [Fact]
+    public void GamesOnSeveralThreadsStepTheirPhysicsAtOnce()
+    {
+        PhysicsSystemTestsBuilder[] others = [new(), new(), new(), new()];
+        IReadOnlyList<Entity>[] piles = [.. others.Select(other => other.SpawnPile())];
+
+        Parallel.For(0, others.Length, index => others[index].Run(seconds: 2));
+
+        for (int index = 0; index < others.Length; index++)
+        {
+            Game game = others[index].Game;
+            Transform top = game.World.Get<Transform>(piles[index][^1]);
+            top.Position.Y.Should().BeLessThan(PhysicsSystemTestsBuilder.PileTop, "every game stepped its own pile");
+            game.Dispose();
+        }
     }
 
     [Fact]

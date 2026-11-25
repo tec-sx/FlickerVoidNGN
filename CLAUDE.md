@@ -11,7 +11,7 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 - .NET 10 LTS; NativeAOT for release builds, so runtime libraries set `IsAotCompatible` and avoid reflection (use source generators, such as System.Text.Json source generation).
 - Silk.NET for windowing, input and graphics bindings. Vulkan 1.3 only, on Windows and Linux (Direct3D 12 was dropped: Vulkan has the RTX features, and one API halves the graphics code and its tests).
 - HLSL shaders, compiled by DXC to SPIR-V. The `ShaderCompiler` tool (`Source/Tools/ShaderCompiler`) wraps DXC for the builder and for tests and depends on nothing; games never compile shaders, they load the builder's `.spv` files through `ShaderLibrary`.
-- Arch for entities and components, BepuPhysics for physics, SharpGLTF for glTF.
+- Arch for entities and components, Jolt (through JoltPhysicsSharp) for physics, SharpGLTF for glTF.
 - Avalonia for the editor, with its GPU interop for the viewport: four projects in `Source/Editor` (`Shell`, the program and the only one using Avalonia; `Core`, `Assets` and `Persistence`, which run headless in tests), MVVM on CommunityToolkit.Mvvm (`Docs/Modules/Editor.md`).
 - One codebase for Windows and Linux. When something is OS-specific, build it for Windows first and leave a `// TODO(Linux): ...` note on the Linux side.
 
@@ -35,6 +35,7 @@ Each module's behaviour, API and decisions are in `Docs/Modules`; read the one y
 - `Scenes.md`: greyboxes and solids, entity templates and classes, data assets and tables, scene travel, names and references, the game loop.
 - `Input.md`: input maps, actions, contexts and captures.
 - `Characters.md`: point and click movement, bodies, paths and perception.
+- `Physics.md`: the physics interface, bodies and colliders, and the move to Jolt.
 - `Cameras.md`: shots, the director, layers, triggers, cues, scripting, the depth fade and cutaways.
 - `Interaction.md`, `Maps.md`, `Inventory.md`, `Attributes.md` (attributes and abilities), `Flow.md`, `Story.md` (quests, knowledge and dialogue), `Saves.md` and `Ui.md` (the game's interface and stages).
 - `Projects.md`: users' projects, the solutions, `.fvproject` files, the editor's project picker and splash, Compile and Play, and the template.
