@@ -6,10 +6,12 @@ using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Gizmos;
 using FlickerVoid.Editor.Core.Overlays;
 using FlickerVoid.Engine.Cameras.Shots;
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Tests.Viewports;
 
@@ -114,7 +116,7 @@ public sealed class ViewportViewModelTests : IDisposable
         Vector3 ground = new(2, 0, -3);
         Vector2 pixel = _builder.PixelOf(ground);
 
-        _builder.ViewModel.DropModel("Models/Fox.glb", pixel, Width, Height);
+        _builder.ViewModel.DropAsset("Models/Fox.glb", pixel, Width, Height);
 
         Entity fox = _builder.ViewModel.Selection.Selected!.Value;
         _builder.World.Get<EntityName>(fox).Value.Should().Be("Fox");
@@ -125,13 +127,49 @@ public sealed class ViewportViewModelTests : IDisposable
     }
 
     [Fact]
+    public void DropsAVehicleOnTheGroundUnderTheMouseAndSelectsIt()
+    {
+        _builder.WithVehicle("Vans/Van.fvvehicle");
+        _builder.OpenLampScene();
+        _builder.ViewModel.Camera.LookAt(Vector3.Zero, yaw: 0.4f, pitch: -0.6f, distance: 10);
+        Vector3 ground = new(2, 0, -3);
+        Vector2 pixel = _builder.PixelOf(ground);
+
+        _builder.ViewModel.DropAsset("Vans/Van.fvvehicle", pixel, Width, Height);
+
+        Entity van = _builder.ViewModel.Selection.Selected!.Value;
+        _builder.World.Get<EntityName>(van).Value.Should().Be("Van");
+        _builder.World.Get<Vehicle>(van).File.Should().Be("Vans/Van.fvvehicle");
+        Vector3 position = _builder.World.Get<Transform>(van).Position;
+        Vector3.Distance(position, ground).Should().BeLessThan(0.01f);
+        CreationParts parts = _builder.ViewModel.Scene.Game.Services.GetService<CreationParts>()!;
+        parts.FindAll(van).Should().HaveCount(5);
+    }
+
+    [Fact]
+    public void FramesASelectedVehicleByItsParts()
+    {
+        _builder.WithVehicle("Vans/Van.fvvehicle");
+        _builder.OpenScene("""{ "entities": [ { "name": "Van", "components": { "transform": {}, "vehicle": { "file": "Vans/Van.fvvehicle" } } } ] }""");
+        Entity van = _builder.ViewModel.Scene.Find("Van")!.Value;
+        _builder.ViewModel.Scene.Picker.TryGetBounds(_builder.World, van, out Vector3 min, out Vector3 max);
+        _builder.ViewModel.Selection.Select(van);
+
+        _builder.ViewModel.FrameSelected();
+
+        Vector3 center = (min + max) / 2;
+        Vector3.Distance(_builder.ViewModel.Camera.Pivot, center).Should().BeLessThan(1e-3f);
+        center.Y.Should().BeGreaterThan(0.1f);
+    }
+
+    [Fact]
     public void NamesEachDroppedCopyOfAModelApart()
     {
         _builder.OpenLampScene();
         Vector2 pixel = _builder.PixelOf(Vector3.Zero);
 
-        _builder.ViewModel.DropModel("Fox.glb", pixel, Width, Height);
-        _builder.ViewModel.DropModel("Fox.glb", pixel, Width, Height);
+        _builder.ViewModel.DropAsset("Fox.glb", pixel, Width, Height);
+        _builder.ViewModel.DropAsset("Fox.glb", pixel, Width, Height);
 
         Entity second = _builder.ViewModel.Selection.Selected!.Value;
         _builder.World.Get<EntityName>(second).Value.Should().Be("Fox 2");
@@ -144,7 +182,7 @@ public sealed class ViewportViewModelTests : IDisposable
         _builder.ViewModel.Camera.LookAt(new Vector3(0, 5, 0), yaw: 0, pitch: 0.3f, distance: 4);
         Vector2 pixel = _builder.PixelOf(new Vector3(0, 5, 0));
 
-        _builder.ViewModel.DropModel("Fox.glb", pixel, Width, Height);
+        _builder.ViewModel.DropAsset("Fox.glb", pixel, Width, Height);
 
         Entity fox = _builder.ViewModel.Selection.Selected!.Value;
         Vector3 position = _builder.World.Get<Transform>(fox).Position;
@@ -154,7 +192,7 @@ public sealed class ViewportViewModelTests : IDisposable
     [Fact]
     public void AsksForASceneBeforeDroppingAModel()
     {
-        _builder.ViewModel.DropModel("Fox.glb", Vector2.Zero, Width, Height);
+        _builder.ViewModel.DropAsset("Fox.glb", Vector2.Zero, Width, Height);
 
         _builder.ViewModel.Scene.Entities.Should().BeEmpty();
         _builder.ViewModel.Status.Should().Contain("Open a scene");

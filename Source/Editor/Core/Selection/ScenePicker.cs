@@ -1,7 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Rendering.Meshes;
@@ -13,12 +15,14 @@ namespace FlickerVoid.Editor.Core.Selection;
 
 /// <summary>
 /// Finds the mesh or greybox a ray hits first, by its triangles (skinned ones in their bind pose); entities without a mesh are picked by
-/// their icons. Makes each mesh through <see cref="Meshes"/> at its first pick and keeps its triangles until the file it was made from changes.
+/// their icons, and a creation's parts pick the creation. Makes each mesh through <see cref="Meshes"/> at its first pick and keeps its
+/// triangles until the file it was made from changes.
 /// </summary>
 public sealed class ScenePicker : IDisposable
 {
     private static readonly QueryDescription MeshEntities = new QueryDescription().WithAll<MeshRenderer, Transform>().WithNone<Hidden>();
     private static readonly QueryDescription GreyboxEntities = new QueryDescription().WithAll<Greybox, Transform>().WithNone<MeshRenderer, Hidden>();
+    private static readonly QueryDescription PartEntities = new QueryDescription().WithAll<CreationPart, Transform>();
 
     private readonly IContentManager _content;
     private readonly Dictionary<string, Made> _models = new(ContentManager.PathComparer);
@@ -49,7 +53,10 @@ public sealed class ScenePicker : IDisposable
         return Pick(world, ray, out _);
     }
 
-    /// <summary>The mesh the ray hits first, and how far along the ray it is hit (infinity when nothing is).</summary>
+    /// <summary>
+    /// The mesh the ray hits first, or the creation whose part it is, such as the vehicle of a wheel, and how far along the ray it is
+    /// hit (infinity when nothing is).
+    /// </summary>
     public Entity? Pick(World world, Ray ray, out float distance)
     {
         Entity? nearest = null;
@@ -72,10 +79,15 @@ public sealed class ScenePicker : IDisposable
             }
         });
         distance = nearestDistance;
+        if (nearest is { } hit && world.TryGet(hit, out CreationPart part))
+        {
+            return part.Root;
+        }
+
         return nearest;
     }
 
-    /// <summary>The box round an entity's model in its own space.</summary>
+    /// <summary>The box round an entity's model in its own space, or round a creation's parts.</summary>
     public bool TryGetBounds(World world, Entity entity, out Vector3 min, out Vector3 max)
     {
         min = default;
@@ -85,18 +97,9 @@ public sealed class ScenePicker : IDisposable
             return false;
         }
 
-        string mesh;
-        if (world.TryGet(entity, out MeshRenderer renderer))
+        if (!TryGetMesh(world, entity, out string? mesh))
         {
-            mesh = renderer.Mesh;
-        }
-        else if (world.TryGet(entity, out Greybox greybox))
-        {
-            mesh = GetMesh(greybox);
-        }
-        else
-        {
-            return false;
+            return TryGetPartBounds(world, entity, out min, out max);
         }
 
         PickModel? model = Load(mesh);
@@ -158,6 +161,78 @@ public sealed class ScenePicker : IDisposable
         Vector3 worldHit = Vector3.Transform(localHit, world);
         distance = Vector3.Distance(ray.Origin, worldHit);
         return true;
+    }
+
+    private static bool TryGetMesh(World world, Entity entity, [NotNullWhen(true)] out string? mesh)
+    {
+        if (world.TryGet(entity, out MeshRenderer renderer))
+        {
+            mesh = renderer.Mesh;
+            return true;
+        }
+
+        if (world.TryGet(entity, out Greybox greybox))
+        {
+            mesh = GetMesh(greybox);
+            return true;
+        }
+
+        mesh = null;
+        return false;
+    }
+
+    /// <summary>The box round the models of the parts of a creation in its own space; false when it has none.</summary>
+    private bool TryGetPartBounds(World world, Entity root, out Vector3 min, out Vector3 max)
+    {
+        min = default;
+        max = default;
+        if (!world.TryGet(root, out Transform rootTransform))
+        {
+            return false;
+        }
+
+        Matrix4x4 rootMatrix = rootTransform.ToMatrix();
+        if (!Matrix4x4.Invert(rootMatrix, out Matrix4x4 toRoot))
+        {
+            return false;
+        }
+
+        Vector3 low = new(float.PositiveInfinity);
+        Vector3 high = new(float.NegativeInfinity);
+        world.Query(in PartEntities, (Entity entity, ref CreationPart part, ref Transform transform) =>
+        {
+            if (part.Root != root || !TryGetMesh(world, entity, out string? mesh) || Load(mesh) is not { } model)
+            {
+                return;
+            }
+
+            Matrix4x4 partMatrix = transform.ToMatrix();
+            Matrix4x4 partToRoot = partMatrix * toRoot;
+            for (int corner = 0; corner < 8; corner++)
+            {
+                Vector3 point = GetCorner(model.Min, model.Max, corner);
+                Vector3 placed = Vector3.Transform(point, partToRoot);
+                low = Vector3.Min(low, placed);
+                high = Vector3.Max(high, placed);
+            }
+        });
+        if (low.X > high.X)
+        {
+            return false;
+        }
+
+        min = low;
+        max = high;
+        return true;
+    }
+
+    /// <summary>One of the eight corners of a box, by the bits of <paramref name="corner"/>: X, Y and Z, low or high.</summary>
+    private static Vector3 GetCorner(Vector3 min, Vector3 max, int corner)
+    {
+        float x = (corner & 1) == 0 ? min.X : max.X;
+        float y = (corner & 2) == 0 ? min.Y : max.Y;
+        float z = (corner & 4) == 0 ? min.Z : max.Z;
+        return new Vector3(x, y, z);
     }
 
     /// <summary>The model a greybox shows: the swap in its place, or its box.</summary>

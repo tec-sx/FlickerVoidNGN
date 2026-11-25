@@ -265,15 +265,15 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
 
     private void HandleDragOver(object? sender, DragEventArgs e)
     {
-        bool model = AssetDrag.GetModel(e.DataTransfer) is not null;
-        e.DragEffects = model ? DragDropEffects.Copy : DragDropEffects.None;
+        bool placeable = AssetDrag.GetPlaceable(e.DataTransfer) is not null;
+        e.DragEffects = placeable ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 
     private void HandleDrop(object? sender, DragEventArgs e)
     {
-        string? model = AssetDrag.GetModel(e.DataTransfer);
-        if (model is null || ViewModel is not { } viewModel)
+        string? asset = AssetDrag.GetPlaceable(e.DataTransfer);
+        if (asset is null || ViewModel is not { } viewModel)
         {
             return;
         }
@@ -281,7 +281,7 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         Point position = e.GetPosition(this);
         PixelSize size = GetPixelSize();
         Vector2 pixel = ToPixels(position);
-        viewModel.DropModel(model, pixel, size.Width, size.Height);
+        viewModel.DropAsset(asset, pixel, size.Width, size.Height);
         Focus();
         e.Handled = true;
     }
