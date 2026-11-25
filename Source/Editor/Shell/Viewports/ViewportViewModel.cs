@@ -216,6 +216,7 @@ public sealed partial class ViewportViewModel : ObservableObject
     public void Update(in ViewportInput input, float seconds, int viewportHeight)
     {
         _controller.Apply(input, seconds, viewportHeight);
+        Mode.Update();
     }
 
     /// <summary>Q, W, E and R switch the gizmo, unless the right button is held, when they fly the camera; G toggles the game view.</summary>

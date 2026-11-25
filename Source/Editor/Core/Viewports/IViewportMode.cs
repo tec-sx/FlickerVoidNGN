@@ -17,6 +17,9 @@ public interface IViewportMode
 
     void PointerReleased();
 
+    /// <summary>Runs once a frame, after the camera moved.</summary>
+    void Update();
+
     /// <summary>Saves what the mode edits; false when it has nowhere to save it yet.</summary>
     bool Save();
 }

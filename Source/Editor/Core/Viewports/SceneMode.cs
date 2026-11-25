@@ -125,6 +125,10 @@ public sealed class SceneMode(EditorScene scene, EditorCamera camera, TransformG
         gizmo.Hover(camera, transform, pixel, width, height);
     }
 
+    public void Update()
+    {
+    }
+
     public void PointerReleased()
     {
         if (gizmo.IsDragging)
