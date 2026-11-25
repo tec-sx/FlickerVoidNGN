@@ -110,7 +110,7 @@ uint32_t FvDlssDeviceExtensions(const FvDlssApplication* application, VkInstance
 
     if (requirement.FeatureSupported != NVSDK_NGX_FeatureSupportResult_Supported)
     {
-        return NVSDK_NGX_Result_FAIL_FeatureNotSupported;
+        return static_cast<uint32_t>(NVSDK_NGX_Result_FAIL_FeatureNotSupported);
     }
 
     return NVSDK_NGX_VULKAN_GetFeatureDeviceExtensionRequirements(instance, physicalDevice, &info.Discovery, count, extensions);
@@ -140,11 +140,11 @@ uint32_t FvDlssInit(const FvDlssApplication* application, VkInstance instance, V
     if (NVSDK_NGX_FAILED(query) || available == 0)
     {
         // Why DLSS can't run here, such as a driver too old for it.
-        int reason = NVSDK_NGX_Result_FAIL_FeatureNotSupported;
+        int reason = static_cast<int>(NVSDK_NGX_Result_FAIL_FeatureNotSupported);
         NVSDK_NGX_Parameter_GetI(made->Parameters, NVSDK_NGX_Parameter_SuperSampling_FeatureInitResult, &reason);
         if (NVSDK_NGX_SUCCEED(reason))
         {
-            reason = NVSDK_NGX_Result_FAIL_FeatureNotSupported;
+            reason = static_cast<int>(NVSDK_NGX_Result_FAIL_FeatureNotSupported);
         }
 
         NVSDK_NGX_VULKAN_DestroyParameters(made->Parameters);
