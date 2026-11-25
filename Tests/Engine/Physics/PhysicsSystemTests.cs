@@ -3,8 +3,6 @@ using System.Text.Json;
 
 using Arch.Core;
 
-using BepuPhysics;
-
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -130,8 +128,27 @@ public sealed class PhysicsSystemTests : IDisposable
 
         Run(seconds: 4);
 
-        BodyHandle crate = _game.World.Get<BodyHandle>(entities[0]);
-        _physics.Simulation.Bodies[crate].Awake.Should().BeFalse("nothing moved the floor, so nothing woke the crate");
+        bool awake = _physics.IsAwake(entities[0]);
+        awake.Should().BeFalse("nothing moved the floor, so nothing woke the crate");
+    }
+
+    [Fact]
+    public void FallingBodiesAreAwakeAndStaticBodiesNeverAre()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Ball", "components": { "transform": { "position": [0, 10, 0] }, "rigidBody": { "collider": { "type": "sphere" } } } },
+            { "name": "Floor", "components": { "transform": {}, "staticBody": { "collider": { "type": "box" } } } },
+            { "name": "Marker", "components": { "transform": {} } }
+            """);
+
+        Step();
+
+        bool ballAwake = _physics.IsAwake(entities[0]);
+        bool floorAwake = _physics.IsAwake(entities[1]);
+        bool markerAwake = _physics.IsAwake(entities[2]);
+        ballAwake.Should().BeTrue();
+        floorAwake.Should().BeFalse();
+        markerAwake.Should().BeFalse();
     }
 
     [Fact]
@@ -260,20 +277,23 @@ public sealed class PhysicsSystemTests : IDisposable
     }
 
     [Fact]
-    public void GivesEachBodyAHandleToItsSimulationBody()
+    public void GivesEachRigidAndStaticBodyABodyInTheSimulation()
     {
         IReadOnlyList<Entity> entities = Spawn("""
             { "name": "Ball", "components": { "transform": {}, "rigidBody": { "collider": { "type": "sphere" } } } },
-            { "name": "Floor", "components": { "transform": {}, "staticBody": { "collider": { "type": "box" } } } }
+            { "name": "Floor", "components": { "transform": {}, "staticBody": { "collider": { "type": "box" } } } },
+            { "name": "Marker", "components": { "transform": {} } }
             """);
 
         Step();
 
-        BodyHandle ball = _game.World.Get<BodyHandle>(entities[0]);
-        bool floorHasStaticHandle = _game.World.Has<StaticHandle>(entities[1]);
-        bool ballExists = _physics.Simulation.Bodies.BodyExists(ball);
-        ballExists.Should().BeTrue();
-        floorHasStaticHandle.Should().BeTrue();
+        bool ballHasBody = _physics.HasBody(entities[0]);
+        bool floorHasBody = _physics.HasBody(entities[1]);
+        bool markerHasBody = _physics.HasBody(entities[2]);
+        ballHasBody.Should().BeTrue();
+        floorHasBody.Should().BeTrue();
+        markerHasBody.Should().BeFalse();
+        _physics.BodyCount.Should().Be(2);
     }
 
     [Fact]
@@ -289,8 +309,7 @@ public sealed class PhysicsSystemTests : IDisposable
         _game.World.Destroy(entities[1]);
         Step();
 
-        _physics.Simulation.Bodies.ActiveSet.Count.Should().Be(0);
-        _physics.Simulation.Statics.Count.Should().Be(0);
+        _physics.BodyCount.Should().Be(0);
     }
 
     [Fact]
@@ -304,9 +323,30 @@ public sealed class PhysicsSystemTests : IDisposable
         _game.World.Remove<RigidBody>(entities[0]);
         Step();
 
-        bool hasHandle = _game.World.Has<BodyHandle>(entities[0]);
-        hasHandle.Should().BeFalse();
-        _physics.Simulation.Bodies.ActiveSet.Count.Should().Be(0);
+        bool hasBody = _physics.HasBody(entities[0]);
+        hasBody.Should().BeFalse();
+        _physics.BodyCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void SleepingBodiesStillCount()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 2, 0] },
+                "rigidBody": { "mass": 10, "collider": { "type": "box" } } } },
+            { "name": "Floor", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "box", "size": [20, 1, 20] } } } }
+            """);
+
+        Run(seconds: 4);
+
+        bool awake = _physics.IsAwake(entities[0]);
+        bool hasBody = _physics.HasBody(entities[0]);
+        awake.Should().BeFalse();
+        hasBody.Should().BeTrue();
+        _physics.BodyCount.Should().Be(2);
     }
 
     [Fact]
