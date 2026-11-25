@@ -254,6 +254,11 @@ uint32_t FvDlssCreate(FvDlssContext* context, VkCommandBuffer commands, FvDlssMo
     NVSDK_NGX_Result result = NVSDK_NGX_Result_Fail;
     if (denoise != 0)
     {
+        // Ray Reconstruction's default model in this SDK (preset F) speckles round moving things and smears the edges in front of
+        // them in the engine's scenes; its transformer model (preset E) doesn't.
+        NVSDK_NGX_Parameter_SetUI(context->Parameters, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Quality, NVSDK_NGX_RayReconstruction_Hint_Render_Preset_E);
+        NVSDK_NGX_Parameter_SetUI(context->Parameters, NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_DLAA, NVSDK_NGX_RayReconstruction_Hint_Render_Preset_E);
+
         // The roughness rides in the normals' alpha, and the depth is the depth buffer's own.
         NVSDK_NGX_DLSSD_Create_Params create = {};
         create.InDenoiseMode = NVSDK_NGX_DLSS_Denoise_Mode_DLUnified;

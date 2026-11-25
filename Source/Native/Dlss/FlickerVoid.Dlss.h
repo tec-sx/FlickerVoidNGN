@@ -100,8 +100,8 @@ FV_DLSS_API uint32_t FvDlssShutdown(FvDlssContext* context);
 /* The size a mode draws the scene at for an output's, for DLSS or Ray Reconstruction. */
 FV_DLSS_API uint32_t FvDlssRenderSize(FvDlssContext* context, FvDlssMode mode, int32_t denoise, uint32_t outputWidth, uint32_t outputHeight, uint32_t* renderWidth, uint32_t* renderHeight);
 
-/* Records making a DLSS feature, or a Ray Reconstruction one, into the command buffer, which must run before the feature
-   evaluates. */
+/* Records making a DLSS feature, or a Ray Reconstruction one (its transformer model, preset E), into the command buffer, which
+   must run before the feature evaluates. */
 FV_DLSS_API uint32_t FvDlssCreate(FvDlssContext* context, VkCommandBuffer commands, FvDlssMode mode, int32_t denoise, uint32_t renderWidth, uint32_t renderHeight, uint32_t outputWidth, uint32_t outputHeight, FvDlssFeature** feature);
 
 /* Records upscaling a frame; NGX leaves the command buffer's bound pipeline and descriptor sets undefined. */
