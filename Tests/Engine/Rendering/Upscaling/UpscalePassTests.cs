@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Rendering.Upscaling;
@@ -144,6 +145,18 @@ public sealed class UpscalePassTests : IDisposable
         frame.Color.Description.Width.Should().Be(Size);
         frame.Output.Should().NotBeSameAs(frame.Color, "DLSS writes a target of its own");
         frame.Jitter.Should().NotBe(Vector2.Zero);
+    }
+
+    [Fact]
+    public void GivesTheUpscalerAnOutputItCanWriteAndClear()
+    {
+        _builder.WithScene(Camera, Box).WithDlss().WithUpscaling(UpscaleMode.Quality);
+
+        _builder.Render();
+
+        UpscaleInputs frame = _builder.Upscalers.Should().ContainSingle().Subject.Frames.Should().ContainSingle().Subject;
+        frame.Output.Description.Usage.Should().HaveFlag(TextureUsage.ShaderWrite);
+        frame.Output.Description.Usage.Should().HaveFlag(TextureUsage.CopyDestination, "DLSS clears its output, which Vulkan allows only on images made to be copied to");
     }
 
     [Fact]

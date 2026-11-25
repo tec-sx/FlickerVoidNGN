@@ -78,7 +78,7 @@ internal sealed class ScreenTargets : IDisposable
         ScreenShadows = _device.CreateTexture(screenShadows);
         if (upscaled)
         {
-            TextureDescription upscaledDescription = new(outputWidth, outputHeight, HdrFormat, readWrite) { Name = "Upscaled HDR" };
+            TextureDescription upscaledDescription = new(outputWidth, outputHeight, HdrFormat, readWrite | TextureUsage.CopyDestination) { Name = "Upscaled HDR" };
             Upscaled = _device.CreateTexture(upscaledDescription);
         }
 

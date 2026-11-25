@@ -16,6 +16,9 @@ public interface IUpscaler : IDisposable
     /// <summary>The height frames are drawn at for it.</summary>
     int RenderHeight { get; }
 
-    /// <summary>Records the upscale into the output; the inputs must be in the ShaderRead state and the output in ShaderWrite, and are left so.</summary>
+    /// <summary>
+    /// Records the upscale into the output, which must be made for ShaderWrite and CopyDestination, as DLSS clears it; the inputs
+    /// must be in the ShaderRead state and the output in ShaderWrite, and are left so.
+    /// </summary>
     void Upscale(ICommandList commands, in UpscaleInputs inputs);
 }

@@ -93,7 +93,7 @@ internal sealed class UpscalerTestsBuilder : IDisposable
         byte[] still = new byte[width * height * 4];
         ITexture motion = Keep(device.CreateTexture(motionDescription, still));
         UpscalerDescription upscaled = upscaler.Description;
-        TextureUsage outputUsage = TextureUsage.ShaderRead | TextureUsage.ShaderWrite | TextureUsage.CopySource;
+        TextureUsage outputUsage = TextureUsage.ShaderRead | TextureUsage.ShaderWrite | TextureUsage.CopySource | TextureUsage.CopyDestination;
         TextureDescription outputDescription = new(upscaled.OutputWidth, upscaled.OutputHeight, PixelFormat.Rgba16Float, outputUsage) { Name = "Upscaled" };
         ITexture output = Keep(device.CreateTexture(outputDescription));
 
