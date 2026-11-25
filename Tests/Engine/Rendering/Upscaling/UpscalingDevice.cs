@@ -10,15 +10,18 @@ using FlickerVoid.Engine.Graphics.Upscaling;
 
 namespace FlickerVoid.Engine.Rendering.Tests.Upscaling;
 
-/// <summary>A device that has DLSS through <see cref="StandInUpscaler"/>s and draws everything else with the device it wraps.</summary>
-internal sealed class UpscalingDevice(IGraphicsDevice device) : IGraphicsDevice
+/// <summary>
+/// A device that has DLSS, and Ray Reconstruction where given it, through <see cref="StandInUpscaler"/>s, and draws everything
+/// else with the device it wraps.
+/// </summary>
+internal sealed class UpscalingDevice(IGraphicsDevice device, GraphicsFeatures upscaling) : IGraphicsDevice
 {
     /// <summary>The upscalers it made, in order.</summary>
     public List<StandInUpscaler> Upscalers { get; } = [];
 
     public string AdapterName => device.AdapterName;
 
-    public GraphicsFeatures Features => device.Features | GraphicsFeatures.Dlss;
+    public GraphicsFeatures Features => device.Features | upscaling;
 
     public GraphicsInfo GetInfo() => device.GetInfo();
 

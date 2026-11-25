@@ -1,6 +1,7 @@
 using System.Numerics;
 
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Outlines;
@@ -1501,6 +1502,29 @@ public sealed class SceneRendererTests : IDisposable
         farOutside.Should().BeInRange(80, 185, "far from the wall's foot, the sun's width softens the edge");
         farInside.Should().BeInRange(80, 185);
         farOutside.Should().BeGreaterThan(farInside);
+    }
+
+    [Fact]
+    public void LeavesTracedShadowsUnfilteredForRayReconstructionToDenoise()
+    {
+        _builder.WithRayQueries().WithRayReconstruction().WithTargetSize(16).WithMood(static mood => mood with { SunAngle = 20 });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, Wall);
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+        _builder.WithRenderer(static renderer =>
+        {
+            renderer.RayTracing = true;
+            renderer.Upscaling = UpscaleMode.Dlaa;
+        });
+
+        uint[] pixels = _builder.RenderFrames(16);
+
+        // Far from the wall's foot, where the filter softens the shadow's edge over the frames, rows 3 and 4 of column 5.
+        foreach (int pixel in (int[])[(3 * 16) + 5, (4 * 16) + 5])
+        {
+            (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[pixel]);
+            red.Should().Match(value => value >= 195 || value <= 66, "each pixel holds its one ray of the frame, which met the sun or the wall, for Ray Reconstruction to denoise");
+        }
     }
 
     [Theory]

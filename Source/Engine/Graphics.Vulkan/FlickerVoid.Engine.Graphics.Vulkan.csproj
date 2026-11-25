@@ -12,7 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="../Graphics/FlickerVoid.Engine.Graphics.csproj" />
   </ItemGroup>
-  <!-- The engine's DLSS library and NVIDIA's DLSS runtime, beside every program once Source/Native/Dlss's build script has built them. -->
+  <!-- The engine's DLSS library and NVIDIA's DLSS and Ray Reconstruction runtimes, beside every program once Source/Native/Dlss's build script has built them. -->
   <PropertyGroup>
     <DlssNativeFolder Condition="$([MSBuild]::IsOSPlatform('Windows'))">win-x64</DlssNativeFolder>
     <DlssNativeFolder Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux-x64</DlssNativeFolder>

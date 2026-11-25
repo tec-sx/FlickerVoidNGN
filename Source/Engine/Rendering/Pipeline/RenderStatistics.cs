@@ -26,6 +26,9 @@ public sealed class RenderStatistics
     /// <summary>Whether an upscaler filled the output in from the scene.</summary>
     public bool Upscaled { get; internal set; }
 
+    /// <summary>Whether the upscaler also denoised the scene's ray traced light, with DLSS Ray Reconstruction.</summary>
+    public bool Denoised { get; internal set; }
+
     internal void Reset()
     {
         Drawn = 0;

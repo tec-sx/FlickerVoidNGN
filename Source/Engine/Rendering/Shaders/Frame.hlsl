@@ -40,6 +40,9 @@ struct FrameData
     float FogAnisotropy;
     float FogHeight;
     float FogHeightFalloff;
+    // The frame's number while an upscaler denoises it, so its noise is drawn afresh each frame as white noise, as Ray
+    // Reconstruction asks; else None, and noise may hold a pattern.
+    uint NoiseFrame;
     float4x4 InverseViewProjection;
     uint ScreenShadows;
     float AmbientOcclusion;
@@ -84,6 +87,20 @@ struct FrameData
 static const uint FrameDataSize = 512;
 static const uint None = 0xFFFFFFFF;
 
+// PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
+uint Hash(uint value)
+{
+    uint state = value * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
+}
+
+// A number from 0 to 1 of a hash's top 24 bits, which a float holds exactly.
+float HashToUnit(uint hash)
+{
+    return float(hash >> 8) / 16777216.0;
+}
+
 FrameData LoadFrame(uint index)
 {
     ByteAddressBuffer buffer = Buffers[index];
@@ -116,6 +133,7 @@ FrameData LoadFrame(uint index)
     frame.FogAnisotropy = buffer.Load<float>(224);
     frame.FogHeight = buffer.Load<float>(228);
     frame.FogHeightFalloff = buffer.Load<float>(232);
+    frame.NoiseFrame = buffer.Load<uint>(236);
     frame.InverseViewProjection = float4x4(buffer.Load<float4>(240), buffer.Load<float4>(256), buffer.Load<float4>(272), buffer.Load<float4>(288));
     frame.ScreenShadows = buffer.Load<uint>(304);
     frame.AmbientOcclusion = buffer.Load<float>(308);
@@ -201,6 +219,19 @@ static const float IndoorMargin = 0.05;
 bool IsInBox(float3 position, float3 boxMin, float3 boxMax)
 {
     return all(position >= boxMin - IndoorMargin) && all(position <= boxMax + IndoorMargin);
+}
+
+// Greys and darkens the world outside the cutaway's box by its muting, so the room it looks into stands out.
+float3 MuteOutside(FrameData frame, float3 color, float3 worldPosition)
+{
+    if (frame.Cut == 0 || frame.CutMuted <= 0 || IsInBox(worldPosition, frame.CutMin, frame.CutMax))
+    {
+        return color;
+    }
+
+    float grey = dot(color, float3(0.2126, 0.7152, 0.0722));
+    float3 muted = lerp(color, grey, frame.CutMuted);
+    return muted * (1 - (0.5 * frame.CutMuted));
 }
 
 static const uint IndoorSize = 32;

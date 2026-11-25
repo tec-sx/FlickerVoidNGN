@@ -23,6 +23,13 @@ public sealed class UpscalePassTests : IDisposable
 
     private const string Box = """{ "name": "Box", "components": { "transform": { "position": [0, -0.5, 0] }, "greybox": { "size": [1, 1, 1] } } }""";
 
+    /// <summary>The box drawn in Glossy.fvmat, whose highlight is half strength and as sharp as materials have.</summary>
+    private const string GlossyBox = """
+        { "name": "Box", "components": { "transform": { "position": [0, -0.5, 0] }, "meshRenderer": { "mesh": "$greybox:1,1,1", "materials": ["Glossy.fvmat"] } } }
+        """;
+
+    private const string Glossy = """{ "parameters": { "specular": 0.5, "glossiness": 1 } }""";
+
     /// <summary>The box, outlined, and moved right by 0.6 output pixels, so its sides lie close to pixels' centres, where jitter would move them across.</summary>
     private const string OutlinedBox = """
         { "name": "Box", "components": { "transform": { "position": [0.025, -0.5, 0] }, "greybox": { "size": [1, 1, 1] }, "outline": { "color": [0, 1, 0] } } }
@@ -90,7 +97,7 @@ public sealed class UpscalePassTests : IDisposable
         _builder.RenderFrames(3);
 
         JitterSequence sequence = new();
-        int phases = JitterSequence.Phases(RenderSize, Size);
+        int phases = JitterSequence.Phases(RenderSize, Size, denoises: false);
         Vector2[] expected = [sequence.Next(phases), sequence.Next(phases), sequence.Next(phases)];
         StandInUpscaler upscaler = _builder.Upscalers.Should().ContainSingle().Subject;
         upscaler.Frames.Select(static frame => frame.Jitter).Should().Equal(expected);
@@ -204,6 +211,116 @@ public sealed class UpscalePassTests : IDisposable
         int nearBottomRight = ((Size * 3 / 4) - 2) * (Size + 1);
         pixels[nearBottomRight].Should().Be(pixels[Centre], "the box's albedo shows up to its lower right corner");
         UpscalePassTestsBuilder.Channels(pixels[Centre]).Red.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void DenoisesWithRayReconstructionWhileTracingRaysWhereTheDeviceHasIt()
+    {
+        _builder.WithScene(Camera, Box).WithRayReconstruction().WithUpscaling(UpscaleMode.Quality).WithRenderer(static renderer => renderer.RayTracing = true);
+
+        _builder.Render();
+
+        StandInUpscaler upscaler = _builder.Upscalers.Should().ContainSingle().Subject;
+        upscaler.Description.Should().Be(new UpscalerDescription(UpscaleMode.Quality, Size, Size) { Denoises = true });
+        UpscaleInputs frame = upscaler.Frames.Should().ContainSingle().Subject;
+        frame.Guides.Should().NotBeNull("a denoising upscaler reads the frame's guides");
+        DenoiseGuides guides = frame.Guides!.Value;
+        foreach (ITexture guide in (ITexture[])[guides.DiffuseAlbedo, guides.SpecularAlbedo, guides.NormalRoughness])
+        {
+            guide.Description.Width.Should().Be(RenderSize, "the guides are drawn at the render size, as the scene is");
+            guide.Description.Height.Should().Be(RenderSize);
+        }
+
+        guides.WorldToView.Translation.Should().Be(new Vector3(0, 0, -5), "the camera stands five units up the view's axis");
+        guides.ViewToClip.M11.Should().BeApproximately(1, 1e-5f, "the orthographic view sees two units across");
+        guides.ViewToClip.M41.Should().Be(0, "the view is given without the frame's jitter");
+        guides.ViewToClip.M42.Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    public void UpscalesWithoutDenoisingUnlessItTracesRaysWithRayReconstructionOnADeviceWithIt(bool rayTracing, bool rayReconstruction, bool deviceHasIt)
+    {
+        if (deviceHasIt)
+        {
+            _builder.WithRayReconstruction();
+        }
+        else
+        {
+            _builder.WithDlss().WithRayQueries();
+        }
+
+        _builder.WithScene(Camera, Box).WithUpscaling(UpscaleMode.Quality).WithRenderer(renderer =>
+        {
+            renderer.RayTracing = rayTracing;
+            renderer.RayReconstruction = rayReconstruction;
+        });
+
+        _builder.Render();
+
+        StandInUpscaler upscaler = _builder.Upscalers.Should().ContainSingle().Subject;
+        upscaler.Description.Denoises.Should().BeFalse();
+        upscaler.Frames.Should().ContainSingle().Which.Guides.Should().BeNull();
+    }
+
+    [Fact]
+    public void GuidesTheDenoiserWithEachPixelsSurfaceAndGreyWhereNothingWasDrawn()
+    {
+        _builder.WithScene(Camera, Box).WithRayReconstruction().WithUpscaling(UpscaleMode.Dlaa).WithRenderer(static renderer => renderer.RayTracing = true);
+
+        _builder.Render();
+
+        DenoiseGuides guides = _builder.Upscalers.Should().ContainSingle().Subject.Frames.Should().ContainSingle().Subject.Guides!.Value;
+        Vector4[] diffuse = _builder.ReadHalfs(guides.DiffuseAlbedo);
+        Vector4[] specular = _builder.ReadHalfs(guides.SpecularAlbedo);
+        Vector4[] normals = _builder.ReadHalfs(guides.NormalRoughness);
+        int corner = Size + 1;
+        RGB(diffuse[Centre]).Should().Match<Vector3>(color => IsNear(color, new Vector3(0.6f), 0.01f), "the box's grey, linear, as it reflects diffuse light");
+        RGB(specular[Centre]).Should().Be(Vector3.Zero, "the default material has no highlight");
+        normals[Centre].Should().Match<Vector4>(normal => IsNear(RGB(normal), Vector3.UnitZ, 0.01f), "the box's top faces the camera");
+        normals[Centre].W.Should().BeApproximately(0.417f, 0.01f, "the roughness of a highlight as sharp as the default glossiness, in alpha");
+        RGB(diffuse[corner]).Should().Match<Vector3>(color => IsNear(color, new Vector3(0.5f), 0.001f), "where nothing was drawn, the albedo is a middle grey, as Ray Reconstruction asks");
+        RGB(specular[corner]).Should().Be(Vector3.Zero);
+        normals[corner].Should().Be(Vector4.Zero);
+    }
+
+    [Fact]
+    public void GuidesTheDenoiserWithTheHighlightOfAGlossyMaterial()
+    {
+        _builder.WithFile("Glossy.fvmat", Glossy);
+        _builder.WithScene(Camera, GlossyBox).WithRayReconstruction().WithUpscaling(UpscaleMode.Dlaa).WithRenderer(static renderer => renderer.RayTracing = true);
+
+        _builder.Render();
+
+        DenoiseGuides guides = _builder.Upscalers.Should().ContainSingle().Subject.Frames.Should().ContainSingle().Subject.Guides!.Value;
+        Vector4[] specular = _builder.ReadHalfs(guides.SpecularAlbedo);
+        Vector4[] normals = _builder.ReadHalfs(guides.NormalRoughness);
+        RGB(specular[Centre]).Should().Match<Vector3>(color => IsNear(color, new Vector3(0.5f), 0.03f), "seen head on, a sharp highlight reflects the material's specular strength");
+        normals[Centre].W.Should().BeApproximately(0.177f, 0.01f, "the roughness of a highlight as sharp as the most glossy");
+    }
+
+    [Fact]
+    public void JittersThroughAtLeast32PhasesWhileDenoising()
+    {
+        _builder.WithScene(Camera, Box).WithRayReconstruction().WithUpscaling(UpscaleMode.Quality).WithRenderer(static renderer => renderer.RayTracing = true);
+
+        _builder.RenderFrames(19);
+
+        JitterSequence sequence = new();
+        int phases = JitterSequence.Phases(RenderSize, Size, denoises: true);
+        Vector2[] expected = [.. Enumerable.Range(0, 19).Select(_ => sequence.Next(phases))];
+        StandInUpscaler upscaler = _builder.Upscalers.Should().ContainSingle().Subject;
+        upscaler.Frames.Select(static frame => frame.Jitter).Should().Equal(expected, "Ray Reconstruction asks for 32 phases or more, where plain DLSS cycles 18 at this size");
+    }
+
+    private static Vector3 RGB(Vector4 texel) => new(texel.X, texel.Y, texel.Z);
+
+    private static bool IsNear(Vector3 actual, Vector3 expected, float tolerance)
+    {
+        Vector3 difference = Vector3.Abs(actual - expected);
+        return difference.X <= tolerance && difference.Y <= tolerance && difference.Z <= tolerance;
     }
 
     private static uint Rgba(byte r, byte g, byte b, byte a) => (uint)(r | g << 8 | b << 16 | a << 24);

@@ -1,6 +1,5 @@
 // The scene's acceleration structure, which only devices with ray queries have (set 5, so only shaders created while the frame
-// traces rays include this file), visibility rays through it, rays that find the surface they hit, and the hash that turns
-// rays' samples. A ray passes a cutout draw where its paint is clear, as the geometry pass and the shadow maps leave holes
+// traces rays include this file), visibility rays through it and rays that find the surface they hit. A ray passes a cutout draw where its paint is clear, as the geometry pass and the shadow maps leave holes
 // there; the scene marks cutout draws not opaque, so their hits come to the shader as candidates. Neighbouring rays hit
 // different draws, so the indices of a draw's buffers, painting and sampler are marked as varying.
 
@@ -9,14 +8,6 @@
 #include "Draw.hlsl"
 
 RaytracingAccelerationStructure AccelerationStructures[] : register(t0, space5);
-
-// PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
-uint Hash(uint value)
-{
-    uint state = value * 747796405u + 2891336453u;
-    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-    return (word >> 22u) ^ word;
-}
 
 // How much each of a triangle's three corners counts at the barycentrics a hit gives.
 float3 CornerWeights(float2 barycentrics)

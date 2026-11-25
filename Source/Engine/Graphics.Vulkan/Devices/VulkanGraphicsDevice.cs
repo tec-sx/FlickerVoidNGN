@@ -37,7 +37,8 @@ namespace FlickerVoid.Engine.Graphics.Vulkan.Devices;
 /// resources released once the GPU has finished with them. Requires dynamic rendering, synchronization2 and descriptor indexing;
 /// presents to windows when the driver has the surface and swapchain extensions, shares textures with other graphics APIs
 /// when it can export memory and semaphores, traces rays when it has acceleration structures and ray queries, and upscales
-/// with DLSS when asked to where NGX runs, with the instance and device extensions NGX names.
+/// with DLSS when asked to where NGX runs, with the instance and device extensions NGX names, denoising with DLSS Ray
+/// Reconstruction too when asked to where NGX runs that.
 /// </summary>
 public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
 {
@@ -75,7 +76,8 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         VulkanDlss? dlss = null;
         if (options.Features.HasFlag(GraphicsFeatures.Dlss))
         {
-            dlss = VulkanDlss.TryLoad(Vk, _logger);
+            bool rayReconstruction = options.Features.HasFlag(GraphicsFeatures.RayReconstruction);
+            dlss = VulkanDlss.TryLoad(Vk, _logger, rayReconstruction);
         }
 
         string[] dlssInstanceExtensions = dlss?.InstanceExtensions ?? [];
@@ -101,6 +103,10 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         {
             _dlss = dlss;
             Features |= GraphicsFeatures.Dlss;
+            if (dlss.HasRayReconstruction)
+            {
+                Features |= GraphicsFeatures.RayReconstruction;
+            }
         }
         else
         {
@@ -241,6 +247,11 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         if (description.Mode == UpscaleMode.Off)
         {
             throw new NotSupportedException("Upscaling off needs no upscaler.");
+        }
+
+        if (description.Denoises && !Features.HasFlag(GraphicsFeatures.RayReconstruction))
+        {
+            throw new NotSupportedException($"{AdapterName} has no DLSS Ray Reconstruction; check {nameof(Features)} first.");
         }
 
         return new VulkanUpscaler(this, _dlss, description);
