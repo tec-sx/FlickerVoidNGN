@@ -81,7 +81,7 @@ public sealed partial class MainWindowViewModel
         {
             [AssetTypes.Scene] = OpenSceneAsset,
             [AssetTypes.Material] = asset => MaterialRequested?.Invoke(asset.Path),
-            [AssetTypes.Mood] = asset => OpenMood(asset.Path),
+            [AssetTypes.Mood] = asset => ShowMood(asset.Path),
             [AssetTypes.Texture] = asset => OpenTexture(asset.Path),
             [AssetTypes.Canvas] = asset => OpenTexture(asset.Path),
             [AssetTypes.Data] = asset => OpenData(asset.Path),
@@ -205,8 +205,15 @@ public sealed partial class MainWindowViewModel
         _dataPath = path;
         DataContent = content;
         OnPropertyChanged(nameof(DataHeading));
-        SideTab = DataTab;
+        ShowContext(DataTab);
         WatchHistory();
+    }
+
+    /// <summary>Opens the mood file from the content browser and brings the outliner's View tab, which edits it, in front.</summary>
+    private void ShowMood(string path)
+    {
+        OpenMood(path);
+        OutlinerTab = ViewTab;
     }
 
     /// <summary>Draws the viewport with the mood file and edits it in the View tab; a file that can't be read leaves the view as it is.</summary>

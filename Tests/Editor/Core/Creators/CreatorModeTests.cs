@@ -80,6 +80,25 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void SelectsAPartByItsIdAsThePartsListDoes()
+    {
+        using CreatorMode mode = _builder.EnterInPlace("Van");
+        Entity van = _builder.Find("Van");
+        int raised = 0;
+        mode.PartSelected += () => raised++;
+
+        mode.SelectPart("wheel.2R");
+        mode.SelectPart("wheel.2R");
+        Entity? selected = mode.FindSelectedPart();
+        mode.SelectPart(null);
+
+        selected.Should().Be(_builder.Parts.Find(van, "wheel.2R"));
+        raised.Should().Be(2, "selecting the same part again changes nothing");
+        mode.SelectedPart.Should().BeNull();
+        mode.FindSelectedPart().Should().BeNull();
+    }
+
+    [Fact]
     public void LeavingClearsTheMarksTheCopyAndTheWorkLight()
     {
         CreatorMode inPlace = _builder.EnterInPlace("Van");

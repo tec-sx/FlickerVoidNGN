@@ -10,6 +10,7 @@ using FlickerVoid.Editor.Core.Projects;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Editor.Inspector;
+using FlickerVoid.Editor.Persistence.Layout;
 using FlickerVoid.Editor.Persistence.Projects;
 using FlickerVoid.Editor.Projects;
 using FlickerVoid.Editor.Scenes;
@@ -132,7 +133,9 @@ public sealed partial class App : Application
             compiler = new GameCompiler(_scene, gameProject, new DotnetProjectBuilder(), gameCode);
         }
 
-        MainWindowViewModel main = new(viewport, inspector, unsaved, player, codeFolder, compiler, solution);
+        string layoutFile = EditorLayout.GetDefaultFile();
+        EditorLayout layout = new(layoutFile);
+        MainWindowViewModel main = new(viewport, inspector, unsaved, player, codeFolder, compiler, solution, layout);
         _poll = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, HandlePoll);
         _poll.Start();
         return new MainWindow { DataContext = main };

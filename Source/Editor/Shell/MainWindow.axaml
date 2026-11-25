@@ -93,8 +93,8 @@
                    ToolTip.Tip="Shift+A over the viewport adds an entity at the camera's pivot. Alt+left drag orbits, Alt+middle drag pans, Alt+right drag or the wheel zooms; hold the right button to look round and fly with WASD, Q and E." />
       </DockPanel>
     </Border>
-    <!-- The viewport over the content browser, and the side panel beside them: the scene outliner over the inspector, the
-         View and Data tabs, and the creator's tab while a creation is made. Every splitter resizes. -->
+    <!-- The viewport over the content browser, and the side column beside them: the context panel over the outliner, or under it
+         once swapped. Every splitter resizes. -->
     <Grid ColumnDefinitions="*,2,300">
       <Grid RowDefinitions="*,2,160">
         <Border Classes="well viewport">
@@ -120,53 +120,78 @@
       </Grid>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
       <Grid Grid.Column="2" RowDefinitions="*,2,*" Classes="sidePanel">
-        <!-- The scene outline keeps to the entities at the top; the Entity tab shows the selection's whole tree. -->
-        <TabControl Padding="0">
-          <TabItem Header="Scene">
-            <Border Classes="well">
-              <scenes:SceneTreeView x:Name="SceneTree" DataContext="{Binding SceneTree}"
-                                    controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
-            </Border>
-          </TabItem>
-          <TabItem Header="{Binding EntityTree.Title, StringFormat='Entity {0}'}">
-            <Border Classes="well">
-              <scenes:EntityTreeView x:Name="EntityTree" DataContext="{Binding EntityTree}" />
-            </Border>
-          </TabItem>
-        </TabControl>
+        <!-- The context panel holds only what is selected or open, the newest in front; empty, it says how to fill it. -->
+        <Panel Grid.Row="{Binding ContextRow}">
+          <TextBlock Classes="hint" IsVisible="{Binding !HasContext}" TextWrapping="Wrap" Margin="12" VerticalAlignment="Top"
+                     Text="Select an entity, or open a data asset or a vehicle in the content browser, to edit it here." />
+          <TabControl x:Name="SidePanel" Padding="0" SelectedIndex="{Binding SideTab}" IsVisible="{Binding HasContext}">
+            <TabItem Header="Inspector" IsVisible="{Binding ShowsInspector}">
+              <inspector:InspectorView DataContext="{Binding Inspector}" />
+            </TabItem>
+            <TabItem IsVisible="{Binding ShowsData}">
+              <TabItem.Header>
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <TextBlock Text="Data" VerticalAlignment="Center" />
+                  <Button Classes="icon small" Command="{Binding CloseDataCommand}" Focusable="False" ToolTip.Tip="Close the data asset; unsaved edits stay held.">
+                    <PathIcon Data="{x:Static shell:MaterialIcons.Close}" />
+                  </Button>
+                </StackPanel>
+              </TabItem.Header>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="{Binding DataHeading}" Classes="heading" TextTrimming="CharacterEllipsis" />
+                <Border Classes="well">
+                  <data:DataView DataContext="{Binding DataContent}" />
+                </Border>
+              </DockPanel>
+            </TabItem>
+            <TabItem Header="Vehicle" IsVisible="{Binding ShowsCreator}">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="{Binding CreatorHeading}" Classes="heading" TextTrimming="CharacterEllipsis" />
+                <Border Classes="well">
+                  <vehicles:VehiclePanelView DataContext="{Binding CreatorPanel}" />
+                </Border>
+              </DockPanel>
+            </TabItem>
+          </TabControl>
+        </Panel>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
-        <TabControl x:Name="SidePanel" Grid.Row="2" Padding="0" SelectedIndex="{Binding SideTab}">
-          <TabItem Header="Inspector">
-            <inspector:InspectorView DataContext="{Binding Inspector}" />
-          </TabItem>
-          <TabItem Header="View">
-            <DockPanel>
-              <TextBlock DockPanel.Dock="Top" Text="{Binding MoodHeading}" Classes="heading"
-                         TextTrimming="CharacterEllipsis" ToolTip.Tip="The lighting mood the viewport draws with. Open a mood file in the content browser to edit it." />
+        <!-- The outliner: the scene's entities and the selection's whole tree, or the creation's parts in the creator, and the view's
+             mood. Its corner button swaps it with the context panel. -->
+        <Panel Grid.Row="{Binding OutlinerRow}">
+          <TabControl x:Name="Outliner" Padding="0" SelectedIndex="{Binding OutlinerTab}">
+            <TabItem Header="Scene" IsVisible="{Binding !Viewport.IsCreating}">
               <Border Classes="well">
-              <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" ItemTemplate="{StaticResource FieldRow}" Margin="4,2" />
-              </ScrollViewer>
+                <scenes:SceneTreeView x:Name="SceneTree" DataContext="{Binding SceneTree}"
+                                      controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
               </Border>
-            </DockPanel>
-          </TabItem>
-          <TabItem Header="Data">
-            <DockPanel>
-              <TextBlock DockPanel.Dock="Top" Text="{Binding DataHeading}" Classes="heading" TextTrimming="CharacterEllipsis" />
+            </TabItem>
+            <TabItem Header="{Binding EntityTree.Title, StringFormat='Entity {0}'}" IsVisible="{Binding !Viewport.IsCreating}">
               <Border Classes="well">
-                <data:DataView DataContext="{Binding DataContent}" />
+                <scenes:EntityTreeView x:Name="EntityTree" DataContext="{Binding EntityTree}" />
               </Border>
-            </DockPanel>
-          </TabItem>
-          <TabItem Header="Vehicle" IsVisible="{Binding CreatorPanel, Converter={x:Static ObjectConverters.IsNotNull}}">
-            <DockPanel>
-              <TextBlock DockPanel.Dock="Top" Text="{Binding CreatorHeading}" Classes="heading" TextTrimming="CharacterEllipsis" />
+            </TabItem>
+            <TabItem Header="View">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="{Binding MoodHeading}" Classes="heading"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="The lighting mood the viewport draws with. Open a mood file in the content browser to edit it." />
+                <Border Classes="well">
+                <ScrollViewer>
+                  <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" ItemTemplate="{StaticResource FieldRow}" Margin="4,2" />
+                </ScrollViewer>
+                </Border>
+              </DockPanel>
+            </TabItem>
+            <TabItem Header="Parts" IsVisible="{Binding Viewport.IsCreating}">
               <Border Classes="well">
-                <vehicles:VehiclePanelView DataContext="{Binding CreatorPanel}" />
+                <ListBox ItemsSource="{Binding CreatorParts}" SelectedItem="{Binding CreatorPart}" />
               </Border>
-            </DockPanel>
-          </TabItem>
-        </TabControl>
+            </TabItem>
+          </TabControl>
+          <Button Classes="icon" Command="{Binding SwapPanelsCommand}" Focusable="False" HorizontalAlignment="Right" VerticalAlignment="Top"
+                  Margin="2" ToolTip.Tip="Swap the outliner and the context panel.">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Swap}" />
+          </Button>
+        </Panel>
       </Grid>
     </Grid>
   </DockPanel>

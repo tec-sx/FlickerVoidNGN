@@ -7,6 +7,7 @@ using Arch.Core;
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Scenes;
+using FlickerVoid.Editor.Persistence.Layout;
 using FlickerVoid.Editor.Viewports;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Scenes;
@@ -69,11 +70,16 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         ViewportViewModel viewport = new(_scene, validation: false);
         ContentFileFinder files = new(_content);
         InspectorViewModel inspector = new(_scene, files.Find);
-        ViewModel = new MainWindowViewModel(viewport, inspector, _content);
+        LayoutFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName(), "Layout.json");
+        EditorLayout layout = new(LayoutFile);
+        ViewModel = new MainWindowViewModel(viewport, inspector, _content, layout: layout);
         ViewModel.AskUnsaved = Ask;
     }
 
     public MainWindowViewModel ViewModel { get; }
+
+    /// <summary>The editor layout's file, in a temporary folder of its own.</summary>
+    public string LayoutFile { get; }
 
     public EditorScene Scene => _scene;
 
@@ -190,6 +196,11 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
     {
         _scene.Dispose();
         Directory.Delete(_contentFolder, recursive: true);
+        string layoutFolder = Path.GetDirectoryName(LayoutFile)!;
+        if (Directory.Exists(layoutFolder))
+        {
+            Directory.Delete(layoutFolder, recursive: true);
+        }
     }
 
     private Task<UnsavedAssetsChoice?> Ask(IReadOnlyList<string> paths)

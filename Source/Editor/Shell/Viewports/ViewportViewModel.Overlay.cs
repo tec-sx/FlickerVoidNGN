@@ -15,16 +15,29 @@ namespace FlickerVoid.Editor.Viewports;
 
 public sealed partial class ViewportViewModel
 {
-    /// <summary>Fills the overlay with this frame's icons, the selection's outline or reach, and the gizmo; none in the creator.</summary>
+    /// <summary>
+    /// Fills the overlay with this frame's icons, the selection's outline or reach, and the gizmo; in the creator only the selected
+    /// part's outline.
+    /// </summary>
     public void BuildOverlay(OverlayBuilder overlay, int viewportHeight)
     {
         overlay.Begin(Camera, viewportHeight);
-        if (IsGameView || IsCreating)
+        if (IsGameView)
         {
             return;
         }
 
         World world = Scene.Game.World;
+        if (Creator is { } creator)
+        {
+            if (creator.FindSelectedPart() is { } part && world.TryGet(part, out Transform placed))
+            {
+                DrawSelection(overlay, world, part, placed);
+            }
+
+            return;
+        }
+
         Icons.Collect(world, Selection.Selected);
         foreach (IconInstance icon in Icons.Icons)
         {
