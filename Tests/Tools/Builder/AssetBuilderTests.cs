@@ -34,6 +34,17 @@ public sealed class AssetBuilderTests : IDisposable
     }
 
     [Fact]
+    public void LeavesBlenderFilesAndTheirBackupsOut()
+    {
+        _files.WithSource("Vans/Van.blend", "b").WithSource("Vans/Van.blend1", "b").WithSource("Vans/Van.fvvehicle", "{}");
+        AssetBuilder builder = _files.Build();
+
+        BuildReport report = _files.BuildAll(builder);
+
+        report.Built.Should().Equal("Vans/Van.fvvehicle");
+    }
+
+    [Fact]
     public void CopiesFilesNoImporterTakes()
     {
         _files.WithSource("Scenes/Room.fvscene", """{ "entities": [] }""");

@@ -18,6 +18,12 @@ public sealed class AssetType(string name, string icon, string color, params str
     /// <summary>What New writes of this type; null when New doesn't make it.</summary>
     public AssetNew? New { get; init; }
 
+    /// <summary>
+    /// Whether files of this type are creations, which own the files named after them with any extension (Van.blend and Van.png for
+    /// Van.fvvehicle); any other file owns only the files named after its whole name (Paper.png.fvtexture for Paper.png).
+    /// </summary>
+    public bool IsCreation { get; init; }
+
     /// <summary>Whether the path ends in one of the type's extensions, ignoring case.</summary>
     public bool Marks(string path)
     {
