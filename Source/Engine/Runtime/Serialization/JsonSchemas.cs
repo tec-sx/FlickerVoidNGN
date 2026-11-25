@@ -4,6 +4,7 @@ using System.Text.Json.Schema;
 using System.Text.Json.Serialization.Metadata;
 
 using FlickerVoid.Engine.Gameplay.Tags;
+using FlickerVoid.Engine.Runtime.Solids;
 
 namespace FlickerVoid.Engine.Runtime.Serialization;
 
@@ -63,7 +64,35 @@ public static class JsonSchemas
             return new JsonObject { ["type"] = "string" };
         }
 
+        if (type == typeof(SolidMesh))
+        {
+            return CreateSolid();
+        }
+
         return schema;
+    }
+
+    /// <summary>A solid's points, each three numbers, and its faces, each the numbers of three points or more.</summary>
+    private static JsonObject CreateSolid()
+    {
+        JsonObject face = new()
+        {
+            ["type"] = "array",
+            ["items"] = new JsonObject { ["type"] = "integer", ["minimum"] = 0 },
+            ["minItems"] = 3,
+        };
+        JsonObject properties = new()
+        {
+            ["points"] = new JsonObject { ["type"] = "array", ["items"] = CreateNumberArray(3) },
+            ["faces"] = new JsonObject { ["type"] = "array", ["items"] = face },
+        };
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = properties,
+            ["required"] = new JsonArray("points", "faces"),
+            ["additionalProperties"] = false,
+        };
     }
 
     private static JsonObject CreateNumberArray(int count)
