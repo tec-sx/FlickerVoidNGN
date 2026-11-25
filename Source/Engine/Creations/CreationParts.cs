@@ -23,6 +23,7 @@ public sealed class CreationParts
         _world = world;
         _lifecycle = lifecycle;
         ArrayRegistry.Add<CreationPart>();
+        ArrayRegistry.Add<PartPlace>();
     }
 
     /// <summary>
@@ -141,7 +142,8 @@ public sealed class CreationParts
     private Entity Create(Entity root, PartData part)
     {
         CreationPart mark = new(root, part.Id);
-        Entity entity = _world.Create(mark);
+        PartPlace place = new(part.Place);
+        Entity entity = _world.Create(mark, place);
         TransformHierarchy.Attach(_world, entity, root, part.Place);
         foreach (PartComponent component in part.Components)
         {
@@ -155,6 +157,8 @@ public sealed class CreationParts
     {
         if (!Same(previous.Place, current.Place))
         {
+            PartPlace place = new(current.Place);
+            _world.Set(entity, place);
             TransformHierarchy.Attach(_world, entity, root, current.Place);
         }
 
