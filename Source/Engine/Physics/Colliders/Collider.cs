@@ -10,6 +10,8 @@ namespace FlickerVoid.Engine.Physics.Colliders;
 [JsonDerivedType(typeof(BoxCollider), "box")]
 [JsonDerivedType(typeof(SphereCollider), "sphere")]
 [JsonDerivedType(typeof(CapsuleCollider), "capsule")]
+[JsonDerivedType(typeof(HullCollider), "hull")]
+[JsonDerivedType(typeof(TriangleCollider), "triangles")]
 public abstract class Collider
 {
     /// <summary>Where the shape's centre sits in the entity's space, such as half a door's width from its hinge.</summary>
@@ -29,6 +31,9 @@ public abstract class Collider
         return bodyPosition - offset;
     }
 
-    /// <summary>A new Jolt shape centred on the body; the caller disposes it once a body holds it.</summary>
+    /// <summary>
+    /// A new Jolt shape centred on the body; the caller disposes it once a body holds it. Throws <see cref="InvalidOperationException"/>
+    /// saying what is wrong when the collider makes no shape.
+    /// </summary>
     internal abstract Jolt.Shape CreateShape();
 }
