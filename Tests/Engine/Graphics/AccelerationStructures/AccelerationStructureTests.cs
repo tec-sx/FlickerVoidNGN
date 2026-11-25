@@ -38,6 +38,22 @@ public sealed class AccelerationStructureTests : IDisposable
     }
 
     [Fact]
+    public void LeavesTheHitsOnInstancesThatAreNotOpaqueToTheShader()
+    {
+        BottomLevelGeometry quad = _builder.CreateQuad(depth: 0);
+        IAccelerationStructure bottomLevel = _builder.CreateBottomLevel();
+        IAccelerationStructure topLevel = _builder.CreateTopLevel(2);
+        Matrix4x4 near = Matrix4x4.CreateTranslation(0, 0, 5);
+        Matrix4x4 far = Matrix4x4.CreateTranslation(0, 0, 8);
+        _builder.BuildScene([new BottomLevelBuild(bottomLevel, quad)], topLevel, new(near, 1, bottomLevel, opaque: false), new(far, 2, bottomLevel));
+
+        RayHit hit = _builder.Trace(topLevel.BindlessIndex, (Vector3.Zero, Forward))[0];
+
+        hit.Instance.Should().Be(2, "the shader commits none of the near quad's candidate hits, so the ray passes it");
+        hit.Distance.Should().BeApproximately(8, Precision);
+    }
+
+    [Fact]
     public void GivesOnlyTopLevelStructuresABindlessSlot()
     {
         IAccelerationStructure bottomLevel = _builder.CreateBottomLevel();

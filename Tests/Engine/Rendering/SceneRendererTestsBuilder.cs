@@ -255,6 +255,18 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         return pixels;
     }
 
+    /// <summary>Renders the world that many frames in a row, as a window would, and gives the last one's pixels.</summary>
+    public uint[] RenderFrames(int count)
+    {
+        uint[] pixels = Render();
+        for (int frame = 1; frame < count; frame++)
+        {
+            pixels = Render();
+        }
+
+        return pixels;
+    }
+
     /// <summary>Renders the world and reads back one of the G-buffer's targets of four bytes a texel, each texel's bytes as a little-endian number, top row first.</summary>
     public uint[] RenderTexels(Func<GBuffer, ITexture> target)
     {

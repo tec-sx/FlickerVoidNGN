@@ -54,6 +54,17 @@ public sealed class CameraViewTests
     }
 
     [Fact]
+    public void MeasuresHowFarInFrontOfTheCameraAPointLiesAlongItsDepthAxis()
+    {
+        Quaternion lookDown = Quaternion.CreateFromAxisAngle(Vector3.UnitX, -MathF.PI / 2);
+        CameraView view = _builder.At(new Vector3(0, 5, 0), lookDown).Build();
+
+        float depth = Vector4.Dot(new Vector4(2, -1, 3, 1), view.DepthAxis);
+
+        depth.Should().BeApproximately(6, 1e-5f, "the camera five above the ground looks straight down at a point one below it");
+    }
+
+    [Fact]
     public void SnapsItsPositionToWholePixels()
     {
         CameraView view = _builder.At(new Vector3(1.004f, -2.996f, 5), Quaternion.Identity).WithViewport(1000, 1000).Build();

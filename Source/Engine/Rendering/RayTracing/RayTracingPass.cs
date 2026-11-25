@@ -14,8 +14,9 @@ namespace FlickerVoid.Engine.Rendering.RayTracing;
 /// <summary>
 /// Builds the scene's acceleration structures while the frame traces rays (<see cref="RenderContext.RayTracing"/>): the mesh
 /// parts' bottom-level structures (<see cref="MeshStructures"/>), then the top-level one placing every draw but outline-only
-/// ones, in the view or not, each with its draw's number as its id. It runs after skinning, so posed meshes are traced in this
-/// frame's pose, and before the geometry pass; without ray tracing it holds nothing.
+/// ones, in the view or not, each with its draw's number as its id and cutout draws not opaque, so shaders test their paint. It
+/// runs after skinning, so posed meshes are traced in this frame's pose, and before the geometry pass; without ray tracing it
+/// holds nothing.
 /// </summary>
 internal sealed class RayTracingPass : IRenderPass
 {
@@ -64,7 +65,7 @@ internal sealed class RayTracingPass : IRenderPass
             }
 
             IAccelerationStructure mesh = _meshes.Get(draw, _builds);
-            _placed[count] = new AccelerationStructureInstance(draw.World, (uint)index, mesh);
+            _placed[count] = new AccelerationStructureInstance(draw.World, (uint)index, mesh, opaque: !draw.Material.Cutout);
             count++;
         }
 

@@ -54,7 +54,7 @@ public sealed class InspectorViewModelTests : IDisposable
         string[] labels = [.. _builder.Component("Point Light").Fields.Select(field => field.Label)];
         _builder.ViewModel.Title.Should().Be("Lamp");
         titles.Should().Equal("Transform", "Point Light");
-        labels.Should().Equal("Color", "Intensity", "Range", "Casts Shadows");
+        labels.Should().Equal("Color", "Intensity", "Range", "Casts Shadows", "Source Radius");
     }
 
     [Fact]

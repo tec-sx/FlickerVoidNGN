@@ -2,6 +2,7 @@ using System.Numerics;
 
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Runtime.Geometry;
 
@@ -20,7 +21,7 @@ internal readonly record struct MeshDraw(
     GpuMeshPart Part,
     IBuffer Vertices,
     IBuffer PreviousVertices,
-    IBuffer Material,
+    GpuMaterial Material,
     Outline? Outline,
     MeshFlags Flags,
     Bounds? Bounds,

@@ -10,7 +10,7 @@ using Hexa.NET.ImGui;
 
 namespace FlickerVoid.Engine.Debug;
 
-/// <summary>Lists the world's point and spot lights, each with its color, intensity, range, shadows and position to tweak.</summary>
+/// <summary>Lists the world's point and spot lights, each with its color, intensity, range, shadows, source size and position to tweak.</summary>
 public sealed class LightsWindow : DebugWindow
 {
     private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>();
@@ -54,6 +54,12 @@ public sealed class LightsWindow : DebugWindow
                 if (ImGui.Checkbox("Casts shadows", ref shadows))
                 {
                     light.CastsShadows = shadows;
+                }
+
+                float sourceRadius = light.SourceRadius;
+                if (ImGui.SliderFloat("Source radius", ref sourceRadius, 0, 1))
+                {
+                    light.SourceRadius = sourceRadius;
                 }
 
                 Vector3 position = transform.Position;
@@ -105,6 +111,12 @@ public sealed class LightsWindow : DebugWindow
                 if (ImGui.Checkbox("Casts shadows", ref shadows))
                 {
                     light.CastsShadows = shadows;
+                }
+
+                float sourceRadius = light.SourceRadius;
+                if (ImGui.SliderFloat("Source radius", ref sourceRadius, 0, 1))
+                {
+                    light.SourceRadius = sourceRadius;
                 }
 
                 Vector3 position = transform.Position;
