@@ -1,6 +1,7 @@
 using System.Numerics;
 
 using FlickerVoid.Engine.Graphics.AccelerationStructures;
+using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Resources;
 
@@ -9,6 +10,9 @@ namespace FlickerVoid.Engine.Graphics.Tests.AccelerationStructures;
 public sealed class AccelerationStructureTests : IDisposable
 {
     private const float Precision = 1e-4f;
+
+    /// <summary>Instances enough that building a top-level structure for them takes more scratch than refitting a quad.</summary>
+    private const int LargeScene = 4096;
 
     private static readonly Vector3 Forward = Vector3.UnitZ;
 
@@ -81,6 +85,30 @@ public sealed class AccelerationStructureTests : IDisposable
         before.Distance.Should().BeApproximately(5, Precision);
         after.Instance.Should().Be(3);
         after.Distance.Should().BeApproximately(7, Precision, "the refit follows the vertices two units further");
+    }
+
+    [Fact]
+    public void KeepsTheScratchOfBuildsItRecordedUntilTheyHaveRun()
+    {
+        IGraphicsDevice device = _builder.Build();
+        BottomLevelGeometry quad = _builder.CreateQuad(depth: 0);
+        IAccelerationStructure bottomLevel = _builder.CreateBottomLevel(refittable: true);
+        IAccelerationStructure topLevel = _builder.CreateTopLevel(LargeScene);
+        Matrix4x4 placed = Matrix4x4.CreateTranslation(0, 0, 5);
+        AccelerationStructureInstance instance = new(placed, 3, bottomLevel);
+        _builder.BuildScene([new BottomLevelBuild(bottomLevel, quad)], topLevel, instance);
+
+        // The refit takes little scratch and the large scene's build more, so the list takes a larger scratch between them.
+        AccelerationStructureTestsBuilder.MoveQuad(quad.Vertices, 2);
+        ICommandList commands = _builder.RecordScene([new BottomLevelBuild(bottomLevel, quad, Refit: true)], topLevel, instance);
+        int recorded = device.GetInfo().Allocations;
+        device.WaitIdle();
+        int afterEarlierWork = device.GetInfo().Allocations;
+        _builder.Submit(commands);
+        RayHit hit = _builder.Trace(topLevel.BindlessIndex, (Vector3.Zero, Forward))[0];
+
+        afterEarlierWork.Should().Be(recorded, "the refit's scratch is kept until the list that recorded it has run");
+        hit.Distance.Should().BeApproximately(7, Precision);
     }
 
     [Fact]

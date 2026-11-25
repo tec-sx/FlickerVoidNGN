@@ -166,15 +166,29 @@ internal sealed class AccelerationStructureTestsBuilder : IDisposable
     /// <summary>Records the bottom-level builds, then the top-level build of the instances, and waits for the GPU.</summary>
     public void BuildScene(BottomLevelBuild[] bottomLevels, IAccelerationStructure topLevel, params AccelerationStructureInstance[] instances)
     {
+        ICommandList commands = RecordScene(bottomLevels, topLevel, instances);
+        Submit(commands);
+    }
+
+    /// <summary>A command list begun with the bottom-level builds and then the top-level build of the instances recorded, not yet submitted.</summary>
+    public ICommandList RecordScene(BottomLevelBuild[] bottomLevels, IAccelerationStructure topLevel, params AccelerationStructureInstance[] instances)
+    {
         IGraphicsDevice device = Build();
         int instanceBytes = Math.Max(instances.Length, 1) * Marshal.SizeOf<AccelerationStructureInstance>();
         BufferDescription description = new(instanceBytes, BufferUsage.AccelerationStructureInput, MemoryLocation.Upload) { Name = "Instances" };
         IBuffer instanceBuffer = Keep(device.CreateBuffer(description));
         instanceBuffer.Write(MemoryMarshal.AsBytes(instances.AsSpan()));
-        using ICommandList commands = device.CreateCommandList();
+        ICommandList commands = Keep(device.CreateCommandList());
         commands.Begin();
         commands.BuildBottomLevels(bottomLevels);
         commands.BuildTopLevel(topLevel, instanceBuffer, instances.Length);
+        return commands;
+    }
+
+    /// <summary>Ends and submits a list from <see cref="RecordScene"/> and waits for the GPU.</summary>
+    public void Submit(ICommandList commands)
+    {
+        IGraphicsDevice device = Build();
         commands.End();
         device.Submit(commands);
         device.WaitIdle();

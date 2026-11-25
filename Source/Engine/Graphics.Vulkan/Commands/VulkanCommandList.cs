@@ -21,7 +21,7 @@ namespace FlickerVoid.Engine.Graphics.Vulkan.Commands;
 
 /// <summary>
 /// A command buffer with its own pool, reset on Begin once the GPU has finished its previous submission, and the scratch memory its
-/// acceleration structure builds share.
+/// acceleration structure builds share, kept until the builds recorded with it have run.
 /// </summary>
 internal sealed unsafe class VulkanCommandList : ICommandList
 {
@@ -31,6 +31,8 @@ internal sealed unsafe class VulkanCommandList : ICommandList
     private readonly VulkanGraphicsDevice _device;
     private readonly Vk _vk;
     private readonly CommandPool _pool;
+    // Scratch that builds recorded since Begin use and a larger buffer replaced; released once they have run.
+    private readonly List<VulkanBuffer> _replacedScratch = [];
     private VulkanBuffer? _scratch;
     private ulong _scratchAddress;
     private bool _disposed;
@@ -67,6 +69,7 @@ internal sealed unsafe class VulkanCommandList : ICommandList
     public void Begin()
     {
         _device.WaitFor(SubmissionValue);
+        ReleaseReplacedScratch();
         VulkanResult.Check(_vk.ResetCommandPool(_device.Handle, _pool, 0));
         CommandBufferBeginInfo info = new()
         {
@@ -439,6 +442,7 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         }
 
         _disposed = true;
+        ReleaseReplacedScratch();
         _scratch?.Dispose();
         CommandPool pool = _pool;
         VulkanGraphicsDevice device = _device;
@@ -489,8 +493,8 @@ internal sealed unsafe class VulkanCommandList : ICommandList
     }
 
     /// <summary>
-    /// The aligned address of scratch memory of at least the size; a larger buffer replaces a smaller one, released once the GPU is
-    /// done with it. Builds in one list share it: each waits for the one before.
+    /// The aligned address of scratch memory of at least the size; a larger buffer replaces a smaller one, which builds recorded
+    /// before may still use, so it is released only once they have run. Builds in one list share it: each waits for the one before.
     /// </summary>
     private ulong EnsureScratch(ulong size)
     {
@@ -498,7 +502,11 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         ulong needed = size + alignment;
         if (_scratch is null || (ulong)_scratch.Description.Size < needed)
         {
-            _scratch?.Dispose();
+            if (_scratch is not null)
+            {
+                _replacedScratch.Add(_scratch);
+            }
+
             ulong capacity = BitOperations.RoundUpToPowerOf2(Math.Max(needed, 1));
             BufferDescription description = new((long)capacity, BufferUsage.None) { Name = "Acceleration structure scratch" };
             _scratch = new VulkanBuffer(_device, description, BufferUsageFlags.StorageBufferBit | BufferUsageFlags.ShaderDeviceAddressBit);
@@ -506,6 +514,17 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         }
 
         return _scratchAddress;
+    }
+
+    /// <summary>Releases the scratch larger buffers replaced, once the GPU is done with the list that recorded builds in it.</summary>
+    private void ReleaseReplacedScratch()
+    {
+        foreach (VulkanBuffer scratch in _replacedScratch)
+        {
+            scratch.Dispose();
+        }
+
+        _replacedScratch.Clear();
     }
 
     /// <summary>Builds read what every earlier command wrote, and write only after earlier reads and builds are done.</summary>
