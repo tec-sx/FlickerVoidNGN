@@ -126,6 +126,9 @@ public sealed class RenderContext
 
     internal ProbeSource? ProbeSource { get; set; }
 
+    /// <summary>The mood's canvas the frame is laid on, found as the passes prepare.</summary>
+    internal PostCanvas Canvas { get; set; }
+
     /// <summary>Empties what the last frame's passes worked out.</summary>
     internal void Reset()
     {

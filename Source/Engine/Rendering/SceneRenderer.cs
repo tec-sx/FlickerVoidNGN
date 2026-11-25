@@ -29,9 +29,9 @@ namespace FlickerVoid.Engine.Rendering;
 /// Draws a frame: extracts the world into a <see cref="RenderScene"/>, lets every pass of the <see cref="Pipeline"/> prepare,
 /// uploads the frame's view, lights, shadows, clusters and probes, then records the passes in order. The default passes skin
 /// meshes, gather lights, draw the shadow atlas, build the scene's acceleration structures and trace its irradiance probes when it
-/// traces rays, draw the depth and G-buffer and the screen shadows, light the G-buffer into HDR, post-process it graded as the
-/// <see cref="Mood"/> says, show a <see cref="DebugView"/> in its place when one is asked for, and draw the outlines of outlined
-/// meshes.
+/// traces rays, draw the depth and G-buffer and the screen shadows, light the G-buffer into HDR, fill the sky and lay the depth
+/// fade on it, post-process it graded as the <see cref="Mood"/> says, show a <see cref="DebugView"/> in its place when one is
+/// asked for, and draw the outlines of outlined meshes.
 /// </summary>
 public sealed class SceneRenderer : IDisposable
 {
@@ -91,8 +91,9 @@ public sealed class SceneRenderer : IDisposable
         Pipeline.Add(new ShadowRayPass(device, shaders));
         Pipeline.Add(new ScreenShadowPass(device, shaders));
         Pipeline.Add(new LightingPass(device, shaders));
+        Pipeline.Add(new SkyPass(device, shaders));
+        Pipeline.Add(new DepthFadePass(device, shaders));
         Pipeline.Add(new PostProcessPass(device, shaders, colorFormat, content));
-        Pipeline.Add(new SkyPass(device, shaders, colorFormat));
         Pipeline.Add(new DebugViewPass(device, shaders, colorFormat));
         Pipeline.Add(new OutlinePass(device, shaders, colorFormat));
     }

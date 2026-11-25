@@ -637,6 +637,45 @@ public sealed class SceneRendererTests : IDisposable
         pixels[5].Should().Be(RedPixel);
     }
 
+    [Theory]
+    [InlineData(Tonemapper.None)]
+    [InlineData(Tonemapper.Uncharted2)]
+    [InlineData(Tonemapper.Aces)]
+    public void MeltsTheFarSideIntoTheFarColourAsTheScreenShowsIt(Tonemapper tonemapper)
+    {
+        const string main = """{ "name": "Main", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2 }, "mainCamera": { "nearAmount": 0, "farStart": 0, "farEnd": 1, "farAmount": 1, "farColor": [0.2, 0.4, 0.6] } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(main, Quad);
+        _builder.WithMood(mood => mood with { Exposure = 2, Contrast = 1.2f, Saturation = 0.8f, Tonemapper = tonemapper });
+        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, 3));
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeCloseTo(51, 2, "the far colour is the colour the far side takes on screen, whatever the grade");
+        green.Should().BeCloseTo(102, 2);
+        blue.Should().BeCloseTo(153, 2);
+    }
+
+    [Fact]
+    public void LeavesTheSkyOutOfTheDepthFade()
+    {
+        const string main = """{ "name": "Main", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2 }, "mainCamera": { "nearAmount": 0, "farStart": 0, "farEnd": 1, "farAmount": 1, "farColor": [0, 0, 0] } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(main, Quad);
+        _builder.WithRenderer(static renderer =>
+        {
+            renderer.Focus = new Vector3(0, 0, 3);
+            renderer.Sky = true;
+        });
+
+        uint[] pixels = _builder.Render();
+
+        pixels[5].Should().Be(BlackPixel, "the quad lies past the far end");
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[0]);
+        (red + green + blue).Should().BeGreaterThan(30, "the sky fills the empty corner and stays out of the fade");
+    }
+
     [Fact]
     public void SpreadsBrightLightIntoBloom()
     {
