@@ -223,6 +223,84 @@ public sealed class PhysicsSystemTests : IDisposable
     }
 
     [Fact]
+    public void HullsCollideAsTheShapeTheirPointsSpanInTheEntitysSpace()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 4, 0] },
+                "rigidBody": { "collider": { "type": "hull", "points": [
+                    [-0.5, 0, -0.5], [0.5, 0, -0.5], [0.5, 0, 0.5], [-0.5, 0, 0.5],
+                    [-0.5, 1, -0.5], [0.5, 1, -0.5], [0.5, 1, 0.5], [-0.5, 1, 0.5]] } } } },
+            { "name": "Floor", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "box", "size": [20, 1, 20] } } } }
+            """);
+
+        Run(seconds: 3);
+
+        Transform crate = _game.World.Get<Transform>(entities[0]);
+        crate.Position.Y.Should().BeInRange(0.45f, 0.55f);
+    }
+
+    [Fact]
+    public void TrianglesWoundAsTheEnginesModelsStandFacingTheirFront()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Ball", "components": {
+                "transform": { "position": [0, 3, 0] },
+                "rigidBody": { "collider": { "type": "sphere" } } } },
+            { "name": "Ground", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "triangles",
+                    "positions": [[-10, 0, -10], [10, 0, -10], [10, 0, 10], [-10, 0, 10]], "indices": [0, 1, 2, 0, 2, 3] } } } }
+            """);
+        Step();
+        Ray down = new(new Vector3(4, 10, 4), -Vector3.UnitY);
+
+        bool hit = _physics.RayCast(down, 100, entities[0], out RayHit ground);
+        Run(seconds: 3);
+
+        hit.Should().BeTrue();
+        ground.Entity.Should().Be(entities[1]);
+        ground.Point.Y.Should().BeApproximately(0, 1e-3f);
+        ground.Normal.Y.Should().BeApproximately(1, 1e-3f);
+        Transform ball = _game.World.Get<Transform>(entities[0]);
+        ball.Position.Y.Should().BeInRange(0.45f, 0.55f);
+    }
+
+    [Fact]
+    public void MovingBodiesRefuseTriangles()
+    {
+        Spawn("""
+            { "name": "Platform", "components": {
+                "transform": {},
+                "rigidBody": { "kinematic": true, "collider": { "type": "triangles",
+                    "positions": [[0, 0, 0], [1, 0, 0], [0, 0, 1]], "indices": [0, 1, 2] } } } }
+            """);
+
+        Action step = Step;
+
+        step.Should().Throw<InvalidOperationException>().WithMessage("*'Platform'*hull*");
+    }
+
+    [Theory]
+    [InlineData("[[0, 0, 0], [1, 0, 0], [2, 0, 0], [3, 0, 0]]")]
+    [InlineData("[[0, 0, 0], [1, 0, 0], [0, 0, 1], [1, 0, 1]]")]
+    [InlineData("[[0, 0, 0], [1, 0, 0], [0, 1, 0]]")]
+    public void RefusesAHullOfPointsOnALineOrAPlane(string points)
+    {
+        Spawn($$"""
+            { "name": "Sheet", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "hull", "points": {{points}} } } } }
+            """);
+
+        Action step = Step;
+
+        step.Should().Throw<InvalidOperationException>().WithMessage("*'Sheet'*hull*");
+    }
+
+    [Fact]
     public void KinematicBodiesStayWhereTheyAre()
     {
         IReadOnlyList<Entity> entities = Spawn("""

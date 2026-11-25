@@ -223,9 +223,15 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         foreach (Entity entity in _pending)
         {
             RigidBody body = World.Get<RigidBody>(entity);
+            if (body.Collider is TriangleCollider)
+            {
+                string name = GetName(entity);
+                throw new InvalidOperationException($"'{name}' moves, so it can't have a triangle collider: give it a hull.");
+            }
+
             Transform transform = World.Get<Transform>(entity);
             Jolt.MotionType motion = body.Kinematic ? Jolt.MotionType.Kinematic : Jolt.MotionType.Dynamic;
-            using Jolt.BodyCreationSettings settings = CreateSettings(body.Collider, transform, motion, MovingLayer);
+            using Jolt.BodyCreationSettings settings = CreateSettings(entity, body.Collider, transform, motion, MovingLayer);
             if (!body.Kinematic)
             {
                 settings.OverrideMassProperties = Jolt.OverrideMassProperties.CalculateInertia;
@@ -243,15 +249,15 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         {
             StaticBody body = World.Get<StaticBody>(entity);
             Transform transform = World.Get<Transform>(entity);
-            using Jolt.BodyCreationSettings settings = CreateSettings(body.Collider, transform, Jolt.MotionType.Static, StaticLayer);
+            using Jolt.BodyCreationSettings settings = CreateSettings(entity, body.Collider, transform, Jolt.MotionType.Static, StaticLayer);
             Add(entity, transform, settings, true);
         }
     }
 
-    private static Jolt.BodyCreationSettings CreateSettings(Collider collider, in Transform transform, Jolt.MotionType motion, Jolt.ObjectLayer layer)
+    private Jolt.BodyCreationSettings CreateSettings(Entity entity, Collider collider, in Transform transform, Jolt.MotionType motion, Jolt.ObjectLayer layer)
     {
         Vector3 position = collider.GetBodyPosition(transform.Position, transform.Rotation);
-        using Jolt.Shape shape = collider.CreateShape();
+        using Jolt.Shape shape = CreateShape(entity, collider);
         Jolt.BodyCreationSettings settings = new(shape, position, transform.Rotation, motion, layer)
         {
             Friction = Friction,
@@ -260,6 +266,30 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
             AngularDamping = Damping,
         };
         return settings;
+    }
+
+    /// <summary>The collider's shape, or why the entity can't be simulated with it.</summary>
+    private Jolt.Shape CreateShape(Entity entity, Collider collider)
+    {
+        try
+        {
+            return collider.CreateShape();
+        }
+        catch (InvalidOperationException exception)
+        {
+            string name = GetName(entity);
+            throw new InvalidOperationException($"'{name}' can't be simulated: {exception.Message}", exception);
+        }
+    }
+
+    private string GetName(Entity entity)
+    {
+        if (World.TryGet(entity, out EntityName name))
+        {
+            return name.Value;
+        }
+
+        return entity.ToString();
     }
 
     private void Add(Entity entity, in Transform transform, Jolt.BodyCreationSettings settings, bool isStatic)
