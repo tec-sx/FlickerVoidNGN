@@ -1,5 +1,6 @@
 // The material buffer's parameters, as Scene.fvshader declares them and MaterialLayout packs them: the geometry pass reads a
-// surface's texture, tint, relief and cutoff, the lighting pass its shading controls, and shadows its cutoff.
+// surface's texture, tint, relief and cutoff, the lighting pass and the probes' rays its shading controls, and shadows its
+// cutoff.
 
 #pragma once
 
@@ -26,10 +27,11 @@ struct Material
     float Cutoff;
 };
 
-// The material's parameters, packed tightly in declared order by MaterialLayout.
+// The material's parameters, packed tightly in declared order by MaterialLayout; neighbouring pixels and rays may read different
+// materials, so the index is marked as varying.
 Material LoadMaterial(uint index)
 {
-    ByteAddressBuffer buffer = Buffers[index];
+    ByteAddressBuffer buffer = Buffers[NonUniformResourceIndex(index)];
     Material material;
     material.Tint = buffer.Load<float3>(0);
     material.RampSoftness = buffer.Load<float>(12);
@@ -48,4 +50,14 @@ Material LoadMaterial(uint index)
     material.ReliefDepth = buffer.Load<float>(88);
     material.Cutoff = buffer.Load<float>(92);
     return material;
+}
+
+// The share of light a surface takes at the cosine between its normal and the light: wrapped round past the terminator,
+// then pulled toward a hard step as the ramp softness falls (1 is plain wrapped diffuse light).
+float Diffuse(Material material, float cosine)
+{
+    float wrapped = saturate((cosine + material.Wrap) / (1 + material.Wrap));
+    float halfWidth = max(0.5 * material.RampSoftness, 0.001);
+    float stepped = smoothstep(0.5 - halfWidth, 0.5 + halfWidth, wrapped);
+    return lerp(stepped, wrapped, material.RampSoftness);
 }

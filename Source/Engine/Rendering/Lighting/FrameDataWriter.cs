@@ -78,10 +78,9 @@ internal sealed class FrameDataWriter : IDisposable
         Vector3 probeMin = Vector3.Zero;
         Vector3 probeSize = Vector3.Zero;
         IrradianceVolume volume = new();
-        ProbeSource? probes = context.ProbeSource;
-        if (probes?.Probes is not null)
+        if (context.ProbeSource is { } probes && FindProbeBuffer(probes) is { } found)
         {
-            probeBuffer = _probes.Upload(probes.Probes);
+            probeBuffer = found;
             volume = probes.Volume;
             probeSize = volume.Size;
             probeMin = probes.Center - (volume.Size / 2);
@@ -202,6 +201,22 @@ internal sealed class FrameDataWriter : IDisposable
         frame.Write(indoorBytes, indoorsOffset);
         frame.Write(drawBytes, drawsOffset);
         return frame;
+    }
+
+    /// <summary>The bindless index of the buffer holding the probes: the live ones traced on the GPU, else the baked ones uploaded.</summary>
+    private uint? FindProbeBuffer(ProbeSource probes)
+    {
+        if (probes.Live is { } live)
+        {
+            return live.BindlessIndex;
+        }
+
+        if (probes.Probes is { } baked)
+        {
+            return _probes.Upload(baked);
+        }
+
+        return null;
     }
 
     private static int AlignUp(int offset, int alignment)

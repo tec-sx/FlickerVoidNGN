@@ -22,7 +22,7 @@ public sealed class IrradianceProbesTests
     [Fact]
     public void ReadsBackWhatItSaved()
     {
-        IrradianceProbes probes = _builder.WithCounts(2, 1, 2).WithEvenIrradiance(new Vector3(0.1f, 0.2f, 0.3f)).Build();
+        IrradianceProbes probes = _builder.WithCounts(2, 1, 2).WithEvenIrradiance(new Vector3(0.1f, 0.2f, 0.3f)).WithEvenDistances(new Vector2(0.25f, 0.5f)).Build();
 
         IrradianceProbes loaded = IrradianceProbesTestsBuilder.RoundTrip(probes);
 
@@ -30,6 +30,17 @@ public sealed class IrradianceProbesTests
         loaded.CountY.Should().Be(1);
         loaded.CountZ.Should().Be(2);
         loaded.Probes.ToArray().Should().Equal(probes.Probes.ToArray());
+        loaded.Distances.ToArray().Should().Equal(probes.Distances.ToArray());
+    }
+
+    [Fact]
+    public void KeepsAnOctahedralMapOfDistancesForEachProbe()
+    {
+        IrradianceProbes probes = _builder.WithCounts(3, 2, 4).Build();
+
+        int texels = IrradianceProbes.DistanceSize * IrradianceProbes.DistanceSize;
+        probes.Distances.Length.Should().Be(24 * texels);
+        probes.Distances.ToArray().Should().AllBeEquivalentTo(Vector2.One, "a probe that traced nothing sees nothing within its reach");
     }
 
     [Fact]
@@ -40,6 +51,16 @@ public sealed class IrradianceProbesTests
         Action load = () => IrradianceProbes.Load(stream);
 
         load.Should().Throw<InvalidDataException>();
+    }
+
+    [Fact]
+    public void AsksForABakeAgainOfFilesWithoutDistances()
+    {
+        using MemoryStream stream = IrradianceProbesTestsBuilder.FirstVersionFile();
+
+        Action load = () => IrradianceProbes.Load(stream);
+
+        load.Should().Throw<InvalidDataException>().WithMessage("*bake*again*");
     }
 
     [Fact]

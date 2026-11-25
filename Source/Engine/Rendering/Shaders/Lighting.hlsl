@@ -1,7 +1,7 @@
 // Lights the G-buffer into the HDR target, a thread a pixel: each surface's color shaded by its material's controls
 // (Scene.fvshader) and lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster, shadowed by
 // traced rays (ShadowRays.hlsl) while the frame traces them, else through the shadow atlas, and tinted by spot light cookies,
-// plus bounced light from irradiance probes, seen through fog lit by the same lights through the shadow atlas. Indoor volumes
+// plus bounced light from irradiance probes (Probes.hlsl), seen through fog lit by the same lights through the shadow atlas. Indoor volumes
 // scale the ambient light inside them, and the world outside the cutaway's box is muted. ScreenShadows.hlsl gives each pixel
 // its ambient occlusion and contact shadow, unless the frame traces rays: then ShadowRays.hlsl traces the occlusion, and traced
 // sun shadows have no need of a contact shadow. Alpha is the paint's coverage, more where its impasto stands thick, for the
@@ -11,6 +11,7 @@
 #include "GBuffer.hlsl"
 #include "Light.hlsl"
 #include "Material.hlsl"
+#include "Probes.hlsl"
 
 struct LightingConstants
 {
@@ -30,8 +31,6 @@ struct Shadow
 
 static const uint FogSteps = 16;
 
-static const uint ProbeSize = 48;
-
 static const uint ShadowSize = 96;
 
 static const float AtlasSize = 4096;
@@ -48,16 +47,6 @@ static const uint TilesY = 9;
 
 static const uint Slices = 24;
 
-// The share of light a surface takes at the cosine between its normal and the light: wrapped round past the terminator,
-// then pulled toward a hard step as the ramp softness falls (1 is plain wrapped diffuse light).
-float Diffuse(Material material, float cosine)
-{
-    float wrapped = saturate((cosine + material.Wrap) / (1 + material.Wrap));
-    float halfWidth = max(0.5 * material.RampSoftness, 0.001);
-    float stepped = smoothstep(0.5 - halfWidth, 0.5 + halfWidth, wrapped);
-    return lerp(stepped, wrapped, material.RampSoftness);
-}
-
 // A Blinn-Phong highlight, sharper as the glossiness rises, on surfaces facing the light.
 float Specular(Material material, float3 normal, float3 toLight, float3 toCamera)
 {
@@ -69,28 +58,6 @@ float Specular(Material material, float3 normal, float3 toLight, float3 toCamera
     float3 halfway = normalize(toLight + toCamera);
     float exponent = exp2(1 + material.Glossiness * 10);
     return material.Specular * pow(saturate(dot(normal, halfway)), exponent);
-}
-
-static const uint IndoorSize = 32;
-
-// The share of the mood's ambient light at a point: the least of the indoor volumes it stands in, else all of it.
-float IndoorAmbient(FrameData frame, float3 worldPosition)
-{
-    ByteAddressBuffer buffer = Buffers[frame.Buffer];
-    float ambient = 1;
-    for (uint index = 0; index < frame.IndoorCount; index++)
-    {
-        uint offset = frame.IndoorsOffset + index * IndoorSize;
-        float3 boxMin = buffer.Load<float3>(offset);
-        float boxAmbient = buffer.Load<float>(offset + 12);
-        float3 boxMax = buffer.Load<float3>(offset + 16);
-        if (IsInBox(worldPosition, boxMin, boxMax))
-        {
-            ambient = min(ambient, boxAmbient);
-        }
-    }
-
-    return ambient;
 }
 
 // Greys and darkens the world outside the cutaway's box by its muting, so the room it looks into stands out.
@@ -196,18 +163,6 @@ float SampleShadow(FrameData frame, uint index, float3 worldPosition, float3 nor
     return lit / 9;
 }
 
-// The cookie's color where the light's ray through the point crosses it, the outer cone filling the image.
-float3 SampleCookie(FrameData frame, Light light, float3 fromLight)
-{
-    float3 up = cross(light.Right, light.Direction);
-    float3 local = float3(dot(fromLight, light.Right), dot(fromLight, up), dot(fromLight, light.Direction));
-    float tanOuter = sqrt(saturate(1 - light.CosOuter * light.CosOuter)) / light.CosOuter;
-    float2 spread = local.xy / (local.z * tanOuter);
-    float2 uv = float2(0.5 + 0.5 * spread.x, 0.5 - 0.5 * spread.y);
-    // Level 0: the light loop isn't uniform across pixels, so there are no derivatives to pick a mip with.
-    return Textures[light.Cookie].SampleLevel(Samplers[frame.ClampSampler], uv, 0).rgb;
-}
-
 // The share of the light's rays that reached the pixel's surface, its channel of the traced shadows.
 float RayShadow(FrameData frame, int3 texel, uint channel)
 {
@@ -269,50 +224,6 @@ void ShadeClusterLights(FrameData frame, Material material, float2 pixel, float3
     }
 }
 
-// A probe's spherical harmonics turned into the irradiance (over pi) a surface facing the normal gets.
-float3 EvaluateProbe(ByteAddressBuffer probes, uint index, float3 normal)
-{
-    uint offset = index * ProbeSize;
-    float4 basis = float4(1, normal);
-    float red = dot(probes.Load<float4>(offset), basis);
-    float green = dot(probes.Load<float4>(offset + 16), basis);
-    float blue = dot(probes.Load<float4>(offset + 32), basis);
-    return max(float3(red, green, blue), 0);
-}
-
-// The irradiance blended from the eight probes round the point, or nothing outside the volume.
-float3 SampleProbes(FrameData frame, float3 worldPosition, float3 normal)
-{
-    if (frame.Probes == None)
-    {
-        return 0;
-    }
-
-    float3 local = (worldPosition - frame.ProbeMin) / frame.ProbeSize;
-    if (any(local < 0) || any(local > 1))
-    {
-        return 0;
-    }
-
-    ByteAddressBuffer probes = Buffers[frame.Probes];
-    uint3 last = frame.ProbeCounts - 1;
-    float3 grid = clamp(local * float3(frame.ProbeCounts) - 0.5, 0, float3(last));
-    uint3 low = min(uint3(grid), last);
-    uint3 high = min(low + 1, last);
-    float3 blend = grid - float3(low);
-    float3 irradiance = 0;
-    for (uint corner = 0; corner < 8; corner++)
-    {
-        uint3 bits = uint3(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
-        uint3 cell = low + bits * (high - low);
-        float3 weights = lerp(1 - blend, blend, float3(bits));
-        uint index = (cell.z * frame.ProbeCounts.y + cell.y) * frame.ProbeCounts.x + cell.x;
-        irradiance += weights.x * weights.y * weights.z * EvaluateProbe(probes, index, normal);
-    }
-
-    return irradiance;
-}
-
 // Henyey-Greenstein phase, scaled so even scattering is 1, for light turning by the angle whose cosine is given.
 float Phase(float cosAngle, float anisotropy)
 {
@@ -324,7 +235,7 @@ float Phase(float cosAngle, float anisotropy)
 // The light a point in fog scatters toward the camera, from every light that reaches it, before the fog's color.
 float3 FogLight(FrameData frame, float2 pixel, float3 position, float3 towardCamera)
 {
-    float3 light = frame.Ambient * IndoorAmbient(frame, position) + SampleProbes(frame, position, 0);
+    float3 light = frame.Ambient * IndoorAmbient(frame, position) + SampleProbes(frame, position, 0, towardCamera);
     float3 sunDirection = normalize(frame.SunDirection);
     float sun = (1 - frame.Ambient) * Phase(dot(sunDirection, towardCamera), frame.FogAnisotropy);
     if (frame.SunShadow != None)
@@ -473,7 +384,7 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
         occlusion = 1 - frame.AmbientOcclusion * (1 - reached);
     }
 
-    float3 ambient = frame.Ambient * IndoorAmbient(frame, worldPosition) + SampleProbes(frame, worldPosition, normal);
+    float3 ambient = frame.Ambient * IndoorAmbient(frame, worldPosition) + SampleProbes(frame, worldPosition, normal, toCamera);
     float3 diffuse = ambient * occlusion + sun * sunDiffuse;
     float3 specular = sun * sunSpecular;
     ShadeClusterLights(frame, material, pixel, worldPosition, normal, toCamera, diffuse, specular);

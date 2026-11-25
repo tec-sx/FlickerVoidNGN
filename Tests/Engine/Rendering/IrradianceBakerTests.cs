@@ -26,13 +26,25 @@ public sealed class IrradianceBakerTests : IDisposable
     [Fact]
     public void AddsTheProbesOfEachBounceToTheNext()
     {
-        IrradianceProbe first = _builder.WithSunlitRedFloor().WithRedCeiling().BakeOneProbeAboveTheFloor(bounces: 1);
+        IrradianceProbe first = _builder.WithGlowingRedFloor().WithRedCeiling().BakeOneProbeAboveTheFloor(bounces: 1);
         IrradianceProbe second = _builder.BakeOneProbeAboveTheFloor(bounces: 2);
 
         Vector3 firstUp = first.Evaluate(Vector3.UnitY);
         Vector3 secondUp = second.Evaluate(Vector3.UnitY);
 
         firstUp.X.Should().BeLessThan(0.1f, "on the first bounce the ceiling's underside is dark");
-        secondUp.X.Should().BeGreaterThan(0.5f, "on the second the probes light the ceiling with what the floor reflects");
+        secondUp.X.Should().BeGreaterThan(0.5f, "on the second the probes light the ceiling with the floor's glow");
+    }
+
+    [Fact]
+    public void SeesHowFarTheFloorLiesBelowEachProbe()
+    {
+        IrradianceProbes probes = _builder.WithSunlitRedFloor().BakeProbesAboveTheFloor(bounces: 1);
+
+        Vector2 down = IrradianceBakerTestsBuilder.DistanceToward(probes, -Vector3.UnitY);
+        Vector2 up = IrradianceBakerTestsBuilder.DistanceToward(probes, Vector3.UnitY);
+
+        down.X.Should().BeLessThan(up.X, "the floor stands a unit below the probe and nothing above it");
+        up.X.Should().Be(1, "nothing above lies within the probe's reach");
     }
 }

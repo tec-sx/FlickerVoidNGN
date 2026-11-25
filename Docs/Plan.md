@@ -9,7 +9,7 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 | Foundation | Own engine on open-source libraries: Silk.NET, Jolt (BepuPhysics until 2026-11-25), Arch, SharpGLTF. Stride and MonoGame are references. |
 | Stride code | Copy and adapt its MIT Vulkan backend and light shaders, keeping the licence notice |
 | Look | Orthographic 2.5D: 3D scenes, hand-drawn textures, a 2D feel. Not 2D-first, not photoreal. Lighting first. |
-| Indirect light | Baked probes first, real-time later |
+| Indirect light | Irradiance probes traced live by rays where the GPU has ray queries, baked through the same rays for the rest (owner, 2026-11-25) |
 | .NET | .NET 10 LTS, NativeAOT for release builds |
 | Graphics | Vulkan 1.3 only, on Windows and Linux. Direct3D 12 was dropped after stage 3: every RTX feature (DLSS frame generation and ray reconstruction, Mega Geometry, shader execution reordering, cooperative vectors, RTX IO) is on Vulkan, and what D3D12 adds (work graphs, sampler feedback, Xbox) isn't in the plan |
 | Shaders | HLSL, compiled by DXC to SPIR-V |
@@ -56,7 +56,7 @@ graph TD
 - Shadows: one orthographic sun shadow map fitted to the view, a shadow atlas for local lights, soft filtering, contact shadows; traced where the GPU has ray queries (below), softened by the sun's width and the lamps' sizes. Painted cards cut out their clear paint, in shadows too.
 - Ray tracing on RTX (owner, 2026-11-25): where the GPU has ray queries, the scene's acceleration structures are built every frame for ray traced shadows, ambient occlusion and probes; elsewhere the shadow maps, screen-space shadows and baked probes stay.
 - Light cookies: spot lights project painted textures.
-- Baked irradiance probes for bounce light.
+- Irradiance probes for bounce light, each with a map of how far it sees so light doesn't pass through walls: traced live where the GPU has ray queries, baked into a file for the rest.
 - Volumetric fog lit by the same lights.
 - Post: ambient occlusion, bloom, colour grading per area or mood, paper or grain overlay.
 - Lighting moods as data assets the story switches through facts and conditions.

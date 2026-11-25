@@ -93,7 +93,7 @@ public sealed class TransitionPass : IRenderPass
     private ITexture RenderDissolve(RenderContext context, in RenderCamera from)
     {
         ITexture target = EnsureTarget(context.Width, context.Height);
-        _dissolveRenderer ??= new SceneRenderer(_device, _owner.Content, _owner.ColorFormat);
+        _dissolveRenderer ??= new SceneRenderer(_device, _owner.Content, _owner.ColorFormat) { ProbesFrom = _owner };
         _dissolveRenderer.Mood = context.Mood;
         _dissolveRenderer.LocalLights = context.LocalLights;
         _dissolveRenderer.Probes = context.Probes;

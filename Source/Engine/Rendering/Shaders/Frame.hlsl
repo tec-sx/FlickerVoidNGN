@@ -187,3 +187,25 @@ bool IsInBox(float3 position, float3 boxMin, float3 boxMax)
 {
     return all(position >= boxMin - IndoorMargin) && all(position <= boxMax + IndoorMargin);
 }
+
+static const uint IndoorSize = 32;
+
+// The share of the mood's ambient light at a point: the least of the indoor volumes it stands in, else all of it.
+float IndoorAmbient(FrameData frame, float3 worldPosition)
+{
+    ByteAddressBuffer buffer = Buffers[frame.Buffer];
+    float ambient = 1;
+    for (uint index = 0; index < frame.IndoorCount; index++)
+    {
+        uint offset = frame.IndoorsOffset + index * IndoorSize;
+        float3 boxMin = buffer.Load<float3>(offset);
+        float boxAmbient = buffer.Load<float>(offset + 12);
+        float3 boxMax = buffer.Load<float3>(offset + 16);
+        if (IsInBox(worldPosition, boxMin, boxMax))
+        {
+            ambient = min(ambient, boxAmbient);
+        }
+    }
+
+    return ambient;
+}
