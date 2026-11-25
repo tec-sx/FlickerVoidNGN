@@ -27,6 +27,68 @@ public sealed class TransformGizmoTests
         hovered.Should().Be(axis);
     }
 
+    [Theory]
+    [InlineData(GizmoAxis.XY, 1, 1, 0)]
+    [InlineData(GizmoAxis.YZ, 0, 1, 1)]
+    [InlineData(GizmoAxis.XZ, 1, 0, 1)]
+    public void HoversThePlaneHandleInTheCornerBetweenTwoAxes(GizmoAxis plane, float x, float y, float z)
+    {
+        TransformGizmo gizmo = _builder.Build();
+        Vector2 pixel = _builder.PixelAt(gizmo, new Vector3(x, y, z) * 0.3f);
+
+        GizmoAxis hovered = gizmo.Hover(_builder.Camera, _builder.Target, pixel, Width, Height);
+
+        hovered.Should().Be(plane);
+    }
+
+    [Fact]
+    public void HasPlaneHandlesOnlyForMoving()
+    {
+        TransformGizmo gizmo = _builder.InMode(GizmoMode.Scale).Build();
+        Vector2 pixel = _builder.PixelAt(gizmo, new Vector3(0.3f, 0.3f, 0));
+
+        GizmoAxis hovered = gizmo.Hover(_builder.Camera, _builder.Target, pixel, Width, Height);
+
+        hovered.Should().Be(GizmoAxis.None);
+    }
+
+    [Fact]
+    public void MovesOnTheDraggedPlaneAlongBothItsAxes()
+    {
+        TransformGizmo gizmo = _builder.Build();
+        Vector2 start = _builder.PixelAt(gizmo, new Vector3(0.3f, 0, 0.3f));
+        float length = gizmo.GetHandleLength(_builder.Camera, Vector3.Zero, Height);
+        Vector3 grabbed = new Vector3(0.3f, 0, 0.3f) * length;
+        Vector2 end = _builder.Camera.Project(grabbed + new Vector3(1, 0, -2), Width, Height);
+
+        bool dragging = gizmo.BeginDrag(_builder.Camera, _builder.Target, start, Width, Height);
+        Transform moved = gizmo.Drag(_builder.Camera, end, Width, Height);
+
+        dragging.Should().BeTrue();
+        gizmo.Hovered.Should().Be(GizmoAxis.XZ);
+        Vector3.Distance(moved.Position, new Vector3(1, 0, -2)).Should().BeLessThan(Precision);
+    }
+
+    [Fact]
+    public void SnapsBothAxesOfTheDraggedPlaneToTheGrid()
+    {
+        _builder.Target = new Transform { Position = new Vector3(0.3f, 0.3f, 0.3f) };
+        TransformGizmo gizmo = _builder.Build();
+        gizmo.MoveSnap.IsOn = true;
+        gizmo.MoveSnap.Step = 0.5f;
+        Vector2 start = _builder.PixelAt(gizmo, new Vector3(0.3f, 0, 0.3f));
+        float length = gizmo.GetHandleLength(_builder.Camera, _builder.Target.Position, Height);
+        Vector3 grabbed = _builder.Target.Position + (new Vector3(0.3f, 0, 0.3f) * length);
+        Vector2 end = _builder.Camera.Project(grabbed + new Vector3(1.1f, 0, 0.6f), Width, Height);
+        gizmo.BeginDrag(_builder.Camera, _builder.Target, start, Width, Height);
+
+        Transform moved = gizmo.Drag(_builder.Camera, end, Width, Height);
+
+        moved.Position.X.Should().Be(1.5f);
+        moved.Position.Y.Should().Be(0.3f, "the plane's normal stays put");
+        moved.Position.Z.Should().Be(1);
+    }
+
     [Fact]
     public void HoversNothingAwayFromTheHandles()
     {

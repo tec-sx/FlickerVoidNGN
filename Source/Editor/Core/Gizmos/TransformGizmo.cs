@@ -10,7 +10,8 @@ namespace FlickerVoid.Editor.Core.Gizmos;
 /// <summary>
 /// The handles that move, rotate and scale a transform along the world axes or the transform's own (<see cref="Space"/>; scale
 /// handles always follow the transform's own, as its scale is along them): arrows, rings or cube-tipped lines that keep their
-/// size on screen. Finds the handle under the mouse, works out the transform as a handle is dragged, and draws itself. While
+/// size on screen, and for moving a square in the corner between each two arrows that moves on their plane, coloured as the axis
+/// it stands across, as in Unity and Godot. Finds the handle under the mouse, works out the transform as a handle is dragged, and draws itself. While
 /// snapping is on, a move puts the dragged world axis on the grid (or moves in grid steps along a local one), a turn goes in
 /// steps of degrees, and a scale in steps of the scale the drag started from.
 /// </summary>
@@ -33,6 +34,13 @@ public sealed class TransformGizmo
     private const float CentreCube = 7;
     private const float MinScale = 0.001f;
 
+    /// <summary>Where a plane handle's square starts and ends along both its axes, in handle lengths.</summary>
+    private const float PlaneNear = 0.2f;
+    private const float PlaneFar = 0.45f;
+    private const float PlaneFill = 0.35f;
+
+    private static readonly GizmoAxis[] Planes = [GizmoAxis.XY, GizmoAxis.YZ, GizmoAxis.XZ];
+
     private static readonly Vector4 XColor = new(0.9f, 0.15f, 0.15f, 1);
     private static readonly Vector4 YColor = new(0.3f, 0.85f, 0.2f, 1);
     private static readonly Vector4 ZColor = new(0.15f, 0.35f, 1, 1);
@@ -43,6 +51,7 @@ public sealed class TransformGizmo
     private Vector2 _startPixel;
     private float _startAlong;
     private Vector3 _startOffset;
+    private Vector3 _startHit;
     private float _handleLength;
     private Quaternion _orientation = Quaternion.Identity;
 
@@ -105,6 +114,17 @@ public sealed class TransformGizmo
                 _startOffset = hit - centre;
                 break;
             default:
+                if (IsPlane(axis))
+                {
+                    Vector3 normal = GetPlaneNormal(axis, orientation);
+                    if (!ray.IntersectPlane(centre, normal, out _startHit))
+                    {
+                        return false;
+                    }
+
+                    break;
+                }
+
                 if (axis != GizmoAxis.All && !ray.ClosestOnLine(centre, direction, out _startAlong))
                 {
                     return false;
@@ -133,6 +153,8 @@ public sealed class TransformGizmo
         Ray ray = camera.GetRay(pixel, width, height);
         switch (Mode)
         {
+            case GizmoMode.Move when IsPlane(Hovered):
+                return DragOnPlane(ray);
             case GizmoMode.Move:
                 return DragMove(ray);
             case GizmoMode.Rotate:
@@ -188,6 +210,97 @@ public sealed class TransformGizmo
             Vector4 centreColor = GetColor(GizmoAxis.All);
             overlay.AddCube(centre, CentreCube, centreColor);
         }
+
+        if (Mode == GizmoMode.Move)
+        {
+            DrawPlanes(overlay, centre, orientation, length);
+        }
+    }
+
+    /// <summary>Each plane handle as a see-through square with a solid edge.</summary>
+    private void DrawPlanes(OverlayBuilder overlay, Vector3 centre, Quaternion orientation, float length)
+    {
+        foreach (GizmoAxis plane in Planes)
+        {
+            Vector3[] corners = GetPlaneCorners(plane, centre, orientation, length);
+            Vector4 color = GetColor(plane);
+            Vector4 fill = color with { W = PlaneFill };
+            overlay.AddTriangle(corners[0], corners[1], corners[2], fill);
+            overlay.AddTriangle(corners[0], corners[2], corners[3], fill);
+            for (int index = 0; index < corners.Length; index++)
+            {
+                Vector3 next = corners[(index + 1) % corners.Length];
+                overlay.AddLine(corners[index], next, color, 1);
+            }
+        }
+    }
+
+    /// <summary>The square of a plane handle, going round it from the corner nearest the centre.</summary>
+    private static Vector3[] GetPlaneCorners(GizmoAxis plane, Vector3 centre, Quaternion orientation, float length)
+    {
+        (GizmoAxis first, GizmoAxis second) = GetPlaneAxes(plane);
+        Vector3 along = GetDirection(first, orientation) * length;
+        Vector3 across = GetDirection(second, orientation) * length;
+        return
+        [
+            centre + (along * PlaneNear) + (across * PlaneNear),
+            centre + (along * PlaneFar) + (across * PlaneNear),
+            centre + (along * PlaneFar) + (across * PlaneFar),
+            centre + (along * PlaneNear) + (across * PlaneFar),
+        ];
+    }
+
+    private static bool IsPlane(GizmoAxis axis) => axis is GizmoAxis.XY or GizmoAxis.YZ or GizmoAxis.XZ;
+
+    /// <summary>The two axes a plane handle moves along.</summary>
+    private static (GizmoAxis First, GizmoAxis Second) GetPlaneAxes(GizmoAxis plane)
+    {
+        switch (plane)
+        {
+            case GizmoAxis.XY:
+                return (GizmoAxis.X, GizmoAxis.Y);
+            case GizmoAxis.YZ:
+                return (GizmoAxis.Y, GizmoAxis.Z);
+            default:
+                return (GizmoAxis.X, GizmoAxis.Z);
+        }
+    }
+
+    /// <summary>The axis a plane handle stands across, which names its colour.</summary>
+    private static GizmoAxis GetPlaneNormalAxis(GizmoAxis plane)
+    {
+        switch (plane)
+        {
+            case GizmoAxis.XY:
+                return GizmoAxis.Z;
+            case GizmoAxis.YZ:
+                return GizmoAxis.X;
+            default:
+                return GizmoAxis.Y;
+        }
+    }
+
+    private static Vector3 GetPlaneNormal(GizmoAxis plane, Quaternion orientation)
+    {
+        GizmoAxis normal = GetPlaneNormalAxis(plane);
+        return GetDirection(normal, orientation);
+    }
+
+    private static bool IsInside(Vector2 point, Vector2[] polygon)
+    {
+        bool inside = false;
+        for (int index = 0, previous = polygon.Length - 1; index < polygon.Length; previous = index++)
+        {
+            Vector2 a = polygon[index];
+            Vector2 b = polygon[previous];
+            bool crosses = (a.Y > point.Y) != (b.Y > point.Y);
+            if (crosses && point.X < ((b.X - a.X) * (point.Y - a.Y) / (b.Y - a.Y)) + a.X)
+            {
+                inside = !inside;
+            }
+        }
+
+        return inside;
     }
 
     /// <summary>The world-space direction of an axis's handle on a gizmo turned by <paramref name="orientation"/>.</summary>
@@ -232,6 +345,11 @@ public sealed class TransformGizmo
         if (axis == Hovered)
         {
             return HoverColor;
+        }
+
+        if (IsPlane(axis))
+        {
+            axis = GetPlaneNormalAxis(axis);
         }
 
         switch (axis)
@@ -297,7 +415,34 @@ public sealed class TransformGizmo
             }
         }
 
+        // The arrows win where a square shows behind or over them, so a grab on an arrow always moves along it.
+        if (nearest == GizmoAxis.None && Mode == GizmoMode.Move && FindPlane(camera, centre, orientation, length, pixel, width, height) is { } plane)
+        {
+            return plane;
+        }
+
         return nearest;
+    }
+
+    /// <summary>The plane handle whose square the mouse is over, or null.</summary>
+    private static GizmoAxis? FindPlane(EditorCamera camera, Vector3 centre, Quaternion orientation, float length, Vector2 pixel, int width, int height)
+    {
+        foreach (GizmoAxis plane in Planes)
+        {
+            Vector3[] corners = GetPlaneCorners(plane, centre, orientation, length);
+            Vector2[] shown = new Vector2[corners.Length];
+            for (int index = 0; index < corners.Length; index++)
+            {
+                shown[index] = camera.Project(corners[index], width, height);
+            }
+
+            if (IsInside(pixel, shown))
+            {
+                return plane;
+            }
+        }
+
+        return null;
     }
 
     private static float DistanceToRing(EditorCamera camera, Vector3 centre, Vector3 axis, float radius, Vector2 pixel, int width, int height)
@@ -342,6 +487,41 @@ public sealed class TransformGizmo
         float snapped = MoveSnap.Apply(onAxis);
         moved.Position = position + (direction * (snapped - onAxis));
         return moved;
+    }
+
+    /// <summary>Moves on the dragged plane handle's plane, snapping along each of its axes as a drag along that axis does.</summary>
+    private Transform DragOnPlane(Ray ray)
+    {
+        Vector3 normal = GetPlaneNormal(Hovered, _orientation);
+        if (!ray.IntersectPlane(_start.Position, normal, out Vector3 hit))
+        {
+            return _start;
+        }
+
+        Vector3 offset = hit - _startHit;
+        (GizmoAxis first, GizmoAxis second) = GetPlaneAxes(Hovered);
+        Transform moved = _start;
+        moved.Position = SnapAlong(_start.Position, offset, first);
+        Vector3 rest = moved.Position - _start.Position;
+        moved.Position = SnapAlong(moved.Position, offset - rest, second);
+        return moved;
+    }
+
+    /// <summary>Moves <paramref name="from"/> by the share of <paramref name="offset"/> along the axis, snapped.</summary>
+    private Vector3 SnapAlong(Vector3 from, Vector3 offset, GizmoAxis axis)
+    {
+        Vector3 direction = GetDirection(axis, _orientation);
+        float distance = Vector3.Dot(offset, direction);
+        if (Space == GizmoSpace.Local)
+        {
+            float steps = MoveSnap.Apply(distance);
+            return from + (direction * steps);
+        }
+
+        Vector3 position = from + (direction * distance);
+        float onAxis = Vector3.Dot(position, direction);
+        float snapped = MoveSnap.Apply(onAxis);
+        return position + (direction * (snapped - onAxis));
     }
 
     private Transform DragRotate(Ray ray)
