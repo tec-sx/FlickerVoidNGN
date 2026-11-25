@@ -6,6 +6,7 @@ using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Greyboxes;
 using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
+using FlickerVoid.Engine.Runtime.Solids;
 
 namespace FlickerVoid.Engine.Runtime.Serialization;
 
@@ -23,5 +24,6 @@ namespace FlickerVoid.Engine.Runtime.Serialization;
 [JsonSerializable(typeof(Saveable))]
 [JsonSerializable(typeof(Greybox))]
 [JsonSerializable(typeof(Traveller))]
+[JsonSerializable(typeof(SolidMesh))]
 [JsonSerializable(typeof(JsonObject))]
 public sealed partial class RuntimeJsonContext : JsonSerializerContext;

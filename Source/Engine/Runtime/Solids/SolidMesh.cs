@@ -1,4 +1,7 @@
 using System.Numerics;
+using System.Text.Json.Serialization;
+
+using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Engine.Runtime.Solids;
 
@@ -6,6 +9,7 @@ namespace FlickerVoid.Engine.Runtime.Solids;
 /// A closed solid made of points and flat faces, the shape greyboxed creations are made of: each face lists its points' numbers
 /// counter-clockwise seen from outside, as Blender and glTF do, and every edge is shared by exactly two faces going opposite ways.
 /// </summary>
+[JsonConverter(typeof(SolidMeshJsonConverter))]
 public sealed class SolidMesh
 {
     private readonly Vector3[] _points;
