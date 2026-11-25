@@ -7,7 +7,8 @@ namespace FlickerVoid.Editor;
 public sealed partial class MainWindowViewModel
 {
     /// <summary>
-    /// The history Ctrl+Z works on: the mood's or the data asset's when the keyboard is in the View or Data tab, else the scene's.
+    /// The history Ctrl+Z works on: the mood's or the data asset's when the keyboard is in the View or Data tab, else the viewport's:
+    /// the scene's, or in the creator the creation file's.
     /// </summary>
     public UndoHistory? GetHistory(bool sidePanelFocused)
     {
@@ -31,7 +32,7 @@ public sealed partial class MainWindowViewModel
             return _content.GetHistory(_dataPath);
         }
 
-        return Viewport.Scene.History;
+        return Viewport.Mode.History;
     }
 
     /// <summary>The top bar's undo tooltip, naming the step it undoes.</summary>

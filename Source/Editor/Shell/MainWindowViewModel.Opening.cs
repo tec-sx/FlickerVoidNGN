@@ -88,6 +88,7 @@ public sealed partial class MainWindowViewModel
             [AssetTypes.Table] = asset => OpenTable(asset.Path),
             [AssetTypes.Flow] = asset => OpenFlow(asset.Path),
             [AssetTypes.Code] = OpenCode,
+            [AssetTypes.Vehicle] = asset => OpenVehicle(asset.Path),
         };
     }
 
@@ -231,9 +232,14 @@ public sealed partial class MainWindowViewModel
         WatchHistory();
     }
 
-    /// <summary>Shows the open mood again when its file changed other than by an edit here: discarded or changed on disk.</summary>
+    /// <summary>Shows the open mood or creation again when its file changed other than by an edit here: discarded or changed on disk.</summary>
     private void HandleContentChanged(string fullPath)
     {
+        if (Viewport.CreatorFile is { } creation && !_content.IsUnsaved(creation))
+        {
+            ShowCreation(fullPath);
+        }
+
         if (_mood is null || _content.IsUnsaved(_mood.Path))
         {
             return;
@@ -246,9 +252,10 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    /// <summary>Shows the mood, data asset, table or flow graph again after an undo or redo changed its file.</summary>
+    /// <summary>Shows the mood, data asset, table, flow graph or creation again after an undo or redo changed its file.</summary>
     private void HandleRestored(string fullPath)
     {
+        ShowCreation(fullPath);
         if (_mood is not null && IsPath(_mood.Path, fullPath))
         {
             OpenMood(_mood.Path);

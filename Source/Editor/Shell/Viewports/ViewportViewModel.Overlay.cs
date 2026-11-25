@@ -15,11 +15,11 @@ namespace FlickerVoid.Editor.Viewports;
 
 public sealed partial class ViewportViewModel
 {
-    /// <summary>Fills the overlay with this frame's icons, the selection's outline or reach, and the gizmo.</summary>
+    /// <summary>Fills the overlay with this frame's icons, the selection's outline or reach, and the gizmo; none in the creator.</summary>
     public void BuildOverlay(OverlayBuilder overlay, int viewportHeight)
     {
         overlay.Begin(Camera, viewportHeight);
-        if (IsGameView)
+        if (IsGameView || IsCreating)
         {
             return;
         }
