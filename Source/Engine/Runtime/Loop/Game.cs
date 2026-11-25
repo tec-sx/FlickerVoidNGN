@@ -12,6 +12,7 @@ using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
+using FlickerVoid.Engine.Runtime.Settings;
 using FlickerVoid.Engine.Runtime.Services;
 
 using Microsoft.Extensions.Logging;
@@ -53,6 +54,7 @@ public sealed partial class Game : IDisposable
         Data.RegisterDerived<Effect, FactEffect>("fact");
         Schemas.Add("data", Data.GetAssetSchema);
         Schemas.Add("table", Data.GetTableSchema);
+        Schemas.Add(SettingsFile.SchemaName, () => SettingsFile.CreateSchema(DebugConsole));
         Services.AddService(DebugConsole);
         Services.AddService(Events);
         Services.AddService(Facts);
