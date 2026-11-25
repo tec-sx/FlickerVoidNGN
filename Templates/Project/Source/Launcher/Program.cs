@@ -1,4 +1,5 @@
 using FlickerVoid.Engine.Hosting;
+using FlickerVoid.Engine.Vehicles;
 
 using Microsoft.Extensions.Logging;
 
@@ -17,5 +18,6 @@ catch (ArgumentException exception)
 
 using ILoggerFactory loggerFactory = LoggerFactory.Create(static logging => logging.AddSimpleConsole());
 using SceneHost host = new(options, loggerFactory, "FlickerVoidGame");
+host.Game.AddVehicles();
 host.Run();
 return 0;

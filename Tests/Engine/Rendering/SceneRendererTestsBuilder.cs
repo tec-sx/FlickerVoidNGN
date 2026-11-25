@@ -27,7 +27,7 @@ namespace FlickerVoid.Engine.Rendering.Tests;
 
 /// <summary>
 /// Builds a game with rendering, its models in a temporary content folder, and the scene renderer on a Vulkan device with
-/// validation on, skipping the test without Vulkan 1.3. Renders 4x4 frames unless told otherwise; disposing it fails the test on any logged error.
+/// validation on, set up as the game asks, skipping the test without Vulkan 1.3. Renders 4x4 frames unless told otherwise; disposing it fails the test on any logged error.
 /// </summary>
 internal sealed class SceneRendererTestsBuilder : IDisposable
 {
@@ -173,6 +173,14 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Adds a source of meshes to the game's, as a module would.</summary>
+    public SceneRendererTestsBuilder WithMeshSource(IMeshSource source)
+    {
+        MeshSources meshes = _game.Services.GetService<MeshSources>()!;
+        meshes.Add(source);
+        return this;
+    }
+
     /// <summary>Sets up the renderer itself, such as its feature switches, before it draws.</summary>
     public SceneRendererTestsBuilder WithRenderer(Action<SceneRenderer> configure)
     {
@@ -190,7 +198,13 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     public uint[] Render()
     {
         IGraphicsDevice device = BuildDevice();
-        _renderer ??= new SceneRenderer(device, _content, PixelFormat.Rgba8UNorm);
+        if (_renderer is null)
+        {
+            _renderer = new SceneRenderer(device, _content, PixelFormat.Rgba8UNorm);
+            SceneRendererSetup setup = _game.Services.GetService<SceneRendererSetup>()!;
+            setup.Apply(_renderer);
+        }
+
         _renderer.Mood = BuildMood();
         _configure?.Invoke(_renderer);
 

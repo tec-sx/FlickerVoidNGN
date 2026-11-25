@@ -5,7 +5,7 @@ using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Engine.Vehicles.Serialization;
 
-/// <summary>Source-generated JSON for vehicle files: comments and trailing commas allowed, unknown properties rejected.</summary>
+/// <summary>Source-generated JSON for vehicle files and the vehicle component: comments and trailing commas allowed, unknown properties rejected.</summary>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     ReadCommentHandling = JsonCommentHandling.Skip,
@@ -15,4 +15,5 @@ namespace FlickerVoid.Engine.Vehicles.Serialization;
     UseStringEnumConverter = true,
     Converters = [typeof(Vector3JsonConverter), typeof(QuaternionJsonConverter)])]
 [JsonSerializable(typeof(VehicleFile))]
+[JsonSerializable(typeof(Vehicle))]
 public sealed partial class VehiclesJsonContext : JsonSerializerContext;

@@ -7,7 +7,7 @@ using FlickerVoid.Engine.Runtime.Components;
 namespace FlickerVoid.Engine.Runtime.Entities;
 
 /// <summary>
-/// Moves nested entities (<see cref="EntityParent"/>) with their parents, parents first: each child keeps where it stands in its
+/// Moves nested entities (<see cref="EntityParent"/> by name, <see cref="NestedUnder"/> by entity) with their parents, parents first: each child keeps where it stands in its
 /// parent's space, a child moved on its own keeps its new place there, and transforms stay in world space for every other system.
 /// A missing parent or a loop of parents leaves the child where it is. A game service, which <c>Game</c> updates after each fixed
 /// step and before each frame; the editor updates it after each edit. A child keeps the parent it found while that parent lives and
@@ -16,8 +16,8 @@ namespace FlickerVoid.Engine.Runtime.Entities;
 public sealed class TransformHierarchy
 {
     private static readonly QueryDescription Named = new QueryDescription().WithAll<EntityName>();
-    private static readonly QueryDescription Children = new QueryDescription().WithAll<EntityParent, Transform>();
-    private static readonly QueryDescription Detached = new QueryDescription().WithAll<Attachment>().WithNone<EntityParent>();
+    private static readonly QueryDescription Children = new QueryDescription().WithAll<Transform>().WithAny<EntityParent, NestedUnder>();
+    private static readonly QueryDescription Detached = new QueryDescription().WithAll<Attachment>().WithNone<EntityParent, NestedUnder>();
 
     private readonly Dictionary<string, Entity> _byName = [];
     private readonly List<Entity> _children = [];
@@ -30,6 +30,7 @@ public sealed class TransformHierarchy
     {
         ArrayRegistry.Add<EntityParent>();
         ArrayRegistry.Add<Attachment>();
+        ArrayRegistry.Add<NestedUnder>();
     }
 
     public void Update(World world)
@@ -43,6 +44,26 @@ public sealed class TransformHierarchy
         {
             Follow(world, child);
         }
+    }
+
+    /// <summary>
+    /// Nests the child under the parent entity, which wins over a parent named by <see cref="EntityParent"/>, and puts it at
+    /// <paramref name="place"/> in the parent's space now, so it stands there even if the parent moves before the next update; a
+    /// parent without a transform stands at the origin.
+    /// </summary>
+    public static void Attach(World world, Entity child, Entity parent, in Transform place)
+    {
+        if (!world.TryGet(parent, out Transform parentWorld))
+        {
+            parentWorld = new Transform();
+        }
+
+        Transform placed = ToWorld(parentWorld, place);
+        NestedUnder nested = new(parent);
+        Attachment attachment = new() { Parent = parent, Local = place, Applied = placed };
+        Set(world, child, placed);
+        Set(world, child, nested);
+        Set(world, child, attachment);
     }
 
     /// <summary>Whether the entity follows a parent it found, so moving the parent moves it.</summary>
@@ -79,10 +100,9 @@ public sealed class TransformHierarchy
 
     private bool Place(World world, Entity child)
     {
-        EntityParent parentName = world.Get<EntityParent>(child);
-        Entity parent = FindParent(world, child, parentName.Name);
+        Entity parent = FindParent(world, child);
         bool found = parent != Entity.Null && parent != child && world.Has<Transform>(parent);
-        if (found && world.Has<EntityParent>(parent))
+        if (found && (world.Has<EntityParent>(parent) || world.Has<NestedUnder>(parent)))
         {
             found = Follow(world, parent);
         }
@@ -121,9 +141,24 @@ public sealed class TransformHierarchy
         return true;
     }
 
-    /// <summary>The parent the child found before while it lives under that name, else the first entity with the name, else <see cref="Entity.Null"/>.</summary>
-    private Entity FindParent(World world, Entity child, string name)
+    /// <summary>
+    /// The entity the child is nested under while it lives; else the parent the child found before while it lives under the name it
+    /// has, else the first entity with the name; else <see cref="Entity.Null"/>.
+    /// </summary>
+    private Entity FindParent(World world, Entity child)
     {
+        if (world.TryGet(child, out NestedUnder nested))
+        {
+            if (world.IsAlive(nested.Parent))
+            {
+                return nested.Parent;
+            }
+
+            return Entity.Null;
+        }
+
+        EntityParent nameGiven = world.Get<EntityParent>(child);
+        string name = nameGiven.Name;
         if (world.TryGet(child, out Attachment attachment) && world.IsAlive(attachment.Parent) && world.TryGet(attachment.Parent, out EntityName parentName) && parentName.Value == name)
         {
             return attachment.Parent;
@@ -142,6 +177,18 @@ public sealed class TransformHierarchy
         }
 
         return Entity.Null;
+    }
+
+    private static void Set<T>(World world, Entity entity, in T component)
+    {
+        if (world.Has<T>(entity))
+        {
+            world.Set(entity, component);
+        }
+        else
+        {
+            world.Add(entity, component);
+        }
     }
 
     private static bool Same(in Transform first, in Transform second)

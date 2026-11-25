@@ -3,6 +3,7 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../Runtime/FlickerVoid.Engine.Runtime.csproj" />
+    <ProjectReference Include="../Creations/FlickerVoid.Engine.Creations.csproj" />
+    <ProjectReference Include="../Rendering/FlickerVoid.Engine.Rendering.csproj" />
   </ItemGroup>
 </Project>

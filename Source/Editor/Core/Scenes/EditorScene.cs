@@ -5,10 +5,12 @@ using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Flow;
 using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Rendering;
+using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
+using FlickerVoid.Engine.Vehicles;
 
 using Microsoft.Extensions.Logging;
 
@@ -36,8 +38,8 @@ public sealed partial class EditorScene : IDisposable
     {
         _loggerFactory = loggerFactory;
         Content = content;
-        Picker = new ScenePicker(Content);
-        Game = CreateGame(loggerFactory, modules);
+        Game = CreateGame(loggerFactory, content, modules);
+        Picker = new ScenePicker(Content) { Meshes = Meshes };
         _loader = CreateLoader(Game);
         _watcher = CreateWatcher();
     }
@@ -49,6 +51,9 @@ public sealed partial class EditorScene : IDisposable
 
     /// <summary>Finds the entity under a ray through the viewport.</summary>
     public ScenePicker Picker { get; }
+
+    /// <summary>Turns the world's mesh names into models with the sources the game's modules added; replaced with the game.</summary>
+    public MeshSources Meshes => Game.Services.GetService<MeshSources>()!;
 
     /// <summary>The entity the viewport and the inspector work on.</summary>
     public EditorSelection Selection { get; } = new();
@@ -161,7 +166,7 @@ public sealed partial class EditorScene : IDisposable
     {
         string? path = ScenePath;
         byte[]? captured = Capture();
-        Game game = CreateGame(_loggerFactory, modules);
+        Game game = CreateGame(_loggerFactory, Content, modules);
         SceneLoader loader = CreateLoader(game);
         try
         {
@@ -181,6 +186,7 @@ public sealed partial class EditorScene : IDisposable
         Selection.Select(null);
         Stop();
         Game = game;
+        Picker.Meshes = Meshes;
         _loader = loader;
         _watcher = CreateWatcher();
         History.Clear();
@@ -195,14 +201,17 @@ public sealed partial class EditorScene : IDisposable
         Picker.Dispose();
     }
 
-    private static Game CreateGame(ILoggerFactory loggerFactory, IReadOnlyList<IGameModule> modules)
+    /// <summary>A game over the content with what the editor shows (rendering, flows, input and vehicles), then the project's modules.</summary>
+    private static Game CreateGame(ILoggerFactory loggerFactory, IContentManager content, IReadOnlyList<IGameModule> modules)
     {
         Game game = new(loggerFactory);
         try
         {
+            game.Services.AddService(content);
             game.AddRendering();
             game.AddFlow();
             game.AddInput();
+            game.AddVehicles();
             foreach (IGameModule module in modules)
             {
                 module.Add(game);
