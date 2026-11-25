@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Serialization;
+using FlickerVoid.Engine.Runtime.Solids;
 
 namespace FlickerVoid.Engine.Vehicles;
 
@@ -57,7 +58,10 @@ public sealed class VehicleFile : IJsonOnDeserialized
         }
     }
 
-    /// <summary>Adds axles behind the last or removes the last ones until the vehicle has the count, leaving every other part as it was.</summary>
+    /// <summary>
+    /// Adds axles behind the last or removes the last ones until the vehicle has the count. The body's rear follows the last axle,
+    /// longer or shorter; its front and every other wheel stay as they were.
+    /// </summary>
     public void SetWheelCount(int count)
     {
         IReadOnlyList<int> counts = GetWheelCounts(Type);
@@ -70,8 +74,9 @@ public sealed class VehicleFile : IJsonOnDeserialized
     }
 
     /// <summary>
-    /// Makes the vehicle the type, with the wheel count nearest the one it has that the type takes. The body stays, and so do the
-    /// wheels while they sit the same way, one or two to an axle; otherwise the wheels are made new.
+    /// Makes the vehicle the type, with the wheel count nearest the one it has that the type takes. The wheels stay while they sit
+    /// the same way, one or two to an axle, and the body's rear follows the last axle; otherwise the wheels are made new and the body
+    /// stays as it is.
     /// </summary>
     public void SetType(VehicleType type)
     {
@@ -154,6 +159,7 @@ public sealed class VehicleFile : IJsonOnDeserialized
             Wheels.AddRange(remade);
         }
 
+        float lastAxle = Wheels[^1].Place.Position.Z;
         while (Wheels.Count > count)
         {
             Wheels.RemoveRange(Wheels.Count - perAxle, perAxle);
@@ -171,5 +177,42 @@ public sealed class VehicleFile : IJsonOnDeserialized
                 Wheels.Add(added);
             }
         }
+
+        float moved = Wheels[^1].Place.Position.Z - lastAxle;
+        if (moved != 0)
+        {
+            MoveRear(lastAxle, moved);
+        }
+    }
+
+    /// <summary>
+    /// Moves what the body has behind <paramref name="lastAxle"/>, along the vehicle, by <paramref name="moved"/>: its rear follows
+    /// the last axle, so it reaches as far behind the wheels as before.
+    /// </summary>
+    private void MoveRear(float lastAxle, float moved)
+    {
+        Matrix4x4 toVehicle = Body.Place.ToMatrix();
+        if (!Matrix4x4.Invert(toVehicle, out Matrix4x4 toBody))
+        {
+            return;
+        }
+
+        IReadOnlyList<Vector3> points = Body.Mesh.Points;
+        Vector3[] stretched = new Vector3[points.Count];
+        for (int index = 0; index < stretched.Length; index++)
+        {
+            Vector3 point = Vector3.Transform(points[index], toVehicle);
+            if (point.Z < lastAxle)
+            {
+                point.Z += moved;
+                stretched[index] = Vector3.Transform(point, toBody);
+            }
+            else
+            {
+                stretched[index] = points[index];
+            }
+        }
+
+        Body.Mesh = new SolidMesh(stretched, Body.Mesh.Faces);
     }
 }

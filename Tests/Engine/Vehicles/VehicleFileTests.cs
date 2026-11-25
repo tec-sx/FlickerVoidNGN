@@ -55,21 +55,79 @@ public sealed class VehicleFileTests
     }
 
     [Fact]
-    public void ChangingTheWheelCountAddsAxlesBehindAndKeepsEveryOtherPart()
+    public void ChangingTheWheelCountAddsAxlesBehindAndKeepsEveryOtherWheel()
     {
         VehicleFile car = VehicleFile.Create(VehicleType.Car);
-        SolidMesh edited = SolidMesh.Box(new Vector3(2, 2, 5));
-        car.Body.Mesh = edited;
+        VehiclePart body = car.Body;
         VehiclePart frontLeft = car.Wheels[0];
         frontLeft.Place = new Transform { Position = new Vector3(1, 0.4f, 1.5f) };
 
         car.SetWheelCount(6);
 
-        car.Body.Mesh.Should().BeSameAs(edited);
+        car.Body.Should().BeSameAs(body);
         car.Wheels[0].Should().BeSameAs(frontLeft);
         car.GetParts().Select(part => part.Id).Should().Equal("body", "wheel.1L", "wheel.1R", "wheel.2L", "wheel.2R", "wheel.3L", "wheel.3R");
         car.Wheels[4].Place.Position.Z.Should().BeLessThan(car.Wheels[2].Place.Position.Z, "the new axle is behind the last");
         car.Wheels[4].Place.Position.X.Should().Be(car.Wheels[2].Place.Position.X);
+    }
+
+    [Fact]
+    public void AddingAxlesMovesTheBodysRearBackWithTheLastAxle()
+    {
+        VehicleFile car = VehicleFile.Create(VehicleType.Car);
+        float overhang = VehicleFileTestsBuilder.GetRearOverhang(car);
+        (Vector3 low, Vector3 high) = VehicleFileTestsBuilder.GetBodyBox(car);
+
+        car.SetWheelCount(8);
+
+        (Vector3 lowAfter, Vector3 highAfter) = VehicleFileTestsBuilder.GetBodyBox(car);
+        VehicleFileTestsBuilder.GetRearOverhang(car).Should().BeApproximately(overhang, 1e-4f, "the body reaches as far behind the last wheels as before");
+        highAfter.Should().Be(high, "the front stays where it was");
+        lowAfter.X.Should().Be(low.X);
+        lowAfter.Y.Should().Be(low.Y);
+        car.Body.Mesh.Triangulate().Indices.Length.Should().BeGreaterThan(0, "the body is still a closed solid");
+    }
+
+    [Fact]
+    public void RemovingAxlesBringsTheBodysRearForwardAgain()
+    {
+        VehicleFile car = VehicleFile.Create(VehicleType.Car);
+        Vector3[] before = [.. car.Body.Mesh.Points];
+        car.SetWheelCount(8);
+
+        car.SetWheelCount(4);
+
+        Vector3[] after = [.. car.Body.Mesh.Points];
+        after.Should().HaveCount(before.Length);
+        for (int index = 0; index < before.Length; index++)
+        {
+            Vector3.Distance(after[index], before[index]).Should().BeLessThan(1e-4f);
+        }
+    }
+
+    [Fact]
+    public void OnlyTheBodyBehindTheLastAxleMoves()
+    {
+        VehicleFile car = VehicleFile.Create(VehicleType.Car);
+        car.Body.Mesh = SolidMesh.Box(new Vector3(2, 2, 5));
+        car.Body.Place = new Transform { Position = new Vector3(0, 0.5f, 0.25f) };
+        float lastAxle = car.Wheels[^1].Place.Position.Z;
+        Vector3[] before = [.. car.Body.Mesh.Points];
+
+        car.SetWheelCount(6);
+
+        float moved = car.Wheels[^1].Place.Position.Z - lastAxle;
+        Vector3[] after = [.. car.Body.Mesh.Points];
+        for (int index = 0; index < before.Length; index++)
+        {
+            Vector3 expected = before[index];
+            if (before[index].Z + 0.25f < lastAxle)
+            {
+                expected.Z += moved;
+            }
+
+            Vector3.Distance(after[index], expected).Should().BeLessThan(1e-4f);
+        }
     }
 
     [Fact]
@@ -101,6 +159,7 @@ public sealed class VehicleFileTests
     public void ChangingTheTypeKeepsTheBodyAndTheWheelsThatStillFit()
     {
         VehicleFile vehicle = VehicleFile.Create(VehicleType.Car);
+        float overhang = VehicleFileTestsBuilder.GetRearOverhang(vehicle);
         vehicle.SetWheelCount(6);
         VehiclePart body = vehicle.Body;
         VehiclePart[] first = [.. vehicle.Wheels.Take(4)];
@@ -110,6 +169,7 @@ public sealed class VehicleFileTests
         vehicle.Type.Should().Be(VehicleType.Motorcycle);
         vehicle.Body.Should().BeSameAs(body);
         vehicle.Wheels.Should().Equal(first, "a motorcycle takes four wheels at most, two to an axle");
+        VehicleFileTestsBuilder.GetRearOverhang(vehicle).Should().BeApproximately(overhang, 1e-4f, "the body shortens with the axle taken off");
     }
 
     [Fact]
