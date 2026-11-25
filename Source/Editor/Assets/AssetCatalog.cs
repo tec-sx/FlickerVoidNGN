@@ -5,7 +5,7 @@ namespace FlickerVoid.Editor.Assets;
 
 /// <summary>
 /// Lists the files and folders of a content folder for the asset browser, skipping hidden ones (a leading dot, such as the
-/// schemas and build caches), and tells each file's kind by its extension. Paths are content paths: a source folder built into
+/// schemas and build caches), and tells each file's type by its extension (<see cref="AssetTypes"/>). Paths are content paths: a source folder built into
 /// a folder of the content folder lists its files under that folder's path, the <paramref name="prefix"/>. A code catalog
 /// (<see cref="ForCode"/>) lists a game project's source folder instead, without its build output.
 /// </summary>
@@ -13,32 +13,6 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
 {
     /// <summary>The path a code catalog lists its files under, which no content path starts with.</summary>
     public const string CodePrefix = "/Code";
-
-    private static readonly (string Suffix, AssetKind Kind)[] Suffixes =
-    [
-        (".fvscene", AssetKind.Scene),
-        (".fvmat", AssetKind.Material),
-        (".fvshader", AssetKind.Shader),
-        (".fvmood", AssetKind.Mood),
-        (".fvcanvas", AssetKind.Canvas),
-        (".fvdata", AssetKind.Data),
-        (".fvtable", AssetKind.Table),
-        (".fvflow", AssetKind.Flow),
-        (".glb", AssetKind.Model),
-        (".gltf", AssetKind.Model),
-        (".fvmodel", AssetKind.Model),
-        (".png", AssetKind.Texture),
-        (".jpg", AssetKind.Texture),
-        (".jpeg", AssetKind.Texture),
-        (".tga", AssetKind.Texture),
-        (".bmp", AssetKind.Texture),
-        (".reb", AssetKind.Texture),
-        (".dds", AssetKind.Texture),
-        (".hlsl", AssetKind.Shader),
-        (".hlsli", AssetKind.Shader),
-        (".spv", AssetKind.Shader),
-        (".cs", AssetKind.Code),
-    ];
 
     public string Root { get; } = root;
 
@@ -67,10 +41,10 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
     }
 
     /// <summary>
-    /// The visible files in the folder (or below it too when <paramref name="recursive"/>) of the kind, or of any kind when
+    /// The visible files in the folder (or below it too when <paramref name="recursive"/>) of the type, or of any type when
     /// null, whose name holds the text, ignoring case; sorted by path.
     /// </summary>
-    public IReadOnlyList<AssetEntry> Find(string folder, bool recursive, AssetKind? kind, string text)
+    public IReadOnlyList<AssetEntry> Find(string folder, bool recursive, AssetType? type, string text)
     {
         string fullFolder = GetFullPath(folder);
         List<AssetEntry> found = [];
@@ -79,7 +53,7 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
             return found;
         }
 
-        Collect(fullFolder, recursive, kind, text, found);
+        Collect(fullFolder, recursive, type, text, found);
         found.Sort(static (first, second) => StringComparer.OrdinalIgnoreCase.Compare(first.Path, second.Path));
         return found;
     }
@@ -144,21 +118,7 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
         return catalogs;
     }
 
-    /// <summary>The kind of the file at the full path.</summary>
-    public static AssetKind GetKind(string fullPath)
-    {
-        foreach ((string suffix, AssetKind kind) in Suffixes)
-        {
-            if (fullPath.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
-            {
-                return kind;
-            }
-        }
-
-        return AssetKind.Other;
-    }
-
-    private void Collect(string fullFolder, bool recursive, AssetKind? kind, string text, List<AssetEntry> found)
+    private void Collect(string fullFolder, bool recursive, AssetType? type, string text, List<AssetEntry> found)
     {
         foreach (string fullPath in Directory.EnumerateFiles(fullFolder))
         {
@@ -173,14 +133,14 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
                 continue;
             }
 
-            AssetKind fileKind = GetKind(fullPath);
-            if (kind is not null && fileKind != kind)
+            AssetType fileType = AssetTypes.Find(fullPath);
+            if (type is not null && fileType != type)
             {
                 continue;
             }
 
             string path = ToContentPath(fullPath);
-            found.Add(new AssetEntry(path, name, fileKind));
+            found.Add(new AssetEntry(path, name, fileType));
         }
 
         if (!recursive)
@@ -192,7 +152,7 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
         {
             if (!IsSkipped(subfolder))
             {
-                Collect(subfolder, recursive, kind, text, found);
+                Collect(subfolder, recursive, type, text, found);
             }
         }
     }

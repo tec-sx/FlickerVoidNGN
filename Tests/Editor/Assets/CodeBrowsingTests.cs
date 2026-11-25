@@ -27,7 +27,7 @@ public sealed class CodeBrowsingTests : IDisposable
         code.Name.Should().Be("Code");
         code.Children.Should().ContainSingle().Which.Name.Should().Be("Gameplay");
         browser.SelectedFolder = code.Children[0];
-        browser.Assets.Should().ContainSingle(static asset => asset.Kind == AssetKind.Code).Which.Name.Should().Be("Barrel");
+        browser.Assets.Should().ContainSingle(static asset => asset.Type == AssetTypes.Code).Which.Name.Should().Be("Barrel");
         browser.GetFullPath(browser.Assets[0]).Should().EndWith(Path.Combine("_Code", "Gameplay", "Barrel.cs"));
     }
 
@@ -124,7 +124,7 @@ public sealed class CodeBrowsingTests : IDisposable
         browser.SelectedAsset = browser.Assets[0];
 
         browser.Delete();
-        browser.CreateScene();
+        browser.Create(AssetTypes.Scene);
 
         _builder.CodeFileExists("Gameplay/Barrel.cs").Should().BeTrue();
         _builder.CodeFileExists("Gameplay/New Scene.fvscene").Should().BeFalse();

@@ -111,7 +111,7 @@ public sealed class MainWindowViewModelTests : IDisposable
     [Fact]
     public void OpeningADataAssetEditsItInTheDataTabUntilItIsSaved()
     {
-        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetKind.Data);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetTypes.Data);
 
         _builder.ViewModel.SideTab.Should().Be(MainWindowViewModel.DataTab);
         NumberFieldViewModel hours = (NumberFieldViewModel)((Core.Data.DataObjectViewModel)_builder.ViewModel.DataContent!).Fields.Single();
@@ -126,7 +126,7 @@ public sealed class MainWindowViewModelTests : IDisposable
     [Fact]
     public void UndoesADataAssetEditAndShowsTheFormAgain()
     {
-        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetKind.Data);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetTypes.Data);
         NumberFieldViewModel hours = (NumberFieldViewModel)((Core.Data.DataObjectViewModel)_builder.ViewModel.DataContent!).Fields.Single();
         hours.Value = 9;
 
@@ -142,7 +142,7 @@ public sealed class MainWindowViewModelTests : IDisposable
     {
         Core.Flows.FlowGraphViewModel? requested = null;
         _builder.ViewModel.FlowRequested += (_, graph) => requested = graph;
-        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Cellar, AssetKind.Flow);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Cellar, AssetTypes.Flow);
         requested!.AddNode("finish", 200, 0);
 
         _builder.ViewModel.GetFlowHistory(MainWindowViewModelTestsBuilder.Cellar).Undo();
@@ -153,7 +153,7 @@ public sealed class MainWindowViewModelTests : IDisposable
     [Fact]
     public void UndoesSceneEditsWhenTheKeyboardIsOutsideTheSidePanel()
     {
-        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetKind.Data);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetTypes.Data);
 
         UndoHistory? history = _builder.ViewModel.GetHistory(sidePanelFocused: false);
 
@@ -179,7 +179,7 @@ public sealed class MainWindowViewModelTests : IDisposable
     [Fact]
     public void TheTopBarUndoesWhatTheKeyboardIsIn()
     {
-        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetKind.Data);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Lantern, AssetTypes.Data);
         NumberFieldViewModel hours = (NumberFieldViewModel)((Core.Data.DataObjectViewModel)_builder.ViewModel.DataContent!).Fields.Single();
         hours.Value = 9;
         _builder.ViewModel.UndoCommand.CanExecute(null).Should().BeFalse();
@@ -198,7 +198,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         Core.Flows.FlowGraphViewModel? requested = null;
         _builder.ViewModel.FlowRequested += (_, graph) => requested = graph;
 
-        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Cellar, AssetKind.Flow);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Cellar, AssetTypes.Flow);
 
         requested.Should().NotBeNull();
         requested!.Nodes.Should().ContainSingle();
@@ -217,7 +217,7 @@ public sealed class MainWindowViewModelTests : IDisposable
     [Fact]
     public void OpeningAMoodShowsItInTheViewportAndTheViewTab()
     {
-        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetKind.Mood);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetTypes.Mood);
 
         _builder.ViewModel.Viewport.Mood.Exposure.Should().Be(0.5f);
         _builder.Exposure().Value.Should().Be(0.5);
@@ -227,7 +227,7 @@ public sealed class MainWindowViewModelTests : IDisposable
     [Fact]
     public void HoldsTheViewTabsEditsOfAMoodUntilTheyAreSaved()
     {
-        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetKind.Mood);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetTypes.Mood);
 
         _builder.Exposure().Value = 2;
 
@@ -242,7 +242,7 @@ public sealed class MainWindowViewModelTests : IDisposable
     [Fact]
     public void ShowsTheSavedMoodAgainWhenItsEditsAreDiscarded()
     {
-        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetKind.Mood);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetTypes.Mood);
         _builder.Exposure().Value = 2;
 
         _builder.ViewModel.DiscardAssets();
@@ -254,7 +254,7 @@ public sealed class MainWindowViewModelTests : IDisposable
     [Fact]
     public void ShowsTheOpenMoodAgainWhenItChangesOnDisk()
     {
-        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetKind.Mood);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Night, AssetTypes.Mood);
 
         _builder.ChangeOnDisk(MainWindowViewModelTestsBuilder.Night, """{ "exposure": 4 }""");
 
@@ -268,7 +268,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         _builder.WriteFile("Broken.fvmood", "{ not json");
         LightingMood shown = _builder.ViewModel.Viewport.Mood;
 
-        _builder.OpenInBrowser("Broken.fvmood", AssetKind.Mood);
+        _builder.OpenInBrowser("Broken.fvmood", AssetTypes.Mood);
 
         _builder.ViewModel.Viewport.Mood.Should().BeSameAs(shown);
         _builder.ViewModel.MoodHeading.Should().Be(MainWindowViewModel.DefaultMoodHeading);

@@ -12,7 +12,7 @@ public sealed class ContentFileFinder(IContentManager content)
         List<AssetCatalog> catalogs = AssetCatalog.ForContent(content);
         foreach (AssetCatalog catalog in catalogs)
         {
-            IReadOnlyList<AssetEntry> entries = catalog.Find(catalog.Prefix, recursive: true, kind: null, text: "");
+            IReadOnlyList<AssetEntry> entries = catalog.Find(catalog.Prefix, recursive: true, type: null, text: "");
             foreach (AssetEntry entry in entries)
             {
                 if (extensions.Any(extension => entry.Path.EndsWith(extension, StringComparison.OrdinalIgnoreCase)))
