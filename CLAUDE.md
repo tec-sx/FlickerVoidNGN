@@ -32,7 +32,7 @@ Each module's behaviour, API and decisions are in `Docs/Modules`; read the one y
 - `Editor.md`: the editor's projects, MVVM, viewport, outliner, inspector, undo, unsaved content, asset browser and the material, texture and flow editors.
 - `Rendering.md`: extraction, the pass pipeline, culling, the sky, outlines and outline requests, indoors, cutaways and doorways.
 - `Content.md`: the builder and its importers, textures, canvases, models and shaders, hot reload, schemas and the content check.
-- `Scenes.md`: greyboxes, entity templates and classes, data assets and tables, scene travel, names and references, the game loop.
+- `Scenes.md`: greyboxes and solids, entity templates and classes, data assets and tables, scene travel, names and references, the game loop.
 - `Input.md`: input maps, actions, contexts and captures.
 - `Characters.md`: point and click movement, bodies, paths and perception.
 - `Cameras.md`: shots, the director, layers, triggers, cues, scripting, the depth fade and cutaways.
