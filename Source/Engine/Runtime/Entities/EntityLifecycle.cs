@@ -64,21 +64,27 @@ public sealed class EntityLifecycle
         }
     }
 
-    /// <summary>Stops every started entity of the world, as when the game closes.</summary>
+    /// <summary>Stops every started entity of the world, as when the game closes, skipping those a hook destroyed meanwhile (a creation's parts).</summary>
     public void StopAll(World world)
     {
         List<Entity> active = [];
         world.Query(in ActiveEntities, active.Add);
         foreach (Entity entity in active)
         {
-            Deactivate(world, entity);
+            if (world.IsAlive(entity))
+            {
+                Deactivate(world, entity);
+            }
         }
 
         List<Entity> attached = [];
         world.Query(in StartedEntities, attached.Add);
         foreach (Entity entity in attached)
         {
-            Detach(world, entity);
+            if (world.IsAlive(entity))
+            {
+                Detach(world, entity);
+            }
         }
     }
 

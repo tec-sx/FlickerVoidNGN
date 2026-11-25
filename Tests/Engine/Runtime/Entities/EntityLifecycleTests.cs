@@ -84,6 +84,22 @@ public sealed class EntityLifecycleTests : IDisposable
     }
 
     [Fact]
+    public void StopsEveryEntityWhenAHookDestroysOthers()
+    {
+        EntityLifecycle lifecycle = _builder.Playing().Build();
+        Entity part = _builder.CreateEntity(new Transform());
+        Entity van = _builder.CreateEntity(new EntityName("Van"));
+        lifecycle.OnDetach((Entity entity, ref EntityName name) => lifecycle.Destroy(_builder.World, part));
+        lifecycle.Start(_builder.World, part);
+        lifecycle.Start(_builder.World, van);
+
+        Action stop = () => lifecycle.StopAll(_builder.World);
+
+        stop.Should().NotThrow();
+        _builder.World.IsAlive(part).Should().BeFalse();
+    }
+
+    [Fact]
     public void ActivatesTheAttachedEntitiesWhenPlayStarts()
     {
         EntityLifecycle lifecycle = _builder.WithRecordingHooks().Build();

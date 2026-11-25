@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Entities;
 
 namespace FlickerVoid.Engine.Runtime.Tests.Entities;
 
@@ -120,5 +121,79 @@ public sealed class TransformHierarchyTests : IDisposable
 
         update.Should().NotThrow();
         _builder.PositionOf(first).Should().Be(Vector3.Zero);
+    }
+
+    [Fact]
+    public void AttachesAChildToAnEntityAtAPlaceInItsSpace()
+    {
+        Quaternion quarterTurn = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2);
+        Entity van = _builder.Add("Van", new Vector3(10, 0, 0));
+        _builder.Move(van, new Vector3(10, 0, 0), quarterTurn);
+        Entity wheel = _builder.AddUnnamed(Vector3.Zero);
+        Transform place = new() { Position = new Vector3(1, 0, 0) };
+
+        TransformHierarchy.Attach(_builder.World, wheel, van, place);
+
+        Vector3 expected = new Vector3(10, 0, 0) + Vector3.Transform(new Vector3(1, 0, 0), quarterTurn);
+        Vector3 position = _builder.PositionOf(wheel);
+        position.X.Should().BeApproximately(expected.X, Precision);
+        position.Z.Should().BeApproximately(expected.Z, Precision);
+        _builder.World.Get<NestedUnder>(wheel).Parent.Should().Be(van);
+    }
+
+    [Fact]
+    public void MovesAChildAttachedToAnEntityWithIt()
+    {
+        Entity van = _builder.Add("Van", Vector3.Zero);
+        Entity wheel = _builder.AddUnnamed(Vector3.Zero);
+        Transform place = new() { Position = new Vector3(0, 1, 0) };
+        TransformHierarchy.Attach(_builder.World, wheel, van, place);
+
+        _builder.Move(van, new Vector3(5, 0, 0));
+        _builder.Hierarchy.Update(_builder.World);
+
+        _builder.PositionOf(wheel).Should().Be(new Vector3(5, 1, 0));
+    }
+
+    [Fact]
+    public void KeepsThePlaceGivenEvenWhenTheParentMovesBeforeTheNextUpdate()
+    {
+        Entity van = _builder.Add("Van", Vector3.Zero);
+        Entity wheel = _builder.AddUnnamed(Vector3.Zero);
+        Transform place = new() { Position = new Vector3(0, 1, 0) };
+        TransformHierarchy.Attach(_builder.World, wheel, van, place);
+
+        _builder.Move(van, new Vector3(0, 0, 4));
+        _builder.Hierarchy.Update(_builder.World);
+
+        _builder.PositionOf(wheel).Should().Be(new Vector3(0, 1, 4));
+    }
+
+    [Fact]
+    public void FollowsTheEntityGivenRatherThanOneWithItsParentsName()
+    {
+        _builder.Add("Van", Vector3.Zero);
+        Entity other = _builder.AddUnnamed(Vector3.Zero);
+        Entity wheel = _builder.Add("Wheel", Vector3.Zero, parent: "Van");
+        TransformHierarchy.Attach(_builder.World, wheel, other, new Transform());
+
+        _builder.Move(other, new Vector3(2, 0, 0));
+        _builder.Hierarchy.Update(_builder.World);
+
+        _builder.PositionOf(wheel).Should().Be(new Vector3(2, 0, 0));
+    }
+
+    [Fact]
+    public void LeavesAChildAloneWhenTheEntityItIsAttachedToIsGone()
+    {
+        Entity van = _builder.Add("Van", Vector3.Zero);
+        Entity wheel = _builder.AddUnnamed(Vector3.Zero);
+        TransformHierarchy.Attach(_builder.World, wheel, van, new Transform { Position = Vector3.UnitX });
+
+        _builder.World.Destroy(van);
+        _builder.Hierarchy.Update(_builder.World);
+
+        _builder.PositionOf(wheel).Should().Be(Vector3.UnitX);
+        TransformHierarchy.IsAttached(_builder.World, wheel).Should().BeFalse();
     }
 }
