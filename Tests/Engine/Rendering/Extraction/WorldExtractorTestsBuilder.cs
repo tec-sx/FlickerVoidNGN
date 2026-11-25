@@ -87,6 +87,21 @@ internal sealed class WorldExtractorTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Gives every entity made so far the mark, as the editor marks the rest of a level.</summary>
+    public WorldExtractorTestsBuilder MarkAll<T>(T mark)
+        where T : struct
+    {
+        List<Entity> entities = [];
+        QueryDescription all = new();
+        _world.Query(in all, entities.Add);
+        foreach (Entity entity in entities)
+        {
+            _world.Add(entity, mark);
+        }
+
+        return this;
+    }
+
     /// <summary>Extracts the world into the same scene each call, as the renderer does every frame.</summary>
     public RenderScene Extract()
     {

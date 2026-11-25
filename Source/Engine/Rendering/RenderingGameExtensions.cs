@@ -43,6 +43,8 @@ public static class RenderingGameExtensions
         game.Services.AddService(setup);
         ArrayRegistry.Add<Hidden>();
         ArrayRegistry.Add<ShadowOnly>();
+        ArrayRegistry.Add<Greyed>();
+        ArrayRegistry.Add<Undrawn>();
         ArrayRegistry.Add<Cutaway>();
         ArrayRegistry.Add<RequestedOutlines>();
         MeshAnimationSystem animation = new(game.World);
