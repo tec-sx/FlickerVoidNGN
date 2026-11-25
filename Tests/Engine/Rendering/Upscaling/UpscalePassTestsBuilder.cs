@@ -26,7 +26,8 @@ namespace FlickerVoid.Engine.Rendering.Tests.Upscaling;
 
 /// <summary>
 /// Renders a scene through its first camera into a square output on a Vulkan device with validation on, plainly lit, with the
-/// device's DLSS stood in for when asked; skips the test without Vulkan 1.3 and fails it on any logged error.
+/// device's DLSS, and its Ray Reconstruction, stood in for when asked; skips the test without Vulkan 1.3, or without ray queries
+/// when it needs them, and fails it on any logged error.
 /// </summary>
 internal sealed class UpscalePassTestsBuilder : IDisposable
 {
@@ -41,7 +42,8 @@ internal sealed class UpscalePassTestsBuilder : IDisposable
     private IGraphicsDevice? _device;
     private UpscalingDevice? _upscalingDevice;
     private SceneRenderer? _renderer;
-    private bool _dlss;
+    private GraphicsFeatures _features = GraphicsFeatures.None;
+    private GraphicsFeatures _upscaling = GraphicsFeatures.None;
     private string? _paper;
     private uint _cuts;
     private Action<SceneRenderer> _configure = static _ => { };
@@ -70,7 +72,29 @@ internal sealed class UpscalePassTestsBuilder : IDisposable
     /// <summary>Gives the device DLSS, stood in for by <see cref="StandInUpscaler"/>s.</summary>
     public UpscalePassTestsBuilder WithDlss()
     {
-        _dlss = true;
+        _upscaling = GraphicsFeatures.Dlss;
+        return this;
+    }
+
+    /// <summary>Gives the device DLSS with Ray Reconstruction, stood in for, and ray queries, skipping the test without them.</summary>
+    public UpscalePassTestsBuilder WithRayReconstruction()
+    {
+        _upscaling = GraphicsFeatures.Dlss | GraphicsFeatures.RayReconstruction;
+        return WithRayQueries();
+    }
+
+    /// <summary>Creates the device with ray queries, skipping the test where it has none.</summary>
+    public UpscalePassTestsBuilder WithRayQueries()
+    {
+        _features = GraphicsFeatures.RayQueries;
+        return this;
+    }
+
+    /// <summary>Writes a text file, such as a material, into the content folder.</summary>
+    public UpscalePassTestsBuilder WithFile(string path, string text)
+    {
+        string fullPath = Path.Combine(_contentFolder, path);
+        File.WriteAllText(fullPath, text);
         return this;
     }
 
@@ -190,6 +214,39 @@ internal sealed class UpscalePassTestsBuilder : IDisposable
         return pairs;
     }
 
+    /// <summary>Reads back an Rgba16Float texture the last frame left in the ShaderRead state, such as a denoiser's guide, top row first.</summary>
+    public Vector4[] ReadHalfs(ITexture texture)
+    {
+        IGraphicsDevice device = BuildDevice();
+        TextureDescription description = texture.Description;
+        int pitch = description.Format.GetCopyRowPitch(description.Width);
+        BufferDescription readbackDescription = new((long)pitch * description.Height, BufferUsage.CopyDestination, MemoryLocation.Readback);
+        using IBuffer readback = device.CreateBuffer(readbackDescription);
+        using ICommandList commands = device.CreateCommandList();
+        commands.Begin();
+        commands.Barrier(texture, ResourceState.CopySource);
+        commands.CopyTextureToBuffer(texture, readback, 0);
+        commands.Barrier(texture, ResourceState.ShaderRead);
+        commands.End();
+        device.Submit(commands);
+        device.WaitIdle();
+
+        Vector4[] texels = new Vector4[description.Width * description.Height];
+        byte[] row = new byte[description.Format.GetRowSize(description.Width)];
+        for (int y = 0; y < description.Height; y++)
+        {
+            readback.Read(row, (long)y * pitch);
+            ReadOnlySpan<Half> halfs = MemoryMarshal.Cast<byte, Half>(row);
+            for (int x = 0; x < description.Width; x++)
+            {
+                Vector4 texel = new((float)halfs[x * 4], (float)halfs[(x * 4) + 1], (float)halfs[(x * 4) + 2], (float)halfs[(x * 4) + 3]);
+                texels[(y * description.Width) + x] = texel;
+            }
+        }
+
+        return texels;
+    }
+
     public static (byte Red, byte Green, byte Blue) Channels(uint pixel) => ((byte)pixel, (byte)(pixel >> 8), (byte)(pixel >> 16));
 
     public void Dispose()
@@ -258,7 +315,7 @@ internal sealed class UpscalePassTestsBuilder : IDisposable
             return _device;
         }
 
-        GraphicsDeviceOptions options = new() { Validation = true, Features = GraphicsFeatures.None };
+        GraphicsDeviceOptions options = new() { Validation = true, Features = _features };
         try
         {
             _device = new VulkanGraphicsDevice(options, _loggerFactory);
@@ -269,9 +326,14 @@ internal sealed class UpscalePassTestsBuilder : IDisposable
             throw;
         }
 
-        if (_dlss)
+        if (_features.HasFlag(GraphicsFeatures.RayQueries) && !_device.Features.HasFlag(GraphicsFeatures.RayQueries))
         {
-            _upscalingDevice = new UpscalingDevice(_device);
+            Assert.Skip($"{_device.AdapterName} has no ray queries.");
+        }
+
+        if (_upscaling != GraphicsFeatures.None)
+        {
+            _upscalingDevice = new UpscalingDevice(_device, _upscaling);
             _device = _upscalingDevice;
         }
 

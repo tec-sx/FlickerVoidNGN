@@ -4,19 +4,28 @@ namespace FlickerVoid.Engine.Rendering.Upscaling;
 
 /// <summary>
 /// The sub-pixel jitter of frames drawn for an upscaler: the Halton (2, 3) sequence from its second point, centred on the pixel,
-/// cycling through eight phases for every output pixel a render pixel covers, as DLSS asks.
+/// cycling through eight phases for every output pixel a render pixel covers, as DLSS asks, and at least 32 for an upscaler that
+/// denoises, as Ray Reconstruction asks.
 /// </summary>
 public sealed class JitterSequence
 {
     private const int PhasesPerPixel = 8;
 
+    private const int DenoisingPhases = 32;
+
     private int _phase;
 
     /// <summary>How many phases frames drawn at the render width and upscaled to the output width cycle through.</summary>
-    public static int Phases(int renderWidth, int outputWidth)
+    public static int Phases(int renderWidth, int outputWidth, bool denoises)
     {
         float ratio = (float)outputWidth / renderWidth;
-        return (int)MathF.Round(PhasesPerPixel * ratio * ratio);
+        int phases = (int)MathF.Round(PhasesPerPixel * ratio * ratio);
+        if (denoises)
+        {
+            return Math.Max(phases, DenoisingPhases);
+        }
+
+        return phases;
     }
 
     /// <summary>The next frame's jitter, in render pixels right and down, from -0.5 to 0.5.</summary>

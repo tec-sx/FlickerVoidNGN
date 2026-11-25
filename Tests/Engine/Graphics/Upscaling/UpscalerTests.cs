@@ -77,6 +77,54 @@ public sealed class UpscalerTests : IDisposable
         flat.Should().BeGreaterThanOrEqualTo(output.Length * 95 / 100, "all but the strip DLSS's development runtime draws its watermark over holds the color");
     }
 
+    [Fact]
+    public void RefusesToDenoiseOnADeviceWithoutRayReconstruction()
+    {
+        IGraphicsDevice device = _builder.Build();
+        UpscalerDescription description = new(UpscaleMode.Quality, 64, 64) { Denoises = true };
+
+        Action create = () => device.CreateUpscaler(description);
+
+        device.Features.Should().NotHaveFlag(GraphicsFeatures.RayReconstruction, "the device was made without asking for it");
+        create.Should().Throw<NotSupportedException>();
+    }
+
+    [Fact]
+    public void FindsRayReconstructionOnADeviceMadeAfterOneThatDidNotAskForItIsGone()
+    {
+        _builder.Build();
+
+        IGraphicsDevice later = _builder.WithRayReconstruction().Remake();
+
+        later.Features.Should().HaveFlag(GraphicsFeatures.RayReconstruction, "NGX was asked about Ray Reconstruction before it shut down on the first device");
+    }
+
+    [Fact]
+    public void DrawsTheSceneAtTwoThirdsOfTheOutputsSizeForQualityWhileDenoising()
+    {
+        UpscalerDescription description = new(UpscaleMode.Quality, 1920, 1080) { Denoises = true };
+
+        IUpscaler upscaler = _builder.WithRayReconstruction().CreateUpscaler(description);
+
+        upscaler.RenderWidth.Should().BeCloseTo(1280, 1);
+        upscaler.RenderHeight.Should().BeCloseTo(720, 1);
+    }
+
+    [Theory]
+    [InlineData(UpscaleMode.Quality)]
+    [InlineData(UpscaleMode.Dlaa)]
+    public void DenoisesAFlatFrameIntoItsColor(UpscaleMode mode)
+    {
+        UpscalerDescription description = new(mode, 640, 360) { Denoises = true };
+        IUpscaler upscaler = _builder.WithRayReconstruction().CreateUpscaler(description);
+        Vector4 color = new(0.5f, 0.25f, 0.125f, 1);
+
+        Vector4[] output = _builder.UpscaleFlat(upscaler, color);
+
+        int flat = output.Count(pixel => HoldsColor(pixel, color));
+        flat.Should().BeGreaterThanOrEqualTo(output.Length * 95 / 100, "all but the strip the development runtime draws its watermark over holds the color");
+    }
+
     private static bool HoldsColor(Vector4 pixel, Vector4 color)
     {
         Vector4 difference = Vector4.Abs(pixel - color);

@@ -196,8 +196,18 @@ public sealed class RenderingWindow : DebugWindow
             _renderer.Upscaling = (UpscaleMode)upscaling;
         }
 
+        bool rayReconstruction = _renderer.RayReconstruction;
+        if (ImGui.Checkbox("Ray Reconstruction (with ray tracing and DLSS)", ref rayReconstruction))
+        {
+            _renderer.RayReconstruction = rayReconstruction;
+        }
+
         string drawnAt = $"Drawn at {statistics.RenderWidth}x{statistics.RenderHeight} for {statistics.OutputWidth}x{statistics.OutputHeight}";
-        if (statistics.Upscaled)
+        if (statistics.Denoised)
+        {
+            ImGui.Text($"{drawnAt}, denoised and upscaled by DLSS Ray Reconstruction");
+        }
+        else if (statistics.Upscaled)
         {
             ImGui.Text($"{drawnAt}, upscaled by DLSS");
         }

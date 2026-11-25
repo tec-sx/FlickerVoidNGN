@@ -5,8 +5,8 @@ namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>
 /// The start of the frame buffer (Shaders/Frame.hlsl): the view, jittered for an upscaler, the sun, the shadow atlas, the
-/// irradiance volume, and where the lights, shadows and clusters follow, the jitter, the camera, the fog, the screen shadows, the
-/// depth fade, the jitter of the frame before, the cutaway and where the indoor volumes follow, the traced shadows and occlusion,
+/// irradiance volume, and where the lights, shadows and clusters follow, the jitter, the camera, the fog, the frame's number for
+/// white noise while it is denoised, the screen shadows, the depth fade, the jitter of the frame before, the cutaway and where the indoor volumes follow, the traced shadows and occlusion,
 /// the view of the frame before, where the draws follow, the scene's depth and G-buffer, and the scene's acceleration structure
 /// while the frame traces rays. 512 bytes.
 /// </summary>
@@ -41,7 +41,7 @@ internal readonly record struct FrameData(
     float FogAnisotropy,
     float FogHeight,
     float FogHeightFalloff,
-    uint Padding2,
+    uint NoiseFrame,
     Matrix4x4 InverseViewProjection,
     uint ScreenShadows,
     float AmbientOcclusion,

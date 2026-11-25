@@ -41,7 +41,7 @@ public sealed partial class SceneHost : IDisposable
         _options = options;
         _logger = loggerFactory.CreateLogger<SceneHost>();
         Content = new ContentManager(options.ContentFolder);
-        GraphicsFeatures features = GraphicsFeatures.RayQueries | GraphicsFeatures.Dlss;
+        GraphicsFeatures features = GraphicsFeatures.RayQueries | GraphicsFeatures.Dlss | GraphicsFeatures.RayReconstruction;
         GraphicsDeviceOptions deviceOptions = new() { Validation = options.Validation, Features = features };
         Device = new VulkanGraphicsDevice(deviceOptions, loggerFactory);
         Game = new Game(loggerFactory);

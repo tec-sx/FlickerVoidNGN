@@ -162,6 +162,12 @@ public sealed class SceneRenderer : IDisposable
     /// </summary>
     public UpscaleMode Upscaling { get; set; }
 
+    /// <summary>
+    /// Whether DLSS Ray Reconstruction denoises the ray traced shadows and occlusion as it upscales, in place of the renderer's
+    /// own filter of them, where frames trace rays and are upscaled on a device that has it; on by default.
+    /// </summary>
+    public bool RayReconstruction { get; set; } = true;
+
     /// <summary>Whether the depth fade is drawn; on by default.</summary>
     public bool DepthFades { get; set; } = true;
 
@@ -247,16 +253,19 @@ public sealed class SceneRenderer : IDisposable
     {
         int width = colorTarget.Description.Width;
         int height = colorTarget.Description.Height;
-        bool newUpscaler = EnsureUpscaler(width, height);
+        bool rayTracing = RayTracing && Device.Features.HasFlag(GraphicsFeatures.RayQueries);
+        bool newUpscaler = EnsureUpscaler(width, height, rayTracing);
         int renderWidth = width;
         int renderHeight = height;
         Vector2 jitter = Vector2.Zero;
         ISampler materialSampler = _sampler;
+        bool denoised = false;
         if (_upscaler is { } upscaler)
         {
             renderWidth = upscaler.RenderWidth;
             renderHeight = upscaler.RenderHeight;
-            int phases = JitterSequence.Phases(renderWidth, width);
+            denoised = upscaler.Description.Denoises;
+            int phases = JitterSequence.Phases(renderWidth, width, denoised);
             jitter = _jitter.Next(phases);
             materialSampler = _sharpSampler!;
         }
@@ -285,6 +294,7 @@ public sealed class SceneRenderer : IDisposable
         statistics.OutputWidth = width;
         statistics.OutputHeight = height;
         statistics.Upscaled = upscaled;
+        statistics.Denoised = denoised;
         context.Camera = camera;
         context.View = CameraView.Create(camera, cameraTransform, width, height);
         context.Mood = Mood;
@@ -294,7 +304,7 @@ public sealed class SceneRenderer : IDisposable
         context.ProbesFrom = ProbesFrom?._probePass;
         context.Sky = Sky;
         context.DebugView = DebugView;
-        context.RayTracing = RayTracing && Device.Features.HasFlag(GraphicsFeatures.RayQueries);
+        context.RayTracing = rayTracing;
         context.DepthFade = default;
         if (DepthFades)
         {
@@ -312,10 +322,11 @@ public sealed class SceneRenderer : IDisposable
     }
 
     /// <summary>
-    /// Makes an upscaler, with a sampler sharpening textures by its mip bias, when the mode or the output's size changed, or drops
-    /// them while upscaling is off or the device has no DLSS; says whether it made one.
+    /// Makes an upscaler, with a sampler sharpening textures by its mip bias, when the mode, the output's size or whether it
+    /// denoises the frame's traced rays changed, or drops them while upscaling is off or the device has no DLSS; says whether it
+    /// made one.
     /// </summary>
-    private bool EnsureUpscaler(int width, int height)
+    private bool EnsureUpscaler(int width, int height, bool rayTracing)
     {
         UpscaleMode mode = Upscaling;
         if (!Device.Features.HasFlag(GraphicsFeatures.Dlss))
@@ -323,7 +334,8 @@ public sealed class SceneRenderer : IDisposable
             mode = UpscaleMode.Off;
         }
 
-        UpscalerDescription description = new(mode, width, height);
+        bool denoises = mode != UpscaleMode.Off && rayTracing && RayReconstruction && Device.Features.HasFlag(GraphicsFeatures.RayReconstruction);
+        UpscalerDescription description = new(mode, width, height) { Denoises = denoises };
         if (_upscaler is not null && _upscaler.Description == description)
         {
             return false;

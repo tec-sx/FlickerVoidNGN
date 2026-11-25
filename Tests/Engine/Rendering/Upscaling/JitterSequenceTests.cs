@@ -45,8 +45,19 @@ public sealed class JitterSequenceTests
     [InlineData(960, 1920, 32)]
     public void CyclesEightPhasesForEveryOutputPixelARenderPixelCovers(int renderWidth, int outputWidth, int expected)
     {
-        int phases = JitterSequence.Phases(renderWidth, outputWidth);
+        int phases = JitterSequence.Phases(renderWidth, outputWidth, denoises: false);
 
         phases.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(1920, 1920, 32)]
+    [InlineData(1280, 1920, 32)]
+    [InlineData(640, 1920, 72)]
+    public void CyclesAtLeast32PhasesForAnUpscalerThatDenoises(int renderWidth, int outputWidth, int expected)
+    {
+        int phases = JitterSequence.Phases(renderWidth, outputWidth, denoises: true);
+
+        phases.Should().Be(expected, "Ray Reconstruction asks for many more phases than plain DLSS, at least 32");
     }
 }
