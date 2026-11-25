@@ -6,6 +6,8 @@ using FlickerVoid.Engine.Rendering.Meshes;
 
 using FlickerVoid.Engine.Rendering.Lighting;
 
+using FlickerVoid.Engine.Rendering.Moods;
+
 using FlickerVoid.Engine.Graphics.Devices;
 
 using FlickerVoid.Engine.Platform.Windowing;
@@ -156,56 +158,62 @@ bool KeyboardBlocked() => debugUi?.WantsKeyboard ?? false;
 OrbitCameraSystem orbit = new(window, game.World, camera, new Vector3(0, 0.5f, 0), distance: 10, MouseBlocked, KeyboardBlocked);
 CircleWalkSystem walkers = new(game.World, speed: 0.5f);
 
-// The first mood file is the default; each later one has a rule that holds while the viewer's mood fact is its index.
-FactDatabase facts = new(new FactSettings());
+// The first mood file is the scene's; each later one has a rule that holds while the viewer's mood fact is its index, and lies over the first.
+IFactDatabase facts = game.Facts;
 List<MoodRule> rules = [];
 for (int index = 1; index < moodFiles.Length; index++)
 {
-    FactCondition isThisMood = new() { Fact = MoodSystem.MoodFact, Compare = FactCompare.Equal, Value = index };
+    FactCondition isThisMood = new() { Fact = MoodStepSystem.MoodFact, Compare = FactCompare.Equal, Value = index };
     ConditionSet when = new() { Conditions = [isThisMood] };
     rules.Add(new MoodRule { When = when, Mood = moodFiles[index] });
 }
 
-using LightingMoodDirector? director = CreateDirector();
-LightingMood startMood = director?.Current ?? new LightingMood();
-LightingMood configuredMood = Configure(startMood);
-host.Mood = configuredMood;
+host.Moods.Rules = rules;
+if (moodFiles.Length > 0)
+{
+    host.Moods.SceneMoodPath = moodFiles[0];
+}
+
+MoodOverride? moodOptions = CreateMoodOptions();
+host.Moods.Director.SetLayer(MoodLayer.Debug, moodOptions, 0);
 SceneRenderSystem renderer = host.Start(CreateDebugUi);
 if (bakeProbes)
 {
-    ModelProbes.Bake(host.Device, content, game.World, model, configuredMood);
+    ModelProbes.Bake(host.Device, content, game.World, model, host.Moods.Current);
 }
 
-LightingMoodDirector? CreateDirector()
+// --sun, --ambient and --fog lie over every mood.
+MoodOverride? CreateMoodOptions()
 {
-    if (moodFiles.Length == 0)
-    {
-        return null;
-    }
-
-    ILogger<LightingMoodDirector> directorLogger = loggerFactory.CreateLogger<LightingMoodDirector>();
-    return new LightingMoodDirector(facts, content, moodFiles[0], rules, directorLogger);
-}
-
-LightingMood Configure(LightingMood mood)
-{
+    LightingMood values = new();
+    List<string> names = [];
     if (sunDirection is { } direction)
     {
-        mood = mood with { SunDirection = direction };
+        values.SunDirection = direction;
+        names.Add("sunDirection");
     }
 
     if (ambient is { } share)
     {
-        mood = mood with { Ambient = share };
+        values.Ambient = share;
+        names.Add("ambient");
     }
 
     if (fogDensity is { } density)
     {
         // Ground fog: full density up to the floor, thinning by e every 2/3 of a unit above it.
-        mood = mood with { FogDensity = density, FogHeightFalloff = 1.5f };
+        values.FogDensity = density;
+        values.FogHeightFalloff = 1.5f;
+        names.Add("fogDensity");
+        names.Add("fogHeightFalloff");
     }
 
-    return mood;
+    if (names.Count == 0)
+    {
+        return null;
+    }
+
+    return MoodOverride.Of(values, names);
 }
 
 DebugUi CreateDebugUi(PixelFormat format, SceneRenderer sceneRenderer)
@@ -228,10 +236,10 @@ DebugUi CreateDebugUi(PixelFormat format, SceneRenderer sceneRenderer)
 
 game.FrameSystems.Add(orbit);
 game.FrameSystems.Add(walkers);
-if (director is not null)
+if (moodFiles.Length > 0)
 {
-    MoodSystem moods = new(window, facts, director, renderer, Configure, moodFiles.Length, KeyboardBlocked);
-    game.FrameSystems.Add(moods);
+    MoodStepSystem moodSteps = new(window, facts, moodFiles.Length, KeyboardBlocked);
+    game.FrameSystems.Add(moodSteps);
 }
 
 host.Run();

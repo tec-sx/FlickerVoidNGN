@@ -32,8 +32,14 @@ public sealed class ContentSchemas
     /// <summary>Adds the schema of the files with the extension, each holding one value the type info reads.</summary>
     public void AddFile(string name, string extension, Func<JsonTypeInfo> typeInfo)
     {
+        AddFile(name, extension, typeInfo, () => JsonSchemas.CreateFile(typeInfo()));
+    }
+
+    /// <summary>Adds the files with the extension, read by the type info, with a schema of their own, for files a converter reads.</summary>
+    public void AddFile(string name, string extension, Func<JsonTypeInfo> typeInfo, Func<JsonObject> schema)
+    {
         _files.Add(extension, typeInfo);
-        _schemas.Add(name, () => JsonSchemas.CreateFile(typeInfo()));
+        _schemas.Add(name, schema);
     }
 
     /// <summary>Writes every schema into the source folder's schema folder as <c>name.schema.json</c>, leaving unchanged files alone.</summary>
