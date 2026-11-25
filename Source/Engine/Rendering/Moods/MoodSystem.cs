@@ -13,7 +13,7 @@ namespace FlickerVoid.Engine.Rendering.Moods;
 
 /// <summary>
 /// Keeps a game's mood on screen (a frame system and service): it gives its <see cref="MoodDirector"/> the environment and
-/// the mood the scene names, and the mood of the hardest story rule that holds, and builds the mood each frame at the world
+/// the mood the scene names, the mood of the hardest story rule that holds and the live shot's mood, and builds the mood each frame at the world
 /// clock's hour. A scene's environment also sets the clock's speed when the scene plays. A file edited on disk applies at
 /// once; one that can't be read is logged, and its last version stays.
 /// </summary>
@@ -27,6 +27,7 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
     private string? _sceneMood;
     private string? _environment;
     private string? _storyMood;
+    private string? _shotMood;
     private bool _storyChanged = true;
 
     public MoodSystem(Game game, IContentManager content, ILogger<MoodSystem> logger)
@@ -75,6 +76,23 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
             LogUnreadable(path, exception.Message);
             return null;
         }
+    }
+
+    /// <summary>
+    /// Lays the live shot's mood file over the story's, or takes it off with null, blending over the seconds; a change at once
+    /// shows in <see cref="Current"/> straight away, so a cut made after this frame's update is drawn with its mood.
+    /// </summary>
+    public void SetShotMood(string? path, float blendSeconds)
+    {
+        if (path == _shotMood)
+        {
+            return;
+        }
+
+        _shotMood = path;
+        MoodOverride? loaded = LoadMoodOrNone(path);
+        Director.SetLayer(MoodLayer.Shot, loaded, blendSeconds);
+        Director.Update(_game.Clock.Hour, 0);
     }
 
     public override void Update(in GameTime t)
@@ -202,6 +220,11 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
         if (IsFile(_storyMood, fullPath) && LoadMood(_storyMood!) is { } storyMood)
         {
             Director.SetLayer(MoodLayer.Story, storyMood, 0);
+        }
+
+        if (IsFile(_shotMood, fullPath) && LoadMood(_shotMood!) is { } shotMood)
+        {
+            Director.SetLayer(MoodLayer.Shot, shotMood, 0);
         }
 
         if (IsFile(_environment, fullPath) && LoadEnvironment(_environment) is { } environment)
