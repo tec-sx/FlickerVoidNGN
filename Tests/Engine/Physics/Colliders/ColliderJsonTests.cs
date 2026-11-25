@@ -23,6 +23,20 @@ public class ColliderJsonTests
     }
 
     [Fact]
+    public void ReadsHullsAndTriangles()
+    {
+        RigidBody hull = Read("""{ "collider": { "type": "hull", "points": [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]] } }""");
+        StaticBody triangles = JsonSerializer.Deserialize(
+            """{ "collider": { "type": "triangles", "positions": [[0, 0, 0], [1, 0, 0], [0, 0, 1]], "indices": [0, 2, 1] } }""",
+            PhysicsJsonContext.Default.StaticBody);
+
+        hull.Collider.Should().BeOfType<HullCollider>().Which.Points.Should().HaveCount(4).And.Contain(Vector3.UnitY);
+        TriangleCollider triangleCollider = triangles.Collider.Should().BeOfType<TriangleCollider>().Subject;
+        triangleCollider.Positions.Should().Equal(Vector3.Zero, Vector3.UnitX, Vector3.UnitZ);
+        triangleCollider.Indices.Should().Equal(0, 2, 1);
+    }
+
+    [Fact]
     public void AcceptsTheTypeAfterOtherProperties()
     {
         RigidBody body = Read("""{ "collider": { "radius": 2, "type": "sphere" } }""");

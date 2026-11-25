@@ -6,7 +6,7 @@ FlickerVoid Engine includes code adapted from the open-source projects below. Ea
 
 https://github.com/stride3d/stride
 
-Used in: `Source/Runtime/GameLoop.cs` (stepping rules), `Source/Runtime/Services/ServiceRegistry.cs`, `Source/Physics/PoseIntegratorCallbacks.cs` and `Source/Physics/NarrowPhaseCallbacks.cs` (from Stride.BepuPhysics)
+Used in: `Source/Runtime/GameLoop.cs` (stepping rules) and `Source/Runtime/Services/ServiceRegistry.cs`
 
 ```
 The MIT License (MIT)
