@@ -10,4 +10,5 @@ public enum MoodGroup
     Bloom,
     Tonemapper,
     Canvas,
+    Depth,
 }

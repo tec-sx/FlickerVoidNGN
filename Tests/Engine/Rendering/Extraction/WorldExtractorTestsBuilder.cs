@@ -33,12 +33,6 @@ internal sealed class WorldExtractorTestsBuilder : IDisposable
         return this;
     }
 
-    public WorldExtractorTestsBuilder WithMainCamera(MainCamera main)
-    {
-        _world.Create(new Camera(), new Transform(), main);
-        return this;
-    }
-
     public WorldExtractorTestsBuilder WithMesh(string mesh, Transform transform)
     {
         MeshRenderer renderer = new() { Mesh = mesh };

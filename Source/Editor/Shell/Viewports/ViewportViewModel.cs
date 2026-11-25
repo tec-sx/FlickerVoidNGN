@@ -62,6 +62,7 @@ public sealed partial class ViewportViewModel : ObservableObject
         SceneMode = new SceneMode(scene, Camera, Gizmo, Icons, Timeline);
         Mode = SceneMode;
         Selection.Changed += HandleSelectionChanged;
+        scene.Content.Changed += HandleContentChanged;
     }
 
     public EditorScene Scene { get; }

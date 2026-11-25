@@ -312,8 +312,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool CanPlay() => _player is not null;
 
     /// <summary>
-    /// The viewport's mood when the game would not draw it from the scene's files (the default mood edited, another mood file,
-    /// or the scene's mood with unsaved edits), else null, so the game lights the scene with its own mood, environment and clock.
+    /// The mood the viewport draws, lens included, when the game would not draw it from the scene's files (the default mood
+    /// edited, another mood file, or the scene's mood with unsaved edits), else null, so the game lights the scene with its own
+    /// mood, lens, environment and clock.
     /// </summary>
     private LightingMood? FindMoodToPlay()
     {
@@ -325,7 +326,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 return null;
             }
 
-            return Viewport.Mood;
+            return Viewport.GetDrawnMood();
         }
 
         bool scenesOwn = _mood.Path == _sceneMood && !_content.IsUnsaved(_mood.Path);
@@ -334,7 +335,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return null;
         }
 
-        return Viewport.Mood;
+        return Viewport.GetDrawnMood();
     }
 
     private bool CanCompile() => _compiler is not null;

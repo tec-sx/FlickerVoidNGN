@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Numerics;
 using System.Text.Json.Serialization;
 
+using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Runtime.Components;
@@ -92,6 +93,30 @@ public sealed record LightingMood
     [ContentFile(".fvcanvas")]
     public string? Canvas { get; set; }
 
+    /// <summary>How far in front of the focus things start to darken.</summary>
+    public float DepthNearStart { get; set; } = 1;
+
+    /// <summary>How far in front of the focus things are darkened by the whole <see cref="DepthNearAmount"/>.</summary>
+    public float DepthNearEnd { get; set; } = 6;
+
+    /// <summary>How much the nearest things darken, from 0 (not at all) to 1 (black).</summary>
+    [Range(0, 1)]
+    public float DepthNearAmount { get; set; }
+
+    /// <summary>How far behind the focus things start to melt into <see cref="DepthFarColor"/>.</summary>
+    public float DepthFarStart { get; set; } = 2;
+
+    /// <summary>How far behind the focus things melt into <see cref="DepthFarColor"/> by the whole <see cref="DepthFarAmount"/>.</summary>
+    public float DepthFarEnd { get; set; } = 20;
+
+    /// <summary>How much the farthest things melt into <see cref="DepthFarColor"/>, from 0 (not at all) to 1 (all colour).</summary>
+    [Range(0, 1)]
+    public float DepthFarAmount { get; set; }
+
+    /// <summary>The haze far things melt into, as graded colour.</summary>
+    [Color]
+    public Vector3 DepthFarColor { get; set; } = new(0.82f, 0.8f, 0.76f);
+
     /// <summary>
     /// The mood <paramref name="amount"/> of the way from <paramref name="from"/> to <paramref name="to"/>: numbers and
     /// colors blend, the sun turns between its directions, and the paper and tonemapper swap halfway.
@@ -108,10 +133,27 @@ public sealed record LightingMood
         return blended;
     }
 
+    /// <summary>The painter's fade by depth its depth values spell.</summary>
+    public DepthFade ToDepthFade()
+    {
+        return new DepthFade(DepthNearStart, DepthNearEnd, DepthNearAmount, DepthFarStart, DepthFarEnd, DepthFarAmount, DepthFarColor);
+    }
+
     /// <summary>This mood with neutral post-processing, for captures that need the light as it is.</summary>
     public LightingMood WithoutPost()
     {
-        return this with { Bloom = 0, Exposure = 1, Contrast = 1, Saturation = 1, Tint = Vector3.One, Tonemapper = Tonemapper.None, Canvas = null };
+        return this with
+        {
+            Bloom = 0,
+            Exposure = 1,
+            Contrast = 1,
+            Saturation = 1,
+            Tint = Vector3.One,
+            Tonemapper = Tonemapper.None,
+            Canvas = null,
+            DepthNearAmount = 0,
+            DepthFarAmount = 0,
+        };
     }
 }
 

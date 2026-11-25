@@ -2,6 +2,7 @@ using Arch.Core;
 using Arch.System;
 
 using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Serialization;
 using FlickerVoid.Engine.Runtime.Content;
@@ -12,8 +13,8 @@ using Microsoft.Extensions.Logging;
 namespace FlickerVoid.Engine.Rendering.Moods;
 
 /// <summary>
-/// Keeps a game's mood on screen (a frame system and service): it gives its <see cref="MoodDirector"/> the environment and
-/// the mood the scene names, the mood of the hardest story rule that holds and the live shot's mood, and builds the mood each frame at the world
+/// Keeps a game's mood on screen (a frame system and service): it gives its <see cref="MoodDirector"/> the environment, the
+/// lens the main camera names and the mood the scene names, the mood of the hardest story rule that holds and the live shot's mood, and builds the mood each frame at the world
 /// clock's hour. A scene's environment also sets the clock's speed when the scene plays. A file edited on disk applies at
 /// once; one that can't be read is logged, and its last version stays.
 /// </summary>
@@ -24,6 +25,7 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
     private readonly ILogger<MoodSystem> _logger;
     private IReadOnlyList<MoodRule> _rules = [];
     private ConditionSet[] _conditions = [];
+    private string? _lens;
     private string? _sceneMood;
     private string? _environment;
     private string? _storyMood;
@@ -112,6 +114,14 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
     /// <summary>Takes the scene's mood and environment when the files it names change, as on travel to another scene, at once.</summary>
     private void FollowScene()
     {
+        string? lens = MainCamera.FindLens(World);
+        if (lens != _lens)
+        {
+            _lens = lens;
+            CameraLens? loaded = LoadLens(lens);
+            Director.SetLayer(MoodLayer.Lens, loaded?.Values, 0);
+        }
+
         string? mood = SceneMoodPath ?? SceneMood.Find(World);
         if (mood != _sceneMood)
         {
@@ -175,6 +185,24 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
         return LoadMood(path);
     }
 
+    private CameraLens? LoadLens(string? path)
+    {
+        if (path is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return _content.Load(path, RenderingJsonContext.Default.CameraLens);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException)
+        {
+            LogUnreadable(path, exception.Message);
+            return null;
+        }
+    }
+
     private LightingEnvironment? LoadEnvironment(string? path)
     {
         if (path is null)
@@ -212,6 +240,11 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
     /// <summary>Reads a changed file again when it is on screen, keeping its last version when the new one can't be read.</summary>
     private void HandleContentChanged(string fullPath)
     {
+        if (IsFile(_lens, fullPath) && LoadLens(_lens) is { } lens)
+        {
+            Director.SetLayer(MoodLayer.Lens, lens.Values, 0);
+        }
+
         if (IsFile(_sceneMood, fullPath) && LoadMood(_sceneMood!) is { } sceneMood)
         {
             Director.SetLayer(MoodLayer.Scene, sceneMood, 0);

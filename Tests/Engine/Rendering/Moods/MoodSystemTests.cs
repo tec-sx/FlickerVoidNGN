@@ -244,6 +244,34 @@ public sealed class MoodSystemTests : IDisposable
     }
 
     [Fact]
+    public void LaysTheMainCamerasLensUnderTheScenesMood()
+    {
+        _builder.WithFile("Main.fvlens", """{ "bloom": 0.3, "depthNearAmount": 0.4 }""");
+        _builder.WithFile("Glow.fvmood", """{ "bloom": 0.6 }""");
+        _builder.Spawn("""{ "mainCamera": { "lens": "Main.fvlens" }, "sceneMood": { "mood": "Glow.fvmood" } }""");
+        MoodSystem moods = _builder.Build();
+
+        _builder.Update();
+
+        moods.Current.DepthNearAmount.Should().Be(0.4f);
+        moods.Current.Bloom.Should().Be(0.6f, "the scene's mood lies over the lens");
+    }
+
+    [Fact]
+    public void AppliesAnEditedLensAtOnce()
+    {
+        _builder.WithFile("Main.fvlens", """{ "bloom": 0.3 }""");
+        _builder.Spawn("""{ "mainCamera": { "lens": "Main.fvlens" } }""");
+        MoodSystem moods = _builder.Build();
+        _builder.Update();
+
+        _builder.EditFile("Main.fvlens", """{ "bloom": 0.5 }""");
+        _builder.Update(0.01f);
+
+        moods.Current.Bloom.Should().Be(0.5f);
+    }
+
+    [Fact]
     public void ShowsAShotsMoodAtOnceWhenItCutsEvenAfterTheFramesUpdate()
     {
         _builder.Spawn(DayScene);

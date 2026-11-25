@@ -33,6 +33,13 @@ internal sealed class MoodValuesTestsBuilder
             Tonemapper = Tonemapper.Aces,
             WhitePoint = 8,
             Canvas = "Paper.fvcanvas",
+            DepthNearStart = 0.5f,
+            DepthNearEnd = 3,
+            DepthNearAmount = 0.4f,
+            DepthFarStart = 4,
+            DepthFarEnd = 12,
+            DepthFarAmount = 0.3f,
+            DepthFarColor = new Vector3(0.7f, 0.6f, 0.5f),
         };
     }
 }
