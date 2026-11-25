@@ -10,6 +10,7 @@ using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
+using FlickerVoid.Engine.Runtime.Settings;
 using FlickerVoid.Engine.Vehicles;
 
 using Microsoft.Extensions.Logging;
@@ -24,6 +25,7 @@ namespace FlickerVoid.Editor.Core.Scenes;
 public sealed partial class EditorScene : IDisposable
 {
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ILogger<EditorScene> _logger;
     private SceneLoader _loader;
     private ContentWatcher _watcher;
 
@@ -38,7 +40,10 @@ public sealed partial class EditorScene : IDisposable
     {
         _loggerFactory = loggerFactory;
         Content = content;
+        _logger = loggerFactory.CreateLogger<EditorScene>();
         Game = CreateGame(loggerFactory, content, modules);
+        LoadSettings();
+        Content.Changed += HandleContentChanged;
         Picker = new ScenePicker(Content) { Meshes = Meshes };
         _loader = CreateLoader(Game);
         _watcher = CreateWatcher();
@@ -63,6 +68,9 @@ public sealed partial class EditorScene : IDisposable
 
     /// <summary>Raised after a scene file was opened.</summary>
     public event Action? Opened;
+
+    /// <summary>Raised when the project's settings file changed on disk and the game's console variables were set from it again.</summary>
+    public event Action? SettingsChanged;
 
     /// <summary>Raised after the editor added or destroyed an entity, or opened a scene.</summary>
     public event Action? EntitiesChanged;
@@ -186,6 +194,7 @@ public sealed partial class EditorScene : IDisposable
         Selection.Select(null);
         Stop();
         Game = game;
+        LoadSettings();
         Picker.Meshes = Meshes;
         _loader = loader;
         _watcher = CreateWatcher();
@@ -197,6 +206,7 @@ public sealed partial class EditorScene : IDisposable
 
     public void Dispose()
     {
+        Content.Changed -= HandleContentChanged;
         Stop();
         Picker.Dispose();
     }
@@ -225,6 +235,32 @@ public sealed partial class EditorScene : IDisposable
 
         return game;
     }
+
+    /// <summary>Sets the game's console variables as the project's settings file says, logging what it skipped.</summary>
+    private void LoadSettings()
+    {
+        string path = Content.GetFullPath(SettingsFile.FileName);
+        IReadOnlyList<string> problems = SettingsFile.Load(path, Game.DebugConsole);
+        foreach (string problem in problems)
+        {
+            LogSettingsProblem(path, problem);
+        }
+    }
+
+    private void HandleContentChanged(string fullPath)
+    {
+        string settings = Content.GetFullPath(SettingsFile.FileName);
+        if (!ContentManager.PathComparer.Equals(fullPath, settings))
+        {
+            return;
+        }
+
+        LoadSettings();
+        SettingsChanged?.Invoke();
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "{Path}: {Problem}")]
+    private partial void LogSettingsProblem(string path, string problem);
 
     private SceneLoader CreateLoader(Game game)
     {

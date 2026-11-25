@@ -8,6 +8,7 @@ using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Textures;
 using FlickerVoid.Engine.Rendering;
@@ -15,6 +16,7 @@ using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 
@@ -54,11 +56,19 @@ internal sealed class ViewportRenderer : IDisposable
     private ITexture? _preview;
     private ITexture? _frame;
 
-    public ViewportRenderer(ILoggerFactory loggerFactory, IContentManager content, bool validation)
+    /// <summary>Creates the device with what the settings need as the editor starts: ray queries, and DLSS when the viewport upscales.</summary>
+    public ViewportRenderer(ILoggerFactory loggerFactory, IContentManager content, bool validation, RenderingSettings settings)
     {
-        GraphicsDeviceOptions options = new() { Validation = validation };
+        GraphicsFeatures features = GraphicsFeatures.RayQueries;
+        if (settings.ViewportUpscaling.Value != UpscaleMode.Off)
+        {
+            features |= GraphicsFeatures.Dlss | GraphicsFeatures.RayReconstruction;
+        }
+
+        GraphicsDeviceOptions options = new() { Validation = validation, Features = features };
         _device = new VulkanGraphicsDevice(options, loggerFactory);
-        _scene = new SceneRenderer(_device, content, ViewFormat) { Sky = true, RayTracing = true };
+        _scene = new SceneRenderer(_device, content, ViewFormat) { Sky = true };
+        settings.ApplyToViewport(_scene);
         ShaderLibrary shaders = ShaderLibrary.ForEngine("Editor");
         _grid = new GridPass(_device, shaders, ViewFormat);
         _scene.Pipeline.Add(_grid);
@@ -122,8 +132,10 @@ internal sealed class ViewportRenderer : IDisposable
     /// Renders a frame into the shared texture and hands it over in the CopySource state, with the preview camera's view in a corner
     /// when there is one; call <see cref="Resize"/> first.
     /// </summary>
-    public void Render(World world, in Camera camera, in Transform cameraTransform, RenderCamera? preview, in ViewportDepthFade depthFade)
+    /// <summary>Draws a frame with the renderer set as the edited game's settings say now (the project settings window and the settings file change them).</summary>
+    public void Render(World world, RenderingSettings settings, in Camera camera, in Transform cameraTransform, RenderCamera? preview, in ViewportDepthFade depthFade)
     {
+        settings.ApplyToViewport(_scene);
         _scene.DepthFade = depthFade.View;
         _scene.Focus = depthFade.Focus;
         VulkanSharedTexture target = Target!;

@@ -71,6 +71,10 @@
           </ToggleButton>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Classes="icon" Click="HandleProjectSettingsClick"
+                  ToolTip.Tip="Project Settings: the graphics settings, kept in the project's Content/Settings.fvsettings.">
+            <PathIcon Data="{x:Static shell:MaterialIcons.Settings}" />
+          </Button>
           <Button Classes="icon" Command="{Binding OpenInVisualStudioCommand}"
                   ToolTip.Tip="Open in Visual Studio: opens the project's solution. Needs an open project.">
             <PathIcon Data="{x:Static shell:MaterialIcons.VisualStudio}" />

@@ -4,7 +4,6 @@ using FlickerVoid.Engine.Flow;
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Textures;
-using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Platform.Windowing;
@@ -17,14 +16,16 @@ using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
+using FlickerVoid.Engine.Runtime.Settings;
 
 using Microsoft.Extensions.Logging;
 
 namespace FlickerVoid.Engine.Hosting;
 
 /// <summary>
-/// Runs a game in a window: a Vulkan device (DLSS Quality upscaling where the GPU has it), a game with rendering, its built content
-/// (reloaded when it changes), the options' scene and lighting mood, and a <see cref="SceneRenderSystem"/> that draws after every
+/// Runs a game in a window: a Vulkan device, a game with rendering, its built content (reloaded when it changes) and its settings
+/// (<see cref="SettingsFile.FileName"/>, read as it starts, so the renderer follows the <see cref="RenderingSettings"/>: DLSS
+/// Quality where the GPU has it unless they say otherwise), the options' scene and lighting mood, and a <see cref="SceneRenderSystem"/> that draws after every
 /// other frame system.
 /// </summary>
 public sealed partial class SceneHost : IDisposable
@@ -130,6 +131,7 @@ public sealed partial class SceneHost : IDisposable
             LogNoCamera(_options.Scene ?? "The world");
         }
 
+        LoadSettings();
         createOverlay ??= static (_, _) => null;
         Renderer = new SceneRenderSystem(Window, Device, Game.World, CreateRenderer, _options.FrameLimit, createOverlay) { MoodSource = () => Moods.Current };
         return Renderer;
@@ -159,13 +161,29 @@ public sealed partial class SceneHost : IDisposable
         Device.Dispose();
     }
 
+    private void LoadSettings()
+    {
+        string path = Path.Combine(_options.ContentFolder, SettingsFile.FileName);
+        IReadOnlyList<string> problems = SettingsFile.Load(path, Game.DebugConsole);
+        foreach (string problem in problems)
+        {
+            LogSettingsProblem(path, problem);
+        }
+    }
+
     private SceneRenderer CreateRenderer(PixelFormat format)
     {
-        SceneRenderer renderer = new(Device, Content, format) { Mood = Moods.Current, Sky = true, RayTracing = true, Upscaling = UpscaleMode.Quality };
+        SceneRenderer renderer = new(Device, Content, format) { Mood = Moods.Current, Sky = true };
         SceneRendererSetup? setup = Game.Services.GetService<SceneRendererSetup>();
         setup?.Apply(renderer);
+        RenderingSettings settings = Game.Services.GetService<RenderingSettings>()!;
+        settings.Apply(renderer);
+        settings.Changed += () => settings.Apply(renderer);
         return renderer;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "{Path}: {Problem}")]
+    private partial void LogSettingsProblem(string path, string problem);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "{Scene} has no camera, so the window stays empty.")]
     private partial void LogNoCamera(string scene);
