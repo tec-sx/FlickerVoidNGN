@@ -77,13 +77,13 @@ public sealed class ViewerWindow : DebugWindow
     private void DrawMoods()
     {
         ImGui.SeparatorText("Mood");
-        int current = _facts.GetFact(MoodSystem.MoodFact);
+        int current = _facts.GetFact(MoodStepSystem.MoodFact);
         foreach (string mood in _moods)
         {
             int index = Array.IndexOf(_moods, mood);
             if (ImGui.RadioButton(Path.GetFileNameWithoutExtension(mood), current == index))
             {
-                _facts.SetFact(MoodSystem.MoodFact, index);
+                _facts.SetFact(MoodStepSystem.MoodFact, index);
             }
         }
     }

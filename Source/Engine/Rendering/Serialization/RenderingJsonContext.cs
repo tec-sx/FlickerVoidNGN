@@ -36,6 +36,7 @@ namespace FlickerVoid.Engine.Rendering.Serialization;
 [JsonSerializable(typeof(LightingEnvironment))]
 [JsonSerializable(typeof(TextureSettings))]
 [JsonSerializable(typeof(SceneMood))]
+[JsonSerializable(typeof(SceneEnvironment))]
 [JsonSerializable(typeof(IndoorVolume))]
 [JsonSerializable(typeof(Uncut))]
 [JsonSerializable(typeof(Doorway))]
