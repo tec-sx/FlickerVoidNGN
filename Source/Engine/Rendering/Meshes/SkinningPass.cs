@@ -36,7 +36,7 @@ internal sealed class SkinningPass : IRenderPass
         Frustum view = new(context.View.ViewProjection);
         foreach (RenderMesh mesh in context.Scene.Meshes)
         {
-            GpuModel model = _meshes.Get(mesh.Mesh);
+            GpuModel model = _meshes.Get(mesh.Mesh, context.Meshes);
             IBuffer[]? posed = null;
             if (mesh.Animator is MeshAnimator animator)
             {

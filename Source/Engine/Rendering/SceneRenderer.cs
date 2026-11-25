@@ -125,6 +125,12 @@ public sealed class SceneRenderer : IDisposable
     /// <summary>The world point the depth fade is measured from in place of the scene's; null keeps the scene's.</summary>
     public Vector3? Focus { get; set; }
 
+    /// <summary>
+    /// Turns mesh names into models; the game's (a service from <c>AddRendering</c>, which the game's renderers are set up with) also makes
+    /// the meshes its modules add sources for, such as creations' parts.
+    /// </summary>
+    public MeshSources Meshes { get; set; } = new();
+
     /// <summary>What the last frame drew and culled.</summary>
     public RenderStatistics Statistics => _context.Statistics;
 
@@ -214,6 +220,7 @@ public sealed class SceneRenderer : IDisposable
         }
 
         context.Focus = Focus ?? _scene.Focus;
+        context.Meshes = Meshes;
         context.FrameSlot = _frameData.Advance();
 
         Pipeline.Prepare(context);

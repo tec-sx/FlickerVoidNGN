@@ -16,7 +16,7 @@ namespace FlickerVoid.Engine.Rendering;
 /// <summary>Adds rendering to a game.</summary>
 public static class RenderingGameExtensions
 {
-    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume", "sceneMood", "outline", "mainCamera", "depthFadeOverride", "indoorVolume", "uncut" and "doorway" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, the <see cref="SceneRendererSetup"/> service, and the mood, material, canvas and texture settings file kinds with their schemas.</summary>
+    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume", "sceneMood", "outline", "mainCamera", "depthFadeOverride", "indoorVolume", "uncut" and "doorway" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, the <see cref="MeshSources"/> service, the <see cref="SceneRendererSetup"/> service (which gives renderers those sources), and the mood, material, canvas and texture settings file kinds with their schemas.</summary>
     public static void AddRendering(this Game game)
     {
         game.Spawner.Register("camera", RenderingJsonContext.Default.Camera);
@@ -36,7 +36,11 @@ public static class RenderingGameExtensions
         game.Schemas.AddFile("material", MaterialFile.Extension, static () => RenderingJsonContext.Default.MaterialFile);
         game.Schemas.AddFile("canvas", CanvasFile.Extension, static () => RenderingJsonContext.Default.CanvasFile);
         game.Schemas.AddFile("texture", TextureSettings.Extension, static () => RenderingJsonContext.Default.TextureSettings);
-        game.Services.AddService(new SceneRendererSetup());
+        MeshSources meshes = new();
+        game.Services.AddService(meshes);
+        SceneRendererSetup setup = new();
+        setup.Add(renderer => renderer.Meshes = meshes);
+        game.Services.AddService(setup);
         ArrayRegistry.Add<Hidden>();
         ArrayRegistry.Add<ShadowOnly>();
         ArrayRegistry.Add<Cutaway>();
