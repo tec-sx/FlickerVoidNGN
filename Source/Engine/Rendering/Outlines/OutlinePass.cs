@@ -106,20 +106,20 @@ public sealed class OutlinePass : IRenderPass
         return false;
     }
 
-    // The silhouette carries the outline's color, so the line can take the color of the mesh it surrounds.
+    // The silhouette carries the outline's color from the draw's record, so the line can take the color of the mesh it surrounds.
     private static void DrawSilhouettes(RenderContext context)
     {
         ICommandList commands = context.Commands;
-        foreach (MeshDraw draw in context.Draws)
+        for (int index = 0; index < context.Draws.Count; index++)
         {
-            if (draw.Outline is not { } outline)
+            MeshDraw draw = context.Draws[index];
+            if (draw.Outline is null)
             {
                 continue;
             }
 
             GpuMeshPart part = draw.Part;
-            Vector4 color = new(outline.Color, 1);
-            SceneConstants constants = new(draw.World, color, context.FrameBuffer, draw.Vertices.BindlessIndex, context.White.BindlessIndex, context.Sampler.BindlessIndex, draw.Material.BindlessIndex, (uint)draw.Flags);
+            SceneConstants constants = new(context.FrameBuffer, (uint)index);
             commands.SetIndexBuffer(part.Indices, IndexFormat.UInt32);
             commands.PushConstants(constants);
             commands.DrawIndexed(part.IndexCount);

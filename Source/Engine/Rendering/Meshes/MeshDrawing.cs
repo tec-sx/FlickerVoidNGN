@@ -9,22 +9,22 @@ using FlickerVoid.Engine.Rendering.Pipeline;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
-/// <summary>Draws the meshes of the frame its view draws with the pipeline already set, reading the frame's data buffer.</summary>
+/// <summary>Draws the meshes of the frame its view draws with the pipeline already set, each from its record in the frame's data buffer.</summary>
 internal static class MeshDrawing
 {
     public static void Draw(RenderContext context)
     {
         ICommandList commands = context.Commands;
-        foreach (MeshDraw draw in context.Draws)
+        for (int index = 0; index < context.Draws.Count; index++)
         {
+            MeshDraw draw = context.Draws[index];
             if (!draw.InView)
             {
                 continue;
             }
 
             GpuMeshPart part = draw.Part;
-            ITexture texture = part.Texture ?? context.White;
-            SceneConstants constants = new(draw.World, part.BaseColor, context.FrameBuffer, draw.Vertices.BindlessIndex, texture.BindlessIndex, context.Sampler.BindlessIndex, draw.Material.BindlessIndex, (uint)draw.Flags);
+            SceneConstants constants = new(context.FrameBuffer, (uint)index);
             commands.SetIndexBuffer(part.Indices, IndexFormat.UInt32);
             commands.PushConstants(constants);
             commands.DrawIndexed(part.IndexCount);

@@ -1,17 +1,7 @@
-using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace FlickerVoid.Engine.Rendering.Materials;
 
-/// <summary>The push constants of Shaders/Scene.hlsl, for one mesh part.</summary>
+/// <summary>The push constants of Shaders/Scene.hlsl: the frame's buffer and the number of the draw's record in it.</summary>
 [StructLayout(LayoutKind.Sequential)]
-internal readonly record struct SceneConstants(
-    Matrix4x4 World,
-    Vector4 BaseColor,
-    uint Frame,
-    uint Vertices,
-    uint Texture,
-    uint Sampler,
-    uint Material,
-    uint Flags);
-
+internal readonly record struct SceneConstants(uint Frame, uint Draw);

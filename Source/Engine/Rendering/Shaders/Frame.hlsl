@@ -55,9 +55,13 @@ struct FrameData
     float CutMuted;
     uint IndoorCount;
     uint IndoorsOffset;
+    float4x4 PreviousViewProjection;
+    uint DrawsOffset;
+    // The frame buffer's own bindless index, which LoadFrame was given.
+    uint Buffer;
 };
 
-static const uint FrameDataSize = 416;
+static const uint FrameDataSize = 496;
 static const uint None = 0xFFFFFFFF;
 
 FrameData LoadFrame(uint index)
@@ -110,6 +114,9 @@ FrameData LoadFrame(uint index)
     frame.CutMuted = buffer.Load<float>(396);
     frame.IndoorCount = buffer.Load<uint>(400);
     frame.IndoorsOffset = buffer.Load<uint>(404);
+    frame.PreviousViewProjection = float4x4(buffer.Load<float4>(416), buffer.Load<float4>(432), buffer.Load<float4>(448), buffer.Load<float4>(464));
+    frame.DrawsOffset = buffer.Load<uint>(480);
+    frame.Buffer = index;
     return frame;
 }
 

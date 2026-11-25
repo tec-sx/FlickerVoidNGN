@@ -3,22 +3,29 @@ using System.Runtime.InteropServices;
 
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Pipeline;
 
 namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>
-/// Writes the frame's view, sun, lights, shadows, light clusters, probes, indoor volumes and cutaway into the frame buffer ring, after every pass
-/// has prepared and before any executes.
+/// Writes the frame's view, sun, lights, shadows, light clusters, probes, indoor volumes, cutaway and draws into the frame buffer
+/// ring, after every pass has prepared and before any executes; remembers the view for the next frame's view before.
 /// </summary>
 internal sealed class FrameDataWriter : IDisposable
 {
+    // Draw records start on a 16-byte boundary, as their matrices and vectors are read in fours.
+    private const int DrawAlignment = 16;
+
     private readonly LightClusters _clusters = new();
     private readonly FrameBufferRing _frames;
     private readonly ProbeCache _probes;
+    private readonly List<GpuDraw> _draws = [];
+    private Matrix4x4? _previousViewProjection;
 
     public FrameDataWriter(IGraphicsDevice device, ProbeCache probes, int framesInFlight)
     {
@@ -50,7 +57,10 @@ internal sealed class FrameDataWriter : IDisposable
         GpuIndoor[] indoors = CollectIndoors(context.Scene);
         ReadOnlySpan<byte> indoorBytes = MemoryMarshal.AsBytes(indoors.AsSpan());
         int indoorsOffset = indicesOffset + indexBytes.Length;
-        int size = indoorsOffset + indoorBytes.Length;
+        CollectDraws(context);
+        ReadOnlySpan<byte> drawBytes = MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(_draws));
+        int drawsOffset = AlignUp(indoorsOffset + indoorBytes.Length, DrawAlignment);
+        int size = drawsOffset + drawBytes.Length;
 
         // A pixel's view depth is the dot product of its world position and the view matrix's negated third column.
         Matrix4x4 viewMatrix = view.View;
@@ -92,6 +102,8 @@ internal sealed class FrameDataWriter : IDisposable
             focusDepth = Vector4.Dot(new Vector4(focus, 1), depthAxis);
         }
 
+        Matrix4x4 previousViewProjection = _previousViewProjection ?? view.ViewProjection;
+        _previousViewProjection = view.ViewProjection;
         Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
         FrameData data = new(
             view.ViewProjection,
@@ -147,6 +159,11 @@ internal sealed class FrameDataWriter : IDisposable
             (uint)indoors.Length,
             (uint)indoorsOffset,
             0,
+            0,
+            previousViewProjection,
+            (uint)drawsOffset,
+            0,
+            0,
             0);
 
         IBuffer frame = _frames.Get(size);
@@ -157,7 +174,44 @@ internal sealed class FrameDataWriter : IDisposable
         frame.Write(rangeBytes, clustersOffset);
         frame.Write(indexBytes, indicesOffset);
         frame.Write(indoorBytes, indoorsOffset);
+        frame.Write(drawBytes, drawsOffset);
         return frame;
+    }
+
+    private static int AlignUp(int offset, int alignment)
+    {
+        return (offset + alignment - 1) / alignment * alignment;
+    }
+
+    /// <summary>A record for every draw, in the order of the context's draws, so a draw's number is its place there.</summary>
+    private void CollectDraws(RenderContext context)
+    {
+        _draws.Clear();
+        foreach (MeshDraw draw in context.Draws)
+        {
+            GpuMeshPart part = draw.Part;
+            ITexture texture = part.Texture ?? context.White;
+            Vector4 outlineColor = Vector4.Zero;
+            if (draw.Outline is { } outline)
+            {
+                outlineColor = new Vector4(outline.Color, 1);
+            }
+
+            GpuDraw record = new(
+                draw.World,
+                draw.PreviousWorld,
+                part.BaseColor,
+                outlineColor,
+                draw.Vertices.BindlessIndex,
+                draw.PreviousVertices.BindlessIndex,
+                texture.BindlessIndex,
+                context.Sampler.BindlessIndex,
+                draw.Material.BindlessIndex,
+                (uint)draw.Flags,
+                0,
+                0);
+            _draws.Add(record);
+        }
     }
 
     private static GpuIndoor[] CollectIndoors(RenderScene scene)

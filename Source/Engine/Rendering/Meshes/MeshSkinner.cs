@@ -12,7 +12,8 @@ namespace FlickerVoid.Engine.Rendering.Meshes;
 
 /// <summary>
 /// Poses the skinned parts of animated meshes on the GPU each frame: it samples each mesh's animation, uploads the joint
-/// matrices, and runs Shaders/Skinning.hlsl into vertex buffers that belong to the entity, which every pass then draws.
+/// matrices, and runs Shaders/Skinning.hlsl into vertex buffers that belong to the entity, which every pass then draws. Each
+/// entity has two sets, used in turn, so the pose of the frame before stays readable.
 /// </summary>
 internal sealed class MeshSkinner : IDisposable
 {
@@ -24,7 +25,7 @@ internal sealed class MeshSkinner : IDisposable
     private readonly IBuffer?[] _joints = new IBuffer?[SceneRenderer.MaxFramesInFlight];
     private readonly List<Matrix4x4> _matrices = [];
     private readonly List<(GpuMeshPart Part, IBuffer Output, int JointsOffset)> _work = [];
-    private readonly Dictionary<int, (GpuModel Model, IBuffer[] Buffers)> _posed = [];
+    private readonly Dictionary<int, PosedMesh> _posed = [];
     private readonly HashSet<int> _seen = [];
     private Matrix4x4[] _sample = [];
 
@@ -48,11 +49,11 @@ internal sealed class MeshSkinner : IDisposable
     }
 
     /// <summary>
-    /// Queues the entity's skinned parts posed at the animator's time and returns the vertex buffer each part should be drawn
-    /// from: the posed one for skinned parts, its own for the rest. Returns null when the model has no such animation, so
-    /// the mesh draws in its bind pose.
+    /// Queues the entity's skinned parts posed at the animator's time and returns the vertex buffers each part should be drawn
+    /// from, now and in the frame before: the posed ones for skinned parts, its own for the rest. A mesh posed for the first
+    /// time was in this pose before too. Returns null when the model has no such animation, so the mesh draws in its bind pose.
     /// </summary>
-    public IBuffer[]? Pose(int entity, GpuModel model, in MeshAnimator animator)
+    public PosedVertices? Pose(int entity, GpuModel model, in MeshAnimator animator)
     {
         AnimationClip? clip = FindClip(model, animator.Animation);
         if (clip is null)
@@ -60,8 +61,8 @@ internal sealed class MeshSkinner : IDisposable
             return null;
         }
 
-        IBuffer[] buffers = GetPosedBuffers(entity, model);
-        _seen.Add(entity);
+        PosedVertices posed = Advance(entity, model);
+        IBuffer[] buffers = posed.Current;
 
         if (_sample.Length < clip.JointCount)
         {
@@ -85,7 +86,7 @@ internal sealed class MeshSkinner : IDisposable
             }
         }
 
-        return buffers;
+        return posed;
     }
 
     /// <summary>Uploads the joints into this frame's buffer and poses every queued part; releases the buffers of entities not seen.</summary>
@@ -125,9 +126,9 @@ internal sealed class MeshSkinner : IDisposable
             joints?.Dispose();
         }
 
-        foreach ((GpuModel model, IBuffer[] buffers) in _posed.Values)
+        foreach (PosedMesh posed in _posed.Values)
         {
-            DisposePosed(model, buffers);
+            posed.Dispose();
         }
 
         _posed.Clear();
@@ -144,19 +145,36 @@ internal sealed class MeshSkinner : IDisposable
         return model.Animations.FirstOrDefault(clip => clip.Name == name);
     }
 
-    // Skinned parts get a buffer of their own to pose into; rigid parts keep their shared vertices.
-    private IBuffer[] GetPosedBuffers(int entity, GpuModel model)
+    // The buffers to pose into this frame and the ones posed in the frame before: an entity seen again swaps its two sets once
+    // a frame; a new one, or one whose model changed, gets new sets and draws its first pose as its pose before too.
+    private PosedVertices Advance(int entity, GpuModel model)
     {
-        if (_posed.TryGetValue(entity, out (GpuModel Model, IBuffer[] Buffers) posed))
+        bool first = _seen.Add(entity);
+        if (_posed.TryGetValue(entity, out PosedMesh? posed))
         {
             if (ReferenceEquals(posed.Model, model))
             {
-                return posed.Buffers;
+                if (first)
+                {
+                    posed.Swap();
+                }
+
+                return posed.Vertices;
             }
 
-            DisposePosed(posed.Model, posed.Buffers);
+            posed.Dispose();
         }
 
+        IBuffer[] buffers = CreatePosedBuffers(model);
+        IBuffer[] others = CreatePosedBuffers(model);
+        posed = new PosedMesh(model, buffers, others);
+        _posed[entity] = posed;
+        return posed.Vertices;
+    }
+
+    // Skinned parts get a buffer of their own to pose into; rigid parts keep their shared vertices.
+    private IBuffer[] CreatePosedBuffers(GpuModel model)
+    {
         IBuffer[] buffers = new IBuffer[model.Parts.Count];
         for (int index = 0; index < buffers.Length; index++)
         {
@@ -171,7 +189,6 @@ internal sealed class MeshSkinner : IDisposable
             buffers[index] = _device.CreateBuffer(description);
         }
 
-        _posed[entity] = (model, buffers);
         return buffers;
     }
 
@@ -180,21 +197,8 @@ internal sealed class MeshSkinner : IDisposable
         List<int> gone = [.. _posed.Keys.Where(entity => !_seen.Contains(entity))];
         foreach (int entity in gone)
         {
-            (GpuModel model, IBuffer[] buffers) = _posed[entity];
-            DisposePosed(model, buffers);
+            _posed[entity].Dispose();
             _posed.Remove(entity);
-        }
-    }
-
-    // Only the buffers the skinner made, not the model's own; the device releases them once the GPU is done with them.
-    private static void DisposePosed(GpuModel model, IBuffer[] buffers)
-    {
-        for (int index = 0; index < buffers.Length; index++)
-        {
-            if (!ReferenceEquals(buffers[index], model.Parts[index].Vertices))
-            {
-                buffers[index].Dispose();
-            }
         }
     }
 
@@ -212,6 +216,62 @@ internal sealed class MeshSkinner : IDisposable
         joints = _device.CreateBuffer(description);
         _joints[slot] = joints;
         return joints;
+    }
+
+    /// <summary>An entity's two sets of posed buffers for its model: the one posed this frame and the one posed in the frame before.</summary>
+    private sealed class PosedMesh : IDisposable
+    {
+        private IBuffer[] _current;
+        private IBuffer[] _previous;
+        private bool _posedBefore;
+
+        public PosedMesh(GpuModel model, IBuffer[] current, IBuffer[] previous)
+        {
+            Model = model;
+            _current = current;
+            _previous = previous;
+        }
+
+        public GpuModel Model { get; }
+
+        /// <summary>The buffers posed this frame, and the ones posed in the frame before, or the same ones in its first frame.</summary>
+        public PosedVertices Vertices
+        {
+            get
+            {
+                if (_posedBefore)
+                {
+                    return new PosedVertices(_current, _previous);
+                }
+
+                return new PosedVertices(_current, _current);
+            }
+        }
+
+        /// <summary>Starts a frame: the buffers posed last frame become the ones before, and the others are posed into.</summary>
+        public void Swap()
+        {
+            (_current, _previous) = (_previous, _current);
+            _posedBefore = true;
+        }
+
+        public void Dispose()
+        {
+            DisposeMade(_current);
+            DisposeMade(_previous);
+        }
+
+        // Only the buffers the skinner made, not the model's own; the device releases them once the GPU is done with them.
+        private void DisposeMade(IBuffer[] buffers)
+        {
+            for (int index = 0; index < buffers.Length; index++)
+            {
+                if (!ReferenceEquals(buffers[index], Model.Parts[index].Vertices))
+                {
+                    buffers[index].Dispose();
+                }
+            }
+        }
     }
 }
 
