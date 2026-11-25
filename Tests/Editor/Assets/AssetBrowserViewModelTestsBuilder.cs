@@ -1,4 +1,8 @@
+using System.Text.Json;
+
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Vehicles;
+using FlickerVoid.Engine.Vehicles.Serialization;
 
 namespace FlickerVoid.Editor.Assets.Tests;
 
@@ -68,6 +72,13 @@ internal sealed class AssetBrowserViewModelTestsBuilder : IDisposable
     public AssetBrowserViewModel BuildWithData() => new(new ContentManager(_folder), Data.BarrelJsonContext.CreateTypes());
 
     public string ReadFile(string path) => File.ReadAllText(Path.Combine(_folder, path));
+
+    /// <summary>Reads a vehicle file as the engine reads one, so a file it would refuse fails the test.</summary>
+    public VehicleFile ReadVehicle(string path)
+    {
+        string text = ReadFile(path);
+        return JsonSerializer.Deserialize(text, VehiclesJsonContext.Default.VehicleFile)!;
+    }
 
     public bool Exists(string path) => File.Exists(Path.Combine(_folder, path));
 

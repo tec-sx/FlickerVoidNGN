@@ -5,10 +5,12 @@ namespace FlickerVoid.Tools.Builder;
 
 /// <summary>
 /// Builds a source content folder into an output folder: each file goes through the first importer that takes its extension,
-/// or is copied, and files whose inputs haven't changed since the last build are skipped. Hidden files are left out.
+/// or is copied, and files whose inputs haven't changed since the last build are skipped. Hidden and Blender files are left out.
 /// </summary>
 public sealed class AssetBuilder(IReadOnlyList<IAssetImporter> importers)
 {
+    private const string BlenderExtension = ".blend";
+
     private readonly CopyImporter _copy = new();
 
     public BuildReport Build(string sourceDirectory, string outputDirectory)
@@ -54,11 +56,26 @@ public sealed class AssetBuilder(IReadOnlyList<IAssetImporter> importers)
         return new BuildReport(built, skipped, failed, removed);
     }
 
-    /// <summary>Files and folders whose names start with a dot (the schemas, the editor's import sources) are not content.</summary>
-    private static bool IsHidden(string path)
+    /// <summary>
+    /// Files and folders whose names start with a dot (the schemas, the editor's import sources) are not content, nor are Blender
+    /// files and their backups (Van.blend, Van.blend1), which sit beside the creations made from them.
+    /// </summary>
+    private static bool IsLeftOut(string path)
     {
         string[] names = path.Split('/');
-        return names.Any(static name => name.StartsWith('.'));
+        if (names.Any(static name => name.StartsWith('.')))
+        {
+            return true;
+        }
+
+        string extension = Path.GetExtension(path);
+        if (!extension.StartsWith(BlenderExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        string backup = extension[BlenderExtension.Length..];
+        return backup.All(char.IsAsciiDigit);
     }
 
     private static List<string> FindSources(string source)
@@ -72,7 +89,7 @@ public sealed class AssetBuilder(IReadOnlyList<IAssetImporter> importers)
         foreach (string fullPath in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
             string path = AssetPaths.ToRelativePath(source, fullPath);
-            if (IsHidden(path))
+            if (IsLeftOut(path))
             {
                 continue;
             }

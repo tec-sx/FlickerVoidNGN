@@ -1,7 +1,5 @@
 using Avalonia.Input;
 
-using FlickerVoid.Engine.Vehicles;
-
 namespace FlickerVoid.Editor.Assets;
 
 /// <summary>Content files and folders dragged out of the asset browser, within the editor: the viewport takes models and vehicles, and the browser's folders take anything to move it.</summary>
@@ -27,13 +25,7 @@ public static class AssetDrag
     public static string? GetPlaceable(IDataTransfer transfer)
     {
         AssetEntry? asset = transfer.TryGetValue(Format);
-        if (asset is null)
-        {
-            return null;
-        }
-
-        bool vehicle = asset.Path.EndsWith(VehicleFile.Extension, StringComparison.OrdinalIgnoreCase);
-        if (asset.Kind != AssetKind.Model && !vehicle)
+        if (asset is null || (asset.Type != AssetTypes.Model && asset.Type != AssetTypes.Vehicle))
         {
             return null;
         }

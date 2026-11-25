@@ -3,6 +3,7 @@ using System.Text.Json.Serialization.Metadata;
 
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Assets;
 
@@ -12,7 +13,7 @@ namespace FlickerVoid.Editor.Assets;
 /// </summary>
 public sealed class UnsavedContent : IContentManager
 {
-    private static readonly string[] TrackedExtensions = [".fvmat", ".fvmood", ".fvcanvas", ".fvtexture", ".fvdata", ".fvtable", ".fvflow"];
+    private static readonly string[] TrackedExtensions = [".fvmat", ".fvmood", ".fvcanvas", ".fvtexture", ".fvdata", ".fvtable", ".fvflow", VehicleFile.Extension];
 
     private readonly IContentManager _disk;
     private readonly Dictionary<string, byte[]> _unsaved = new(ContentManager.PathComparer);
@@ -93,14 +94,14 @@ public sealed class UnsavedContent : IContentManager
         return File.ReadAllBytes(fullPath);
     }
 
-    /// <summary>Holds new contents for a material or mood file without saving them, and reports the file changed.</summary>
+    /// <summary>Holds new contents for a file the editor edits, such as a material, without saving them, and reports the file changed.</summary>
     public void Edit(string path, byte[] contents)
     {
         string fullPath = GetFullPath(path);
         bool tracked = TrackedExtensions.Any(extension => fullPath.EndsWith(extension, StringComparison.OrdinalIgnoreCase));
         if (!tracked)
         {
-            throw new ArgumentException($"{path} is not a material or a mood file, whose edits are kept unsaved.", nameof(path));
+            throw new ArgumentException($"{path} is not a file whose edits are kept unsaved.", nameof(path));
         }
 
         UndoHistory history = GetHistory(path);

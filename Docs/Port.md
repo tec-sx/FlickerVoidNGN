@@ -34,7 +34,7 @@ The project's modules follow the ontology's first level: `Gameplay` (Protagonist
 | FVDialogueSystem | `Dialogue` | participants, dialogue Flow nodes (line, choice, end, bark), dialogue service for UI | Flow |
 | FVStorySystem | `Story` | quests and quest Flow nodes, knowledge; its save system moves to `Runtime` | Flow |
 | FVNavigationSystem | `Maps` (not "Navigation", kept for AI paths) | map and marker definitions, markers, discovery, waypoint, tracking, minimap, world map and compass logic; widgets go to `Ui`; the map capture tool goes to the editor | Ui |
-| FVCharacter: movement handlers, traversal (Mover) | `Characters` | kinematic character on BepuPhysics, movement modes, traversal | input |
+| FVCharacter: movement handlers, traversal (Mover) | `Characters` | kinematic character on Jolt, movement modes, traversal | input |
 | FVCharacter: anim instance, rig units, locomotion data | `Rendering` (`Animation`) | locomotion blending, procedural rig units | Characters |
 | FVAI: perception, StateTree AI; NavMesh | `Ai` | perception, behaviour states, paths through DotRecast (zlib) | Characters |
 | FVCore: Flow triggers, physical material tags | `Physics` and `Flow` | trigger volumes, trigger Flow nodes, surface tags | Flow |

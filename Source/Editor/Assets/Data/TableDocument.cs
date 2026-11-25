@@ -2,40 +2,25 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 
 using FlickerVoid.Engine.Runtime.Data;
-using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Editor.Assets.Data;
 
 /// <summary>
-/// A data table file being edited: its rows, in order and by name, edited in place, added, renamed and removed; <see cref="Hold"/>
-/// keeps them unsaved in the content until they are saved or discarded.
+/// A data table file being edited: its rows, in order and by name, edited in place, added, renamed and removed;
+/// <see cref="ContentDocument{T}.Hold"/> keeps them unsaved in the content until they are saved or discarded. Throws
+/// <see cref="InvalidDataException"/> when the file holds no registered row type or can't be read.
 /// </summary>
-public sealed class TableDocument
+public sealed class TableDocument : ContentDocument<TableRows>
 {
-    private readonly UnsavedContent _content;
-    private readonly DataTypes _types;
-    private readonly string? _schema;
-    private readonly List<KeyValuePair<string, object>> _rows;
-
-    /// <summary>Reads the file; throws <see cref="InvalidDataException"/> when it holds no registered row type or can't be read.</summary>
     public TableDocument(UnsavedContent content, DataTypes types, string path)
+        : base(content, path, file => ReadRows(types, path, file), (table, schema) => types.WriteTable(table.RowType, table.Rows, schema))
     {
-        _content = content;
-        _types = types;
-        Path = path;
-        _content.Unload(path);
-        JsonObject file = _content.Load(path, RuntimeJsonContext.Default.JsonObject);
-        _content.Unload(path);
-        _schema = file[JsonSchemas.SchemaProperty]?.GetValue<string>();
-        _rows = types.ReadRows(path, file, out Type rowType);
-        RowType = types.Options.GetTypeInfo(rowType);
+        RowType = types.Options.GetTypeInfo(Value.RowType);
     }
-
-    public string Path { get; }
 
     public JsonTypeInfo RowType { get; }
 
-    public IReadOnlyList<KeyValuePair<string, object>> Rows => _rows;
+    public IReadOnlyList<KeyValuePair<string, object>> Rows => Value.Rows;
 
     /// <summary>Adds a row with the type's default values, named <paramref name="name"/> or that name numbered when it is taken.</summary>
     public KeyValuePair<string, object> AddRow(string name)
@@ -43,14 +28,14 @@ public sealed class TableDocument
         string free = FindFreeName(name);
         object row = RowType.CreateObject!();
         KeyValuePair<string, object> added = new(free, row);
-        _rows.Add(added);
+        Value.Rows.Add(added);
         return added;
     }
 
     public void RemoveRow(string name)
     {
         int index = IndexOf(name);
-        _rows.RemoveAt(index);
+        Value.Rows.RemoveAt(index);
     }
 
     /// <summary>Renames a row in place; false, with nothing changed, when the new name is empty or taken.</summary>
@@ -62,22 +47,15 @@ public sealed class TableDocument
         }
 
         int index = IndexOf(name);
-        _rows[index] = new KeyValuePair<string, object>(newName, _rows[index].Value);
+        Value.Rows[index] = new KeyValuePair<string, object>(newName, Value.Rows[index].Value);
         return true;
     }
 
     /// <summary>Replaces every row, as a CSV import does.</summary>
     public void ReplaceRows(IEnumerable<KeyValuePair<string, object>> rows)
     {
-        _rows.Clear();
-        _rows.AddRange(rows);
-    }
-
-    /// <summary>Keeps the rows as the file's unsaved contents.</summary>
-    public void Hold()
-    {
-        byte[] contents = _types.WriteTable(RowType.Type, _rows, _schema);
-        _content.Edit(Path, contents);
+        Value.Rows.Clear();
+        Value.Rows.AddRange(rows);
     }
 
     private string FindFreeName(string name)
@@ -93,8 +71,14 @@ public sealed class TableDocument
         return candidate;
     }
 
+    private static TableRows ReadRows(DataTypes types, string path, JsonObject file)
+    {
+        List<KeyValuePair<string, object>> rows = types.ReadRows(path, file, out Type rowType);
+        return new TableRows(rowType, rows);
+    }
+
     private int IndexOf(string name)
     {
-        return _rows.FindIndex(row => row.Key == name);
+        return Value.Rows.FindIndex(row => row.Key == name);
     }
 }
