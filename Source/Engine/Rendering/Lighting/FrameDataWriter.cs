@@ -16,8 +16,8 @@ namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>
 /// Writes the frame's view, sun, lights, shadows, light clusters, probes, indoor volumes, cutaway, draws and the bindless indices
-/// of its traced shadows, depth, G-buffer and acceleration structure into the frame buffer ring, after every pass has prepared
-/// and before any executes; remembers the view for the next frame's view before.
+/// of its traced shadows and occlusion, depth, G-buffer and acceleration structure into the frame buffer ring, after every pass
+/// has prepared and before any executes; remembers the view for the next frame's view before.
 /// </summary>
 internal sealed class FrameDataWriter : IDisposable
 {
@@ -116,9 +116,15 @@ internal sealed class FrameDataWriter : IDisposable
         }
 
         uint rayShadows = GpuLight.None;
-        if (context.RayShadows is { } traced)
+        if (context.RayShadows is { } tracedShadows)
         {
-            rayShadows = traced.BindlessIndex;
+            rayShadows = tracedShadows.BindlessIndex;
+        }
+
+        uint rayOcclusion = GpuLight.None;
+        if (context.RayOcclusion is { } tracedOcclusion)
+        {
+            rayOcclusion = tracedOcclusion.BindlessIndex;
         }
 
         FrameData data = new(
@@ -175,7 +181,7 @@ internal sealed class FrameDataWriter : IDisposable
             (uint)indoors.Length,
             (uint)indoorsOffset,
             rayShadows,
-            0,
+            rayOcclusion,
             previousViewProjection,
             (uint)drawsOffset,
             context.Depth.BindlessIndex,

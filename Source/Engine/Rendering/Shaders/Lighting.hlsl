@@ -3,9 +3,9 @@
 // traced rays (ShadowRays.hlsl) while the frame traces them, else through the shadow atlas, and tinted by spot light cookies,
 // plus bounced light from irradiance probes, seen through fog lit by the same lights through the shadow atlas. Indoor volumes
 // scale the ambient light inside them, and the world outside the cutaway's box is muted. ScreenShadows.hlsl gives each pixel
-// its ambient occlusion and contact shadow, which traced sun shadows have no need of. Alpha is the paint's coverage, more where
-// its impasto stands thick, for the canvas; where nothing was drawn the target is left transparent, for the sky or a stage's
-// background.
+// its ambient occlusion and contact shadow, unless the frame traces rays: then ShadowRays.hlsl traces the occlusion, and traced
+// sun shadows have no need of a contact shadow. Alpha is the paint's coverage, more where its impasto stands thick, for the
+// canvas; where nothing was drawn the target is left transparent, for the sky or a stage's background.
 
 #include "Frame.hlsl"
 #include "GBuffer.hlsl"
@@ -443,7 +443,12 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     SurfaceMaterial surface = DecodeMaterial(materialBytes);
     Material material = LoadMaterial(surface.Material);
     float3 toCamera = ToCamera(frame, worldPosition);
-    float2 screenShadows = BlurScreenShadows(frame, pixel);
+    float2 screenShadows = 1;
+    if (frame.RayShadows == None || frame.RayOcclusion == None)
+    {
+        screenShadows = BlurScreenShadows(frame, pixel);
+    }
+
     float3 toSun = -normalize(frame.SunDirection);
     float sunDiffuse = Diffuse(material, dot(normal, toSun));
     float sunSpecular = Specular(material, normal, toSun, toCamera);
@@ -461,8 +466,15 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
         }
     }
 
+    float occlusion = screenShadows.r;
+    if (frame.RayOcclusion != None)
+    {
+        float reached = Textures[frame.RayOcclusion].Load(texel).r;
+        occlusion = 1 - frame.AmbientOcclusion * (1 - reached);
+    }
+
     float3 ambient = frame.Ambient * IndoorAmbient(frame, worldPosition) + SampleProbes(frame, worldPosition, normal);
-    float3 diffuse = ambient * screenShadows.r + sun * sunDiffuse;
+    float3 diffuse = ambient * occlusion + sun * sunDiffuse;
     float3 specular = sun * sunSpecular;
     ShadeClusterLights(frame, material, pixel, worldPosition, normal, toCamera, diffuse, specular);
     float3 color = albedo.rgb * diffuse + specular;

@@ -9,6 +9,7 @@ internal readonly record struct ShadowRayConstants(
     Vector4 PreviousDepthAxis,
     uint Frame,
     uint Raw,
+    uint RawOcclusion,
     uint Visibility,
     uint History,
     uint PreviousVisibility,

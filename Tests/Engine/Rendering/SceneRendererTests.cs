@@ -539,14 +539,22 @@ public sealed class SceneRendererTests : IDisposable
         pixels.Should().AllBeEquivalentTo(RedPixel);
     }
 
-    [Fact]
-    public void DarkensAmbientLightNearOccluders()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DarkensAmbientLightNearOccluders(bool rayTracing)
     {
+        if (rayTracing)
+        {
+            _builder.WithRayQueries();
+        }
+
         _builder.WithTargetSize(16).WithMood(static mood => mood with { AmbientOcclusion = 1, AmbientOcclusionRadius = 0.5f });
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
         _builder.WithScene(Camera, Quad, """{ "name": "Step", "components": { "transform": { "position": [-0.5, 0, 0.3], "scale": [0.5, 1, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithRenderer(renderer => renderer.RayTracing = rayTracing);
 
-        uint[] pixels = _builder.Render();
+        uint[] pixels = _builder.RenderFrames(16);
 
         (byte nearTheStep, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 8]);
         (byte open, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 15]);
@@ -1565,6 +1573,54 @@ public sealed class SceneRendererTests : IDisposable
 
         pixels[(8 * 16) + 7].Should().NotBe(yellow, "the clear left of the card is a hole, so no line runs along its left edge");
         pixels[(8 * 16) + 15].Should().Be(yellow, "a line runs along the painted right of the card, the width of the outline");
+    }
+
+    [Fact]
+    public void TracesAmbientOcclusionIntoTheCornerAtAWallsFoot()
+    {
+        _builder.WithRayQueries().WithTargetSize(16).WithRenderer(static renderer => renderer.RayTracing = true);
+        _builder.WithMood(static mood => mood with { AmbientOcclusion = 1, AmbientOcclusionRadius = 0.5f });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, Wall);
+
+        uint[] pixels = _builder.RenderFrames(16);
+
+        (byte corner, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 11]);
+        (byte open, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 2]);
+        corner.Should().BeLessThan(200, "the wall, which the view sees edge on, hides half the sky from the floor at its foot");
+        open.Should().Be(255, "nothing stands within the radius");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DarkensTheFloorUnderAPlankTheViewLeavesOutOnlyWithRays(bool rayTracing)
+    {
+        const string nearCamera = """{ "name": "Camera", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2, "nearPlane": 4.8 } } }""";
+        const string plank = """{ "name": "Plank", "components": { "transform": { "position": [0.5, 0, 0.3], "scale": [0.5, 0.5, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""";
+        if (rayTracing)
+        {
+            _builder.WithRayQueries();
+        }
+
+        _builder.WithTargetSize(16).WithRenderer(renderer => renderer.RayTracing = rayTracing);
+        _builder.WithMood(static mood => mood with { AmbientOcclusion = 1, AmbientOcclusionRadius = 0.5f });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(nearCamera, Quad, plank);
+
+        uint[] pixels = _builder.RenderFrames(16);
+
+        (byte under, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 12]);
+        (byte open, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 2]);
+        open.Should().Be(255);
+        if (rayTracing)
+        {
+            under.Should().BeLessThan(200, "rays meet the plank over the floor, which stands nearer the camera than its near plane");
+        }
+        else
+        {
+            under.Should().Be(255, "the screen holds nothing of the plank for screen-space occlusion to find");
+        }
     }
 
     /// <summary>
