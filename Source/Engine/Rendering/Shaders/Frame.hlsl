@@ -1,4 +1,5 @@
-// The bindless tables and the frame buffer's FrameData, shared by the scene renderer's shaders, which include this file.
+// The bindless tables, the frame buffer's FrameData and the view and indoor volume helpers the scene renderer's shaders share,
+// which include this file.
 // FrameData mirrors FrameData.cs.
 
 #pragma once
@@ -57,11 +58,18 @@ struct FrameData
     uint IndoorsOffset;
     float4x4 PreviousViewProjection;
     uint DrawsOffset;
+    // The scene's depth and the G-buffer's targets (GBuffer.cs), by their bindless indices.
+    uint Depth;
+    uint GBufferAlbedo;
+    uint GBufferNormal;
+    uint GBufferMaterial;
+    uint GBufferObjectDepth;
+    uint GBufferMotion;
     // The frame buffer's own bindless index, which LoadFrame was given.
     uint Buffer;
 };
 
-static const uint FrameDataSize = 496;
+static const uint FrameDataSize = 512;
 static const uint None = 0xFFFFFFFF;
 
 FrameData LoadFrame(uint index)
@@ -116,6 +124,12 @@ FrameData LoadFrame(uint index)
     frame.IndoorsOffset = buffer.Load<uint>(404);
     frame.PreviousViewProjection = float4x4(buffer.Load<float4>(416), buffer.Load<float4>(432), buffer.Load<float4>(448), buffer.Load<float4>(464));
     frame.DrawsOffset = buffer.Load<uint>(480);
+    frame.Depth = buffer.Load<uint>(484);
+    frame.GBufferAlbedo = buffer.Load<uint>(488);
+    frame.GBufferNormal = buffer.Load<uint>(492);
+    frame.GBufferMaterial = buffer.Load<uint>(496);
+    frame.GBufferObjectDepth = buffer.Load<uint>(500);
+    frame.GBufferMotion = buffer.Load<uint>(504);
     frame.Buffer = index;
     return frame;
 }
@@ -129,12 +143,37 @@ float3 WorldAtPixel(FrameData frame, float2 pixel, float depth)
     return world.xyz / world.w;
 }
 
+// The pixel (with fraction) a clip position lands on.
+float2 ClipToPixel(FrameData frame, float4 clip)
+{
+    float2 ndc = clip.xy / clip.w;
+    return float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5) * frame.TargetSize;
+}
+
 // The pixel (with fraction) a world position lands on, and its depth in front of the camera.
 float3 ProjectToPixel(FrameData frame, float3 position)
 {
     float4 clip = mul(float4(position, 1), frame.ViewProjection);
-    float2 ndc = clip.xy / clip.w;
-    float2 pixel = float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5) * frame.TargetSize;
+    float2 pixel = ClipToPixel(frame, clip);
     float depth = dot(float4(position, 1), frame.DepthAxis);
     return float3(pixel, depth);
+}
+
+// The direction from the point to the camera: toward its eye in perspective, against its view in orthographic.
+float3 ToCamera(FrameData frame, float3 worldPosition)
+{
+    if (frame.LogarithmicSlices != 0)
+    {
+        return normalize(frame.CameraPosition - worldPosition);
+    }
+
+    return -normalize(frame.DepthAxis.xyz);
+}
+
+// Indoor volumes reach a little past their boxes, so walls, floors and ceilings standing on them count as inside.
+static const float IndoorMargin = 0.05;
+
+bool IsInBox(float3 position, float3 boxMin, float3 boxMax)
+{
+    return all(position >= boxMin - IndoorMargin) && all(position <= boxMax + IndoorMargin);
 }

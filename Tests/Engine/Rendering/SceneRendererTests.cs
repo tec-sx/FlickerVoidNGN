@@ -951,6 +951,26 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void ShadesEachSurfaceByItsOwnMaterial()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithFile("Shiny.fvmat", """{ "parameters": { "specular": 0.5 } }""");
+        _builder.WithScene(
+            Camera,
+            """{ "name": "Shiny", "components": { "transform": { "position": [-0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Shiny.fvmat"] } } }""",
+            """{ "name": "Plain", "components": { "transform": { "position": [0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: -Vector3.UnitZ, ambient: 0);
+
+        uint[] pixels = _builder.Render();
+
+        (_, byte shinyGreen, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        (byte plainRed, byte plainGreen, _) = SceneRendererTestsBuilder.Channels(pixels[6]);
+        shinyGreen.Should().BeInRange(124, 132, "the shiny quad reflects the specular share of white sunlight");
+        plainGreen.Should().Be(0, "the plain quad beside it has no highlight");
+        plainRed.Should().Be(255, "the sun lights the plain quad fully");
+    }
+
+    [Fact]
     public void KeepsTheModelsLookWithoutAMaterial()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
