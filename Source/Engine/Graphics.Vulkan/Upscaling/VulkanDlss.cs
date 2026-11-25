@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Silk.NET.Vulkan;
@@ -17,6 +18,12 @@ internal sealed unsafe class VulkanDlss : IDisposable
 
     /// <summary>Promoted to Vulkan 1.2, whose buffer device address the device turns on instead; Vulkan forbids both.</summary>
     private const string BufferDeviceAddressExtension = "VK_EXT_buffer_device_address";
+
+    /// <summary>
+    /// The device extensions NGX named for each GPU model and driver; once NGX has shut down on a device it answers NotImplemented,
+    /// so a process asks once.
+    /// </summary>
+    private static readonly ConcurrentDictionary<(uint Vendor, uint Device, uint Driver), string[]> NamedDeviceExtensions = new();
 
     private readonly ILogger _logger;
     private readonly nint[] _strings;
@@ -100,17 +107,19 @@ internal sealed unsafe class VulkanDlss : IDisposable
     /// <summary>The device extensions NGX needs on the physical device, or null, having logged why, where DLSS doesn't run there.</summary>
     public string[]? GetDeviceExtensions(Vk vk, Instance instance, PhysicalDevice physicalDevice)
     {
-        DlssApplication application = _application;
-        uint count = 0;
-        ExtensionProperties* extensions = null;
-        uint result = DlssNative.FvDlssDeviceExtensions(&application, instance.Handle, physicalDevice.Handle, &count, &extensions);
-        if (DlssNative.Failed(result))
+        vk.GetPhysicalDeviceProperties(physicalDevice, out PhysicalDeviceProperties properties);
+        (uint, uint, uint) gpu = (properties.VendorID, properties.DeviceID, properties.DriverVersion);
+        if (!NamedDeviceExtensions.TryGetValue(gpu, out string[]? names))
         {
-            LogOff($"the GPU or its driver has no DLSS (NGX result 0x{result:X8})");
-            return null;
+            names = AskDeviceExtensions(instance, physicalDevice);
+            if (names is null)
+            {
+                return null;
+            }
+
+            NamedDeviceExtensions[gpu] = names;
         }
 
-        string[] names = GetNames(extensions, count);
         string? missing = Array.Find(names, name => !vk.IsDeviceExtensionPresent(physicalDevice, name));
         if (missing is not null)
         {
@@ -202,6 +211,22 @@ internal sealed unsafe class VulkanDlss : IDisposable
         {
             Marshal.FreeCoTaskMem(text);
         }
+    }
+
+    /// <summary>The device extensions NGX names for the physical device, or null, having logged why, where DLSS doesn't run there.</summary>
+    private string[]? AskDeviceExtensions(Instance instance, PhysicalDevice physicalDevice)
+    {
+        DlssApplication application = _application;
+        uint count = 0;
+        ExtensionProperties* extensions = null;
+        uint result = DlssNative.FvDlssDeviceExtensions(&application, instance.Handle, physicalDevice.Handle, &count, &extensions);
+        if (DlssNative.Failed(result))
+        {
+            LogOff($"the GPU or its driver has no DLSS (NGX result 0x{result:X8})");
+            return null;
+        }
+
+        return GetNames(extensions, count);
     }
 
     private static string[] GetNames(ExtensionProperties* extensions, uint count)

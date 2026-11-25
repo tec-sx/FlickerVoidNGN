@@ -63,6 +63,16 @@ internal sealed class UpscalerTestsBuilder : IDisposable
         return _device;
     }
 
+    /// <summary>Disposes the device and what was made on it, and creates another the same way, without skipping where it has no DLSS.</summary>
+    public IGraphicsDevice Remake()
+    {
+        Build();
+        ReleaseDevice();
+        GraphicsDeviceOptions options = new() { Validation = true, Features = _features };
+        _device = new VulkanGraphicsDevice(options, _loggerFactory);
+        return _device;
+    }
+
     public IUpscaler CreateUpscaler(UpscaleMode mode, int outputWidth, int outputHeight)
     {
         IGraphicsDevice device = Build();
@@ -114,12 +124,7 @@ internal sealed class UpscalerTestsBuilder : IDisposable
 
     public void Dispose()
     {
-        for (int index = _created.Count - 1; index >= 0; index--)
-        {
-            _created[index].Dispose();
-        }
-
-        _device?.Dispose();
+        ReleaseDevice();
         _loggerFactory.Dispose();
         _logs.Errors.Should().BeEmpty("the device logged no errors");
     }
@@ -160,5 +165,17 @@ internal sealed class UpscalerTestsBuilder : IDisposable
     {
         _created.Add(resource);
         return resource;
+    }
+
+    private void ReleaseDevice()
+    {
+        for (int index = _created.Count - 1; index >= 0; index--)
+        {
+            _created[index].Dispose();
+        }
+
+        _created.Clear();
+        _device?.Dispose();
+        _device = null;
     }
 }
