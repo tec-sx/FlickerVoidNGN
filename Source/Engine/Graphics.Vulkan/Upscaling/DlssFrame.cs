@@ -2,7 +2,10 @@ using System.Runtime.InteropServices;
 
 namespace FlickerVoid.Engine.Graphics.Vulkan.Upscaling;
 
-/// <summary>A frame for DLSS to upscale (FvDlssFrame): its images, the jitter in render pixels, the render size and whether history starts afresh.</summary>
+/// <summary>
+/// A frame for DLSS to upscale (FvDlssFrame): its images, the jitter in render pixels, the render size, whether history starts afresh
+/// and, for Ray Reconstruction, the guides.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 internal struct DlssFrame
 {
@@ -16,4 +19,5 @@ internal struct DlssFrame
     public uint RenderWidth;
     public uint RenderHeight;
     public int Reset;
+    public DlssGuides Guides;
 }

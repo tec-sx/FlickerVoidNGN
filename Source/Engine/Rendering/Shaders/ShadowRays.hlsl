@@ -4,12 +4,13 @@
 // shadows sharpen beside their casters and soften away from them; the occlusion's ray leaves over the surface's hemisphere,
 // more often near its normal, and counts what it meets within the mood's occlusion radius. The points follow the R2
 // low-discrepancy sequence, turned for each pixel and ray by a hash, so a pixel's samples cover the light or the hemisphere
-// evenly over the frames. FilterMain averages each pixel's samples over the frames before, where the history lands on the same
-// surface (by the G-buffer's motion and the view depth), up to MaxHistory of them. It first clamps the shadows' history to the
-// spread of this frame's samples round the pixel and its own, so a shadow follows its caster at once; the occlusion's isn't,
-// as the few rays that meet something in an open corner would be clamped away, so it lags a moving occluder by a few frames.
-// The history keeps the averaged occlusion in red, which the lighting pass reads, how many frames it holds in green and the
-// surface's view depth in blue.
+// evenly over the frames; while an upscaler denoises the frame, they are white noise drawn afresh each frame instead, as Ray
+// Reconstruction asks for samples without pattern, and the lighting pass reads them unfiltered. FilterMain averages each
+// pixel's samples over the frames before, where the history lands on the same surface (by the G-buffer's motion and the view
+// depth), up to MaxHistory of them. It first clamps the shadows' history to the spread of this frame's samples round the pixel
+// and its own, so a shadow follows its caster at once; the occlusion's isn't, as the few rays that meet something in an open
+// corner would be clamped away, so it lags a moving occluder by a few frames. The history keeps the averaged occlusion in red,
+// which the lighting pass reads, how many frames it holds in green and the surface's view depth in blue.
 
 #include "Frame.hlsl"
 #include "GBuffer.hlsl"
@@ -55,10 +56,18 @@ static const float MaxHistory = 16;
 static const float DepthTolerance = 0.02;
 
 // The pixel's point for the light in this frame, in the unit square: the R2 sequence (Roberts 2018, "The Unreasonable
-// Effectiveness of Quasirandom Sequences") in 32-bit fixed point, so it wraps exactly, turned by a hash of the pixel and light.
-float2 SamplePoint(uint2 pixel, uint channel)
+// Effectiveness of Quasirandom Sequences") in 32-bit fixed point, so it wraps exactly, turned by a hash of the pixel and light;
+// or white noise, a hash of the pixel, light and frame, while the frame is denoised.
+float2 SamplePoint(FrameData frame, uint2 pixel, uint channel)
 {
     uint seed = Hash(pixel.x + Hash(pixel.y + Hash(channel)));
+    if (frame.NoiseFrame != None)
+    {
+        uint first = Hash(seed + Hash(frame.NoiseFrame));
+        uint second = Hash(first);
+        return float2(HashToUnit(first), HashToUnit(second));
+    }
+
     uint2 rotation = uint2(seed, Hash(seed));
     uint2 fixedPoint = rotation + Pass.Number * uint2(3242174889u, 2447445414u);
     return float2(fixedPoint >> 8) / 16777216.0;
@@ -109,7 +118,7 @@ float TraceSun(FrameData frame, float3 origin, uint2 pixel)
     }
 
     float3 toSun = -normalize(frame.SunDirection);
-    float2 square = SamplePoint(pixel, ShadowRaySun);
+    float2 square = SamplePoint(frame, pixel, ShadowRaySun);
     float2 disk = ConcentricDisk(square) * Pass.SunRadius;
     float3 offset = FaceAlong(toSun, disk);
     float3 direction = normalize(toSun + offset);
@@ -134,7 +143,7 @@ float TraceLamp(FrameData frame, uint index, float3 origin, float3 position, uin
         return 1;
     }
 
-    float2 square = SamplePoint(pixel, light.RayShadow);
+    float2 square = SamplePoint(frame, pixel, light.RayShadow);
     float2 disk = ConcentricDisk(square) * light.SourceRadius;
     float3 target = light.Position + FaceAlong(direction, disk);
     float3 toTarget = target - origin;
@@ -151,7 +160,7 @@ float TraceOcclusion(FrameData frame, float3 origin, float3 normal, uint2 pixel)
     }
 
     // A point even on the disk, lifted onto the hemisphere, leaves along the normal's cosine (Malley's method).
-    float2 square = SamplePoint(pixel, OcclusionChannel);
+    float2 square = SamplePoint(frame, pixel, OcclusionChannel);
     float2 disk = ConcentricDisk(square);
     float lift = sqrt(saturate(1 - dot(disk, disk)));
     float3 sideways = FaceAlong(normal, disk);

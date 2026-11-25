@@ -60,19 +60,6 @@ float Specular(Material material, float3 normal, float3 toLight, float3 toCamera
     return material.Specular * pow(saturate(dot(normal, halfway)), exponent);
 }
 
-// Greys and darkens the world outside the cutaway's box by its muting, so the room it looks into stands out.
-float3 MuteOutside(FrameData frame, float3 color, float3 worldPosition)
-{
-    if (frame.Cut == 0 || frame.CutMuted <= 0 || IsInBox(worldPosition, frame.CutMin, frame.CutMax))
-    {
-        return color;
-    }
-
-    float grey = dot(color, float3(0.2126, 0.7152, 0.0722));
-    float3 muted = lerp(color, grey, frame.CutMuted);
-    return muted * (1 - (0.5 * frame.CutMuted));
-}
-
 // The point light shadow face whose view holds the offset from the light, by its largest axis: +X, -X, +Y, -Y, +Z, -Z.
 uint PointFace(float3 offset)
 {
@@ -259,9 +246,17 @@ float3 FogLight(FrameData frame, float2 pixel, float3 position, float3 towardCam
     return light;
 }
 
-// A small per-pixel offset that spreads the march's banding into fine noise (interleaved gradient noise).
-float PixelNoise(float2 pixel)
+// A small per-pixel offset that spreads the march's banding into fine noise: interleaved gradient noise, which holds still, or
+// white noise drawn afresh each frame while an upscaler denoises the frame.
+float PixelNoise(FrameData frame, float2 pixel)
 {
+    if (frame.NoiseFrame != None)
+    {
+        uint2 texel = uint2(pixel);
+        uint hash = Hash(texel.x + Hash(texel.y + Hash(frame.NoiseFrame)));
+        return HashToUnit(hash);
+    }
+
     return frac(52.9829189 * frac(dot(pixel, float2(0.06711056, 0.00583715))));
 }
 
@@ -286,7 +281,7 @@ float4 MarchFog(FrameData frame, float2 pixel, float3 surface)
     float depth = dot(float4(surface, 1), frame.DepthAxis);
     float rayLength = max(depth - frame.NearPlane, 0) / dot(direction, forward);
     float stepLength = rayLength / FogSteps;
-    float jitter = PixelNoise(pixel);
+    float jitter = PixelNoise(frame, pixel);
     float3 scattered = 0;
     float transmittance = 1;
     for (uint index = 0; index < FogSteps; index++)

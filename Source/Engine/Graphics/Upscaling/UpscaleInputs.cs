@@ -10,4 +10,8 @@ namespace FlickerVoid.Engine.Graphics.Upscaling;
 /// before. Motion is in render pixels, from each pixel to where its surface stood the frame before, without the jitter; the
 /// jitter is how far the view was moved, in render pixels right and down, from -0.5 to 0.5.
 /// </summary>
-public readonly record struct UpscaleInputs(ITexture Color, ITexture Depth, ITexture Motion, ITexture Output, Vector2 Jitter, float Exposure, bool Reset);
+public readonly record struct UpscaleInputs(ITexture Color, ITexture Depth, ITexture Motion, ITexture Output, Vector2 Jitter, float Exposure, bool Reset)
+{
+    /// <summary>What an upscaler that denoises reads beside the frame, in the ShaderRead state; null for one that doesn't.</summary>
+    public DenoiseGuides? Guides { get; init; }
+}

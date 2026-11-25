@@ -1,7 +1,7 @@
-# Builds the engine's DLSS library for Windows into artifacts/native/win-x64 with NVIDIA's DLSS runtime beside it, which the
-# engine's Vulkan project then copies beside every program. Fetches the DLSS SDK and the Vulkan headers into artifacts/native
-# first; needs git, CMake and Visual Studio's C++ tools (the "Desktop development with C++" workload, which brings CMake too).
-# -Development takes the runtime with NVIDIA's on-screen indicator and debug keys.
+# Builds the engine's DLSS library for Windows into artifacts/native/win-x64 with NVIDIA's DLSS and Ray Reconstruction runtimes
+# beside it, which the engine's Vulkan project then copies beside every program. Fetches the DLSS SDK and the Vulkan headers into
+# artifacts/native first; needs git, CMake and Visual Studio's C++ tools (the "Desktop development with C++" workload, which
+# brings CMake too). -Development takes the runtimes with NVIDIA's on-screen indicator and debug keys.
 param([switch]$Development)
 
 $ErrorActionPreference = 'Stop'
@@ -48,11 +48,11 @@ function Find-CMake {
     throw 'CMake was not found: install Visual Studio''s "Desktop development with C++" workload, or CMake and the C++ build tools.'
 }
 
-# Only the headers, the static library and the runtime of the SDK's few gigabytes.
+# Only the headers, the static library and the runtimes of the SDK's few gigabytes.
 if (-not (Test-Path $sdk)) {
     Invoke-Native git @('clone', '--depth', '1', '--filter=blob:none', '--sparse', '--branch', "v$dlssVersion", 'https://github.com/NVIDIA/DLSS.git', $sdk)
 }
-Invoke-Native git @('-C', $sdk, 'sparse-checkout', 'set', '--no-cone', '/include/', '/LICENSE.txt', '/lib/Windows_x86_64/x64/nvsdk_ngx_s.lib', "/lib/Windows_x86_64/$runtime/nvngx_dlss.dll")
+Invoke-Native git @('-C', $sdk, 'sparse-checkout', 'set', '--no-cone', '/include/', '/LICENSE.txt', '/lib/Windows_x86_64/x64/nvsdk_ngx_s.lib', "/lib/Windows_x86_64/$runtime/nvngx_dlss.dll", "/lib/Windows_x86_64/$runtime/nvngx_dlssd.dll")
 
 if (-not (Test-Path $headers)) {
     Invoke-Native git @('clone', '--depth', '1', '--filter=blob:none', '--sparse', '--branch', $vulkanHeadersVersion, 'https://github.com/KhronosGroup/Vulkan-Headers.git', $headers)
@@ -67,4 +67,5 @@ Invoke-Native $cmake @('--build', $build, '--config', 'Release')
 New-Item -ItemType Directory -Force $output | Out-Null
 Copy-Item (Join-Path $build 'Release/FlickerVoid.Dlss.dll') $output -Force
 Copy-Item (Join-Path $sdk "lib/Windows_x86_64/$runtime/nvngx_dlss.dll") $output -Force
-Write-Host "Built the DLSS library and NVIDIA's $runtime runtime into $output."
+Copy-Item (Join-Path $sdk "lib/Windows_x86_64/$runtime/nvngx_dlssd.dll") $output -Force
+Write-Host "Built the DLSS library and NVIDIA's $runtime runtimes into $output."

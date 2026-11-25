@@ -14,6 +14,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Pipeline;
+using FlickerVoid.Engine.Rendering.Tests.Upscaling;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -51,6 +52,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     private Action<SceneRenderer>? _configure;
     private GraphicsFeatures _features = GraphicsFeatures.RayQueries;
     private bool _needsRayQueries;
+    private bool _rayReconstruction;
 
     public SceneRendererTestsBuilder()
     {
@@ -204,6 +206,13 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     public SceneRendererTestsBuilder WithRayQueries()
     {
         _needsRayQueries = true;
+        return this;
+    }
+
+    /// <summary>Gives the device DLSS with Ray Reconstruction, stood in for by <see cref="StandInUpscaler"/>s.</summary>
+    public SceneRendererTestsBuilder WithRayReconstruction()
+    {
+        _rayReconstruction = true;
         return this;
     }
 
@@ -495,6 +504,11 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         if (_needsRayQueries && !_device.Features.HasFlag(GraphicsFeatures.RayQueries))
         {
             Assert.Skip($"{_device.AdapterName} has no ray queries.");
+        }
+
+        if (_rayReconstruction)
+        {
+            _device = new UpscalingDevice(_device, GraphicsFeatures.Dlss | GraphicsFeatures.RayReconstruction);
         }
 
         return _device;

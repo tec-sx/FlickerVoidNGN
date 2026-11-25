@@ -14,8 +14,9 @@ namespace FlickerVoid.Engine.Graphics.Tests.Upscaling;
 
 /// <summary>
 /// Creates a Vulkan device with validation and DLSS on, skipping the test without Vulkan 1.3 or, unless asked to leave it out,
-/// without DLSS (a GPU that has none, or the engine's DLSS library not built beside the tests); upscales flat frames with it and
-/// reads the output back. Disposing it fails the test on any error the device logged.
+/// without DLSS (a GPU that has none, or the engine's DLSS library not built beside the tests), or without Ray Reconstruction
+/// when asked for it; upscales flat frames with it and reads the output back. Disposing it fails the test on any error the
+/// device logged.
 /// </summary>
 internal sealed class UpscalerTestsBuilder : IDisposable
 {
@@ -34,6 +35,13 @@ internal sealed class UpscalerTestsBuilder : IDisposable
     public UpscalerTestsBuilder WithoutDlss()
     {
         _features = GraphicsFeatures.None;
+        return this;
+    }
+
+    /// <summary>Creates the device with Ray Reconstruction too, skipping the test where it has none.</summary>
+    public UpscalerTestsBuilder WithRayReconstruction()
+    {
+        _features = GraphicsFeatures.Dlss | GraphicsFeatures.RayReconstruction;
         return this;
     }
 
@@ -60,6 +68,11 @@ internal sealed class UpscalerTestsBuilder : IDisposable
             Assert.Skip($"{_device.AdapterName} has no DLSS, or the engine's DLSS library (Source/Native/Dlss) was not built.");
         }
 
+        if (_features.HasFlag(GraphicsFeatures.RayReconstruction) && !_device.Features.HasFlag(GraphicsFeatures.RayReconstruction))
+        {
+            Assert.Skip($"{_device.AdapterName} has no DLSS Ray Reconstruction, or its runtime is not beside the tests.");
+        }
+
         return _device;
     }
 
@@ -75,28 +88,26 @@ internal sealed class UpscalerTestsBuilder : IDisposable
 
     public IUpscaler CreateUpscaler(UpscaleMode mode, int outputWidth, int outputHeight)
     {
-        IGraphicsDevice device = Build();
         UpscalerDescription description = new(mode, outputWidth, outputHeight);
+        return CreateUpscaler(description);
+    }
+
+    public IUpscaler CreateUpscaler(UpscalerDescription description)
+    {
+        IGraphicsDevice device = Build();
         return Keep(device.CreateUpscaler(description));
     }
 
-    /// <summary>Upscales a frame of one color with nothing drawn in it and nothing moving, and reads the output back.</summary>
+    /// <summary>
+    /// Upscales a frame of one color with nothing drawn in it and nothing moving, and reads the output back; a denoising upscaler is
+    /// told the frame shows a white floor facing the camera, as rough as can be.
+    /// </summary>
     public Vector4[] UpscaleFlat(IUpscaler upscaler, Vector4 color)
     {
         IGraphicsDevice device = Build();
         int width = upscaler.RenderWidth;
         int height = upscaler.RenderHeight;
-        Half[] colors = new Half[width * height * 4];
-        for (int index = 0; index < colors.Length; index += 4)
-        {
-            colors[index] = (Half)color.X;
-            colors[index + 1] = (Half)color.Y;
-            colors[index + 2] = (Half)color.Z;
-            colors[index + 3] = (Half)color.W;
-        }
-
-        TextureDescription sceneDescription = new(width, height, PixelFormat.Rgba16Float, TextureUsage.ShaderRead) { Name = "Scene" };
-        ITexture scene = Keep(device.CreateTexture(sceneDescription, MemoryMarshal.AsBytes(colors.AsSpan())));
+        ITexture scene = CreateFlat(device, width, height, color, "Scene");
         TextureDescription depthDescription = new(width, height, PixelFormat.Depth32Float, TextureUsage.ShaderRead | TextureUsage.DepthStencil) { Name = "Depth" };
         ITexture depth = Keep(device.CreateTexture(depthDescription));
         TextureDescription motionDescription = new(width, height, PixelFormat.Rg16Float, TextureUsage.ShaderRead) { Name = "Motion" };
@@ -115,6 +126,15 @@ internal sealed class UpscalerTestsBuilder : IDisposable
         commands.Barrier(depth, ResourceState.ShaderRead);
         commands.Barrier(output, ResourceState.ShaderWrite);
         UpscaleInputs inputs = new(scene, depth, motion, output, Vector2.Zero, 1, true);
+        if (upscaled.Denoises)
+        {
+            ITexture diffuse = CreateFlat(device, width, height, Vector4.One, "Diffuse albedo");
+            ITexture specular = CreateFlat(device, width, height, Vector4.Zero, "Specular albedo");
+            ITexture normals = CreateFlat(device, width, height, new Vector4(0, 0, 1, 1), "Normals");
+            Matrix4x4 projection = Matrix4x4.CreateOrthographic(width, height, 0.1f, 10);
+            inputs = inputs with { Guides = new DenoiseGuides(diffuse, specular, normals, Matrix4x4.Identity, projection) };
+        }
+
         upscaler.Upscale(commands, inputs);
         commands.End();
         device.Submit(commands);
@@ -127,6 +147,22 @@ internal sealed class UpscalerTestsBuilder : IDisposable
         ReleaseDevice();
         _loggerFactory.Dispose();
         _logs.Errors.Should().BeEmpty("the device logged no errors");
+    }
+
+    /// <summary>An Rgba16Float texture of one color the shaders read.</summary>
+    private ITexture CreateFlat(IGraphicsDevice device, int width, int height, Vector4 color, string name)
+    {
+        Half[] texels = new Half[width * height * 4];
+        for (int index = 0; index < texels.Length; index += 4)
+        {
+            texels[index] = (Half)color.X;
+            texels[index + 1] = (Half)color.Y;
+            texels[index + 2] = (Half)color.Z;
+            texels[index + 3] = (Half)color.W;
+        }
+
+        TextureDescription description = new(width, height, PixelFormat.Rgba16Float, TextureUsage.ShaderRead) { Name = name };
+        return Keep(device.CreateTexture(description, MemoryMarshal.AsBytes(texels.AsSpan())));
     }
 
     /// <summary>Copies an Rgba16Float texture to the CPU.</summary>

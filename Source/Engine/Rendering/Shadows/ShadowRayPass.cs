@@ -13,8 +13,9 @@ namespace FlickerVoid.Engine.Rendering.Shadows;
 /// Traces the shadows of the sun and of the lamps given a channel (<see cref="RenderContext.RayShadowLights"/>), and the ambient
 /// light's occlusion, while the frame traces rays, a ray a pixel each frame for each, and filters them with the frames before
 /// into the traced shadows and occlusion the lighting pass reads (<see cref="RenderContext.RayShadows"/> and
-/// <see cref="RenderContext.RayOcclusion"/>), after the geometry pass, from whose surfaces the rays start. Its pipelines and
-/// textures exist only while frames trace rays.
+/// <see cref="RenderContext.RayOcclusion"/>), after the geometry pass, from whose surfaces the rays start; while the upscaler
+/// denoises the frame (<see cref="RenderContext.Denoises"/>), the lighting pass reads the frame's own rays instead, unfiltered.
+/// Its pipelines and textures exist only while frames trace rays, and those of the filter only while it filters.
 /// </summary>
 internal sealed class ShadowRayPass : IRenderPass
 {
@@ -55,7 +56,15 @@ internal sealed class ShadowRayPass : IRenderPass
             return;
         }
 
-        Ensure(context.RenderWidth, context.RenderHeight);
+        bool filters = !context.Denoises;
+        Ensure(context.RenderWidth, context.RenderHeight, filters);
+        if (!filters)
+        {
+            context.RayShadows = _raw;
+            context.RayOcclusion = _rawOcclusion;
+            return;
+        }
+
         if (context.ResetsHistory)
         {
             _historyKept = false;
@@ -68,7 +77,7 @@ internal sealed class ShadowRayPass : IRenderPass
 
     public void Execute(RenderContext context)
     {
-        if (context.RayShadows is not { } visibility)
+        if (context.RayShadows is null)
         {
             return;
         }
@@ -76,8 +85,8 @@ internal sealed class ShadowRayPass : IRenderPass
         ICommandList commands = context.Commands;
         ITexture raw = _raw!;
         ITexture rawOcclusion = _rawOcclusion!;
-        ITexture history = _history[_current]!;
-        ShadowRayConstants constants = CreateConstants(context, visibility, history);
+        bool filters = !context.Denoises;
+        ShadowRayConstants constants = CreateConstants(context, filters);
         commands.Barrier(context.Targets.Depth, ResourceState.ShaderRead);
         commands.Barrier(context.GBuffer.Normal, ResourceState.ShaderRead);
         commands.Barrier(context.GBuffer.Motion, ResourceState.ShaderRead);
@@ -90,6 +99,14 @@ internal sealed class ShadowRayPass : IRenderPass
         commands.Dispatch(groupsX, groupsY);
         commands.Barrier(raw, ResourceState.ShaderRead);
         commands.Barrier(rawOcclusion, ResourceState.ShaderRead);
+        _number++;
+        if (!filters)
+        {
+            return;
+        }
+
+        ITexture visibility = _visibility[_current]!;
+        ITexture history = _history[_current]!;
         commands.Barrier(visibility, ResourceState.ShaderWrite);
         commands.Barrier(history, ResourceState.ShaderWrite);
         commands.SetPipeline(_filter!);
@@ -99,7 +116,6 @@ internal sealed class ShadowRayPass : IRenderPass
         commands.Barrier(history, ResourceState.ShaderRead);
         _previousDepthAxis = context.View.DepthAxis;
         _historyKept = true;
-        _number++;
     }
 
     public void Dispose()
@@ -107,11 +123,20 @@ internal sealed class ShadowRayPass : IRenderPass
         Release();
     }
 
-    private ShadowRayConstants CreateConstants(RenderContext context, ITexture visibility, ITexture history)
+    /// <summary>The trace's constants, and the filter's when it filters; without the filter, its textures are none.</summary>
+    private ShadowRayConstants CreateConstants(RenderContext context, bool filters)
     {
+        uint visibility = GpuLight.None;
+        uint history = GpuLight.None;
         uint previousVisibility = GpuLight.None;
         uint previousHistory = GpuLight.None;
-        if (_historyKept)
+        if (filters)
+        {
+            visibility = _visibility[_current]!.BindlessIndex;
+            history = _history[_current]!.BindlessIndex;
+        }
+
+        if (filters && _historyKept)
         {
             int previous = 1 - _current;
             previousVisibility = _visibility[previous]!.BindlessIndex;
@@ -128,8 +153,8 @@ internal sealed class ShadowRayPass : IRenderPass
             context.FrameBuffer,
             _raw!.BindlessIndex,
             _rawOcclusion!.BindlessIndex,
-            visibility.BindlessIndex,
-            history.BindlessIndex,
+            visibility,
+            history,
             previousVisibility,
             previousHistory,
             _number,
@@ -150,8 +175,11 @@ internal sealed class ShadowRayPass : IRenderPass
         return GpuLight.None;
     }
 
-    /// <summary>Creates the pipelines the first time frames trace rays, and the textures at the frame's size; new textures start without history.</summary>
-    private void Ensure(int width, int height)
+    /// <summary>
+    /// Creates the pipelines the first time frames trace rays, and the textures at the frame's size, the filter's only while it
+    /// filters; new textures start without history.
+    /// </summary>
+    private void Ensure(int width, int height, bool filters)
     {
         if (_trace is null)
         {
@@ -161,16 +189,27 @@ internal sealed class ShadowRayPass : IRenderPass
             _filter = _device.CreateComputePipeline(filter);
         }
 
-        if (_raw is not null && width == _width && height == _height)
+        if (_raw is null || width != _width || height != _height)
+        {
+            ReleaseTextures();
+            _width = width;
+            _height = height;
+            _raw = CreateTexture(PixelFormat.Rgba8UNorm, "Shadow rays");
+            _rawOcclusion = CreateTexture(PixelFormat.Rgba8UNorm, "Occlusion rays");
+        }
+
+        bool filtered = _visibility[0] is not null;
+        if (filters == filtered)
         {
             return;
         }
 
-        ReleaseTextures();
-        _width = width;
-        _height = height;
-        _raw = CreateTexture(PixelFormat.Rgba8UNorm, "Shadow rays");
-        _rawOcclusion = CreateTexture(PixelFormat.Rgba8UNorm, "Occlusion rays");
+        ReleaseFiltered();
+        if (!filters)
+        {
+            return;
+        }
+
         for (int index = 0; index < 2; index++)
         {
             _visibility[index] = CreateTexture(PixelFormat.Rgba16Float, $"Traced shadows {index}");
@@ -190,6 +229,11 @@ internal sealed class ShadowRayPass : IRenderPass
         _raw = null;
         _rawOcclusion?.Dispose();
         _rawOcclusion = null;
+        ReleaseFiltered();
+    }
+
+    private void ReleaseFiltered()
+    {
         for (int index = 0; index < 2; index++)
         {
             _visibility[index]?.Dispose();

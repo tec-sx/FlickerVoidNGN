@@ -9,7 +9,8 @@ namespace FlickerVoid.Engine.Graphics.Vulkan.Upscaling;
 
 /// <summary>
 /// DLSS on one Vulkan device through the engine's DLSS library: the instance and device extensions NGX needs before they are made,
-/// then NGX on the device, the size each mode draws at, and DLSS features made and evaluated in command buffers.
+/// with Ray Reconstruction's where it is asked for, then NGX on the device, whether Ray Reconstruction runs there, the size each
+/// mode draws at, and DLSS features made and evaluated in command buffers.
 /// </summary>
 internal sealed unsafe class VulkanDlss : IDisposable
 {
@@ -20,20 +21,23 @@ internal sealed unsafe class VulkanDlss : IDisposable
     private const string BufferDeviceAddressExtension = "VK_EXT_buffer_device_address";
 
     /// <summary>
-    /// The device extensions NGX named for each GPU model and driver; once NGX has shut down on a device it answers NotImplemented,
-    /// so a process asks once.
+    /// The device extensions NGX named for DLSS, and for Ray Reconstruction, on each GPU model and driver, or why it named none; once
+    /// NGX has shut down on a device it answers NotImplemented, so a process asks once, about both.
     /// </summary>
-    private static readonly ConcurrentDictionary<(uint Vendor, uint Device, uint Driver), string[]> NamedDeviceExtensions = new();
+    private static readonly ConcurrentDictionary<(uint Vendor, uint Device, uint Driver, bool Denoise), NamedExtensions> NamedDeviceExtensions = new();
 
     private readonly ILogger _logger;
+    private readonly bool _rayReconstruction;
     private readonly nint[] _strings;
     private readonly DlssApplication _application;
+    private string? _noDenoising;
     private nint _context;
     private bool _disposed;
 
-    private VulkanDlss(ILogger logger)
+    private VulkanDlss(ILogger logger, bool rayReconstruction)
     {
         _logger = logger;
+        _rayReconstruction = rayReconstruction;
         Version? version = typeof(VulkanDlss).Assembly.GetName().Version;
         string engineVersion = version?.ToString(3) ?? "0.0.0";
         string localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -66,11 +70,14 @@ internal sealed unsafe class VulkanDlss : IDisposable
     /// <summary>The folder NGX writes its log to.</summary>
     public string DataPath { get; }
 
+    /// <summary>Whether Ray Reconstruction was asked for and runs on the started device.</summary>
+    public bool HasRayReconstruction { get; private set; }
+
     /// <summary>
-    /// DLSS where the engine's DLSS library is beside the program and NGX names the instance extensions it needs; otherwise logs
-    /// why not and returns null.
+    /// DLSS where the engine's DLSS library is beside the program and NGX names the instance extensions it needs, with Ray
+    /// Reconstruction's where asked to; otherwise logs why not and returns null.
     /// </summary>
-    public static VulkanDlss? TryLoad(Vk vk, ILogger logger)
+    public static VulkanDlss? TryLoad(Vk vk, ILogger logger, bool rayReconstruction)
     {
         if (!DlssNative.IsPresent())
         {
@@ -78,19 +85,16 @@ internal sealed unsafe class VulkanDlss : IDisposable
             return null;
         }
 
-        VulkanDlss dlss = new(logger);
-        DlssApplication application = dlss._application;
-        uint count = 0;
-        ExtensionProperties* extensions = null;
-        uint result = DlssNative.FvDlssInstanceExtensions(&application, &count, &extensions);
-        if (DlssNative.Failed(result))
+        VulkanDlss dlss = new(logger, rayReconstruction);
+        NamedExtensions upscaling = dlss.AskInstanceExtensions(false);
+        if (upscaling.Names is null)
         {
-            dlss.LogOff($"NGX could not name the instance extensions it needs (NGX result 0x{result:X8})");
+            dlss.LogOff($"NGX could not name the instance extensions it needs (NGX result 0x{upscaling.Result:X8})");
             dlss.Dispose();
             return null;
         }
 
-        string[] names = GetNames(extensions, count);
+        string[] names = upscaling.Names;
         string? missing = Array.Find(names, name => !vk.IsInstanceExtensionPresent(name));
         if (missing is not null)
         {
@@ -99,27 +103,33 @@ internal sealed unsafe class VulkanDlss : IDisposable
             return null;
         }
 
+        if (rayReconstruction)
+        {
+            NamedExtensions denoising = dlss.AskInstanceExtensions(true);
+            names = dlss.AddDenoising(names, denoising, "instance", name => vk.IsInstanceExtensionPresent(name));
+        }
+
         logger.LogDebug("NGX needs the instance extensions {Extensions}.", names);
         dlss.InstanceExtensions = names;
         return dlss;
     }
 
-    /// <summary>The device extensions NGX needs on the physical device, or null, having logged why, where DLSS doesn't run there.</summary>
+    /// <summary>
+    /// The device extensions NGX needs on the physical device, with Ray Reconstruction's where asked to and it can run there, or null,
+    /// having logged why, where DLSS doesn't run there.
+    /// </summary>
     public string[]? GetDeviceExtensions(Vk vk, Instance instance, PhysicalDevice physicalDevice)
     {
         vk.GetPhysicalDeviceProperties(physicalDevice, out PhysicalDeviceProperties properties);
         (uint, uint, uint) gpu = (properties.VendorID, properties.DeviceID, properties.DriverVersion);
-        if (!NamedDeviceExtensions.TryGetValue(gpu, out string[]? names))
+        NamedExtensions upscaling = GetNamedDeviceExtensions(instance, physicalDevice, gpu, false);
+        if (upscaling.Names is null)
         {
-            names = AskDeviceExtensions(instance, physicalDevice);
-            if (names is null)
-            {
-                return null;
-            }
-
-            NamedDeviceExtensions[gpu] = names;
+            LogOff($"the GPU or its driver has no DLSS (NGX result 0x{upscaling.Result:X8})");
+            return null;
         }
 
+        string[] names = upscaling.Names;
         string? missing = Array.Find(names, name => !vk.IsDeviceExtensionPresent(physicalDevice, name));
         if (missing is not null)
         {
@@ -127,11 +137,21 @@ internal sealed unsafe class VulkanDlss : IDisposable
             return null;
         }
 
+        // Asked about even where it isn't wanted, for later devices in the process that want it.
+        NamedExtensions denoising = GetNamedDeviceExtensions(instance, physicalDevice, gpu, true);
+        if (_rayReconstruction)
+        {
+            names = AddDenoising(names, denoising, "device", name => vk.IsDeviceExtensionPresent(physicalDevice, name));
+        }
+
         _logger.LogDebug("NGX needs the device extensions {Extensions}.", names);
         return Array.FindAll(names, name => name != BufferDeviceAddressExtension);
     }
 
-    /// <summary>Starts NGX on the device and checks DLSS runs there; otherwise logs why not and returns false.</summary>
+    /// <summary>
+    /// Starts NGX on the device and checks DLSS runs there, and Ray Reconstruction where asked to; otherwise logs why not and returns
+    /// false, or leaves Ray Reconstruction off.
+    /// </summary>
     public bool Start(Vk vk, Instance instance, PhysicalDevice physicalDevice, Device device)
     {
         nint getInstanceProcAddr = vk.Context.GetProcAddress("vkGetInstanceProcAddr");
@@ -147,26 +167,31 @@ internal sealed unsafe class VulkanDlss : IDisposable
 
         _context = context;
         _logger.LogInformation("DLSS is on; NGX's log is in {DataPath}.", DataPath);
+        if (_rayReconstruction)
+        {
+            HasRayReconstruction = StartDenoising();
+        }
+
         return true;
     }
 
-    /// <summary>The size a mode draws the scene at for an output's.</summary>
-    public (int Width, int Height) GetRenderSize(UpscaleMode mode, int outputWidth, int outputHeight)
+    /// <summary>The size a mode draws the scene at for an output's, with Ray Reconstruction or plain DLSS.</summary>
+    public (int Width, int Height) GetRenderSize(UpscaleMode mode, bool denoise, int outputWidth, int outputHeight)
     {
         DlssMode dlssMode = ToDlss(mode);
         uint width = 0;
         uint height = 0;
-        uint result = DlssNative.FvDlssRenderSize(_context, dlssMode, (uint)outputWidth, (uint)outputHeight, &width, &height);
+        uint result = DlssNative.FvDlssRenderSize(_context, dlssMode, denoise, (uint)outputWidth, (uint)outputHeight, &width, &height);
         Check(result, "find the size to draw at");
         return ((int)width, (int)height);
     }
 
-    /// <summary>Records making a DLSS feature, which must run before the feature evaluates.</summary>
-    public nint CreateFeature(CommandBuffer commands, UpscaleMode mode, int renderWidth, int renderHeight, int outputWidth, int outputHeight)
+    /// <summary>Records making a DLSS feature, or a Ray Reconstruction one, which must run before the feature evaluates.</summary>
+    public nint CreateFeature(CommandBuffer commands, UpscaleMode mode, bool denoise, int renderWidth, int renderHeight, int outputWidth, int outputHeight)
     {
         DlssMode dlssMode = ToDlss(mode);
         nint feature = 0;
-        uint result = DlssNative.FvDlssCreate(_context, commands.Handle, dlssMode, (uint)renderWidth, (uint)renderHeight, (uint)outputWidth, (uint)outputHeight, &feature);
+        uint result = DlssNative.FvDlssCreate(_context, commands.Handle, dlssMode, denoise, (uint)renderWidth, (uint)renderHeight, (uint)outputWidth, (uint)outputHeight, &feature);
         Check(result, "make its feature");
         return feature;
     }
@@ -213,20 +238,78 @@ internal sealed unsafe class VulkanDlss : IDisposable
         }
     }
 
-    /// <summary>The device extensions NGX names for the physical device, or null, having logged why, where DLSS doesn't run there.</summary>
-    private string[]? AskDeviceExtensions(Instance instance, PhysicalDevice physicalDevice)
+    private NamedExtensions AskInstanceExtensions(bool denoise)
     {
         DlssApplication application = _application;
         uint count = 0;
         ExtensionProperties* extensions = null;
-        uint result = DlssNative.FvDlssDeviceExtensions(&application, instance.Handle, physicalDevice.Handle, &count, &extensions);
+        uint result = DlssNative.FvDlssInstanceExtensions(&application, denoise, &count, &extensions);
+        return Named(result, extensions, count);
+    }
+
+    private NamedExtensions GetNamedDeviceExtensions(Instance instance, PhysicalDevice physicalDevice, (uint Vendor, uint Device, uint Driver) gpu, bool denoise)
+    {
+        (uint, uint, uint, bool) key = (gpu.Vendor, gpu.Device, gpu.Driver, denoise);
+        return NamedDeviceExtensions.GetOrAdd(key, _ => AskDeviceExtensions(instance, physicalDevice, denoise));
+    }
+
+    private NamedExtensions AskDeviceExtensions(Instance instance, PhysicalDevice physicalDevice, bool denoise)
+    {
+        DlssApplication application = _application;
+        uint count = 0;
+        ExtensionProperties* extensions = null;
+        uint result = DlssNative.FvDlssDeviceExtensions(&application, denoise, instance.Handle, physicalDevice.Handle, &count, &extensions);
+        return Named(result, extensions, count);
+    }
+
+    private static NamedExtensions Named(uint result, ExtensionProperties* extensions, uint count)
+    {
         if (DlssNative.Failed(result))
         {
-            LogOff($"the GPU or its driver has no DLSS (NGX result 0x{result:X8})");
-            return null;
+            return new NamedExtensions(null, result);
         }
 
-        return GetNames(extensions, count);
+        string[] names = GetNames(extensions, count);
+        return new NamedExtensions(names, result);
+    }
+
+    /// <summary>The extensions with Ray Reconstruction's where NGX named them and they are present; else notes why it can't run.</summary>
+    private string[] AddDenoising(string[] names, NamedExtensions denoising, string kind, Predicate<string> isPresent)
+    {
+        if (denoising.Names is null)
+        {
+            _noDenoising ??= $"NGX could not name the {kind} extensions it needs (NGX result 0x{denoising.Result:X8})";
+            return names;
+        }
+
+        string? missing = Array.Find(denoising.Names, name => !isPresent(name));
+        if (missing is not null)
+        {
+            _noDenoising ??= $"it needs the {kind} extension {missing}, which is missing";
+            return names;
+        }
+
+        return names.Union(denoising.Names).ToArray();
+    }
+
+    /// <summary>Whether Ray Reconstruction runs on the started device; otherwise logs why not.</summary>
+    private bool StartDenoising()
+    {
+        string? reason = _noDenoising;
+        if (reason is null)
+        {
+            uint result = DlssNative.FvDlssCanDenoise(_context);
+            if (!DlssNative.Failed(result))
+            {
+                _logger.LogInformation("DLSS Ray Reconstruction is on.");
+                return true;
+            }
+
+            reason = $"NGX has none on the GPU (NGX result 0x{result:X8}); its runtime must be beside the program and NGX's log is in {DataPath}";
+        }
+
+        _logger.LogInformation("DLSS Ray Reconstruction is off: {Reason}.", reason);
+        return false;
     }
 
     private static string[] GetNames(ExtensionProperties* extensions, uint count)
@@ -266,4 +349,7 @@ internal sealed unsafe class VulkanDlss : IDisposable
     {
         _logger.LogInformation("DLSS is off: {Reason}.", reason);
     }
+
+    /// <summary>The extensions NGX named for a feature, or null and the NGX result saying why it named none.</summary>
+    private readonly record struct NamedExtensions(string[]? Names, uint Result);
 }

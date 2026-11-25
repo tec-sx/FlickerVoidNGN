@@ -21,22 +21,25 @@ internal static unsafe partial class DlssNative
     public static bool Failed(uint result) => (result & 0xFFF00000) == 0xBAD00000;
 
     [LibraryImport(Library)]
-    public static partial uint FvDlssInstanceExtensions(DlssApplication* application, uint* count, ExtensionProperties** extensions);
+    public static partial uint FvDlssInstanceExtensions(DlssApplication* application, [MarshalAs(UnmanagedType.Bool)] bool denoise, uint* count, ExtensionProperties** extensions);
 
     [LibraryImport(Library)]
-    public static partial uint FvDlssDeviceExtensions(DlssApplication* application, nint instance, nint physicalDevice, uint* count, ExtensionProperties** extensions);
+    public static partial uint FvDlssDeviceExtensions(DlssApplication* application, [MarshalAs(UnmanagedType.Bool)] bool denoise, nint instance, nint physicalDevice, uint* count, ExtensionProperties** extensions);
 
     [LibraryImport(Library)]
     public static partial uint FvDlssInit(DlssApplication* application, nint instance, nint physicalDevice, nint device, nint getInstanceProcAddr, nint getDeviceProcAddr, nint* context);
 
     [LibraryImport(Library)]
+    public static partial uint FvDlssCanDenoise(nint context);
+
+    [LibraryImport(Library)]
     public static partial uint FvDlssShutdown(nint context);
 
     [LibraryImport(Library)]
-    public static partial uint FvDlssRenderSize(nint context, DlssMode mode, uint outputWidth, uint outputHeight, uint* renderWidth, uint* renderHeight);
+    public static partial uint FvDlssRenderSize(nint context, DlssMode mode, [MarshalAs(UnmanagedType.Bool)] bool denoise, uint outputWidth, uint outputHeight, uint* renderWidth, uint* renderHeight);
 
     [LibraryImport(Library)]
-    public static partial uint FvDlssCreate(nint context, nint commands, DlssMode mode, uint renderWidth, uint renderHeight, uint outputWidth, uint outputHeight, nint* feature);
+    public static partial uint FvDlssCreate(nint context, nint commands, DlssMode mode, [MarshalAs(UnmanagedType.Bool)] bool denoise, uint renderWidth, uint renderHeight, uint outputWidth, uint outputHeight, nint* feature);
 
     [LibraryImport(Library)]
     public static partial uint FvDlssEvaluate(nint context, nint commands, nint feature, DlssFrame* frame);

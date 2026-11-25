@@ -31,6 +31,7 @@ internal sealed class FrameDataWriter : IDisposable
     private readonly List<GpuDraw> _draws = [];
     private Matrix4x4 _previousViewProjection;
     private Vector2 _previousJitter;
+    private uint _number;
 
     public FrameDataWriter(IGraphicsDevice device, ProbeCache probes, int framesInFlight)
     {
@@ -138,6 +139,15 @@ internal sealed class FrameDataWriter : IDisposable
             rayOcclusion = tracedOcclusion.BindlessIndex;
         }
 
+        // Ray Reconstruction asks for samples that hold no pattern, so a denoised frame's noise is drawn afresh by its number.
+        uint noiseFrame = GpuLight.None;
+        if (context.Denoises)
+        {
+            noiseFrame = _number;
+        }
+
+        _number++;
+
         FrameData data = new(
             viewProjection,
             depthAxis,
@@ -168,7 +178,7 @@ internal sealed class FrameDataWriter : IDisposable
             mood.FogAnisotropy,
             mood.FogHeight,
             mood.FogHeightFalloff,
-            0,
+            noiseFrame,
             inverseViewProjection,
             context.Targets.ScreenShadows.BindlessIndex,
             mood.AmbientOcclusion,

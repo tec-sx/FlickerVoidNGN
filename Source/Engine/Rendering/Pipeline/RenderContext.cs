@@ -126,6 +126,12 @@ public sealed class RenderContext
     /// <summary>The upscaler filling the output from the frame, or null when it is drawn at the output's size.</summary>
     internal IUpscaler? Upscaler { get; set; }
 
+    /// <summary>
+    /// Whether the upscaler denoises the frame's ray traced light (DLSS Ray Reconstruction), so the traced shadows and occlusion
+    /// go to it unfiltered, drawn as white noise, with guides of the surfaces.
+    /// </summary>
+    internal bool Denoises => Upscaler is { Description.Denoises: true };
+
     internal ITexture White { get; set; } = null!;
 
     internal List<MeshDraw> Draws { get; } = [];
