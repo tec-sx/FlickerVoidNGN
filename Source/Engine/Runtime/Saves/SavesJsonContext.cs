@@ -6,4 +6,5 @@ namespace FlickerVoid.Engine.Runtime.Saves;
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, WriteIndented = true)]
 [JsonSerializable(typeof(SaveGame))]
 [JsonSerializable(typeof(SavedRandom))]
+[JsonSerializable(typeof(SavedClock))]
 internal sealed partial class SavesJsonContext : JsonSerializerContext;

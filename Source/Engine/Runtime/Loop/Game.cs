@@ -26,13 +26,14 @@ public sealed partial class Game : IDisposable
     private readonly List<Action> _deferred = [];
     private bool _initialized;
 
-    /// <summary>Creates the world and registers it, the logger factory, the scene spawner (with the transform, saveable, greybox and traveller components), the debug console, the events, the facts and the transform hierarchy as services, and saves the transforms and the random source.</summary>
+    /// <summary>Creates the world and registers it, the logger factory, the scene spawner (with the transform, saveable, greybox and traveller components), the debug console, the events, the facts, the world clock and the transform hierarchy as services, and saves the transforms, the random source and the clock.</summary>
     public Game(ILoggerFactory loggerFactory)
     {
         LoggerFactory = loggerFactory;
         _logger = LoggerFactory.CreateLogger<Game>();
         World = World.Create();
         SaveStates = new SaveStates(World, Data);
+        Clock = new WorldClock(Facts);
 
         Services.AddService(LoggerFactory);
         Services.AddService(World);
@@ -43,6 +44,7 @@ public sealed partial class Game : IDisposable
         Spawner.Register("traveller", RuntimeJsonContext.Default.Traveller);
         SaveStates.AddComponent("transform", RuntimeJsonContext.Default.Transform);
         SaveStates.AddGlobal("random", SaveRandom, RestoreRandom);
+        SaveStates.AddGlobal("clock", SaveClock, RestoreClock);
         Services.AddService(Spawner);
         Schemas.Add("scene", Spawner.GetSchema);
         Schemas.Add("entity", Spawner.GetTemplateSchema);
@@ -56,6 +58,7 @@ public sealed partial class Game : IDisposable
         Services.AddService(DebugConsole);
         Services.AddService(Events);
         Services.AddService(Facts);
+        Services.AddService(Clock);
         Services.AddService(Hierarchy);
 
         Loop.FixedUpdate += HandleFixedUpdate;
@@ -99,6 +102,9 @@ public sealed partial class Game : IDisposable
 
     /// <summary>The game's one source of chance, saved with it; modules roll from it unless a test gives them a random of its own.</summary>
     public GameRandom Random { get; } = new();
+
+    /// <summary>The world's day and hour, which pass with the fixed steps at the clock's speed and are saved with the game.</summary>
+    public WorldClock Clock { get; }
 
     /// <summary>Systems run once per fixed step: simulation, physics and gameplay rules that must not depend on the frame rate.</summary>
     public Group<GameTime> FixedSystems { get; } = new("Fixed");
@@ -183,6 +189,22 @@ public sealed partial class Game : IDisposable
         Random.State = saved.State;
     }
 
+    /// <summary>The clock's time, or nothing while it stands where every game starts, so games that never move it save as before.</summary>
+    private SavedClock? SaveClock()
+    {
+        if (Clock.Day == 0 && Clock.Hour == 0)
+        {
+            return null;
+        }
+
+        return new SavedClock { Day = Clock.Day, Hour = Clock.Hour };
+    }
+
+    private void RestoreClock(SavedClock saved)
+    {
+        Clock.Set(saved.Day, saved.Hour);
+    }
+
     private void Run(Group<GameTime> systems, GameTime time)
     {
         systems.BeforeUpdate(in time);
@@ -193,6 +215,7 @@ public sealed partial class Game : IDisposable
 
     private void HandleFixedUpdate(GameTime time)
     {
+        Clock.Tick(time.Elapsed);
         Run(FixedSystems, time);
         Hierarchy.Update(World);
     }

@@ -9,6 +9,7 @@ using FlickerVoid.Engine.Cameras.Shots;
 using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Vehicles;
@@ -196,6 +197,46 @@ public sealed class ViewportViewModelTests : IDisposable
 
         _builder.ViewModel.Scene.Entities.Should().BeEmpty();
         _builder.ViewModel.Status.Should().Contain("Open a scene");
+    }
+
+    [Fact]
+    public void DrawsWithTheMainCamerasLensOverItsMood()
+    {
+        _builder.WithFile("Main.fvlens", """{ "bloom": 0.2, "depthNearAmount": 0.4 }""");
+        _builder.OpenScene("""{ "entities": [ { "name": "Camera", "components": { "transform": {}, "camera": {}, "mainCamera": { "lens": "Main.fvlens" } } } ] }""");
+        _builder.ViewModel.Mood = new LightingMood { Exposure = 0.7f };
+
+        LightingMood drawn = _builder.ViewModel.GetDrawnMood();
+
+        drawn.Bloom.Should().Be(0.2f);
+        drawn.Exposure.Should().Be(0.7f);
+        _builder.ViewModel.GetDepthFade().NearAmount.Should().Be(0.4f);
+    }
+
+    [Fact]
+    public void PreviewsTheSelectedShotsDepthFadeFromItsMood()
+    {
+        _builder.WithFile("Main.fvlens", """{ "depthNearAmount": 0.4, "depthFarAmount": 0.3 }""");
+        _builder.WithFile("Cellar.fvmood", """{ "depthNearAmount": 0.7 }""");
+        _builder.OpenScene("""{ "entities": [ { "name": "Camera", "components": { "transform": {}, "camera": {}, "mainCamera": { "lens": "Main.fvlens" } } } ] }""");
+        Entity cellar = _builder.AddSelectedShot();
+        _builder.World.Get<Shot>(cellar).Mood = "Cellar.fvmood";
+
+        DepthFade fade = _builder.ViewModel.GetPreviewDepthFade();
+
+        fade.NearAmount.Should().Be(0.7f);
+        fade.FarAmount.Should().Be(0.3f, "the shot's mood leaves the lens's far side alone");
+    }
+
+    [Fact]
+    public void DrawsWithoutTheLensWhenItCannotBeRead()
+    {
+        _builder.WithFile("Main.fvlens", """{ "exposure": 2 }""");
+        _builder.OpenScene("""{ "entities": [ { "name": "Camera", "components": { "transform": {}, "camera": {}, "mainCamera": { "lens": "Main.fvlens" } } } ] }""");
+
+        LightingMood drawn = _builder.ViewModel.GetDrawnMood();
+
+        drawn.Should().Be(_builder.ViewModel.Mood);
     }
 
     [Fact]
