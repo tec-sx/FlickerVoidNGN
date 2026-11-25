@@ -33,6 +33,11 @@ jobs:
           install_runtime: true
           install_lavapipe: true
           cache: true
+      # Beside the tests and samples, NGX finds no DLSS on these GPUs, so the devices turn it off as on every GPU without it.
+      - name: Build the engine's DLSS library
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then pwsh -File Source/Native/Dlss/build.ps1; else bash Source/Native/Dlss/build.sh; fi
       - name: Build the engine and the samples, and pack the engine
         shell: bash
         run: |

@@ -26,6 +26,7 @@ using FlickerVoid.Engine.Graphics.Vulkan.Pipelines;
 using FlickerVoid.Engine.Graphics.Vulkan.Presentation;
 using FlickerVoid.Engine.Graphics.Vulkan.Samplers;
 using FlickerVoid.Engine.Graphics.Vulkan.Textures;
+using FlickerVoid.Engine.Graphics.Vulkan.Upscaling;
 
 using SamplerAddressMode = FlickerVoid.Engine.Graphics.Samplers.SamplerAddressMode;
 
@@ -35,7 +36,8 @@ namespace FlickerVoid.Engine.Graphics.Vulkan.Devices;
 /// A Vulkan 1.3 device: one graphics queue, a timeline semaphore counting submissions, bindless tables, and
 /// resources released once the GPU has finished with them. Requires dynamic rendering, synchronization2 and descriptor indexing;
 /// presents to windows when the driver has the surface and swapchain extensions, shares textures with other graphics APIs
-/// when it can export memory and semaphores, and traces rays when it has acceleration structures and ray queries.
+/// when it can export memory and semaphores, traces rays when it has acceleration structures and ray queries, and upscales
+/// with DLSS when asked to where NGX runs, with the instance and device extensions NGX names.
 /// </summary>
 public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
 {
@@ -53,6 +55,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
     private readonly VulkanCommandList _uploadCommands;
     private readonly List<IDisposable> _placeholders = [];
     private readonly KhrAccelerationStructure? _accelerationStructures;
+    private readonly VulkanDlss? _dlss;
     private ulong _submitted;
     private ulong _acquireValue;
     private bool _disposed;
@@ -69,7 +72,14 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             _logger.LogWarning("The Vulkan validation layer ({Layer}) is not installed; running without validation.", ValidationLayer);
         }
 
-        Instance = CreateInstance(validation);
+        VulkanDlss? dlss = null;
+        if (options.Features.HasFlag(GraphicsFeatures.Dlss))
+        {
+            dlss = VulkanDlss.TryLoad(Vk, _logger);
+        }
+
+        string[] dlssInstanceExtensions = dlss?.InstanceExtensions ?? [];
+        Instance = CreateInstance(validation, dlssInstanceExtensions);
         if (validation && Vk.TryGetInstanceExtension(Instance, out ExtDebugUtils debugUtils))
         {
             _debugUtils = debugUtils;
@@ -85,7 +95,18 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             Features |= GraphicsFeatures.RayQueries;
         }
 
-        Handle = CreateDevice();
+        string[]? dlssDeviceExtensions = dlss?.GetDeviceExtensions(Vk, Instance, PhysicalDevice);
+        Handle = CreateDevice(dlssDeviceExtensions ?? []);
+        if (dlssDeviceExtensions is not null && dlss!.Start(Vk, Instance, PhysicalDevice, Handle))
+        {
+            _dlss = dlss;
+            Features |= GraphicsFeatures.Dlss;
+        }
+        else
+        {
+            dlss?.Dispose();
+        }
+
         Vk.GetDeviceQueue(Handle, QueueFamily, 0, out Queue queue);
         Queue = queue;
         _timeline = CreateTimeline();
@@ -212,7 +233,17 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
     public IUpscaler CreateUpscaler(in UpscalerDescription description)
     {
-        throw new NotSupportedException($"{AdapterName} has no DLSS; check {nameof(Features)} first.");
+        if (_dlss is null)
+        {
+            throw new NotSupportedException($"{AdapterName} has no DLSS; check {nameof(Features)} first.");
+        }
+
+        if (description.Mode == UpscaleMode.Off)
+        {
+            throw new NotSupportedException("Upscaling off needs no upscaler.");
+        }
+
+        return new VulkanUpscaler(this, _dlss, description);
     }
 
     public ICommandList CreateCommandList() => new VulkanCommandList(this);
@@ -278,6 +309,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             release.Release();
         }
 
+        _dlss?.Dispose();
         Bindless.Dispose();
         _accelerationStructures?.Dispose();
         Vk.DestroySemaphore(Handle, _timeline, null);
@@ -522,7 +554,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         return false;
     }
 
-    private Instance CreateInstance(bool validation)
+    private Instance CreateInstance(bool validation, string[] extraExtensions)
     {
         byte[] engineName = "FlickerVoid"u8.ToArray();
         List<string> layers = [];
@@ -542,6 +574,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         }
 
         CanPresent = surfaces;
+        AddMissing(extensions, extraExtensions);
 
         nint layerNames = SilkMarshal.StringArrayToPtr(layers);
         nint extensionNames = SilkMarshal.StringArrayToPtr(extensions);
@@ -740,7 +773,8 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         return features12.BufferDeviceAddress && structures.AccelerationStructure && structures.DescriptorBindingAccelerationStructureUpdateAfterBind && rayQuery.RayQuery;
     }
 
-    private Device CreateDevice()
+    /// <summary>Creates the device with its features and extensions, and the extra extensions DLSS needs, which turn on buffer device addresses too.</summary>
+    private Device CreateDevice(string[] extraExtensions)
     {
         float priority = 1;
         DeviceQueueCreateInfo queue = new()
@@ -812,6 +846,12 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             extensions.AddRange(sharing);
         }
 
+        if (extraExtensions.Length > 0)
+        {
+            features12.BufferDeviceAddress = true;
+            AddMissing(extensions, extraExtensions);
+        }
+
         nint extensionNames = SilkMarshal.StringArrayToPtr(extensions);
         try
         {
@@ -830,6 +870,17 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         finally
         {
             SilkMarshal.Free(extensionNames);
+        }
+    }
+
+    private static void AddMissing(List<string> extensions, string[] extraExtensions)
+    {
+        foreach (string extension in extraExtensions)
+        {
+            if (!extensions.Contains(extension))
+            {
+                extensions.Add(extension);
+            }
         }
     }
 
