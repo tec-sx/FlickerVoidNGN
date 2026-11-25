@@ -1,8 +1,7 @@
 using System.Numerics;
 using System.Text.Json.Serialization;
 
-using BepuPhysics;
-using BepuPhysics.Collidables;
+using Jolt = JoltPhysicsSharp;
 
 namespace FlickerVoid.Engine.Physics.Colliders;
 
@@ -16,21 +15,20 @@ public abstract class Collider
     /// <summary>Where the shape's centre sits in the entity's space, such as half a door's width from its hinge.</summary>
     public Vector3 Offset { get; set; }
 
-    /// <summary>The pose of the shape for an entity at <paramref name="position"/> turned by <paramref name="rotation"/>.</summary>
-    internal RigidPose GetPose(Vector3 position, Quaternion rotation)
+    /// <summary>Where the shape's centre is for an entity at <paramref name="position"/> turned by <paramref name="rotation"/>.</summary>
+    internal Vector3 GetBodyPosition(Vector3 position, Quaternion rotation)
     {
         Vector3 offset = Vector3.Transform(Offset, rotation);
-        return new RigidPose(position + offset, rotation);
+        return position + offset;
     }
 
-    /// <summary>The entity's position for a shape posed at <paramref name="pose"/>.</summary>
-    internal Vector3 GetEntityPosition(in RigidPose pose)
+    /// <summary>The entity's position for a shape centred at <paramref name="bodyPosition"/> and turned by <paramref name="rotation"/>.</summary>
+    internal Vector3 GetEntityPosition(Vector3 bodyPosition, Quaternion rotation)
     {
-        Vector3 offset = Vector3.Transform(Offset, pose.Orientation);
-        return pose.Position - offset;
+        Vector3 offset = Vector3.Transform(Offset, rotation);
+        return bodyPosition - offset;
     }
 
-    internal abstract TypedIndex AddShape(Shapes shapes);
-
-    internal abstract BodyInertia ComputeInertia(float mass);
+    /// <summary>A new Jolt shape centred on the body; the caller disposes it once a body holds it.</summary>
+    internal abstract Jolt.Shape CreateShape();
 }
