@@ -5,6 +5,7 @@ using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Flow;
 using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Rendering;
+using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -36,8 +37,8 @@ public sealed partial class EditorScene : IDisposable
     {
         _loggerFactory = loggerFactory;
         Content = content;
-        Picker = new ScenePicker(Content);
         Game = CreateGame(loggerFactory, modules);
+        Picker = new ScenePicker(Content) { Meshes = Meshes };
         _loader = CreateLoader(Game);
         _watcher = CreateWatcher();
     }
@@ -49,6 +50,9 @@ public sealed partial class EditorScene : IDisposable
 
     /// <summary>Finds the entity under a ray through the viewport.</summary>
     public ScenePicker Picker { get; }
+
+    /// <summary>Turns the world's mesh names into models with the sources the game's modules added; replaced with the game.</summary>
+    public MeshSources Meshes => Game.Services.GetService<MeshSources>()!;
 
     /// <summary>The entity the viewport and the inspector work on.</summary>
     public EditorSelection Selection { get; } = new();
@@ -181,6 +185,7 @@ public sealed partial class EditorScene : IDisposable
         Selection.Select(null);
         Stop();
         Game = game;
+        Picker.Meshes = Meshes;
         _loader = loader;
         _watcher = CreateWatcher();
         History.Clear();

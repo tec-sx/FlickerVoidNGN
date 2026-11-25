@@ -118,6 +118,50 @@ public sealed class ScenePickerTests : IDisposable
     }
 
     [Fact]
+    public void PicksTheMeshesAModuleMakes()
+    {
+        _builder.WithFile("Van.fvtest", "2").WithMeshSource(new TestMeshSource());
+        Entity van = _builder.AddMesh("Van.fvtest#body", new Vector3(0, -1, 0));
+        ScenePicker picker = _builder.Build();
+
+        Entity? picked = picker.Pick(_builder.World, DownTheZAxis, out float distance);
+
+        picked.Should().Be(van);
+        distance.Should().BeApproximately(9, 0.001f);
+    }
+
+    [Fact]
+    public void MakesAMeshAgainWhenItsFileChanges()
+    {
+        _builder.WithFile("Van.fvtest", "2").WithMeshSource(new TestMeshSource());
+        Entity van = _builder.AddMesh("Van.fvtest#body", new Vector3(0, -1, 0));
+        ScenePicker picker = _builder.Build();
+        Entity? before = picker.Pick(_builder.World, DownTheZAxis);
+
+        _builder.WithFile("Van.fvtest", "0.5");
+        _builder.NotifyChanged("Van.fvtest");
+        Entity? after = picker.Pick(_builder.World, DownTheZAxis);
+
+        before.Should().Be(van);
+        after.Should().BeNull("a box half a metre high stands below the ray");
+    }
+
+    [Fact]
+    public void PicksAModelBuiltAfterItWasMissing()
+    {
+        Entity square = _builder.AddMesh("Square.glb", Vector3.Zero);
+        ScenePicker picker = _builder.Build();
+        Entity? before = picker.Pick(_builder.World, DownTheZAxis);
+
+        _builder.WithSquare("Square.glb", 1);
+        _builder.NotifyChanged("Square.fvmodel");
+        Entity? after = picker.Pick(_builder.World, DownTheZAxis);
+
+        before.Should().BeNull();
+        after.Should().Be(square);
+    }
+
+    [Fact]
     public void GivesTheLocalBoundsOfAPickedMesh()
     {
         _builder.WithSquare("Square.glb", 1);

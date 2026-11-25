@@ -9,7 +9,7 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
   </ItemGroup>
   <ItemGroup Label="Physics">
-    <PackageVersion Include="BepuPhysics" Version="2.5.0-beta.33" />
+    <PackageVersion Include="JoltPhysicsSharp" Version="2.26.0" />
   </ItemGroup>
   <ItemGroup Label="Ai">
     <PackageVersion Include="DotRecast.Detour" Version="2026.3.1" />

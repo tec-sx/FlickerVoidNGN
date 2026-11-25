@@ -6,7 +6,7 @@ Decided with the owner on 2026-11-18. Each roadmap stage ends in something that 
 
 | Topic | Decision |
 | --- | --- |
-| Foundation | Own engine on open-source libraries: Silk.NET, BepuPhysics, Arch, SharpGLTF. Stride and MonoGame are references. |
+| Foundation | Own engine on open-source libraries: Silk.NET, Jolt (BepuPhysics until 2026-11-25), Arch, SharpGLTF. Stride and MonoGame are references. |
 | Stride code | Copy and adapt its MIT Vulkan backend and light shaders, keeping the licence notice |
 | Look | Orthographic 2.5D: 3D scenes, hand-drawn textures, a 2D feel. Not 2D-first, not photoreal. Lighting first. |
 | Indirect light | Baked probes first, real-time later |

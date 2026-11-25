@@ -1,5 +1,4 @@
-using BepuPhysics;
-using BepuPhysics.Collidables;
+using Jolt = JoltPhysicsSharp;
 
 namespace FlickerVoid.Engine.Physics.Colliders;
 
@@ -10,15 +9,8 @@ public sealed class CapsuleCollider : Collider
 
     public float Length { get; set; } = 1;
 
-    internal override TypedIndex AddShape(Shapes shapes)
+    internal override Jolt.Shape CreateShape()
     {
-        Capsule capsule = new(Radius, Length);
-        return shapes.Add(capsule);
-    }
-
-    internal override BodyInertia ComputeInertia(float mass)
-    {
-        Capsule capsule = new(Radius, Length);
-        return capsule.ComputeInertia(mass);
+        return new Jolt.CapsuleShape(Length / 2, Radius);
     }
 }
