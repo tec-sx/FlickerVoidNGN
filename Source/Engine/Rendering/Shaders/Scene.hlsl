@@ -23,6 +23,9 @@ struct SceneConstants
 // MeshFlags.Uncut: the cutaway keeps the mesh, such as a door.
 static const uint FlagUncut = 4;
 
+// MeshFlags.Greyed: the mesh is drawn black and white, as the editor's creator greys the rest of a level.
+static const uint FlagGreyed = 8;
+
 // The parameters Scene.fvshader declares, in its order.
 struct Material
 {
@@ -651,5 +654,10 @@ float4 PixelMain(VertexOutput input) : SV_Target
     }
 
     color = MuteOutside(frame, color, input.WorldPosition);
+    if ((Scene.Flags & FlagGreyed) != 0)
+    {
+        color = dot(color, float3(0.2126, 0.7152, 0.0722));
+    }
+
     return float4(color, albedo.a + impasto * albedo.a);
 }

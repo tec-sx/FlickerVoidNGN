@@ -263,6 +263,33 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void DrawsGreyedMeshesInBlackAndWhite()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithComponent("Quad", new Greyed());
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeGreaterThan(0, "the quad is still drawn");
+        green.Should().Be(red, "a greyed mesh has no colour");
+        blue.Should().Be(red);
+    }
+
+    [Fact]
+    public void LeavesOutUndrawnMeshes()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithComponent("Quad", new Undrawn());
+
+        uint[] pixels = _builder.Render();
+
+        pixels.Should().AllBeEquivalentTo(EmptyPixel, "the quad is set aside");
+    }
+
+    [Fact]
     public void ScalesTheAmbientLightInsideIndoorVolumes()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
