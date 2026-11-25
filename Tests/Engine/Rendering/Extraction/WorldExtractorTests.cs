@@ -53,6 +53,30 @@ public sealed class WorldExtractorTests : IDisposable
     }
 
     [Fact]
+    public void FlagsTheMeshesAndGreyboxesOfGreyedEntities()
+    {
+        Greybox greybox = new();
+
+        RenderScene scene = _builder.WithMesh("Van.glb", new Transform()).WithGreybox(greybox, new Transform()).MarkAll(new Greyed()).Extract();
+
+        scene.Meshes.Should().HaveCount(2).And.OnlyContain(mesh => mesh.Flags.HasFlag(MeshFlags.Greyed));
+    }
+
+    [Fact]
+    public void LeavesOutTheMeshesAndLightsOfUndrawnEntities()
+    {
+        Greybox greybox = new();
+        PointLight point = new();
+        SpotLight spot = new();
+
+        RenderScene scene = _builder.WithMesh("Van.glb", new Transform()).WithGreybox(greybox, new Transform()).WithPointLight(point, Vector3.Zero).WithSpotLight(spot, new Transform()).MarkAll(new Undrawn()).Extract();
+
+        scene.Meshes.Should().BeEmpty();
+        scene.PointLights.Should().BeEmpty();
+        scene.SpotLights.Should().BeEmpty();
+    }
+
+    [Fact]
     public void PutsTheActiveCameraFirstAtItsPosedView()
     {
         Camera still = new() { OrthographicHeight = 7 };
