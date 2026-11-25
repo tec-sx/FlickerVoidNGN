@@ -133,6 +133,28 @@ public sealed class PhysicsSystemTests : IDisposable
     }
 
     [Fact]
+    public void BodiesRestingOnAStaticBodyWakeWhenItMovesAway()
+    {
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 2, 0] },
+                "rigidBody": { "mass": 10, "collider": { "type": "box" } } } },
+            { "name": "Shelf", "components": {
+                "transform": {},
+                "staticBody": { "collider": { "type": "box", "size": [4, 1, 4] } } } }
+            """);
+        Run(seconds: 4);
+        bool asleepOnShelf = !_physics.IsAwake(entities[0]);
+
+        _game.World.Get<Transform>(entities[1]).Position = new Vector3(50, 0, 0);
+        Run(seconds: 1);
+
+        asleepOnShelf.Should().BeTrue();
+        Transform crate = _game.World.Get<Transform>(entities[0]);
+        crate.Position.Y.Should().BeLessThan(0, "the shelf moved out from under it, so it fell");
+    }
+
+    [Fact]
     public void FallingBodiesAreAwakeAndStaticBodiesNeverAre()
     {
         IReadOnlyList<Entity> entities = Spawn("""
@@ -357,6 +379,23 @@ public sealed class PhysicsSystemTests : IDisposable
             """);
 
         spawn.Should().Throw<InvalidDataException>().WithMessage("*'Ball'*'rigidBody'*");
+    }
+
+    [Fact]
+    public void GamesOnSeveralThreadsStepTheirPhysicsAtOnce()
+    {
+        PhysicsSystemTestsBuilder[] others = [new(), new(), new(), new()];
+        IReadOnlyList<Entity>[] piles = [.. others.Select(other => other.SpawnPile())];
+
+        Parallel.For(0, others.Length, index => others[index].Run(seconds: 2));
+
+        for (int index = 0; index < others.Length; index++)
+        {
+            Game game = others[index].Game;
+            Transform top = game.World.Get<Transform>(piles[index][^1]);
+            top.Position.Y.Should().BeLessThan(PhysicsSystemTestsBuilder.PileTop, "every game stepped its own pile");
+            game.Dispose();
+        }
     }
 
     [Fact]

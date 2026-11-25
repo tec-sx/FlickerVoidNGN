@@ -3,211 +3,218 @@ using System.Numerics;
 using Arch.Core;
 using Arch.System;
 
-using BepuPhysics;
-using BepuPhysics.Collidables;
-
-using BepuUtilities;
-using BepuUtilities.Memory;
-
+using FlickerVoid.Engine.Physics.Colliders;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Loop;
 
+using Jolt = JoltPhysicsSharp;
+
 namespace FlickerVoid.Engine.Physics;
 
 /// <summary>
-/// Runs the physics simulation each fixed step: creates bodies for new rigid and static bodies, removes those whose entity or component
-/// is gone, moves kinematic and static bodies to transforms that moved, steps, and copies dynamic bodies' poses to their transforms.
+/// Runs the physics simulation on Jolt each fixed step: creates bodies for new rigid and static bodies, removes those whose entity or component
+/// is gone, moves kinematic and static bodies to transforms that moved, steps, and copies awake dynamic bodies' poses to their transforms.
 /// </summary>
 public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
 {
-    private const float SleepThreshold = 0.01f;
+    private const uint MaxBodies = 65536;
+    private const uint MaxBodyPairs = 65536;
+    private const uint MaxContactConstraints = 10240;
+    private const float Friction = 1;
+    private const float Damping = 0.05f;
 
-    private static readonly QueryDescription NewRigidBodies = new QueryDescription().WithAll<RigidBody, Transform>().WithNone<BodyHandle>();
-    private static readonly QueryDescription NewStaticBodies = new QueryDescription().WithAll<StaticBody, Transform>().WithNone<StaticHandle>();
-    private static readonly QueryDescription SimulatedBodies = new QueryDescription().WithAll<Transform, BodyHandle, RigidBody>();
-    private static readonly QueryDescription PlacedStatics = new QueryDescription().WithAll<Transform, StaticHandle, StaticBody>();
+    /// <summary>Adding more bodies than this in one step, as when a level loads, rebuilds the broad phase so queries stay fast.</summary>
+    private const int OptimizeAfter = 64;
 
-    private readonly BufferPool _pool = new();
-    private readonly ThreadDispatcher _dispatcher;
-    private readonly Dictionary<Entity, BodyHandle> _bodies = [];
-    private readonly Dictionary<Entity, StaticHandle> _statics = [];
-    private readonly Dictionary<BodyHandle, Entity> _bodyEntities = [];
-    private readonly Dictionary<StaticHandle, Entity> _staticEntities = [];
+    private static readonly Vector3 Gravity = new(0, -9.8f, 0);
+    private static readonly Jolt.ObjectLayer StaticLayer = new(0);
+    private static readonly Jolt.ObjectLayer MovingLayer = new(1);
+
+    private static readonly QueryDescription NewRigidBodies = new QueryDescription().WithAll<RigidBody, Transform>().WithNone<SimulatedBody>();
+    private static readonly QueryDescription NewStaticBodies = new QueryDescription().WithAll<StaticBody, Transform>().WithNone<SimulatedBody>();
+    private static readonly QueryDescription SimulatedBodies = new QueryDescription().WithAll<Transform, SimulatedBody, RigidBody>();
+    private static readonly QueryDescription PlacedStatics = new QueryDescription().WithAll<Transform, SimulatedBody, StaticBody>();
+
+    private readonly Jolt.ObjectLayerPairFilterTable _layerPairs;
+    /// <summary>Jolt's C API steps every simulation with the one temporary allocator it starts with, so only one may step at a time.</summary>
+    private static readonly Lock StepLock = new();
+
+    private readonly Jolt.BroadPhaseLayerInterfaceTable _broadPhaseLayers;
+    private readonly Jolt.ObjectVsBroadPhaseLayerFilterTable _layerFilter;
+    private readonly Jolt.PhysicsSystem _system;
+    private readonly Jolt.JobSystemThreadPool _jobs;
+    private readonly Jolt.BodyInterface _bodies;
+    private readonly Jolt.BodyLockInterface _locks;
+    private readonly Jolt.NarrowPhaseQuery _query;
+    private readonly IgnoredBodyFilter _ignored = new();
+    private readonly Dictionary<Entity, (Jolt.BodyID Id, bool Static)> _ids = [];
+    private readonly Dictionary<Jolt.BodyID, Entity> _entities = [];
     private readonly List<Entity> _pending = [];
-    private readonly List<(StaticHandle Handle, StaticDescription Description)> _movedStatics = [];
-    private readonly Simulation _simulation;
+    private readonly List<(Jolt.BodyID Id, Vector3 Position, Quaternion Rotation)> _movedStatics = [];
+    private int _added;
+
+    static PhysicsSystem()
+    {
+        if (!Jolt.Foundation.Init())
+        {
+            throw new InvalidOperationException("Jolt could not start.");
+        }
+    }
 
     public PhysicsSystem(World world)
         : base(world)
     {
-        ArrayRegistry.Add<BodyHandle>();
-        ArrayRegistry.Add<StaticHandle>();
-        _dispatcher = new ThreadDispatcher(Environment.ProcessorCount);
-        NarrowPhaseCallbacks narrowPhase = new();
-        PoseIntegratorCallbacks poseIntegrator = new();
-        SolveDescription solve = new(8, 1);
-        _simulation = Simulation.Create(_pool, narrowPhase, poseIntegrator, solve);
-    }
-
-    public int BodyCount
-    {
-        get
+        ArrayRegistry.Add<SimulatedBody>();
+        _layerPairs = new Jolt.ObjectLayerPairFilterTable(2);
+        _layerPairs.EnableCollision(StaticLayer, MovingLayer);
+        _layerPairs.EnableCollision(MovingLayer, MovingLayer);
+        _broadPhaseLayers = new Jolt.BroadPhaseLayerInterfaceTable(2, 2);
+        _broadPhaseLayers.MapObjectToBroadPhaseLayer(StaticLayer, new Jolt.BroadPhaseLayer(0));
+        _broadPhaseLayers.MapObjectToBroadPhaseLayer(MovingLayer, new Jolt.BroadPhaseLayer(1));
+        _layerFilter = new Jolt.ObjectVsBroadPhaseLayerFilterTable(_broadPhaseLayers, 2, _layerPairs, 2);
+        Jolt.PhysicsSystemSettings settings = new()
         {
-            int count = _simulation.Statics.Count;
-            Buffer<BodySet> sets = _simulation.Bodies.Sets;
-            for (int i = 0; i < sets.Length; i++)
-            {
-                if (sets[i].Allocated)
-                {
-                    count += sets[i].Count;
-                }
-            }
+            MaxBodies = (int)MaxBodies,
+            MaxBodyPairs = (int)MaxBodyPairs,
+            MaxContactConstraints = (int)MaxContactConstraints,
+            ObjectLayerPairFilter = _layerPairs,
+            BroadPhaseLayerInterface = _broadPhaseLayers,
+            ObjectVsBroadPhaseLayerFilter = _layerFilter,
+        };
+        _system = new Jolt.PhysicsSystem(settings);
+        _system.Gravity = Gravity;
 
-            return count;
-        }
+        // Jolt reads 0 threads as one per core, so the calling thread is left out explicitly.
+        int workers = Math.Max(1, Environment.ProcessorCount - 1);
+        Jolt.JobSystemThreadPoolConfig jobs = new() { maxJobs = 1024, maxBarriers = 8, numThreads = workers };
+        _jobs = new Jolt.JobSystemThreadPool(in jobs);
+        _bodies = _system.BodyInterface;
+        _locks = _system.BodyLockInterface;
+        _query = _system.NarrowPhaseQuery;
     }
+
+    public int BodyCount => (int)_system.BodiesCount;
 
     public bool HasBody(Entity entity)
     {
-        if (_bodies.TryGetValue(entity, out BodyHandle body))
-        {
-            return _simulation.Bodies.BodyExists(body);
-        }
-
-        return _statics.TryGetValue(entity, out StaticHandle handle) && _simulation.Statics.StaticExists(handle);
+        return _ids.TryGetValue(entity, out (Jolt.BodyID Id, bool Static) body) && _bodies.IsAdded(body.Id);
     }
 
     public bool IsAwake(Entity entity)
     {
-        if (!_bodies.TryGetValue(entity, out BodyHandle handle))
-        {
-            return false;
-        }
-
-        BodyReference body = _simulation.Bodies[handle];
-        return body.Awake;
+        return _ids.TryGetValue(entity, out (Jolt.BodyID Id, bool Static) body) && _bodies.IsActive(body.Id);
     }
 
     public override void Update(in GameTime t)
     {
+        float dt = (float)t.Elapsed.TotalSeconds;
+        _added = 0;
         RemoveDepartedBodies();
         AddRigidBodies();
         AddStaticBodies();
-        FollowKinematicBodies();
+        FollowKinematicBodies(dt);
         FollowStaticBodies();
+        if (_added > OptimizeAfter)
+        {
+            _system.OptimizeBroadPhase();
+        }
 
-        float dt = (float)t.Elapsed.TotalSeconds;
-        _simulation.Timestep(dt, _dispatcher);
+        lock (StepLock)
+        {
+            _system.Update(dt, 1, _jobs);
+        }
 
         CopyPosesToTransforms();
     }
 
     public bool RayCast(Ray ray, float maxDistance, out RayHit hit)
     {
-        ClosestHitHandler handler = new();
-        return RayCast(ray, maxDistance, ref handler, out hit);
+        return CastRay(ray, maxDistance, null, out hit);
     }
 
     public bool RayCast(Ray ray, float maxDistance, Entity ignored, out RayHit hit)
     {
-        ClosestHitHandler handler = new();
-        if (World.IsAlive(ignored) && World.TryGet(ignored, out StaticHandle staticHandle))
+        if (!_ids.TryGetValue(ignored, out (Jolt.BodyID Id, bool Static) body))
         {
-            handler.Ignores = true;
-            handler.Ignored = new CollidableReference(staticHandle);
-        }
-        else if (World.IsAlive(ignored) && World.TryGet(ignored, out BodyHandle bodyHandle))
-        {
-            BodyReference body = _simulation.Bodies[bodyHandle];
-            handler.Ignores = true;
-            handler.Ignored = body.CollidableReference;
+            return CastRay(ray, maxDistance, null, out hit);
         }
 
-        return RayCast(ray, maxDistance, ref handler, out hit);
-    }
-
-    private bool RayCast(Ray ray, float maxDistance, ref ClosestHitHandler handler, out RayHit hit)
-    {
-        hit = default;
-        _simulation.RayCast(ray.Origin, ray.Direction, maxDistance, _pool, ref handler);
-        if (!handler.Found)
-        {
-            return false;
-        }
-
-        Entity entity;
-        bool known;
-        if (handler.Collidable.Mobility == CollidableMobility.Static)
-        {
-            known = _staticEntities.TryGetValue(handler.Collidable.StaticHandle, out entity);
-        }
-        else
-        {
-            known = _bodyEntities.TryGetValue(handler.Collidable.BodyHandle, out entity);
-        }
-
-        if (!known)
-        {
-            return false;
-        }
-
-        Vector3 point = ray.GetPoint(handler.Distance);
-        Vector3 normal = Vector3.Normalize(handler.Normal);
-        hit = new RayHit(entity, point, normal, handler.Distance);
-        return true;
+        _ignored.Ignored = body.Id;
+        return CastRay(ray, maxDistance, _ignored, out hit);
     }
 
     public override void Dispose()
     {
-        _simulation.Dispose();
-        _dispatcher.Dispose();
-        _pool.Clear();
+        _system.Dispose();
+        _jobs.Dispose();
+        _ignored.Dispose();
+        _layerFilter.Dispose();
+        _broadPhaseLayers.Dispose();
+        _layerPairs.Dispose();
+    }
+
+    private bool CastRay(Ray ray, float maxDistance, Jolt.BodyFilter? filter, out RayHit hit)
+    {
+        hit = default;
+        Jolt.Ray cast = new(ray.Origin, ray.Direction * maxDistance);
+        bool found = _query.CastRay(in cast, out Jolt.RayCastResult result, null, null, filter);
+        if (!found || !_entities.TryGetValue(result.BodyID, out Entity entity))
+        {
+            return false;
+        }
+
+        float distance = result.Fraction * maxDistance;
+        Vector3 point = ray.GetPoint(distance);
+        Vector3 normal = GetSurfaceNormal(result, point);
+        hit = new RayHit(entity, point, normal, distance);
+        return true;
+    }
+
+    private Vector3 GetSurfaceNormal(in Jolt.RayCastResult result, Vector3 point)
+    {
+        Vector3 normal = Vector3.Zero;
+        _locks.LockRead(result.BodyID, out Jolt.BodyLockRead bodyLock);
+        Jolt.Body? body = bodyLock.Body;
+        if (body is not null)
+        {
+            Jolt.SubShapeID subShape = new(result.subShapeID2);
+            normal = body.GetWorldSpaceSurfaceNormal(in subShape, in point);
+        }
+
+        _locks.UnlockRead(in bodyLock);
+        return normal;
     }
 
     private void RemoveDepartedBodies()
     {
-        foreach ((Entity entity, BodyHandle handle) in _bodies)
+        foreach ((Entity entity, (Jolt.BodyID Id, bool Static) body) in _ids)
         {
             bool alive = World.IsAlive(entity);
-            if (alive && World.Has<RigidBody>(entity))
+            if (alive && HasBodyComponent(entity, body.Static))
             {
                 continue;
             }
 
-            BodyReference body = _simulation.Bodies[handle];
-            TypedIndex shape = body.Collidable.Shape;
-            _simulation.Bodies.Remove(handle);
-            _simulation.Shapes.Remove(shape);
+            _bodies.RemoveAndDestroyBody(body.Id);
             if (alive)
             {
-                World.Remove<BodyHandle>(entity);
+                World.Remove<SimulatedBody>(entity);
             }
 
-            _bodies.Remove(entity);
-            _bodyEntities.Remove(handle);
+            _ids.Remove(entity);
+            _entities.Remove(body.Id);
         }
+    }
 
-        foreach ((Entity entity, StaticHandle handle) in _statics)
+    private bool HasBodyComponent(Entity entity, bool isStatic)
+    {
+        if (isStatic)
         {
-            bool alive = World.IsAlive(entity);
-            if (alive && World.Has<StaticBody>(entity))
-            {
-                continue;
-            }
-
-            StaticReference body = _simulation.Statics[handle];
-            TypedIndex shape = body.Shape;
-            _simulation.Statics.Remove(handle);
-            _simulation.Shapes.Remove(shape);
-            if (alive)
-            {
-                World.Remove<StaticHandle>(entity);
-            }
-
-            _statics.Remove(entity);
-            _staticEntities.Remove(handle);
+            return World.Has<StaticBody>(entity);
         }
+
+        return World.Has<RigidBody>(entity);
     }
 
     private void AddRigidBodies()
@@ -217,26 +224,15 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         {
             RigidBody body = World.Get<RigidBody>(entity);
             Transform transform = World.Get<Transform>(entity);
-            RigidPose pose = body.Collider.GetPose(transform.Position, transform.Rotation);
-            TypedIndex shape = body.Collider.AddShape(_simulation.Shapes);
-            CollidableDescription collidable = new(shape);
-            BodyActivityDescription activity = new(SleepThreshold);
-
-            BodyDescription description;
-            if (body.Kinematic)
+            Jolt.MotionType motion = body.Kinematic ? Jolt.MotionType.Kinematic : Jolt.MotionType.Dynamic;
+            using Jolt.BodyCreationSettings settings = CreateSettings(body.Collider, transform, motion, MovingLayer);
+            if (!body.Kinematic)
             {
-                description = BodyDescription.CreateKinematic(pose, collidable, activity);
-            }
-            else
-            {
-                BodyInertia inertia = body.Collider.ComputeInertia(body.Mass);
-                description = BodyDescription.CreateDynamic(pose, inertia, collidable, activity);
+                settings.OverrideMassProperties = Jolt.OverrideMassProperties.CalculateInertia;
+                settings.MassPropertiesOverride = new Jolt.MassProperties { Mass = body.Mass };
             }
 
-            BodyHandle handle = _simulation.Bodies.Add(description);
-            World.Add(entity, in handle);
-            _bodies.Add(entity, handle);
-            _bodyEntities.Add(handle, entity);
+            Add(entity, transform, settings, false);
         }
     }
 
@@ -247,14 +243,39 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         {
             StaticBody body = World.Get<StaticBody>(entity);
             Transform transform = World.Get<Transform>(entity);
-            TypedIndex shape = body.Collider.AddShape(_simulation.Shapes);
-            RigidPose pose = body.Collider.GetPose(transform.Position, transform.Rotation);
-            StaticDescription description = new(pose, shape);
-            StaticHandle handle = _simulation.Statics.Add(description);
-            World.Add(entity, in handle);
-            _statics.Add(entity, handle);
-            _staticEntities.Add(handle, entity);
+            using Jolt.BodyCreationSettings settings = CreateSettings(body.Collider, transform, Jolt.MotionType.Static, StaticLayer);
+            Add(entity, transform, settings, true);
         }
+    }
+
+    private static Jolt.BodyCreationSettings CreateSettings(Collider collider, in Transform transform, Jolt.MotionType motion, Jolt.ObjectLayer layer)
+    {
+        Vector3 position = collider.GetBodyPosition(transform.Position, transform.Rotation);
+        using Jolt.Shape shape = collider.CreateShape();
+        Jolt.BodyCreationSettings settings = new(shape, position, transform.Rotation, motion, layer)
+        {
+            Friction = Friction,
+            Restitution = 0,
+            LinearDamping = Damping,
+            AngularDamping = Damping,
+        };
+        return settings;
+    }
+
+    private void Add(Entity entity, in Transform transform, Jolt.BodyCreationSettings settings, bool isStatic)
+    {
+        Jolt.Activation activation = isStatic ? Jolt.Activation.DontActivate : Jolt.Activation.Activate;
+        Jolt.BodyID id = _bodies.CreateAndAddBody(settings, activation);
+        if (id.IsInvalid)
+        {
+            throw new InvalidOperationException($"The physics simulation is full: it holds at most {MaxBodies} bodies.");
+        }
+
+        SimulatedBody simulated = new() { Id = id, PlacedPosition = transform.Position, PlacedRotation = transform.Rotation };
+        World.Add(entity, in simulated);
+        _ids.Add(entity, (id, isStatic));
+        _entities.Add(id, entity);
+        _added++;
     }
 
     /// <summary>Gathers the query's entities first, because adding components while a query runs would move them between archetypes.</summary>
@@ -264,68 +285,91 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         World.Query(in query, (Entity entity) => _pending.Add(entity));
     }
 
-    /// <summary>Puts each kinematic body where its transform now places it, waking it so the broad phase follows.</summary>
-    private void FollowKinematicBodies()
+    /// <summary>Moves each kinematic body to where its transform now places it over the step, so it pushes what it meets, and stops it once its transform stands still.</summary>
+    private void FollowKinematicBodies(float dt)
     {
-        Bodies bodies = _simulation.Bodies;
-        World.Query(in SimulatedBodies, (ref Transform transform, ref BodyHandle handle, ref RigidBody rigidBody) =>
+        Jolt.BodyInterface bodies = _bodies;
+        World.Query(in SimulatedBodies, (ref Transform transform, ref SimulatedBody simulated, ref RigidBody rigidBody) =>
         {
             if (!rigidBody.Kinematic)
             {
                 return;
             }
 
-            RigidPose pose = rigidBody.Collider.GetPose(transform.Position, transform.Rotation);
-            BodyReference body = bodies[handle];
-            if (body.Pose.Position == pose.Position && body.Pose.Orientation == pose.Orientation)
+            bool moved = transform.Position != simulated.PlacedPosition || transform.Rotation != simulated.PlacedRotation;
+            if (!moved && !simulated.Moving)
             {
                 return;
             }
 
-            body.Pose = pose;
-            body.Velocity = default;
-            body.Awake = true;
+            Vector3 position = rigidBody.Collider.GetBodyPosition(transform.Position, transform.Rotation);
+            bodies.MoveKinematic(simulated.Id, position, transform.Rotation, dt);
+            simulated.PlacedPosition = transform.Position;
+            simulated.PlacedRotation = transform.Rotation;
+            simulated.Moving = moved;
         });
     }
 
-    /// <summary>Moves the static bodies whose transform moved, such as a building placed again; this is rare, so it checks rather than tracks.</summary>
+    /// <summary>
+    /// Moves the static bodies whose transform moved, such as a building placed again, and wakes what touched them before or after; this is
+    /// rare, so it checks rather than tracks.
+    /// </summary>
     private void FollowStaticBodies()
     {
-        Statics statics = _simulation.Statics;
         _movedStatics.Clear();
-        World.Query(in PlacedStatics, (ref Transform transform, ref StaticHandle handle, ref StaticBody staticBody) =>
+        World.Query(in PlacedStatics, (ref Transform transform, ref SimulatedBody simulated, ref StaticBody staticBody) =>
         {
-            RigidPose pose = staticBody.Collider.GetPose(transform.Position, transform.Rotation);
-            StaticReference current = statics[handle];
-            if (current.Pose.Position == pose.Position && current.Pose.Orientation == pose.Orientation)
+            if (transform.Position == simulated.PlacedPosition && transform.Rotation == simulated.PlacedRotation)
             {
                 return;
             }
 
-            StaticDescription description = new(pose, current.Shape);
-            _movedStatics.Add((handle, description));
+            Vector3 position = staticBody.Collider.GetBodyPosition(transform.Position, transform.Rotation);
+            _movedStatics.Add((simulated.Id, position, transform.Rotation));
+            simulated.PlacedPosition = transform.Position;
+            simulated.PlacedRotation = transform.Rotation;
         });
 
-        foreach ((StaticHandle handle, StaticDescription description) in _movedStatics)
+        foreach ((Jolt.BodyID id, Vector3 position, Quaternion rotation) in _movedStatics)
         {
-            statics.ApplyDescription(handle, description);
+            WakeBodiesAround(id);
+            _bodies.SetPositionAndRotation(id, position, rotation, Jolt.Activation.DontActivate);
+            WakeBodiesAround(id);
+        }
+    }
+
+    /// <summary>Wakes the moving bodies within a static body's bounds, so a crate falls when the shelf under it moves away.</summary>
+    private void WakeBodiesAround(Jolt.BodyID id)
+    {
+        _locks.LockRead(id, out Jolt.BodyLockRead bodyLock);
+        Jolt.Body? body = bodyLock.Body;
+        Jolt.BoundingBox bounds = default;
+        if (body is not null)
+        {
+            bounds = body.WorldSpaceBounds;
+        }
+
+        _locks.UnlockRead(in bodyLock);
+        if (body is not null)
+        {
+            _system.ActivateBodiesInAABox(in bounds, StaticLayer);
         }
     }
 
     private void CopyPosesToTransforms()
     {
-        Bodies bodies = _simulation.Bodies;
-        World.Query(in SimulatedBodies, (ref Transform transform, ref BodyHandle handle, ref RigidBody rigidBody) =>
+        Jolt.BodyInterface bodies = _bodies;
+        World.Query(in SimulatedBodies, (ref Transform transform, ref SimulatedBody simulated, ref RigidBody rigidBody) =>
         {
-            BodyReference body = bodies[handle];
-            if (rigidBody.Kinematic || !body.Awake)
+            if (rigidBody.Kinematic || !bodies.IsActive(simulated.Id))
             {
                 return;
             }
 
-            RigidPose pose = body.Pose;
-            transform.Position = rigidBody.Collider.GetEntityPosition(pose);
-            transform.Rotation = pose.Orientation;
+            Vector3 position = bodies.GetPosition(simulated.Id);
+            Quaternion rotation = bodies.GetRotation(simulated.Id);
+            transform.Position = rigidBody.Collider.GetEntityPosition(position, rotation);
+            transform.Rotation = rotation;
         });
     }
 }
