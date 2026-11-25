@@ -16,7 +16,7 @@ namespace FlickerVoid.Engine.Rendering;
 /// <summary>Adds rendering to a game.</summary>
 public static class RenderingGameExtensions
 {
-    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume", "sceneMood", "outline", "mainCamera", "depthFadeOverride", "indoorVolume", "uncut" and "doorway" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, the <see cref="MeshSources"/> service, the <see cref="SceneRendererSetup"/> service (which gives renderers those sources), and the mood, material, canvas and texture settings file kinds with their schemas.</summary>
+    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume", "sceneMood", "outline", "mainCamera", "depthFadeOverride", "indoorVolume", "uncut" and "doorway" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, the <see cref="MeshSources"/> service, the <see cref="SceneRendererSetup"/> service (which gives renderers those sources), the <see cref="RenderingSettings"/> service with its console variables, and the mood, material, canvas and texture settings file kinds with their schemas.</summary>
     public static void AddRendering(this Game game)
     {
         game.Spawner.Register("camera", RenderingJsonContext.Default.Camera);
@@ -41,6 +41,9 @@ public static class RenderingGameExtensions
         SceneRendererSetup setup = new();
         setup.Add(renderer => renderer.Meshes = meshes);
         game.Services.AddService(setup);
+        RenderingSettings settings = new();
+        settings.Register(game.DebugConsole);
+        game.Services.AddService(settings);
         ArrayRegistry.Add<Hidden>();
         ArrayRegistry.Add<ShadowOnly>();
         ArrayRegistry.Add<Greyed>();
