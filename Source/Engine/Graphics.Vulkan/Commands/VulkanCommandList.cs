@@ -1,11 +1,15 @@
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using Silk.NET.Vulkan;
+using Silk.NET.Vulkan.Extensions.KHR;
 
+using FlickerVoid.Engine.Graphics.AccelerationStructures;
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Vulkan.AccelerationStructures;
 using FlickerVoid.Engine.Graphics.Vulkan.Buffers;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Pipelines;
@@ -15,7 +19,10 @@ using Viewport = FlickerVoid.Engine.Graphics.Commands.Viewport;
 
 namespace FlickerVoid.Engine.Graphics.Vulkan.Commands;
 
-/// <summary>A command buffer with its own pool, reset on Begin once the GPU has finished its previous submission.</summary>
+/// <summary>
+/// A command buffer with its own pool, reset on Begin once the GPU has finished its previous submission, and the scratch memory its
+/// acceleration structure builds share.
+/// </summary>
 internal sealed unsafe class VulkanCommandList : ICommandList
 {
     /// <summary>The width and height in texels of a block of a block-compressed format.</summary>
@@ -24,6 +31,8 @@ internal sealed unsafe class VulkanCommandList : ICommandList
     private readonly VulkanGraphicsDevice _device;
     private readonly Vk _vk;
     private readonly CommandPool _pool;
+    private VulkanBuffer? _scratch;
+    private ulong _scratchAddress;
     private bool _disposed;
 
     public VulkanCommandList(VulkanGraphicsDevice device)
@@ -275,6 +284,116 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         _vk.CmdDrawIndexed(Handle, (uint)indexCount, (uint)instanceCount, (uint)firstIndex, vertexOffset, (uint)firstInstance);
     }
 
+    public void BuildBottomLevels(ReadOnlySpan<BottomLevelBuild> builds)
+    {
+        if (builds.IsEmpty)
+        {
+            return;
+        }
+
+        KhrAccelerationStructure extension = _device.RequireAccelerationStructures();
+        int count = builds.Length;
+        VulkanAccelerationStructure[] structures = new VulkanAccelerationStructure[count];
+        ulong[] scratchOffsets = new ulong[count];
+        ulong scratchSize = 0;
+        for (int index = 0; index < count; index++)
+        {
+            BottomLevelBuild build = builds[index];
+            VulkanAccelerationStructure structure = CheckBottomLevel(build);
+            structures[index] = structure;
+            ulong needed = structure.BuildScratchSize;
+            if (build.Refit)
+            {
+                needed = structure.UpdateScratchSize;
+            }
+
+            scratchOffsets[index] = AlignScratch(scratchSize);
+            scratchSize = scratchOffsets[index] + needed;
+        }
+
+        ulong scratch = EnsureScratch(scratchSize);
+        AccelerationStructureGeometryKHR[] geometries = new AccelerationStructureGeometryKHR[count];
+        AccelerationStructureBuildGeometryInfoKHR[] infos = new AccelerationStructureBuildGeometryInfoKHR[count];
+        AccelerationStructureBuildRangeInfoKHR[] ranges = new AccelerationStructureBuildRangeInfoKHR[count];
+        AccelerationStructureBuildRangeInfoKHR*[] rangePointers = new AccelerationStructureBuildRangeInfoKHR*[count];
+        fixed (AccelerationStructureGeometryKHR* geometryPointer = geometries)
+        fixed (AccelerationStructureBuildGeometryInfoKHR* infoPointer = infos)
+        fixed (AccelerationStructureBuildRangeInfoKHR* rangePointer = ranges)
+        fixed (AccelerationStructureBuildRangeInfoKHR** rangePointerPointer = rangePointers)
+        {
+            for (int index = 0; index < count; index++)
+            {
+                BottomLevelBuild build = builds[index];
+                VulkanAccelerationStructure structure = structures[index];
+                BottomLevelGeometry geometry = build.Geometry;
+                VulkanBuffer vertices = (VulkanBuffer)geometry.Vertices;
+                VulkanBuffer indices = (VulkanBuffer)geometry.Indices;
+                geometries[index] = VulkanAccelerationStructure.DescribeTriangles(vertices.DeviceAddress, geometry.VertexCount, geometry.VertexStride, indices.DeviceAddress);
+                infos[index] = new AccelerationStructureBuildGeometryInfoKHR
+                {
+                    SType = StructureType.AccelerationStructureBuildGeometryInfoKhr,
+                    Type = AccelerationStructureTypeKHR.BottomLevelKhr,
+                    Flags = VulkanAccelerationStructure.GetBottomLevelFlags(structure.Refittable),
+                    Mode = GetBuildMode(build.Refit),
+                    SrcAccelerationStructure = build.Refit ? structure.Handle : default,
+                    DstAccelerationStructure = structure.Handle,
+                    GeometryCount = 1,
+                    PGeometries = geometryPointer + index,
+                    ScratchData = new DeviceOrHostAddressKHR { DeviceAddress = scratch + scratchOffsets[index] },
+                };
+                ranges[index] = new AccelerationStructureBuildRangeInfoKHR { PrimitiveCount = (uint)(geometry.IndexCount / 3) };
+                rangePointers[index] = rangePointer + index;
+            }
+
+            WaitBeforeBuilds();
+            extension.CmdBuildAccelerationStructures(Handle, (uint)count, infoPointer, rangePointerPointer);
+            MakeBuildsReadable();
+        }
+
+        foreach (VulkanAccelerationStructure structure in structures)
+        {
+            structure.Built = true;
+        }
+    }
+
+    public void BuildTopLevel(IAccelerationStructure structure, IBuffer instances, int instanceCount)
+    {
+        KhrAccelerationStructure extension = _device.RequireAccelerationStructures();
+        VulkanAccelerationStructure topLevel = (VulkanAccelerationStructure)structure;
+        VulkanBuffer instanceBuffer = (VulkanBuffer)instances;
+        if (topLevel.Type != AccelerationStructureTypeKHR.TopLevelKhr)
+        {
+            throw new ArgumentException("Only a top-level structure is built from instances.", nameof(structure));
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(instanceCount);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(instanceCount, topLevel.InstanceCapacity);
+        if (instanceBuffer.DeviceAddress == 0)
+        {
+            throw new ArgumentException($"The instances' buffer needs {nameof(BufferUsage.AccelerationStructureInput)}.", nameof(instances));
+        }
+
+        ulong scratch = EnsureScratch(topLevel.BuildScratchSize);
+        AccelerationStructureGeometryKHR geometry = VulkanAccelerationStructure.DescribeInstances(instanceBuffer.DeviceAddress);
+        AccelerationStructureBuildGeometryInfoKHR info = new()
+        {
+            SType = StructureType.AccelerationStructureBuildGeometryInfoKhr,
+            Type = AccelerationStructureTypeKHR.TopLevelKhr,
+            Flags = VulkanAccelerationStructure.TopLevelFlags,
+            Mode = BuildAccelerationStructureModeKHR.BuildKhr,
+            DstAccelerationStructure = topLevel.Handle,
+            GeometryCount = 1,
+            PGeometries = &geometry,
+            ScratchData = new DeviceOrHostAddressKHR { DeviceAddress = scratch },
+        };
+        AccelerationStructureBuildRangeInfoKHR range = new() { PrimitiveCount = (uint)instanceCount };
+        AccelerationStructureBuildRangeInfoKHR* rangePointer = &range;
+        WaitBeforeBuilds();
+        extension.CmdBuildAccelerationStructures(Handle, 1, &info, &rangePointer);
+        MakeBuildsReadable();
+        topLevel.Built = true;
+    }
+
     /// <summary>
     /// Fills every mip level below the top one by blitting from the level above with linear filtering. Every level must be in
     /// CopyDestination, as after copying the top level in, and they stay there.
@@ -320,9 +439,115 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         }
 
         _disposed = true;
+        _scratch?.Dispose();
         CommandPool pool = _pool;
         VulkanGraphicsDevice device = _device;
         device.ReleaseLater(() => device.Vk.DestroyCommandPool(device.Handle, pool, null));
+    }
+
+    private static VulkanAccelerationStructure CheckBottomLevel(in BottomLevelBuild build)
+    {
+        VulkanAccelerationStructure structure = (VulkanAccelerationStructure)build.Structure;
+        BottomLevelGeometry geometry = build.Geometry;
+        if (structure.Type != AccelerationStructureTypeKHR.BottomLevelKhr)
+        {
+            throw new ArgumentException("Only a bottom-level structure is built from triangles.", nameof(build));
+        }
+
+        if (geometry.VertexCount > structure.VertexCount || geometry.IndexCount > structure.IndexCount || geometry.IndexCount % 3 != 0)
+        {
+            throw new ArgumentException($"The structure holds up to {structure.VertexCount} vertices and {structure.IndexCount} indices of whole triangles; got {geometry.VertexCount} and {geometry.IndexCount}.", nameof(build));
+        }
+
+        if (((VulkanBuffer)geometry.Vertices).DeviceAddress == 0 || ((VulkanBuffer)geometry.Indices).DeviceAddress == 0)
+        {
+            throw new ArgumentException($"The vertices' and indices' buffers need {nameof(BufferUsage.AccelerationStructureInput)}.", nameof(build));
+        }
+
+        if (build.Refit && (!structure.Refittable || !structure.Built))
+        {
+            throw new InvalidOperationException("Only a refittable structure that was built can be refitted.");
+        }
+
+        return structure;
+    }
+
+    private static BuildAccelerationStructureModeKHR GetBuildMode(bool refit)
+    {
+        if (refit)
+        {
+            return BuildAccelerationStructureModeKHR.UpdateKhr;
+        }
+
+        return BuildAccelerationStructureModeKHR.BuildKhr;
+    }
+
+    private ulong AlignScratch(ulong offset)
+    {
+        ulong alignment = _device.ScratchAlignment;
+        return (offset + alignment - 1) / alignment * alignment;
+    }
+
+    /// <summary>
+    /// The aligned address of scratch memory of at least the size; a larger buffer replaces a smaller one, released once the GPU is
+    /// done with it. Builds in one list share it: each waits for the one before.
+    /// </summary>
+    private ulong EnsureScratch(ulong size)
+    {
+        ulong alignment = _device.ScratchAlignment;
+        ulong needed = size + alignment;
+        if (_scratch is null || (ulong)_scratch.Description.Size < needed)
+        {
+            _scratch?.Dispose();
+            ulong capacity = BitOperations.RoundUpToPowerOf2(Math.Max(needed, 1));
+            BufferDescription description = new((long)capacity, BufferUsage.None) { Name = "Acceleration structure scratch" };
+            _scratch = new VulkanBuffer(_device, description, BufferUsageFlags.StorageBufferBit | BufferUsageFlags.ShaderDeviceAddressBit);
+            _scratchAddress = AlignScratch(_scratch.DeviceAddress);
+        }
+
+        return _scratchAddress;
+    }
+
+    /// <summary>Builds read what every earlier command wrote, and write only after earlier reads and builds are done.</summary>
+    private void WaitBeforeBuilds()
+    {
+        MemoryBarrier2 barrier = new()
+        {
+            SType = StructureType.MemoryBarrier2,
+            SrcStageMask = PipelineStageFlags2.AllCommandsBit,
+            SrcAccessMask = AccessFlags2.MemoryWriteBit,
+            DstStageMask = PipelineStageFlags2.AccelerationStructureBuildBitKhr,
+            DstAccessMask = AccessFlags2.AccelerationStructureReadBitKhr | AccessFlags2.AccelerationStructureWriteBitKhr | AccessFlags2.ShaderReadBit,
+        };
+        PipelineBarrier(barrier);
+    }
+
+    /// <summary>Later builds and shaders' ray queries read what the builds wrote.</summary>
+    private void MakeBuildsReadable()
+    {
+        MemoryBarrier2 barrier = new()
+        {
+            SType = StructureType.MemoryBarrier2,
+            SrcStageMask = PipelineStageFlags2.AccelerationStructureBuildBitKhr,
+            SrcAccessMask = AccessFlags2.AccelerationStructureWriteBitKhr,
+            DstStageMask = PipelineStageFlags2.AccelerationStructureBuildBitKhr | PipelineStageFlags2.VertexShaderBit | PipelineStageFlags2.FragmentShaderBit | PipelineStageFlags2.ComputeShaderBit,
+            DstAccessMask = AccessFlags2.AccelerationStructureReadBitKhr,
+        };
+        PipelineBarrier(barrier);
+    }
+
+    private void PipelineBarrier(in MemoryBarrier2 barrier)
+    {
+        fixed (MemoryBarrier2* pointer = &barrier)
+        {
+            DependencyInfo dependency = new()
+            {
+                SType = StructureType.DependencyInfo,
+                MemoryBarrierCount = 1,
+                PMemoryBarriers = pointer,
+            };
+            _vk.CmdPipelineBarrier2(Handle, &dependency);
+        }
     }
 
     private void MoveMipLevel(VulkanTexture texture, uint level, ImageLayout oldLayout, AccessFlags2 oldAccess, ImageLayout newLayout, AccessFlags2 newAccess)

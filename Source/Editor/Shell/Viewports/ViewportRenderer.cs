@@ -58,7 +58,7 @@ internal sealed class ViewportRenderer : IDisposable
     {
         GraphicsDeviceOptions options = new() { Validation = validation };
         _device = new VulkanGraphicsDevice(options, loggerFactory);
-        _scene = new SceneRenderer(_device, content, ViewFormat) { Sky = true };
+        _scene = new SceneRenderer(_device, content, ViewFormat) { Sky = true, RayTracing = true };
         ShaderLibrary shaders = ShaderLibrary.ForEngine("Editor");
         _grid = new GridPass(_device, shaders, ViewFormat);
         _scene.Pipeline.Add(_grid);

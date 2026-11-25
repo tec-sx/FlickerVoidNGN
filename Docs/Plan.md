@@ -44,7 +44,7 @@ graph TD
 - Scenes and spawning go through scene files and factories; scene proxies load and unload whole worlds.
 - Game code is plain C#. Hot reload for code and assets in development.
 - Pressing Play runs the game in its own process, so a crash in game code never takes the editor down.
-- Rendering reads a render world, not the game world: each frame an extractor copies cameras, meshes, lights and volumes into a `RenderScene`, which a later stage can extract on the game thread and draw on a render thread. Drawing is an ordered pipeline of render passes (skinning, light gathering, shadows, geometry into the G-buffer, screen shadows, deferred lighting, post) sharing a frame context; features are added as passes. Barriers stay explicit until a frame graph earns its place.
+- Rendering reads a render world, not the game world: each frame an extractor copies cameras, meshes, lights and volumes into a `RenderScene`, which a later stage can extract on the game thread and draw on a render thread. Drawing is an ordered pipeline of render passes (skinning, light gathering, shadows, the scene's acceleration structures, geometry into the G-buffer, screen shadows, deferred lighting, post) sharing a frame context; features are added as passes. Barriers stay explicit until a frame graph earns its place.
 
 ## Look and lighting
 
@@ -54,6 +54,7 @@ graph TD
 - One shading model with artist controls per material (ramp softness, wrap, rim, specular, emissive, shadow tint) on physically based light maths. Stage 4 shipped plain diffuse; the controls come with the editor (owner, 2026-11-19), where they can be tuned live.
 - Deferred clustered lighting for many point, spot and directional lights (owner, 2026-11-25, in place of clustered forward): meshes are drawn into a G-buffer and lit in one compute pass, so ray tracing on RTX and DLSS can read the frame's surfaces.
 - Shadows: one orthographic sun shadow map fitted to the view, a shadow atlas for local lights, soft filtering, contact shadows.
+- Ray tracing on RTX (owner, 2026-11-25): where the GPU has ray queries, the scene's acceleration structures are built every frame for ray traced shadows, ambient occlusion and probes; elsewhere the shadow maps, screen-space shadows and baked probes stay.
 - Light cookies: spot lights project painted textures.
 - Baked irradiance probes for bounce light.
 - Volumetric fog lit by the same lights.

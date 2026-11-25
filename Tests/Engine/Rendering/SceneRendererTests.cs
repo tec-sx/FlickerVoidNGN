@@ -19,6 +19,7 @@ public sealed class SceneRendererTests : IDisposable
     /// <summary>A part a module's mesh source makes, standing two metres below the view's centre, so a box four high covers the view.</summary>
     private const string VanBody = """{ "name": "Van", "components": { "transform": { "position": [0, -2, 0] }, "meshRenderer": { "mesh": "Van.fvtest#body" } } }""";
 
+    private static readonly Vector3 Down = -Vector3.UnitZ;
     private static readonly Vector4 Red = new(1, 0, 0, 1);
     private static readonly uint RedPixel = SceneRendererTestsBuilder.Rgba(255, 0, 0, 255);
     private static readonly uint BlackPixel = SceneRendererTestsBuilder.Rgba(0, 0, 0, 255);
@@ -1341,6 +1342,87 @@ public sealed class SceneRendererTests : IDisposable
 
         (byte shade, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
         shade.Should().BeInRange(78, 80, "the crate's front stands 4.5 from the camera, shown as 4.5 / (4.5 + 10)");
+    }
+
+    [Fact]
+    public void TracesRaysAgainstTheMeshesItDrawsWhenTracingRays()
+    {
+        _builder.WithRayQueries();
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Step", "components": { "transform": { "position": [2, 0, 1], "scale": [0.25, 0.25, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithRenderer(static renderer => renderer.RayTracing = true);
+
+        RayHit[] hits = _builder.TraceRays((new Vector3(0, 0, 5), Down), (new Vector3(2, 0, 5), Down), (new Vector3(2.2f, 0, 5), Down), (new Vector3(-2, 0, 5), Down));
+
+        _builder.TracedRays.Should().BeTrue();
+        hits[0].DrawPosition.Should().Be(Vector3.Zero, "the ray names the quad's draw, which stands at the origin");
+        hits[0].Distance.Should().BeApproximately(5, 0.001f, "the quad stands five below the ray's start");
+        hits[1].DrawPosition.Should().Be(new Vector3(2, 0, 1), "the step is outside the view but still traced");
+        hits[1].Distance.Should().BeApproximately(4, 0.001f, "the step stands a unit above the quad");
+        hits[2].Missed.Should().BeTrue("the step is scaled to a quarter of the quad");
+        hits[3].Missed.Should().BeTrue("nothing stands there");
+    }
+
+    [Fact]
+    public void FollowsPosedMeshesInTheScenesAccelerationStructure()
+    {
+        _builder.WithRayQueries();
+        _builder.WithModel("Walker.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red).WithMovingJoint(Vector3.Zero, new Vector3(1, 1, 0), 2));
+        _builder.WithScene(Camera, """{ "name": "Walker", "components": { "transform": {}, "meshRenderer": { "mesh": "Walker.glb" }, "meshAnimator": { "time": 0 } } }""");
+        _builder.WithRenderer(static renderer => renderer.RayTracing = true);
+        (Vector3, Vector3) start = (new Vector3(0.1f, 0.1f, 5), Down);
+        (Vector3, Vector3) end = (new Vector3(0.75f, 0.75f, 5), Down);
+
+        RayHit[] before = _builder.TraceRays(start, end);
+        RayHit[] after = _builder.WithAnimationTime(1).TraceRays(start, end);
+        RayHit[] later = _builder.WithAnimationTime(1.5f).TraceRays(start, end);
+
+        before[0].Missed.Should().BeFalse("the walker starts at the origin");
+        before[1].Missed.Should().BeTrue();
+        after[0].Missed.Should().BeFalse("halfway, the walker still covers the point just up and right of the origin");
+        after[1].Missed.Should().BeFalse("halfway, the walker has moved half a unit up and right");
+        later[0].Missed.Should().BeTrue("three quarters of the way, the walker has left the point behind");
+        later[1].Distance.Should().BeApproximately(5, 0.001f, "three quarters of the way, the walker covers the end");
+    }
+
+    [Fact]
+    public void LeavesOutlineOnlyMeshesOutOfTheScenesAccelerationStructure()
+    {
+        _builder.WithRayQueries();
+        _builder.WithScene(Camera, """{ "name": "Doorway", "components": { "transform": {}, "doorway": { "size": [1, 1, 1] } } }""");
+        _builder.WithRenderer(static renderer => renderer.RayTracing = true);
+
+        RayHit[] hits = _builder.TraceRays((new Vector3(0, 0, 5), Down));
+
+        _builder.TracedRays.Should().BeTrue();
+        hits[0].Missed.Should().BeTrue("a doorway is only an outline, which rays pass through");
+    }
+
+    [Fact]
+    public void TracesNoRaysUnlessAskedTo()
+    {
+        _builder.WithRayQueries();
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+
+        _builder.TraceRays((new Vector3(0, 0, 5), Down));
+
+        _builder.TracedRays.Should().BeFalse("stages, previews and bakes draw without ray tracing");
+    }
+
+    [Fact]
+    public void DrawsWithoutRayTracingWhereTheDeviceHasNoRayQueries()
+    {
+        _builder.WithoutRayQueries();
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithRenderer(static renderer => renderer.RayTracing = true);
+
+        uint[] pixels = _builder.Render();
+        _builder.TraceRays((new Vector3(0, 0, 5), Down));
+
+        pixels[5].Should().Be(RedPixel, "the frame draws as it does on any device");
+        _builder.TracedRays.Should().BeFalse("the device has no ray queries");
     }
 
     /// <summary>A paper of sixteen different greys under the entities, a camera first.</summary>

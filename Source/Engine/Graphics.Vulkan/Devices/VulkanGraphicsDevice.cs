@@ -8,6 +8,7 @@ using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Vulkan.Extensions.KHR;
 
+using FlickerVoid.Engine.Graphics.AccelerationStructures;
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
@@ -16,6 +17,7 @@ using FlickerVoid.Engine.Graphics.Presentation;
 using FlickerVoid.Engine.Graphics.Resources;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Vulkan.AccelerationStructures;
 using FlickerVoid.Engine.Graphics.Vulkan.Buffers;
 using FlickerVoid.Engine.Graphics.Vulkan.Commands;
 using FlickerVoid.Engine.Graphics.Vulkan.Descriptors;
@@ -31,12 +33,13 @@ namespace FlickerVoid.Engine.Graphics.Vulkan.Devices;
 /// <summary>
 /// A Vulkan 1.3 device: one graphics queue, a timeline semaphore counting submissions, bindless tables, and
 /// resources released once the GPU has finished with them. Requires dynamic rendering, synchronization2 and descriptor indexing;
-/// presents to windows when the driver has the surface and swapchain extensions, and shares textures with other graphics APIs
-/// when it can export memory and semaphores.
+/// presents to windows when the driver has the surface and swapchain extensions, shares textures with other graphics APIs
+/// when it can export memory and semaphores, and traces rays when it has acceleration structures and ray queries.
 /// </summary>
 public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
 {
     private const string ValidationLayer = "VK_LAYER_KHRONOS_validation";
+    private const string RayQueryExtension = "VK_KHR_ray_query";
 
     private readonly ILogger _logger;
     private readonly ExtDebugUtils? _debugUtils;
@@ -48,6 +51,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
     private readonly Queue<(ulong Value, Action Release)> _releases = new();
     private readonly VulkanCommandList _uploadCommands;
     private readonly List<IDisposable> _placeholders = [];
+    private readonly KhrAccelerationStructure? _accelerationStructures;
     private ulong _submitted;
     private ulong _acquireValue;
     private bool _disposed;
@@ -75,20 +79,34 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         Vk.GetPhysicalDeviceProperties(PhysicalDevice, out PhysicalDeviceProperties properties);
         AdapterName = SilkMarshal.PtrToString((nint)properties.DeviceName) ?? "Vulkan device";
         Vk.GetPhysicalDeviceMemoryProperties(PhysicalDevice, out _memoryProperties);
+        if (options.Features.HasFlag(GraphicsFeatures.RayQueries) && HasRayQueries(PhysicalDevice))
+        {
+            Features |= GraphicsFeatures.RayQueries;
+        }
 
         Handle = CreateDevice();
         Vk.GetDeviceQueue(Handle, QueueFamily, 0, out Queue queue);
         Queue = queue;
         _timeline = CreateTimeline();
 
-        PhysicalDeviceVulkan12Properties limits = GetVulkan12Properties();
-        Bindless = new VulkanBindlessTables(Vk, Handle, limits);
+        PhysicalDeviceVulkan12Properties limits = GetVulkan12Properties(out PhysicalDeviceAccelerationStructurePropertiesKHR rayLimits);
+        uint accelerationStructureSlots = 0;
+        if (Features.HasFlag(GraphicsFeatures.RayQueries))
+        {
+            Vk.TryGetDeviceExtension(Instance, Handle, out _accelerationStructures);
+            ScratchAlignment = Math.Max(rayLimits.MinAccelerationStructureScratchOffsetAlignment, 1);
+            accelerationStructureSlots = Math.Min(GraphicsLimits.BindlessAccelerationStructureCapacity, rayLimits.MaxDescriptorSetUpdateAfterBindAccelerationStructures);
+        }
+
+        Bindless = new VulkanBindlessTables(Vk, Handle, limits, accelerationStructureSlots);
         _uploadCommands = new VulkanCommandList(this);
         CreatePlaceholders();
         _logger.LogInformation("Vulkan device on {Adapter}.", AdapterName);
     }
 
     public string AdapterName { get; }
+
+    public GraphicsFeatures Features { get; }
 
     internal Vk Vk { get; }
 
@@ -109,6 +127,9 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
     internal bool CanShare { get; private set; }
 
     internal VulkanBindlessTables Bindless { get; }
+
+    /// <summary>The alignment of the scratch memory acceleration structure builds take; 0 without ray queries.</summary>
+    internal uint ScratchAlignment { get; }
 
     public IBuffer CreateBuffer(in BufferDescription description, ReadOnlySpan<byte> initialData = default)
     {
@@ -176,6 +197,18 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
     public IPipeline CreateComputePipeline(ComputePipelineDescription description) => new VulkanPipeline(this, description);
 
+    public IAccelerationStructure CreateBottomLevel(in BottomLevelDescription description)
+    {
+        RequireAccelerationStructures();
+        return VulkanAccelerationStructure.CreateBottomLevel(this, description);
+    }
+
+    public IAccelerationStructure CreateTopLevel(in TopLevelDescription description)
+    {
+        RequireAccelerationStructures();
+        return VulkanAccelerationStructure.CreateTopLevel(this, description);
+    }
+
     public ICommandList CreateCommandList() => new VulkanCommandList(this);
 
     /// <summary>
@@ -240,6 +273,7 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         }
 
         Bindless.Dispose();
+        _accelerationStructures?.Dispose();
         Vk.DestroySemaphore(Handle, _timeline, null);
         Vk.DestroyDevice(Handle, null);
         if (_debugUtils is not null)
@@ -251,6 +285,17 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         Vk.DestroyInstance(Instance, null);
         Vk.Dispose();
         _self.Free();
+    }
+
+    /// <summary>The acceleration structure commands; throws <see cref="NotSupportedException"/> on a device without ray queries.</summary>
+    internal KhrAccelerationStructure RequireAccelerationStructures()
+    {
+        if (_accelerationStructures is null)
+        {
+            throw new NotSupportedException($"{AdapterName} was created without ray queries; check {nameof(Features)} first.");
+        }
+
+        return _accelerationStructures;
     }
 
     /// <summary>Runs the release once the GPU has finished everything submitted so far.</summary>
@@ -672,6 +717,23 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         return false;
     }
 
+    /// <summary>Whether the GPU builds acceleration structures and its shaders trace rays against them, from a bindless table.</summary>
+    private bool HasRayQueries(PhysicalDevice device)
+    {
+        string[] extensions = [KhrAccelerationStructure.ExtensionName, RayQueryExtension, KhrDeferredHostOperations.ExtensionName];
+        if (!Array.TrueForAll(extensions, extension => Vk.IsDeviceExtensionPresent(device, extension)))
+        {
+            return false;
+        }
+
+        PhysicalDeviceRayQueryFeaturesKHR rayQuery = new() { SType = StructureType.PhysicalDeviceRayQueryFeaturesKhr };
+        PhysicalDeviceAccelerationStructureFeaturesKHR structures = new() { SType = StructureType.PhysicalDeviceAccelerationStructureFeaturesKhr, PNext = &rayQuery };
+        PhysicalDeviceVulkan12Features features12 = new() { SType = StructureType.PhysicalDeviceVulkan12Features, PNext = &structures };
+        PhysicalDeviceFeatures2 features = new() { SType = StructureType.PhysicalDeviceFeatures2, PNext = &features12 };
+        Vk.GetPhysicalDeviceFeatures2(device, &features);
+        return features12.BufferDeviceAddress && structures.AccelerationStructure && structures.DescriptorBindingAccelerationStructureUpdateAfterBind && rayQuery.RayQuery;
+    }
+
     private Device CreateDevice()
     {
         float priority = 1;
@@ -714,6 +776,23 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             Features = new PhysicalDeviceFeatures { ShaderStorageImageWriteWithoutFormat = true, TextureCompressionBC = true },
         };
         List<string> extensions = [];
+        PhysicalDeviceRayQueryFeaturesKHR rayQuery = new() { SType = StructureType.PhysicalDeviceRayQueryFeaturesKhr, RayQuery = true };
+        PhysicalDeviceAccelerationStructureFeaturesKHR structures = new()
+        {
+            SType = StructureType.PhysicalDeviceAccelerationStructureFeaturesKhr,
+            PNext = &rayQuery,
+            AccelerationStructure = true,
+            DescriptorBindingAccelerationStructureUpdateAfterBind = true,
+        };
+        if (Features.HasFlag(GraphicsFeatures.RayQueries))
+        {
+            features13.PNext = &structures;
+            features12.BufferDeviceAddress = true;
+            extensions.Add(KhrAccelerationStructure.ExtensionName);
+            extensions.Add(RayQueryExtension);
+            extensions.Add(KhrDeferredHostOperations.ExtensionName);
+        }
+
         CanPresent = CanPresent && Vk.IsDeviceExtensionPresent(PhysicalDevice, KhrSwapchain.ExtensionName);
         if (CanPresent)
         {
@@ -761,11 +840,19 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         return semaphore;
     }
 
-    private PhysicalDeviceVulkan12Properties GetVulkan12Properties()
+    /// <summary>The descriptor limits, and with ray queries the acceleration structure limits.</summary>
+    private PhysicalDeviceVulkan12Properties GetVulkan12Properties(out PhysicalDeviceAccelerationStructurePropertiesKHR rayLimits)
     {
+        PhysicalDeviceAccelerationStructurePropertiesKHR structures = new() { SType = StructureType.PhysicalDeviceAccelerationStructurePropertiesKhr };
         PhysicalDeviceVulkan12Properties properties12 = new() { SType = StructureType.PhysicalDeviceVulkan12Properties };
+        if (Features.HasFlag(GraphicsFeatures.RayQueries))
+        {
+            properties12.PNext = &structures;
+        }
+
         PhysicalDeviceProperties2 properties = new() { SType = StructureType.PhysicalDeviceProperties2, PNext = &properties12 };
         Vk.GetPhysicalDeviceProperties2(PhysicalDevice, &properties);
+        rayLimits = structures;
         return properties12;
     }
 
@@ -937,6 +1024,26 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _placeholders.Add(texture);
         _placeholders.Add(buffer);
         _placeholders.Add(sampler);
+        if (Features.HasFlag(GraphicsFeatures.RayQueries))
+        {
+            CreateEmptyScene();
+        }
+    }
+
+    /// <summary>Fills slot 0 of the acceleration structure table with a top-level structure of no instances, which rays pass through.</summary>
+    private void CreateEmptyScene()
+    {
+        BufferDescription instancesDescription = new(Marshal.SizeOf<AccelerationStructureInstance>(), BufferUsage.AccelerationStructureInput, MemoryLocation.Upload) { Name = "Bindless placeholder instances" };
+        using IBuffer instances = CreateBuffer(instancesDescription);
+        TopLevelDescription sceneDescription = new(1) { Name = "Bindless placeholder" };
+        VulkanAccelerationStructure scene = VulkanAccelerationStructure.CreateTopLevel(this, sceneDescription);
+        _uploadCommands.Begin();
+        _uploadCommands.BuildTopLevel(scene, instances, 0);
+        _uploadCommands.End();
+        Submit(_uploadCommands);
+        WaitIdle();
+        Bindless.WriteAccelerationStructure(BindlessIndex.None, scene.Handle);
+        _placeholders.Add(scene);
     }
 }
 

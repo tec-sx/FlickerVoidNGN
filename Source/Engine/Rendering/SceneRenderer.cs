@@ -17,6 +17,7 @@ using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Rendering.PostProcessing;
+using FlickerVoid.Engine.Rendering.RayTracing;
 using FlickerVoid.Engine.Rendering.Shadows;
 using FlickerVoid.Engine.Rendering.Sky;
 using FlickerVoid.Engine.Runtime.Components;
@@ -27,9 +28,9 @@ namespace FlickerVoid.Engine.Rendering;
 /// <summary>
 /// Draws a frame: extracts the world into a <see cref="RenderScene"/>, lets every pass of the <see cref="Pipeline"/> prepare,
 /// uploads the frame's view, lights, shadows, clusters and probes, then records the passes in order. The default passes skin
-/// meshes, gather lights, draw the shadow atlas, the depth and G-buffer and the screen shadows, light the G-buffer into HDR,
-/// post-process it graded as the <see cref="Mood"/> says, show a <see cref="DebugView"/> in its place when one is asked for, and
-/// draw the outlines of outlined meshes.
+/// meshes, gather lights, draw the shadow atlas, build the scene's acceleration structures when it traces rays, draw the depth and
+/// G-buffer and the screen shadows, light the G-buffer into HDR, post-process it graded as the <see cref="Mood"/> says, show a
+/// <see cref="DebugView"/> in its place when one is asked for, and draw the outlines of outlined meshes.
 /// </summary>
 public sealed class SceneRenderer : IDisposable
 {
@@ -81,6 +82,7 @@ public sealed class SceneRenderer : IDisposable
         Pipeline.Add(new SkinningPass(device, shaders, content));
         Pipeline.Add(new LightGatherPass());
         Pipeline.Add(new ShadowPass(device, shaders));
+        Pipeline.Add(new RayTracingPass(device));
         Pipeline.Add(new GeometryPass(device, shaders));
         Pipeline.Add(new ScreenShadowPass(device, shaders));
         Pipeline.Add(new LightingPass(device, shaders));
@@ -120,6 +122,13 @@ public sealed class SceneRenderer : IDisposable
 
     /// <summary>What it shows: the lit frame by default, or one of the G-buffer's targets or the depth in its place.</summary>
     public DebugView DebugView { get; set; }
+
+    /// <summary>
+    /// Whether it draws with the ray traced tier where the device has ray queries, building the scene's acceleration structures
+    /// each frame for its ray traced passes; the game's window and the editor's viewport do, while stages, previews and probe bakes
+    /// draw without. Ignored on devices without ray queries.
+    /// </summary>
+    public bool RayTracing { get; set; }
 
     /// <summary>Whether the depth fade is drawn; on by default.</summary>
     public bool DepthFades { get; set; } = true;
@@ -219,6 +228,7 @@ public sealed class SceneRenderer : IDisposable
         context.Probes = Probes;
         context.Sky = Sky;
         context.DebugView = DebugView;
+        context.RayTracing = RayTracing && Device.Features.HasFlag(GraphicsFeatures.RayQueries);
         context.DepthFade = default;
         if (DepthFades)
         {

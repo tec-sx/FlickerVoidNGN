@@ -65,6 +65,9 @@ struct FrameData
     uint GBufferMaterial;
     uint GBufferObjectDepth;
     uint GBufferMotion;
+    // The scene's top-level acceleration structure while the frame traces rays, else 0, an empty one; the table of them
+    // (t0, space5) exists only on devices with ray queries.
+    uint AccelerationStructure;
     // The frame buffer's own bindless index, which LoadFrame was given.
     uint Buffer;
 };
@@ -130,6 +133,7 @@ FrameData LoadFrame(uint index)
     frame.GBufferMaterial = buffer.Load<uint>(496);
     frame.GBufferObjectDepth = buffer.Load<uint>(500);
     frame.GBufferMotion = buffer.Load<uint>(504);
+    frame.AccelerationStructure = buffer.Load<uint>(508);
     frame.Buffer = index;
     return frame;
 }

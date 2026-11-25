@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Resources;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
@@ -15,8 +16,8 @@ namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>
 /// Writes the frame's view, sun, lights, shadows, light clusters, probes, indoor volumes, cutaway, draws and the bindless indices
-/// of its depth and G-buffer into the frame buffer ring, after every pass has prepared and before any executes; remembers the
-/// view for the next frame's view before.
+/// of its depth, G-buffer and acceleration structure into the frame buffer ring, after every pass has prepared and before any
+/// executes; remembers the view for the next frame's view before.
 /// </summary>
 internal sealed class FrameDataWriter : IDisposable
 {
@@ -109,6 +110,12 @@ internal sealed class FrameDataWriter : IDisposable
         _previousViewProjection = view.ViewProjection;
         Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
         GBuffer gBuffer = context.GBuffer;
+        uint accelerationStructure = BindlessIndex.None;
+        if (context.AccelerationStructure is { } scene)
+        {
+            accelerationStructure = scene.BindlessIndex;
+        }
+
         FrameData data = new(
             view.ViewProjection,
             depthAxis,
@@ -172,7 +179,7 @@ internal sealed class FrameDataWriter : IDisposable
             gBuffer.Material.BindlessIndex,
             gBuffer.ObjectDepth.BindlessIndex,
             gBuffer.Motion.BindlessIndex,
-            0);
+            accelerationStructure);
 
         IBuffer frame = _frames.Get(size);
         ReadOnlySpan<FrameData> header = new(in data);

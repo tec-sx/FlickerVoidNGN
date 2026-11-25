@@ -3,11 +3,15 @@ using VkBuffer = Silk.NET.Vulkan.Buffer;
 
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Commands;
+using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 
 namespace FlickerVoid.Engine.Graphics.Vulkan.Buffers;
 
-/// <summary>A Vulkan buffer with its own memory; upload and readback buffers stay mapped.</summary>
+/// <summary>
+/// A Vulkan buffer with its own memory; upload and readback buffers stay mapped, and buffers acceleration structure builds read
+/// have a device address.
+/// </summary>
 internal sealed unsafe class VulkanBuffer : IBuffer
 {
     private readonly VulkanGraphicsDevice _device;
@@ -21,11 +25,13 @@ internal sealed unsafe class VulkanBuffer : IBuffer
         Description = description;
         Vk vk = device.Vk;
 
+        bool rayQueries = device.Features.HasFlag(GraphicsFeatures.RayQueries);
+        BufferUsageFlags usage = GetUsage(description.Usage, rayQueries) | extraUsage;
         BufferCreateInfo info = new()
         {
             SType = StructureType.BufferCreateInfo,
             Size = (ulong)description.Size,
-            Usage = GetUsage(description.Usage) | extraUsage,
+            Usage = usage,
             SharingMode = SharingMode.Exclusive,
         };
         VulkanResult.Check(vk.CreateBuffer(device.Handle, &info, null, out VkBuffer buffer));
@@ -33,8 +39,21 @@ internal sealed unsafe class VulkanBuffer : IBuffer
 
         vk.GetBufferMemoryRequirements(device.Handle, buffer, out MemoryRequirements requirements);
         MemoryPropertyFlags properties = GetMemoryProperties(description.Memory);
-        _memory = device.AllocateMemory(requirements, properties);
+        bool addressed = usage.HasFlag(BufferUsageFlags.ShaderDeviceAddressBit);
+        MemoryAllocateFlagsInfo addressFlags = new() { SType = StructureType.MemoryAllocateFlagsInfo, Flags = MemoryAllocateFlags.DeviceAddressBit };
+        void* next = null;
+        if (addressed)
+        {
+            next = &addressFlags;
+        }
+
+        _memory = device.AllocateMemory(requirements, properties, next);
         VulkanResult.Check(vk.BindBufferMemory(device.Handle, buffer, _memory, 0));
+        if (addressed)
+        {
+            BufferDeviceAddressInfo addressInfo = new() { SType = StructureType.BufferDeviceAddressInfo, Buffer = buffer };
+            DeviceAddress = vk.GetBufferDeviceAddress(device.Handle, &addressInfo);
+        }
 
         if (description.Memory != MemoryLocation.Gpu)
         {
@@ -57,6 +76,9 @@ internal sealed unsafe class VulkanBuffer : IBuffer
     public BufferDescription Description { get; }
 
     public uint BindlessIndex { get; }
+
+    /// <summary>Where acceleration structure builds find it; 0 unless it is their input, scratch or storage.</summary>
+    public ulong DeviceAddress { get; }
 
     /// <summary>The state the last recorded barrier left it in.</summary>
     public ResourceState State { get; set; }
@@ -95,9 +117,14 @@ internal sealed unsafe class VulkanBuffer : IBuffer
         });
     }
 
-    private static BufferUsageFlags GetUsage(BufferUsage usage)
+    private static BufferUsageFlags GetUsage(BufferUsage usage, bool rayQueries)
     {
         BufferUsageFlags flags = 0;
+        if (usage.HasFlag(BufferUsage.AccelerationStructureInput) && rayQueries)
+        {
+            flags |= BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr;
+        }
+
         if (usage.HasFlag(BufferUsage.ShaderRead) || usage.HasFlag(BufferUsage.ShaderWrite))
         {
             flags |= BufferUsageFlags.StorageBufferBit;

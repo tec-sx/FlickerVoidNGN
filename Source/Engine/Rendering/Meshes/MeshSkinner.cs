@@ -185,7 +185,7 @@ internal sealed class MeshSkinner : IDisposable
                 continue;
             }
 
-            BufferDescription description = new(part.Vertices.Description.Size, BufferUsage.ShaderRead | BufferUsage.ShaderWrite) { Name = "Posed vertices" };
+            BufferDescription description = new(part.Vertices.Description.Size, BufferUsage.ShaderRead | BufferUsage.ShaderWrite | BufferUsage.AccelerationStructureInput) { Name = "Posed vertices" };
             buffers[index] = _device.CreateBuffer(description);
         }
 

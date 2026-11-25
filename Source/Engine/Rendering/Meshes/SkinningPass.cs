@@ -113,7 +113,7 @@ internal sealed class SkinningPass : IRenderPass
             }
 
             bool inView = IsInView(context.Statistics, mesh.Flags, bounds, view);
-            context.Draws.Add(new MeshDraw(mesh.World, previousWorld, part, vertices, previousVertices, material, outline, mesh.Flags, bounds, inView));
+            context.Draws.Add(new MeshDraw(mesh.Id, mesh.World, previousWorld, part, vertices, previousVertices, material, outline, mesh.Flags, bounds, inView));
         }
     }
 }

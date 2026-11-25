@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Graphics.AccelerationStructures;
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
@@ -53,6 +54,15 @@ public sealed class RenderContext
 
     /// <summary>What the frame shows: the lit frame, or one of the G-buffer's targets or the depth in its place.</summary>
     public DebugView DebugView { get; internal set; }
+
+    /// <summary>Whether the frame traces rays: the renderer's <see cref="SceneRenderer.RayTracing"/> is on and the device has ray queries.</summary>
+    public bool RayTracing { get; internal set; }
+
+    /// <summary>
+    /// The scene's top-level acceleration structure while the frame traces rays, set as the passes prepare and built before the
+    /// geometry pass; each instance's id is its draw's number. Shaders find it in the frame data too. Null without ray tracing.
+    /// </summary>
+    public IAccelerationStructure? AccelerationStructure { get; internal set; }
 
     /// <summary>The depth fade post-processing draws.</summary>
     public DepthFade DepthFade { get; internal set; }
@@ -110,5 +120,6 @@ public sealed class RenderContext
         SunShadow = GpuLight.None;
         ShadowAtlas = GpuLight.None;
         ProbeSource = null;
+        AccelerationStructure = null;
     }
 }
