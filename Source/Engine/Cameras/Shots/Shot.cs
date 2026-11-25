@@ -35,4 +35,8 @@ public struct Shot
 
     /// <summary>Whether the player may skip it while it plays, as a cutscene, jumping to where it plays to.</summary>
     public bool Skippable { get; set; }
+
+    /// <summary>A lighting mood laid over the scene's and the story's while the shot is live, changing only the values it names.</summary>
+    [ContentFile(".fvmood")]
+    public string Mood { get; set; } = string.Empty;
 }

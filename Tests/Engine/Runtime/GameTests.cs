@@ -148,6 +148,24 @@ public class GameTests
     }
 
     [Fact]
+    public void TheClockRunsWithTheFixedStepsAndStandsStillWhilePaused()
+    {
+        using Game game = _builder.Build();
+        game.Clock.Speed = 60;
+        game.Pause(HubPause);
+        game.Tick(game.Loop.FixedStep);
+        double paused = game.Clock.Hour;
+
+        game.Resume(HubPause);
+        game.Tick(game.Loop.FixedStep);
+
+        float step = (float)game.Loop.FixedStep.TotalSeconds;
+        paused.Should().Be(0);
+        game.Clock.Hour.Should().BeApproximately(step, 1e-5f, "at sixty hours a minute an hour passes each second");
+        game.Services.GetService<WorldClock>().Should().BeSameAs(game.Clock);
+    }
+
+    [Fact]
     public void RunsDeferredActionsOnceBeforeTheNextTicksSystems()
     {
         using Game game = _builder.WithFixedSystem(_fixedSystem).Build();

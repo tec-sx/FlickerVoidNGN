@@ -89,7 +89,7 @@ public sealed partial class ViewportViewModel
         return new RenderCamera(camera, transform);
     }
 
-    /// <summary>The depth fade the viewport draws: the main camera's, without any camera's override; none while it is switched off.</summary>
+    /// <summary>The depth fade the viewport draws: the drawn mood's, without any shot's mood; none while it is switched off.</summary>
     public DepthFade GetDepthFade()
     {
         if (!ShowDepthFade)
@@ -97,10 +97,11 @@ public sealed partial class ViewportViewModel
             return default;
         }
 
-        return MainCamera.Find(Scene.Game.World);
+        LightingMood drawn = GetDrawnMood();
+        return drawn.ToDepthFade();
     }
 
-    /// <summary>The depth fade the selected camera's preview draws: the main camera's changed by the camera's override.</summary>
+    /// <summary>The depth fade the selected camera's preview draws: the drawn mood's, changed by the selected shot's mood.</summary>
     public DepthFade GetPreviewDepthFade()
     {
         if (!ShowDepthFade || Selection.Selected is not { } selected)
@@ -108,7 +109,14 @@ public sealed partial class ViewportViewModel
             return default;
         }
 
-        return MainCamera.FindFor(Scene.Game.World, selected);
+        LightingMood drawn = GetDrawnMood();
+        World world = Scene.Game.World;
+        if (world.IsAlive(selected) && world.TryGet(selected, out Shot shot) && LoadMood(shot.Mood) is { } shotMood)
+        {
+            shotMood.Apply(drawn);
+        }
+
+        return drawn.ToDepthFade();
     }
 
     /// <summary>

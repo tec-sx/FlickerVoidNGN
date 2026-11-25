@@ -25,7 +25,6 @@ internal sealed class RenderSceneTestsBuilder
         scene.Indoors.Add(indoor);
         scene.Cutaway = indoor;
         scene.Transition = new RenderTransition(0.5f, Vector3.One, 0.25f, camera);
-        scene.DepthFade = new DepthFade { NearAmount = 0.4f };
         scene.Focus = new Vector3(0, 1, 0);
         return scene;
     }

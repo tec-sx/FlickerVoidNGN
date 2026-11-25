@@ -49,6 +49,17 @@ public sealed class ScenePlayerTests : IDisposable
     }
 
     [Fact]
+    public void PlaysTheScenesOwnMoodAndEnvironmentWhenGivenNoMood()
+    {
+        _builder.Scenes.WithScene("Room.fvscene", Room).Open("Room.fvscene");
+
+        _builder.Build().Play(null);
+
+        string[] expected = ["--scene", ".play/Room.fvscene"];
+        _builder.Launcher.Received(1).Launch(ScenePlayerTestsBuilder.Program, Arg.Is<IReadOnlyList<string>>(arguments => arguments.SequenceEqual(expected)));
+    }
+
+    [Fact]
     public void CannotPlayAWorldWithoutASceneFile()
     {
         bool played = _builder.Build().Play(new LightingMood());
