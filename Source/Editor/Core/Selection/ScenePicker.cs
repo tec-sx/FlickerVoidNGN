@@ -13,20 +13,35 @@ namespace FlickerVoid.Editor.Core.Selection;
 
 /// <summary>
 /// Finds the mesh or greybox a ray hits first, by its triangles (skinned ones in their bind pose); entities without a mesh are picked by
-/// their icons. Keeps each model's triangles from the first pick until its file changes.
+/// their icons. Makes each mesh through <see cref="Meshes"/> at its first pick and keeps its triangles until the file it was made from changes.
 /// </summary>
 public sealed class ScenePicker : IDisposable
 {
-    private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>().WithNone<Hidden>();
-    private static readonly QueryDescription Greyboxes = new QueryDescription().WithAll<Greybox, Transform>().WithNone<MeshRenderer, Hidden>();
+    private static readonly QueryDescription MeshEntities = new QueryDescription().WithAll<MeshRenderer, Transform>().WithNone<Hidden>();
+    private static readonly QueryDescription GreyboxEntities = new QueryDescription().WithAll<Greybox, Transform>().WithNone<MeshRenderer, Hidden>();
 
     private readonly IContentManager _content;
-    private readonly Dictionary<string, PickModel?> _models = new(ContentManager.PathComparer);
+    private readonly Dictionary<string, Made> _models = new(ContentManager.PathComparer);
+    private MeshSources _meshes = new();
 
     public ScenePicker(IContentManager content)
     {
         _content = content;
         _content.Changed += HandleChanged;
+    }
+
+    /// <summary>Turns mesh names into models; the editor gives it the game's, so the meshes the project's modules make are picked too.</summary>
+    public MeshSources Meshes
+    {
+        get => _meshes;
+        set
+        {
+            if (!ReferenceEquals(value, _meshes))
+            {
+                _meshes = value;
+                _models.Clear();
+            }
+        }
     }
 
     public Entity? Pick(World world, Ray ray)
@@ -39,7 +54,7 @@ public sealed class ScenePicker : IDisposable
     {
         Entity? nearest = null;
         float nearestDistance = float.PositiveInfinity;
-        world.Query(in Meshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform) =>
+        world.Query(in MeshEntities, (Entity entity, ref MeshRenderer renderer, ref Transform transform) =>
         {
             if (HitsMesh(ray, renderer.Mesh, transform, out float distance) && distance < nearestDistance)
             {
@@ -47,7 +62,7 @@ public sealed class ScenePicker : IDisposable
                 nearestDistance = distance;
             }
         });
-        world.Query(in Greyboxes, (Entity entity, ref Greybox greybox, ref Transform transform) =>
+        world.Query(in GreyboxEntities, (Entity entity, ref Greybox greybox, ref Transform transform) =>
         {
             string mesh = GetMesh(greybox);
             if (HitsMesh(ray, mesh, transform, out float distance) && distance < nearestDistance)
@@ -153,50 +168,26 @@ public sealed class ScenePicker : IDisposable
 
     private PickModel? Load(string mesh)
     {
-        if (GreyboxMesh.TryGetSize(mesh, out Vector3 size))
+        if (_models.TryGetValue(mesh, out Made? loaded))
         {
-            return LoadGreybox(mesh, size);
+            return loaded.Model;
         }
 
-        string builtPath = Path.ChangeExtension(mesh, ".fvmodel");
-        string fullPath = _content.GetFullPath(builtPath);
-        if (_models.TryGetValue(fullPath, out PickModel? loaded))
-        {
-            return loaded;
-        }
-
+        MadeMesh? made = _meshes.Make(mesh, _content);
         PickModel? model = null;
-        if (File.Exists(fullPath))
+        string? file = null;
+        if (made is not null)
         {
-            model = Read(fullPath);
+            model = Collect(made.Model);
         }
 
-        _models.Add(fullPath, model);
+        if (made?.File is not null)
+        {
+            file = _content.GetFullPath(made.File);
+        }
+
+        _models.Add(mesh, new Made(model, file));
         return model;
-    }
-
-    private PickModel LoadGreybox(string mesh, Vector3 size)
-    {
-        if (_models.TryGetValue(mesh, out PickModel? made) && made is not null)
-        {
-            return made;
-        }
-
-        ModelData data = GreyboxMesh.Create(size);
-        PickModel model = Collect(data);
-        _models[mesh] = model;
-        return model;
-    }
-
-    private static PickModel Read(string fullPath)
-    {
-        ModelData data;
-        using (FileStream stream = File.OpenRead(fullPath))
-        {
-            data = ModelFile.Read(stream);
-        }
-
-        return Collect(data);
     }
 
     private static PickModel Collect(ModelData data)
@@ -224,8 +215,24 @@ public sealed class ScenePicker : IDisposable
         return new PickModel([.. positions], [.. indices], min, max);
     }
 
+    /// <summary>Forgets the meshes made from the file, and the missing ones, which the file may be.</summary>
     private void HandleChanged(string fullPath)
     {
-        _models.Remove(fullPath);
+        List<string> changed = [];
+        foreach ((string mesh, Made made) in _models)
+        {
+            if (made.Model is null || (made.File is not null && ContentManager.PathComparer.Equals(made.File, fullPath)))
+            {
+                changed.Add(mesh);
+            }
+        }
+
+        foreach (string mesh in changed)
+        {
+            _models.Remove(mesh);
+        }
     }
+
+    /// <summary>A mesh's triangles, or null when nothing makes it, and the full path of the file it was made from, if any.</summary>
+    private sealed record Made(PickModel? Model, string? File);
 }

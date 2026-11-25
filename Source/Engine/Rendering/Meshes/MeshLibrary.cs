@@ -1,4 +1,3 @@
-using System.Numerics;
 using System.Runtime.InteropServices;
 
 using FlickerVoid.Engine.Graphics.Buffers;
@@ -11,15 +10,15 @@ using FlickerVoid.Engine.Runtime.Geometry;
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
 /// <summary>
-/// Loads each model the first time it is drawn and keeps it on the GPU until its file changes on disk and the next draw loads
-/// it again. A model is named by its source (Room.glb); the game loads what the content build baked of it (Room.fvmodel).
-/// Greybox boxes are made from their names (<see cref="GreyboxMesh"/>).
+/// Makes each mesh the first time it is drawn, through the renderer's <see cref="MeshSources"/>, and keeps it on the GPU until the
+/// file it was made from changes on disk and the next draw makes it again.
 /// </summary>
 internal sealed class MeshLibrary : IDisposable
 {
     private readonly IGraphicsDevice _device;
     private readonly IContentManager _content;
-    private readonly Dictionary<string, GpuModel> _models = new(ContentManager.PathComparer);
+    private readonly Dictionary<string, Made> _models = new(ContentManager.PathComparer);
+    private MeshSources? _sources;
 
     public MeshLibrary(IGraphicsDevice device, IContentManager content)
     {
@@ -28,52 +27,51 @@ internal sealed class MeshLibrary : IDisposable
         _content.Changed += HandleChanged;
     }
 
-    public GpuModel Get(string path)
+    /// <summary>The mesh as <paramref name="sources"/> make it; other sources than last time make every mesh again.</summary>
+    public GpuModel Get(string mesh, MeshSources sources)
     {
-        if (GreyboxMesh.TryGetSize(path, out Vector3 size))
+        if (!ReferenceEquals(sources, _sources))
         {
-            return GetGreybox(path, size);
+            ReleaseAll();
+            _sources = sources;
         }
 
-        string builtPath = Path.ChangeExtension(path, ".fvmodel");
-        string fullPath = _content.GetFullPath(builtPath);
-        if (_models.TryGetValue(fullPath, out GpuModel? loaded))
+        if (_models.TryGetValue(mesh, out Made? loaded))
         {
-            return loaded;
+            return loaded.Model;
         }
 
-        ModelData data;
-        using (FileStream stream = File.OpenRead(fullPath))
+        MadeMesh? made = sources.Make(mesh, _content);
+        if (made is null)
         {
-            data = ModelFile.Read(stream);
+            string builtPath = Path.ChangeExtension(mesh, ".fvmodel");
+            string fullPath = _content.GetFullPath(builtPath);
+            throw new FileNotFoundException($"No mesh source makes {mesh}, and the content build baked no model of it.", fullPath);
         }
 
-        GpuMeshPart[] uploaded = [.. data.Parts.Select(part => Upload(part, path))];
-        GpuModel model = new(uploaded, data.Animations);
-        _models.Add(fullPath, model);
-        return model;
-    }
-
-    private GpuModel GetGreybox(string name, Vector3 size)
-    {
-        if (_models.TryGetValue(name, out GpuModel? made))
+        string? file = null;
+        if (made.File is not null)
         {
-            return made;
+            file = _content.GetFullPath(made.File);
         }
 
-        ModelData data = GreyboxMesh.Create(size);
-        GpuMeshPart[] uploaded = [.. data.Parts.Select(part => Upload(part, name))];
-        GpuModel model = new(uploaded, data.Animations);
-        _models.Add(name, model);
+        GpuMeshPart[] uploaded = [.. made.Model.Parts.Select(part => Upload(part, mesh))];
+        GpuModel model = new(uploaded, made.Model.Animations);
+        _models.Add(mesh, new Made(model, file));
         return model;
     }
 
     public void Dispose()
     {
         _content.Changed -= HandleChanged;
-        foreach (GpuModel model in _models.Values)
+        ReleaseAll();
+    }
+
+    private void ReleaseAll()
+    {
+        foreach (Made made in _models.Values)
         {
-            Release(model);
+            Release(made.Model);
         }
 
         _models.Clear();
@@ -90,11 +88,26 @@ internal sealed class MeshLibrary : IDisposable
 
     private void HandleChanged(string fullPath)
     {
-        if (_models.Remove(fullPath, out GpuModel? model))
+        List<string> changed = [];
+        foreach ((string mesh, Made made) in _models)
         {
-            Release(model);
+            if (made.File is not null && ContentManager.PathComparer.Equals(made.File, fullPath))
+            {
+                changed.Add(mesh);
+            }
+        }
+
+        foreach (string mesh in changed)
+        {
+            if (_models.Remove(mesh, out Made? made))
+            {
+                Release(made.Model);
+            }
         }
     }
+
+    /// <summary>A mesh on the GPU and the full path of the file it was made from, if any.</summary>
+    private sealed record Made(GpuModel Model, string? File);
 
     private GpuMeshPart Upload(MeshPart part, string name)
     {
