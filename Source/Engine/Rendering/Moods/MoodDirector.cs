@@ -1,0 +1,116 @@
+using FlickerVoid.Engine.Rendering.Lighting;
+
+namespace FlickerVoid.Engine.Rendering.Moods;
+
+/// <summary>
+/// Builds the mood on screen from layers, lowest first: the defaults, the environment at the hour of the day, then the
+/// overrides of the scene, the story, the shot and the tools, each changing only the values it names. When a layer changes,
+/// the mood on screen blends to the new build over the change's seconds, still following the hour.
+/// </summary>
+public sealed class MoodDirector
+{
+    private static readonly int LayerCount = Enum.GetValues<MoodLayer>().Length;
+
+    private readonly MoodOverride?[] _layers = new MoodOverride?[LayerCount];
+    private LightingMood _from = new();
+    private float _blendSeconds;
+    private float _elapsed;
+    private double _hour;
+    private bool _changed = true;
+
+    /// <summary>The mood to draw with now; it stays the same object while nothing changes, and is never changed once handed out.</summary>
+    public LightingMood Current { get; private set; } = new();
+
+    /// <summary>True from a blended change until its seconds have passed.</summary>
+    public bool IsBlending { get; private set; }
+
+    public LightingEnvironment? Environment { get; private set; }
+
+    public MoodOverride? GetLayer(MoodLayer layer) => _layers[(int)layer];
+
+    /// <summary>Changes the environment under the layers, or takes it away with null, blending over the seconds.</summary>
+    public void SetEnvironment(LightingEnvironment? environment, float blendSeconds)
+    {
+        if (ReferenceEquals(environment, Environment))
+        {
+            return;
+        }
+
+        Environment = environment;
+        Change(blendSeconds);
+    }
+
+    /// <summary>Changes a layer's override, or takes it away with null, blending over the seconds; 0 shows it at once.</summary>
+    public void SetLayer(MoodLayer layer, MoodOverride? mood, float blendSeconds)
+    {
+        int index = (int)layer;
+        if (ReferenceEquals(mood, _layers[index]))
+        {
+            return;
+        }
+
+        _layers[index] = mood;
+        Change(blendSeconds);
+    }
+
+    /// <summary>Builds the mood for an hour of the day, a frame of the seconds given after the last.</summary>
+    public void Update(double hour, float deltaSeconds)
+    {
+        bool hourMoved = Environment is not null && hour != _hour;
+        if (!_changed && !IsBlending && !hourMoved)
+        {
+            return;
+        }
+
+        _hour = hour;
+        _changed = false;
+        LightingMood target = Build(hour);
+        if (IsBlending)
+        {
+            _elapsed += deltaSeconds;
+            IsBlending = _elapsed < _blendSeconds;
+        }
+
+        if (IsBlending)
+        {
+            Current = LightingMood.Lerp(_from, target, _elapsed / _blendSeconds);
+        }
+        else
+        {
+            Current = target;
+        }
+    }
+
+    /// <summary>
+    /// Starts a blend from the mood on screen. Of changes made between two updates the quickest decides, so a cut to another
+    /// scene is not blended by a story mood that changed with it, and nothing blends before the first update.
+    /// </summary>
+    private void Change(float blendSeconds)
+    {
+        if (_changed)
+        {
+            _blendSeconds = MathF.Min(_blendSeconds, blendSeconds);
+        }
+        else
+        {
+            _from = Current;
+            _blendSeconds = blendSeconds;
+        }
+
+        _changed = true;
+        _elapsed = 0;
+        IsBlending = _blendSeconds > 0;
+    }
+
+    private LightingMood Build(double hour)
+    {
+        LightingMood mood = new();
+        Environment?.Apply((float)hour, mood);
+        foreach (MoodOverride? layer in _layers)
+        {
+            layer?.Apply(mood);
+        }
+
+        return mood;
+    }
+}

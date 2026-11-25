@@ -9,6 +9,7 @@ using FlickerVoid.Engine.Graphics.Presentation;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Rendering;
+using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Loop;
 
 using Silk.NET.Input;
@@ -33,6 +34,7 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
     private readonly ICommandList[] _commandLists = new ICommandList[FramesInFlight];
     private readonly Stopwatch _clock = new();
     private readonly IFrameOverlay? _overlay;
+    private LightingMood? _sourceMood;
     private bool _disposed;
 
     public SceneRenderSystem(IGameWindow window, IGraphicsDevice device, World world, Func<PixelFormat, SceneRenderer> createRenderer, int frameLimit, Func<PixelFormat, SceneRenderer, IFrameOverlay?> createOverlay)
@@ -58,6 +60,12 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
     public IFrameOverlay? Overlay => _overlay;
 
     public int Frames { get; private set; }
+
+    /// <summary>
+    /// Gives the mood to draw each frame with, or null to leave the renderer's alone. The renderer takes the mood when it is another
+    /// object than the frame before gave, so a mood tweaked in place, as the debug panel does, stays until the source's changes.
+    /// </summary>
+    public Func<LightingMood>? MoodSource { get; set; }
 
     /// <summary>Whether Escape closes the window; a game that gives Escape to its own menus turns it off and closes the window itself.</summary>
     public bool CloseOnEscape { get; set; } = true;
@@ -98,6 +106,7 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
             _swapchain.Resize(size.X, size.Y);
         }
 
+        TakeMood();
         _overlay?.Update((float)t.Elapsed.TotalSeconds);
         if (visible)
         {
@@ -133,6 +142,21 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
         _overlay?.Dispose();
         _renderer.Dispose();
         _swapchain.Dispose();
+    }
+
+    private void TakeMood()
+    {
+        if (MoodSource is null)
+        {
+            return;
+        }
+
+        LightingMood mood = MoodSource();
+        if (!ReferenceEquals(mood, _sourceMood))
+        {
+            _sourceMood = mood;
+            _renderer.Mood = mood;
+        }
     }
 
     private void Render()
