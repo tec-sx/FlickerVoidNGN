@@ -18,6 +18,7 @@ public static class SceneIcons
         ("irradianceVolume", "Grid"),
         ("sceneMood", "Mood"),
         ("interactable", "Entity"),
+        ("vehicle", "Vehicle"),
         ("meshRenderer", "Model"),
         ("greybox", "Model"),
     ];
