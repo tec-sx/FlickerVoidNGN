@@ -2,6 +2,7 @@
   <!-- The project's content files as assets: browsing, creating, renaming and deleting them, and editing materials. No Avalonia. -->
   <ItemGroup>
     <ProjectReference Include="../Core/FlickerVoid.Editor.Core.csproj" />
+    <ProjectReference Include="../../Engine/Vehicles/FlickerVoid.Engine.Vehicles.csproj" />
     <PackageReference Include="StbImageSharp" />
   </ItemGroup>
   <ItemGroup>
