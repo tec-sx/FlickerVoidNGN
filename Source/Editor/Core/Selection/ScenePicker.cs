@@ -59,32 +59,19 @@ public sealed class ScenePicker : IDisposable
     /// </summary>
     public Entity? Pick(World world, Ray ray, out float distance)
     {
-        Entity? nearest = null;
-        float nearestDistance = float.PositiveInfinity;
-        world.Query(in MeshEntities, (Entity entity, ref MeshRenderer renderer, ref Transform transform) =>
-        {
-            if (HitsMesh(ray, renderer.Mesh, transform, out float distance) && distance < nearestDistance)
-            {
-                nearest = entity;
-                nearestDistance = distance;
-            }
-        });
-        world.Query(in GreyboxEntities, (Entity entity, ref Greybox greybox, ref Transform transform) =>
-        {
-            string mesh = GetMesh(greybox);
-            if (HitsMesh(ray, mesh, transform, out float distance) && distance < nearestDistance)
-            {
-                nearest = entity;
-                nearestDistance = distance;
-            }
-        });
-        distance = nearestDistance;
+        Entity? nearest = FindNearest(world, ray, creation: null, out distance);
         if (nearest is { } hit && world.TryGet(hit, out CreationPart part))
         {
             return part.Root;
         }
 
         return nearest;
+    }
+
+    /// <summary>The part of the creation the ray hits first, past anything else in the way, or null.</summary>
+    public Entity? PickPart(World world, Ray ray, Entity creation)
+    {
+        return FindNearest(world, ray, creation, out _);
     }
 
     /// <summary>The box round an entity's model in its own space, or round a creation's parts.</summary>
@@ -161,6 +148,42 @@ public sealed class ScenePicker : IDisposable
         Vector3 worldHit = Vector3.Transform(localHit, world);
         distance = Vector3.Distance(ray.Origin, worldHit);
         return true;
+    }
+
+    /// <summary>The mesh or greybox the ray hits first, among the parts of <paramref name="creation"/> when one is given.</summary>
+    private Entity? FindNearest(World world, Ray ray, Entity? creation, out float distance)
+    {
+        Entity? nearest = null;
+        float nearestDistance = float.PositiveInfinity;
+        world.Query(in MeshEntities, (Entity entity, ref MeshRenderer renderer, ref Transform transform) =>
+        {
+            if (IsCandidate(world, entity, creation) && HitsMesh(ray, renderer.Mesh, transform, out float distance) && distance < nearestDistance)
+            {
+                nearest = entity;
+                nearestDistance = distance;
+            }
+        });
+        world.Query(in GreyboxEntities, (Entity entity, ref Greybox greybox, ref Transform transform) =>
+        {
+            string mesh = GetMesh(greybox);
+            if (IsCandidate(world, entity, creation) && HitsMesh(ray, mesh, transform, out float distance) && distance < nearestDistance)
+            {
+                nearest = entity;
+                nearestDistance = distance;
+            }
+        });
+        distance = nearestDistance;
+        return nearest;
+    }
+
+    private static bool IsCandidate(World world, Entity entity, Entity? creation)
+    {
+        if (creation is not { } root)
+        {
+            return true;
+        }
+
+        return world.TryGet(entity, out CreationPart part) && part.Root == root;
     }
 
     private static bool TryGetMesh(World world, Entity entity, [NotNullWhen(true)] out string? mesh)

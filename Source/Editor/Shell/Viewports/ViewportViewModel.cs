@@ -12,6 +12,7 @@ using FlickerVoid.Editor.Core.Overlays;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Selection;
 using FlickerVoid.Editor.Core.Shots;
+using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Engine.Cameras.Shots;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
@@ -51,8 +52,6 @@ public sealed partial class ViewportViewModel : ObservableObject
 
     private readonly EditorCameraController _controller;
 
-    private bool _draggingKey;
-
     public ViewportViewModel(EditorScene scene, bool validation)
     {
         Scene = scene;
@@ -60,6 +59,8 @@ public sealed partial class ViewportViewModel : ObservableObject
         Camera.LookAt(Vector3.Zero, MathF.PI / 4, -0.5f, 12);
         _controller = new EditorCameraController(Camera);
         Timeline = new ShotTimelineViewModel(scene);
+        SceneMode = new SceneMode(scene, Camera, Gizmo, Icons, Timeline);
+        Mode = SceneMode;
         Selection.Changed += HandleSelectionChanged;
     }
 
@@ -80,6 +81,12 @@ public sealed partial class ViewportViewModel : ObservableObject
     /// <summary>The selected shot's timeline and keys, shown under the viewport while a shot is selected.</summary>
     public ShotTimelineViewModel Timeline { get; }
 
+    /// <summary>Clicks and drags on the scene: its selection, gizmo and shot keys.</summary>
+    public SceneMode SceneMode { get; }
+
+    /// <summary>What clicks and drags work on now: the scene's mode unless another is open.</summary>
+    public IViewportMode Mode { get; private set; }
+
     /// <summary>Whether the viewport's renderer turns on the Vulkan validation layer.</summary>
     public bool Validation { get; }
 
@@ -97,6 +104,8 @@ public sealed partial class ViewportViewModel : ObservableObject
     public partial bool IsGameView { get; set; }
 
     public bool IsGridVisible => ShowGrid && !IsGameView;
+
+    partial void OnIsGameViewChanged(bool value) => SceneMode.IsGameView = value;
 
     /// <summary>Draws the main camera's depth fade, in the viewport and the camera preview.</summary>
     [ObservableProperty]
@@ -207,6 +216,7 @@ public sealed partial class ViewportViewModel : ObservableObject
     public void Update(in ViewportInput input, float seconds, int viewportHeight)
     {
         _controller.Apply(input, seconds, viewportHeight);
+        Mode.Update();
     }
 
     /// <summary>Q, W, E and R switch the gizmo, unless the right button is held, when they fly the camera; G toggles the game view.</summary>
@@ -411,13 +421,7 @@ public sealed partial class ViewportViewModel : ObservableObject
     /// <summary>An undo step's name for entities: "Move Lamp" for one, "Move 3 entities" for more.</summary>
     private string DescribeMany(string verb, IReadOnlyList<Entity> entities)
     {
-        World world = Scene.Game.World;
-        if (entities.Count == 1 && world.IsAlive(entities[0]) && world.TryGet(entities[0], out EntityName name))
-        {
-            return $"{verb} {name.Value}";
-        }
-
-        return $"{verb} {entities.Count} entities";
+        return SceneMode.DescribeMany(Scene.Game.World, verb, entities);
     }
 
     /// <summary>Saves the world into its scene file.</summary>
