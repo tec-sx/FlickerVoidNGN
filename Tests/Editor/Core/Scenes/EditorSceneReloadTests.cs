@@ -4,7 +4,9 @@ using Arch.Core;
 
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Tests.Projects;
+using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 
@@ -51,6 +53,22 @@ public sealed class EditorSceneReloadTests : IDisposable
         Entity reloaded = scene.Find("Lamp")!.Value;
         scene.AddComponent(reloaded, spin);
         scene.Game.World.Has<Spin>(reloaded).Should().BeTrue();
+    }
+
+    [Fact]
+    public void PicksTheMeshesTheReloadedModulesMake()
+    {
+        _builder.WithFile("Van.fvtest", "2");
+        EditorScene scene = _builder.Scene;
+
+        scene.Reload([new TestMeshSourceModule()]);
+
+        Transform place = new() { Position = new Vector3(0, -1, 0) };
+        MeshRenderer renderer = new() { Mesh = "Van.fvtest#body" };
+        Entity van = scene.Game.World.Create(place, renderer);
+        Ray downTheZAxis = new(new Vector3(0, 0, 10), -Vector3.UnitZ);
+        Entity? picked = scene.Picker.Pick(scene.Game.World, downTheZAxis);
+        picked.Should().Be(van);
     }
 
     [Fact]

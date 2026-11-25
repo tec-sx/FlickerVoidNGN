@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlickerVoid.Editor.Core.Tests.Selection;
 
-/// <summary>Builds a world with rendering components and a picker over a temporary content folder of baked models.</summary>
+/// <summary>Builds a world with rendering components and a picker with the game's mesh sources over a temporary content folder of baked models.</summary>
 internal sealed class ScenePickerTestsBuilder : IDisposable
 {
     private readonly string _contentFolder;
@@ -55,6 +55,21 @@ internal sealed class ScenePickerTestsBuilder : IDisposable
         return this;
     }
 
+    public ScenePickerTestsBuilder WithFile(string path, string text)
+    {
+        string fullPath = Path.Combine(_contentFolder, path);
+        File.WriteAllText(fullPath, text);
+        return this;
+    }
+
+    /// <summary>Adds a source of meshes to the game's, as a module would.</summary>
+    public ScenePickerTestsBuilder WithMeshSource(IMeshSource source)
+    {
+        MeshSources meshes = _game.Services.GetService<MeshSources>()!;
+        meshes.Add(source);
+        return this;
+    }
+
     public Entity AddMesh(string mesh, Vector3 position, float scale = 1)
     {
         Transform transform = new() { Position = position, Scale = new Vector3(scale) };
@@ -77,7 +92,8 @@ internal sealed class ScenePickerTestsBuilder : IDisposable
     public ScenePicker Build()
     {
         _content = new ContentManager(_contentFolder);
-        _picker = new ScenePicker(_content);
+        MeshSources meshes = _game.Services.GetService<MeshSources>()!;
+        _picker = new ScenePicker(_content) { Meshes = meshes };
         return _picker;
     }
 
