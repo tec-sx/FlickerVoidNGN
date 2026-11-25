@@ -1,14 +1,17 @@
+using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Pipeline;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
 /// <summary>
 /// Draws the meshes the view sees into the scene's depth and the <see cref="GBuffer"/>, unlit, cutting away what the cutaway
-/// does, for screen shadows and lighting to read.
+/// does, for screen shadows and lighting to read. Each draw reads its record in the frame's data buffer by its number.
 /// </summary>
 internal sealed class GeometryPass : IRenderPass
 {
@@ -17,7 +20,16 @@ internal sealed class GeometryPass : IRenderPass
 
     public GeometryPass(IGraphicsDevice device, ShaderLibrary shaders)
     {
-        _pipeline = MeshDrawing.CreatePipeline(device, shaders, "GeometryMain", GBuffer.Formats, "Geometry");
+        GraphicsPipelineDescription description = new()
+        {
+            VertexShader = shaders.Load("Scene", "VertexMain"),
+            PixelShader = shaders.Load("Scene", "GeometryMain"),
+            ColorFormats = GBuffer.Formats,
+            DepthFormat = SceneRenderer.DepthFormat,
+            Depth = new DepthState(Test: true, Write: true),
+            Name = "Geometry",
+        };
+        _pipeline = device.CreateGraphicsPipeline(description);
     }
 
     public void Prepare(RenderContext context)
@@ -42,12 +54,31 @@ internal sealed class GeometryPass : IRenderPass
         commands.SetViewport(new Viewport(0, 0, context.Width, context.Height));
         commands.SetScissor(0, 0, context.Width, context.Height);
         commands.SetPipeline(_pipeline);
-        MeshDrawing.Draw(context);
+        DrawMeshes(context);
         commands.EndRendering();
     }
 
     public void Dispose()
     {
         _pipeline.Dispose();
+    }
+
+    private static void DrawMeshes(RenderContext context)
+    {
+        ICommandList commands = context.Commands;
+        for (int index = 0; index < context.Draws.Count; index++)
+        {
+            MeshDraw draw = context.Draws[index];
+            if (!draw.InView)
+            {
+                continue;
+            }
+
+            GpuMeshPart part = draw.Part;
+            SceneConstants constants = new(context.FrameBuffer, (uint)index);
+            commands.SetIndexBuffer(part.Indices, IndexFormat.UInt32);
+            commands.PushConstants(constants);
+            commands.DrawIndexed(part.IndexCount);
+        }
     }
 }

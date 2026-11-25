@@ -8,9 +8,14 @@ using Hexa.NET.ImGui;
 
 namespace FlickerVoid.Engine.Debug;
 
-/// <summary>Switches the scene renderer's features and tweaks its lighting mood live: the sun, ambient light, shadows, fog, screen-space shadows, bloom and grade.</summary>
+/// <summary>
+/// Switches the scene renderer's features, shows the G-buffer's targets in place of the frame and tweaks its lighting mood live: the
+/// sun, ambient light, shadows, fog, screen-space shadows, bloom and grade.
+/// </summary>
 public sealed class RenderingWindow : DebugWindow
 {
+    private static readonly string[] ViewNames = ["Lit", "Albedo", "Normal", "Material", "Object depth", "Motion", "Depth"];
+
     private readonly SceneRenderer _renderer;
     private readonly LightingMood _initial;
 
@@ -36,6 +41,12 @@ public sealed class RenderingWindow : DebugWindow
         if (ImGui.Checkbox("Irradiance probes", ref probes))
         {
             _renderer.Probes = probes;
+        }
+
+        int view = (int)_renderer.DebugView;
+        if (ImGui.Combo("View", ref view, ViewNames, ViewNames.Length))
+        {
+            _renderer.DebugView = (DebugView)view;
         }
 
         LightingMood mood = _renderer.Mood;

@@ -1,12 +1,13 @@
-// From the geometry pass's depth, works out each pixel's ambient occlusion (red: the share of ambient light nearby surfaces let
-// through) and contact shadow (green: 0 where something close blocks the sun, which the shadow map is too coarse to see).
+// From the geometry pass's depth and normals, works out each pixel's ambient occlusion (red: the share of ambient light nearby
+// surfaces let through) and contact shadow (green: 0 where something close blocks the sun, which the shadow map is too coarse to
+// see).
 
 #include "Frame.hlsl"
+#include "GBuffer.hlsl"
 
 struct ScreenShadowConstants
 {
     uint Frame;
-    uint Depth;
     uint Output;
 };
 
@@ -22,9 +23,9 @@ static const float3 Kernel[OcclusionSamples] =
     float3(0.08, 0.71, 0.37), float3(-0.66, -0.08, 0.51), float3(0.24, -0.15, 0.88), float3(-0.41, 0.58, 0.63),
 };
 
-float LoadDepth(int2 pixel)
+float LoadDepth(FrameData frame, int2 pixel)
 {
-    return Textures[Pass.Depth].Load(int3(pixel, 0)).r;
+    return Textures[frame.Depth].Load(int3(pixel, 0)).r;
 }
 
 float PixelNoise(float2 pixel)
@@ -42,7 +43,7 @@ float DepthBehindScene(FrameData frame, float3 position)
         return -1;
     }
 
-    float sceneDepthValue = LoadDepth(int2(projected.xy));
+    float sceneDepthValue = LoadDepth(frame, int2(projected.xy));
     float3 scene = WorldAtPixel(frame, floor(projected.xy) + 0.5, sceneDepthValue);
     float sceneDepth = dot(float4(scene, 1), frame.DepthAxis);
     return projected.z - sceneDepth;
@@ -120,27 +121,16 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     }
 
     int2 pixel = int2(id.xy);
-    float depth = LoadDepth(pixel);
+    float depth = LoadDepth(frame, pixel);
     if (depth >= 1)
     {
         RWTextures[Pass.Output][id.xy] = float4(1, 1, 0, 1);
         return;
     }
 
-    // The surface's normal from its neighbours, taking on each axis the neighbour nearer in depth so edges stay sharp.
     float3 position = WorldAtPixel(frame, pixel + 0.5, depth);
-    int2 last = int2(frame.TargetSize) - 1;
-    float3 right = WorldAtPixel(frame, min(pixel + int2(1, 0), last) + 0.5, LoadDepth(min(pixel + int2(1, 0), last)));
-    float3 left = WorldAtPixel(frame, max(pixel - int2(1, 0), 0) + 0.5, LoadDepth(max(pixel - int2(1, 0), 0)));
-    float3 down = WorldAtPixel(frame, min(pixel + int2(0, 1), last) + 0.5, LoadDepth(min(pixel + int2(0, 1), last)));
-    float3 up = WorldAtPixel(frame, max(pixel - int2(0, 1), 0) + 0.5, LoadDepth(max(pixel - int2(0, 1), 0)));
-    float3 across = abs(dot(right - position, frame.DepthAxis.xyz)) < abs(dot(position - left, frame.DepthAxis.xyz)) ? right - position : position - left;
-    float3 along = abs(dot(down - position, frame.DepthAxis.xyz)) < abs(dot(position - up, frame.DepthAxis.xyz)) ? down - position : position - up;
-    float3 normal = normalize(cross(along, across));
-    if (dot(normal, frame.DepthAxis.xyz) > 0)
-    {
-        normal = -normal;
-    }
+    float2 folded = Textures[frame.GBufferNormal].Load(int3(pixel, 0)).xy;
+    float3 normal = DecodeNormal(folded);
 
     float noise = PixelNoise(pixel);
     float occlusion = AmbientOcclusion(frame, position, normal, noise);
