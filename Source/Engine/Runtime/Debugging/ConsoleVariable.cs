@@ -37,7 +37,7 @@ public abstract class ConsoleVariable(string name, string help) : ConsoleEntry(n
     public abstract string DescribeInvalid(string text);
 
     /// <summary>A variable of any parsable type; booleans also take 1 and 0, on and off, yes and no.</summary>
-    public static ConsoleVariable<T> Create<T>(string name, string help, T value)
+    public static ConsoleVariable<T> Create<T>(string name, string help, T value, bool saved = true)
         where T : IParsable<T>
     {
         ConsoleParser<T> parse = static (string text, [MaybeNullWhen(false)] out T parsed) => T.TryParse(text, CultureInfo.InvariantCulture, out parsed);
@@ -57,11 +57,11 @@ public abstract class ConsoleVariable(string name, string help) : ConsoleEntry(n
             kind = ConsoleValueKind.Number;
         }
 
-        return new ConsoleVariable<T>(name, help, value, parse) { Kind = kind };
+        return new ConsoleVariable<T>(name, help, value, parse) { Kind = kind, Saved = saved };
     }
 
     /// <summary>A variable of an enum, taking its names ignoring case, never numbers.</summary>
-    public static ConsoleVariable<T> CreateEnum<T>(string name, string help, T value)
+    public static ConsoleVariable<T> CreateEnum<T>(string name, string help, T value, bool saved = true)
         where T : struct, Enum
     {
         string[] names = Enum.GetNames<T>();
@@ -71,7 +71,7 @@ public abstract class ConsoleVariable(string name, string help) : ConsoleEntry(n
             string? match = names.FirstOrDefault(choice => string.Equals(choice, text, StringComparison.OrdinalIgnoreCase));
             return match is not null && Enum.TryParse(match, out parsed);
         };
-        return new ConsoleVariable<T>(name, help, value, parse) { Choices = names };
+        return new ConsoleVariable<T>(name, help, value, parse) { Choices = names, Saved = saved };
     }
 
     private static bool TryParseBoolean(string text, out bool value)
