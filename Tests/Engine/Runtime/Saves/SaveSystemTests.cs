@@ -5,6 +5,7 @@ using Arch.Core;
 
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Serialization;
 
@@ -61,6 +62,21 @@ public sealed class SaveSystemTests : IDisposable
         _builder.Saves.Load("Slot1");
 
         GameRandomTestsBuilder.Roll(_builder.Game.Random, 4).Should().Equal(rolled);
+    }
+
+    [Fact]
+    public void ALoadBringsTheClockBackToTheMinute()
+    {
+        _builder.Build();
+        _builder.Game.Clock.Set(3, 14.6);
+        _builder.Saves.Save("Slot1");
+        _builder.Game.Clock.Set(4, 2);
+
+        _builder.Saves.Load("Slot1");
+
+        _builder.Game.Clock.Day.Should().Be(3);
+        _builder.Game.Clock.Hour.Should().BeApproximately(14.6f, 1e-5f);
+        _builder.Game.Facts.GetFact(WorldClock.HourFact).Should().Be(14);
     }
 
     [Fact]
