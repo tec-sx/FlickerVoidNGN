@@ -1,10 +1,15 @@
-// Traces the shadows of the sun and of up to three lamps (Light.hlsl's RayShadow channels after the sun's) from every pixel the
-// geometry pass drew, a ray each a frame. TraceMain aims each ray at a point on the light: within the sun's angle of its
-// direction, or on a disk of the lamp's source radius facing the pixel, so shadows sharpen beside their casters and soften away
-// from them. The points follow the R2 low-discrepancy sequence, turned for each pixel and light by a hash, so a pixel's samples
-// cover the light evenly over the frames. FilterMain averages each pixel's samples over the frames before, where the history
-// lands on the same surface (by the G-buffer's motion and the view depth), up to MaxHistory of them, and first clamps the
-// history to the spread of this frame's samples round the pixel and its own, so a shadow follows its caster at once.
+// Traces the shadows of the sun and of up to three lamps (Light.hlsl's RayShadow channels after the sun's), and the ambient
+// light's, its occlusion, from every pixel the geometry pass drew, a ray each a frame. TraceMain aims each light's ray at a
+// point on the light: within the sun's angle of its direction, or on a disk of the lamp's source radius facing the pixel, so
+// shadows sharpen beside their casters and soften away from them; the occlusion's ray leaves over the surface's hemisphere,
+// more often near its normal, and counts what it meets within the mood's occlusion radius. The points follow the R2
+// low-discrepancy sequence, turned for each pixel and ray by a hash, so a pixel's samples cover the light or the hemisphere
+// evenly over the frames. FilterMain averages each pixel's samples over the frames before, where the history lands on the same
+// surface (by the G-buffer's motion and the view depth), up to MaxHistory of them. It first clamps the shadows' history to the
+// spread of this frame's samples round the pixel and its own, so a shadow follows its caster at once; the occlusion's isn't,
+// as the few rays that meet something in an open corner would be clamped away, so it lags a moving occluder by a few frames.
+// The history keeps the averaged occlusion in red, which the lighting pass reads, how many frames it holds in green and the
+// surface's view depth in blue.
 
 #include "Frame.hlsl"
 #include "GBuffer.hlsl"
@@ -17,6 +22,7 @@ struct ShadowRayConstants
     float4 PreviousDepthAxis;
     uint Frame;
     uint Raw;
+    uint RawOcclusion;
     uint Visibility;
     uint History;
     // None when there is no history to filter with.
@@ -33,6 +39,9 @@ struct ShadowRayConstants
 [[vk::push_constant]] ConstantBuffer<ShadowRayConstants> Pass : register(b0, space0);
 
 static const float Pi = 3.14159265;
+
+// The sample sequence's channel for the occlusion's rays, after the sun's and the lamps'.
+static const uint OcclusionChannel = 4;
 
 // How far a ray starts off its surface, along its normal: a little, and more the farther the surface is from the camera, as
 // the depth buffer places it less precisely.
@@ -144,6 +153,23 @@ float TraceLamp(FrameData frame, uint index, float3 origin, float3 position, uin
     return TraceVisibility(frame, origin, toTarget / span, max(span - LampClearance, 0));
 }
 
+// 1 when the ray leaving the surface over its hemisphere meets nothing within the occlusion radius, else 0; 1 without occlusion.
+float TraceOcclusion(FrameData frame, float3 origin, float3 normal, uint2 pixel)
+{
+    if (frame.AmbientOcclusion <= 0 || frame.AmbientOcclusionRadius <= 0)
+    {
+        return 1;
+    }
+
+    // A point even on the disk, lifted onto the hemisphere, leaves along the normal's cosine (Malley's method).
+    float2 square = SamplePoint(pixel, OcclusionChannel);
+    float2 disk = ConcentricDisk(square);
+    float lift = sqrt(saturate(1 - dot(disk, disk)));
+    float3 sideways = FaceAlong(normal, disk);
+    float3 direction = normalize(sideways + normal * lift);
+    return TraceVisibility(frame, origin, direction, frame.AmbientOcclusionRadius);
+}
+
 [numthreads(8, 8, 1)]
 void TraceMain(uint3 id : SV_DispatchThreadID)
 {
@@ -154,11 +180,13 @@ void TraceMain(uint3 id : SV_DispatchThreadID)
     }
 
     RWTexture2D<float4> raw = RWTextures[Pass.Raw];
+    RWTexture2D<float4> rawOcclusion = RWTextures[Pass.RawOcclusion];
     int3 texel = int3(id.xy, 0);
     float depth = Textures[frame.Depth].Load(texel).r;
     if (depth >= 1)
     {
         raw[id.xy] = 1;
+        rawOcclusion[id.xy] = 1;
         return;
     }
 
@@ -180,9 +208,10 @@ void TraceMain(uint3 id : SV_DispatchThreadID)
     visibility.b = TraceLamp(frame, Pass.Lamp1, origin, position, id.xy);
     visibility.a = TraceLamp(frame, Pass.Lamp2, origin, position, id.xy);
     raw[id.xy] = visibility;
+    rawOcclusion[id.xy] = TraceOcclusion(frame, origin, normal, id.xy);
 }
 
-// The mean of this frame's samples round the pixel, five by five, and how far they spread from it.
+// The mean of this frame's shadow samples round the pixel, five by five, and how far they spread from it.
 void Neighbourhood(FrameData frame, int2 pixel, out float4 mean, out float4 spread)
 {
     Texture2D raw = Textures[Pass.Raw];
@@ -220,7 +249,7 @@ void FilterMain(uint3 id : SV_DispatchThreadID)
     if (depth >= 1)
     {
         visibility[id.xy] = 1;
-        history[id.xy] = 0;
+        history[id.xy] = float4(1, 0, 0, 0);
         return;
     }
 
@@ -228,7 +257,9 @@ void FilterMain(uint3 id : SV_DispatchThreadID)
     float3 position = WorldAtPixel(frame, pixel, depth);
     float viewDepth = dot(float4(position, 1), frame.DepthAxis);
     float4 current = Textures[Pass.Raw].Load(texel);
+    float currentOcclusion = Textures[Pass.RawOcclusion].Load(texel).r;
     float4 previous = current;
+    float previousOcclusion = currentOcclusion;
     float count = 0;
     float2 motion = Textures[frame.GBufferMotion].Load(texel).xy;
     float2 previousPixel = pixel + motion;
@@ -236,12 +267,13 @@ void FilterMain(uint3 id : SV_DispatchThreadID)
     if (Pass.PreviousHistory != None && onScreen)
     {
         int3 previousTexel = int3(previousPixel, 0);
-        float2 kept = Textures[Pass.PreviousHistory].Load(previousTexel).xy;
+        float3 kept = Textures[Pass.PreviousHistory].Load(previousTexel).xyz;
         float depthThen = dot(float4(position, 1), Pass.PreviousDepthAxis);
-        if (kept.x > 0 && abs(kept.y - depthThen) <= DepthTolerance * depthThen)
+        if (kept.y > 0 && abs(kept.z - depthThen) <= DepthTolerance * depthThen)
         {
-            count = kept.x;
+            count = kept.y;
             previous = Textures[Pass.PreviousVisibility].Load(previousTexel);
+            previousOcclusion = kept.x;
         }
     }
 
@@ -253,6 +285,8 @@ void FilterMain(uint3 id : SV_DispatchThreadID)
     float4 high = max(mean + spread, current);
     float4 clamped = clamp(previous, low, high);
     count = min(count + 1, MaxHistory);
-    visibility[id.xy] = lerp(clamped, current, 1 / count);
-    history[id.xy] = float4(count, viewDepth, 0, 0);
+    float weight = 1 / count;
+    visibility[id.xy] = lerp(clamped, current, weight);
+    float occlusion = lerp(previousOcclusion, currentOcclusion, weight);
+    history[id.xy] = float4(occlusion, count, viewDepth, 0);
 }

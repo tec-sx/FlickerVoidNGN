@@ -61,10 +61,13 @@ public sealed record LightingMood
     [Range(0, 1)]
     public float AmbientOcclusion { get; set; } = 1;
 
-    /// <summary>How far ambient occlusion looks for nearby surfaces, in world units.</summary>
+    /// <summary>How far ambient occlusion looks for nearby surfaces, in world units: on screen, or along traced rays.</summary>
     public float AmbientOcclusionRadius { get; set; } = 0.5f;
 
-    /// <summary>How far toward the sun contact shadows look for small blockers the shadow map misses; 0 turns them off.</summary>
+    /// <summary>
+    /// How far toward the sun contact shadows look for small blockers the shadow map misses; 0 turns them off. Traced sun shadows
+    /// need none.
+    /// </summary>
     public float ContactShadowLength { get; set; } = 0.3f;
 
     /// <summary>How much of the image is replaced by its blurred glow, from 0 to 1.</summary>

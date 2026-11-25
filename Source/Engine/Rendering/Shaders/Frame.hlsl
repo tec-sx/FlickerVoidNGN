@@ -56,8 +56,10 @@ struct FrameData
     float CutMuted;
     uint IndoorCount;
     uint IndoorsOffset;
-    // The traced shadows while the frame traces rays (ShadowRays.hlsl), the sun's in red and the lamps' after it, else None.
+    // The traced shadows while the frame traces rays (ShadowRays.hlsl), the sun's in red and the lamps' after it, and the
+    // traced ambient occlusion in red, else None.
     uint RayShadows;
+    uint RayOcclusion;
     float4x4 PreviousViewProjection;
     uint DrawsOffset;
     // The scene's depth and the G-buffer's targets (GBuffer.cs), by their bindless indices.
@@ -128,6 +130,7 @@ FrameData LoadFrame(uint index)
     frame.IndoorCount = buffer.Load<uint>(400);
     frame.IndoorsOffset = buffer.Load<uint>(404);
     frame.RayShadows = buffer.Load<uint>(408);
+    frame.RayOcclusion = buffer.Load<uint>(412);
     frame.PreviousViewProjection = float4x4(buffer.Load<float4>(416), buffer.Load<float4>(432), buffer.Load<float4>(448), buffer.Load<float4>(464));
     frame.DrawsOffset = buffer.Load<uint>(480);
     frame.Depth = buffer.Load<uint>(484);

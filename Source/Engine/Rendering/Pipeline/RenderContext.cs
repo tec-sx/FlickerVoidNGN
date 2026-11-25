@@ -112,6 +112,12 @@ public sealed class RenderContext
     /// <summary>The traced shadows the lighting pass reads, the sun's in red and the lamps' after it, or null without ray tracing.</summary>
     internal ITexture? RayShadows { get; set; }
 
+    /// <summary>
+    /// The traced ambient occlusion the lighting pass reads in red, in place of the screen shadows' (the share of the ambient
+    /// light that reaches the pixel, before the mood's strength), or null without ray tracing.
+    /// </summary>
+    internal ITexture? RayOcclusion { get; set; }
+
     internal ProbeSource? ProbeSource { get; set; }
 
     /// <summary>Empties what the last frame's passes worked out.</summary>
@@ -127,6 +133,7 @@ public sealed class RenderContext
         ShadowAtlas = GpuLight.None;
         RayShadowLights.Clear();
         RayShadows = null;
+        RayOcclusion = null;
         ProbeSource = null;
         AccelerationStructure = null;
     }
