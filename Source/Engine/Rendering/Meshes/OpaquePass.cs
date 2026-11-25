@@ -8,7 +8,7 @@ using FlickerVoid.Engine.Rendering.PostProcessing;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
-/// <summary>Draws the lit scene into the HDR target over the prepass depth.</summary>
+/// <summary>Draws the lit scene into the HDR target over the geometry pass's depth.</summary>
 internal sealed class OpaquePass : IRenderPass
 {
     /// <summary>Transparent where nothing is drawn, so post-processing passes coverage on (a stage shows over the interface there).</summary>

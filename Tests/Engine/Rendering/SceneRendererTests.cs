@@ -1046,6 +1046,195 @@ public sealed class SceneRendererTests : IDisposable
         pixels[(3 * 8) + 1].Should().Be(EmptyPixel);
     }
 
+    [Fact]
+    public void LeavesEachSurfacesUnlitColourAndCoverageInTheGBuffer()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+
+        uint[] albedo = _builder.RenderTexels(static gBuffer => gBuffer.Albedo);
+
+        uint[] expected =
+        [
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
+            EmptyPixel, RedPixel, RedPixel, EmptyPixel,
+            EmptyPixel, RedPixel, RedPixel, EmptyPixel,
+            EmptyPixel, EmptyPixel, EmptyPixel, EmptyPixel,
+        ];
+        albedo.Should().Equal(expected, "the quad is red however dark its light, and covers its pixels wholly");
+    }
+
+    [Fact]
+    public void LeavesEachSurfacesNormalInTheGBuffer()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": { "rotation": [0, 0.38268343, 0, 0.9238795] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+
+        Vector2[] normals = _builder.RenderHalfPairs(static gBuffer => gBuffer.Normal);
+
+        Vector3 normal = SceneRendererTestsBuilder.DecodeNormal(normals[5]);
+        Vector3 turned = Vector3.Normalize(new Vector3(1, 0, 1));
+        normal.X.Should().BeApproximately(turned.X, 0.01f, "the quad is turned an eighth of a turn about Y");
+        normal.Y.Should().BeApproximately(turned.Y, 0.01f);
+        normal.Z.Should().BeApproximately(turned.Z, 0.01f);
+    }
+
+    [Fact]
+    public void TiltsTheNormalInTheGBufferByAPaintingsRelief()
+    {
+        uint white = SceneRendererTestsBuilder.Rgba(255, 255, 255, 255);
+        uint[] rising = [SceneRendererTestsBuilder.Rgba(0, 0, 0, 255), SceneRendererTestsBuilder.Rgba(85, 85, 85, 255), SceneRendererTestsBuilder.Rgba(170, 170, 170, 255), white];
+        _builder.WithTexture("Wall.reb", 1, 1, [white]);
+        _builder.WithTexture("Wall.relief.dds", 4, 1, rising, PixelFormat.Rgba8UNorm);
+        _builder.WithFile("Wall.fvmat", """{ "parameters": { "texture": "Wall.reb", "reliefDepth": 0.1 } }""");
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Vector4.One));
+        _builder.WithScene(Camera, MaterialQuad("Wall.fvmat"));
+
+        Vector2[] normals = _builder.RenderHalfPairs(static gBuffer => gBuffer.Normal);
+
+        Vector3 normal = SceneRendererTestsBuilder.DecodeNormal(normals[5]);
+        normal.X.Should().BeLessThan(-0.03f, "the paint rises toward +X, so its slope faces back");
+    }
+
+    [Fact]
+    public void LeavesEachSurfacesMaterialInTheGBuffer()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithFile("Shiny.fvmat", """{ "parameters": { "specular": 0.5 } }""");
+        _builder.WithFile("Matte.fvmat", """{ "parameters": { "wrap": 0.5 } }""");
+        _builder.WithScene(
+            Camera,
+            """{ "name": "Shiny", "components": { "transform": { "position": [-0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Shiny.fvmat"] } } }""",
+            """{ "name": "Matte", "components": { "transform": { "position": [0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Matte.fvmat"] } } }""");
+
+        uint[] materials = _builder.RenderTexels(static gBuffer => gBuffer.Material);
+
+        uint shiny = materials[5] & 0xFFFF;
+        uint matte = materials[6] & 0xFFFF;
+        uint shinyEdge = materials[4] & 0xFFFF;
+        shinyEdge.Should().Be(shiny, "a surface keeps its material across its pixels");
+        matte.Should().NotBe(shiny, "lighting reads each surface's own material");
+    }
+
+    [Fact]
+    public void LeavesHowThickThePaintStandsInTheGBuffer()
+    {
+        uint white = SceneRendererTestsBuilder.Rgba(255, 255, 255, 255);
+        uint[] high = [white, white, white, white];
+        _builder.WithTexture("Wall.reb", 1, 1, [SceneRendererTestsBuilder.Rgba(255, 0, 0, 255)]);
+        _builder.WithTexture("Wall.relief.dds", 2, 2, high, PixelFormat.Rgba8UNorm);
+        _builder.WithFile("Wall.fvmat", """{ "parameters": { "texture": "Wall.reb", "reliefDepth": 0 } }""");
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Vector4.One));
+        _builder.WithScene(
+            Camera,
+            """{ "name": "Painted", "components": { "transform": { "position": [-0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Wall.fvmat"] } } }""",
+            """{ "name": "Plain", "components": { "transform": { "position": [0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+
+        uint[] materials = _builder.RenderTexels(static gBuffer => gBuffer.Material);
+
+        uint painted = (materials[5] >> 16) & 0xFF;
+        uint plain = (materials[6] >> 16) & 0xFF;
+        painted.Should().Be(255, "the impasto stands thick enough to hide the canvas");
+        plain.Should().Be(0, "plain paint has no impasto");
+    }
+
+    [Fact]
+    public void LeavesEachSurfacesFlagsInTheGBuffer()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithComponent("Quad", new Greyed());
+        _builder.WithComponent("Quad", new Uncut());
+
+        uint[] materials = _builder.RenderTexels(static gBuffer => gBuffer.Material);
+
+        uint flags = materials[5] >> 24;
+        flags.Should().Be((uint)(MeshFlags.Greyed | MeshFlags.Uncut));
+    }
+
+    [Fact]
+    public void TakesTheDepthOfSmallObjectsAtTheirCentre()
+    {
+        _builder.WithScene(Camera, """{ "name": "Crate", "components": { "transform": { "position": [0, -0.5, 0] }, "greybox": { "size": [1, 1, 1] } } }""");
+
+        float[] depths = _builder.RenderHalfs(static gBuffer => gBuffer.ObjectDepth);
+
+        depths[5].Should().BeApproximately(5, 0.01f, "the crate's front stands 4.5 from the camera, but it fades whole, at its centre");
+    }
+
+    [Fact]
+    public void TakesTheDepthOfLargeObjectsPixelByPixel()
+    {
+        _builder.WithScene(Camera, """{ "name": "House", "components": { "transform": { "position": [0, -4, -4] }, "greybox": { "size": [8, 8, 8] } } }""");
+
+        float[] depths = _builder.RenderHalfs(static gBuffer => gBuffer.ObjectDepth);
+
+        depths[5].Should().BeApproximately(5, 0.01f, "the house's front stands 5 from the camera, though its centre stands at 9");
+    }
+
+    [Fact]
+    public void TakesTheDepthOfPosedMeshesAtTheirRestPosesCentre()
+    {
+        _builder.WithModel("Walker.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red).WithMovingJoint(Vector3.Zero, new Vector3(0, 0, -2), 2));
+        _builder.WithScene(Camera, """{ "name": "Walker", "components": { "transform": {}, "meshRenderer": { "mesh": "Walker.glb" }, "meshAnimator": { "time": 1 } } }""");
+
+        float[] depths = _builder.RenderHalfs(static gBuffer => gBuffer.ObjectDepth);
+
+        depths[5].Should().BeApproximately(5, 0.01f, "the walker stepped back to 6, but a posed mesh fades at its rest pose's centre");
+    }
+
+    [Fact]
+    public void LeavesNoMotionWhereNothingMoved()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.Render();
+
+        Vector2[] motion = _builder.RenderHalfPairs(static gBuffer => gBuffer.Motion);
+
+        motion.Should().AllBeEquivalentTo(Vector2.Zero);
+    }
+
+    [Fact]
+    public void LeavesHowFarEachPixelMovedSinceTheFrameBefore()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.Render();
+
+        Vector2[] motion = _builder.WithPosition("Quad", new Vector3(0.5f, 0, 0)).RenderHalfPairs(static gBuffer => gBuffer.Motion);
+
+        motion[6].X.Should().BeApproximately(-1, 0.01f, "the quad stood a pixel to the left in the frame before");
+        motion[6].Y.Should().BeApproximately(0, 0.01f);
+    }
+
+    [Fact]
+    public void CountsTheCamerasMoveInEachPixelsMotion()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.Render();
+
+        Vector2[] motion = _builder.WithPosition("Camera", new Vector3(0.5f, 0, 5)).RenderHalfPairs(static gBuffer => gBuffer.Motion);
+
+        motion[5].X.Should().BeApproximately(1, 0.01f, "the camera moved right, so the still quad stood a pixel further right in the frame before");
+        motion[5].Y.Should().BeApproximately(0, 0.01f);
+    }
+
+    [Fact]
+    public void CountsAPosedMeshsNewPoseInItsMotion()
+    {
+        _builder.WithModel("Walker.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red).WithMovingJoint(Vector3.Zero, new Vector3(1, 1, 0), 2));
+        _builder.WithScene(Camera, """{ "name": "Walker", "components": { "transform": {}, "meshRenderer": { "mesh": "Walker.glb" }, "meshAnimator": { "time": 0 } } }""");
+        _builder.Render();
+
+        Vector2[] motion = _builder.WithAnimationTime(1).RenderHalfPairs(static gBuffer => gBuffer.Motion);
+
+        motion[6].X.Should().BeApproximately(-1, 0.01f, "the walker stood a pixel to the left and a pixel lower in the frame before");
+        motion[6].Y.Should().BeApproximately(1, 0.01f);
+    }
+
     /// <summary>A paper of sixteen different greys under the entities, a camera first.</summary>
     private static uint[] RenderPaper(SceneRendererTestsBuilder builder, params string[] entities)
     {

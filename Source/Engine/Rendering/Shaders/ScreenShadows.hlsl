@@ -1,4 +1,4 @@
-// From the depth prepass, works out each pixel's ambient occlusion (red: the share of ambient light nearby surfaces let
+// From the geometry pass's depth, works out each pixel's ambient occlusion (red: the share of ambient light nearby surfaces let
 // through) and contact shadow (green: 0 where something close blocks the sun, which the shadow map is too coarse to see).
 
 #include "Frame.hlsl"

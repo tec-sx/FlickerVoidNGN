@@ -9,6 +9,7 @@ using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Pipeline;
+using FlickerVoid.Engine.Runtime.Geometry;
 
 namespace FlickerVoid.Engine.Rendering.Lighting;
 
@@ -57,14 +58,15 @@ internal sealed class FrameDataWriter : IDisposable
         GpuIndoor[] indoors = CollectIndoors(context.Scene);
         ReadOnlySpan<byte> indoorBytes = MemoryMarshal.AsBytes(indoors.AsSpan());
         int indoorsOffset = indicesOffset + indexBytes.Length;
-        CollectDraws(context);
-        ReadOnlySpan<byte> drawBytes = MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(_draws));
-        int drawsOffset = AlignUp(indoorsOffset + indoorBytes.Length, DrawAlignment);
-        int size = drawsOffset + drawBytes.Length;
 
         // A pixel's view depth is the dot product of its world position and the view matrix's negated third column.
         Matrix4x4 viewMatrix = view.View;
         Vector4 depthAxis = -new Vector4(viewMatrix.M13, viewMatrix.M23, viewMatrix.M33, viewMatrix.M43);
+        Vector3 viewDirection = new(depthAxis.X, depthAxis.Y, depthAxis.Z);
+        CollectDraws(context, viewDirection);
+        ReadOnlySpan<byte> drawBytes = MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(_draws));
+        int drawsOffset = AlignUp(indoorsOffset + indoorBytes.Length, DrawAlignment);
+        int size = drawsOffset + drawBytes.Length;
         uint logarithmic = 0;
         if (_clusters.LogarithmicSlices)
         {
@@ -183,8 +185,11 @@ internal sealed class FrameDataWriter : IDisposable
         return (offset + alignment - 1) / alignment * alignment;
     }
 
-    /// <summary>A record for every draw, in the order of the context's draws, so a draw's number is its place there.</summary>
-    private void CollectDraws(RenderContext context)
+    /// <summary>
+    /// A record for every draw, in the order of the context's draws, so a draw's number is its place there. A posed part's box is
+    /// its rest pose's, placed where its mesh stands.
+    /// </summary>
+    private void CollectDraws(RenderContext context, Vector3 viewDirection)
     {
         _draws.Clear();
         foreach (MeshDraw draw in context.Draws)
@@ -196,6 +201,9 @@ internal sealed class FrameDataWriter : IDisposable
             {
                 outlineColor = new Vector4(outline.Color, 1);
             }
+
+            Bounds box = draw.Bounds ?? part.Bounds.Transform(draw.World);
+            float wholeness = ObjectDepth.Wholeness(box, viewDirection);
 
             GpuDraw record = new(
                 draw.World,
@@ -209,7 +217,9 @@ internal sealed class FrameDataWriter : IDisposable
                 draw.Material.BindlessIndex,
                 (uint)draw.Flags,
                 0,
-                0);
+                0,
+                box.Center,
+                wholeness);
             _draws.Add(record);
         }
     }
