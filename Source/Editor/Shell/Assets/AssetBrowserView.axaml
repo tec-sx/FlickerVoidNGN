@@ -101,16 +101,34 @@
             <Setter Property="Padding" Value="2" />
             <Setter Property="Margin" Value="1" />
           </Style>
+          <Style Selector="Button.expand">
+            <Setter Property="Padding" Value="1" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+          </Style>
         </ListBox.Styles>
         <ListBox.ItemTemplate>
+          <!-- A file of a group (a file with the files named after it) is framed; its owner's arrow lists the owned files after it. -->
           <DataTemplate DataType="assets:AssetEntry">
-            <StackPanel Width="76" Spacing="2" ToolTip.Tip="{Binding Path}">
-              <PathIcon Width="40" Height="40" Margin="0,4,0,0" Data="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Icon}}"
-                        Foreground="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}" />
-              <Border Height="2" Margin="6,0" Background="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}" />
-              <TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
-                         FontSize="{StaticResource EditorSmallFontSize}" />
-            </StackPanel>
+            <Panel>
+              <Border BorderThickness="1" CornerRadius="4" IsHitTestVisible="False" IsVisible="{Binding IsGrouped}"
+                      BorderBrush="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}" />
+              <StackPanel Width="76" Spacing="2" ToolTip.Tip="{Binding Path}">
+                <PathIcon Width="40" Height="40" Margin="0,4,0,0" Data="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Icon}}"
+                          Foreground="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}" />
+                <Border Height="2" Margin="6,0" Background="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}" />
+                <TextBlock Text="{Binding Label}" TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                           FontSize="{StaticResource EditorSmallFontSize}" />
+              </StackPanel>
+              <Button Classes="expand" HorizontalAlignment="Right" VerticalAlignment="Top" Click="HandleExpandClick"
+                      IsVisible="{Binding !!Owned.Count}" ToolTip.Tip="Show or hide the files named after it.">
+                <Panel>
+                  <PathIcon Width="12" Height="12" Data="{x:Static shell:MaterialIcons.Next}" IsVisible="{Binding !IsExpanded}" />
+                  <PathIcon Width="12" Height="12" Data="{x:Static shell:MaterialIcons.Back}" IsVisible="{Binding IsExpanded}" />
+                </Panel>
+              </Button>
+            </Panel>
           </DataTemplate>
         </ListBox.ItemTemplate>
         <ListBox.ContextMenu>
@@ -123,6 +141,9 @@
             </MenuItem>
             <MenuItem Header="Rename" Click="HandleRenameClick" InputGesture="F2">
               <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Rename}" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Duplicate" Command="{Binding DuplicateCommand}" InputGesture="Ctrl+D">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Duplicate}" /></MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="Delete" Click="HandleDeleteClick" InputGesture="Delete">
               <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Delete}" /></MenuItem.Icon>

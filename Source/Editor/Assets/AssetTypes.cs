@@ -30,6 +30,7 @@ public static class AssetTypes
     public static AssetType Vehicle { get; } = new("Vehicle", "Vehicle", "#D97BA6", VehicleFile.Extension)
     {
         New = new AssetNew("Vehicle", "New Vehicle", "vehicle", WriteVehicle),
+        IsCreation = true,
     };
 
     public static AssetType Model { get; } = new("Model", "Model", "#4A9BBF", ".glb", ".gltf", ".fvmodel");

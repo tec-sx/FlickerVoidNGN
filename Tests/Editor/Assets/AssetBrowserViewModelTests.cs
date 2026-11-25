@@ -313,6 +313,103 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     }
 
     [Fact]
+    public void ExpandsAGroupToListItsFilesAfterIt()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Van.fvvehicle").WithFile("Van.blend").WithFile("Wall.fvmat").Build();
+
+        browser.ToggleExpandedCommand.Execute(browser.Items[0]);
+
+        browser.Items.Select(static item => item.Path).Should().Equal("Van.fvvehicle", "Van.blend", "Wall.fvmat");
+        browser.Items[0].IsExpanded.Should().BeTrue();
+        browser.ToggleExpandedCommand.Execute(browser.Items[0]);
+        browser.Items.Select(static item => item.Path).Should().Equal("Van.fvvehicle", "Wall.fvmat");
+    }
+
+    [Fact]
+    public void RevealsAnOwnedFileByExpandingItsGroup()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Vans/Van.fvvehicle").WithFile("Vans/Van.png", "").Build();
+
+        AssetEntry? revealed = browser.Reveal("Vans/Van.png");
+
+        revealed!.Owner.Should().Be("Vans/Van.fvvehicle");
+        browser.SelectedAsset.Should().Be(revealed);
+    }
+
+    [Fact]
+    public void RenamesAGroupFromAnyOfItsFiles()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Van.fvvehicle").WithFile("Van.blend").WithFile("Van.png", "").WithFile("Van.png.fvtexture").Build();
+        browser.ToggleExpandedCommand.Execute(browser.Items[0]);
+        browser.SelectedAsset = browser.Items[1];
+
+        browser.RenameCommand.Execute("Truck");
+
+        string[] renamed = ["Truck.fvvehicle", "Truck.blend", "Truck.png", "Truck.png.fvtexture"];
+        renamed.Should().AllSatisfy(path => _builder.Exists(path).Should().BeTrue());
+        _builder.Exists("Van.blend").Should().BeFalse();
+        browser.SelectedAsset!.Path.Should().Be("Truck.fvvehicle");
+        browser.Items.Select(static item => item.Path).Should().StartWith("Truck.fvvehicle", "Truck.blend");
+    }
+
+    [Fact]
+    public void RefusesToRenameAGroupOverATakenName()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Van.fvvehicle").WithFile("Van.blend").WithFile("Truck.blend").Build();
+        browser.SelectedAsset = browser.Assets[0];
+
+        browser.RenameCommand.Execute("Truck");
+
+        browser.Status.Should().Be("Truck.blend already exists.");
+        _builder.Exists("Van.fvvehicle").Should().BeTrue();
+        _builder.Exists("Truck.fvvehicle").Should().BeFalse();
+    }
+
+    [Fact]
+    public void MovesAGroupTogether()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Van.fvvehicle").WithFile("Van.blend").WithFile("Vans/Old.fvvehicle").Build();
+        AssetEntry van = browser.Assets[0];
+
+        browser.MoveTo(van, "Vans");
+
+        _builder.Exists("Vans/Van.fvvehicle").Should().BeTrue();
+        _builder.Exists("Vans/Van.blend").Should().BeTrue();
+        _builder.Exists("Van.blend").Should().BeFalse();
+    }
+
+    [Fact]
+    public void DuplicatesAGroupUnderAFreeName()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Van.fvvehicle", "{ \"type\": \"car\" }").WithFile("Van.blend").WithFile("Van 2.blend").Build();
+        browser.SelectedAsset = browser.Assets.Single(static asset => asset.Path == "Van.fvvehicle");
+
+        browser.DuplicateCommand.Execute(null);
+
+        _builder.ReadFile("Van 3.fvvehicle").Should().Be("{ \"type\": \"car\" }");
+        _builder.Exists("Van 3.blend").Should().BeTrue();
+        _builder.Exists("Van.fvvehicle").Should().BeTrue();
+        browser.SelectedAsset!.Path.Should().Be("Van 3.fvvehicle");
+    }
+
+    [Fact]
+    public void DeletesAGroupWithItsOwnerAndOneFileOnItsOwn()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Van.fvvehicle").WithFile("Van.blend").WithFile("Van.blend1").Build();
+        browser.ToggleExpandedCommand.Execute(browser.Items[0]);
+        browser.SelectedAsset = browser.Items.Single(static item => item.Path == "Van.blend1");
+
+        browser.DeleteCommand.Execute(null);
+
+        _builder.Exists("Van.blend1").Should().BeFalse();
+        _builder.Exists("Van.blend").Should().BeTrue();
+        browser.SelectedAsset = browser.Items[0];
+        browser.DeleteCommand.Execute(null);
+        _builder.Exists("Van.fvvehicle").Should().BeFalse();
+        _builder.Exists("Van.blend").Should().BeFalse();
+    }
+
+    [Fact]
     public void RenamesTheSelectedAssetKeepingItsExtension()
     {
         AssetBrowserViewModel browser = _builder.WithFile("Room.fvscene").Build();

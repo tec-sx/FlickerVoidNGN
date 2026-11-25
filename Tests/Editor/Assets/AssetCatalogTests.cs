@@ -34,7 +34,39 @@ public sealed class AssetCatalogTests : IDisposable
 
         IReadOnlyList<AssetEntry> assets = catalog.Find("", recursive: true, type: null, text: "");
 
-        assets.Should().ContainSingle().Which.Path.Should().Be("Paper.png");
+        AssetEntry image = assets.Should().ContainSingle().Which;
+        image.Path.Should().Be("Paper.png");
+        image.Owned.Select(static owned => owned.Path).Should().Equal("Paper.png.fvtexture");
+    }
+
+    [Fact]
+    public void GroupsTheFilesNamedAfterACreationUnderIt()
+    {
+        AssetCatalog catalog = _builder.WithFile("Van.fvvehicle").WithFile("Van.blend").WithFile("Van.png").WithFile("Van.png.fvtexture")
+            .WithFile("Vandal.fvscene").Build();
+
+        IReadOnlyList<AssetEntry> assets = catalog.Find("", recursive: false, type: null, text: "");
+
+        assets.Select(static asset => asset.Path).Should().Equal("Van.fvvehicle", "Vandal.fvscene");
+        AssetEntry van = assets[0];
+        van.Owned.Select(static owned => owned.Path).Should().Equal("Van.blend", "Van.png", "Van.png.fvtexture");
+        van.Owned.Should().AllSatisfy(static owned => owned.Owner.Should().Be("Van.fvvehicle"));
+        van.Owned[0].Name.Should().Be("Van");
+        van.Owned[0].Label.Should().Be("Van.blend");
+        van.IsGrouped.Should().BeTrue();
+        assets[1].IsGrouped.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ListsAnOwnedFileOfTheFilteredTypeOnItsOwn()
+    {
+        AssetCatalog catalog = _builder.WithFile("Van.fvvehicle").WithFile("Van.png").Build();
+
+        IReadOnlyList<AssetEntry> assets = catalog.Find("", recursive: true, AssetTypes.Texture, text: "");
+
+        AssetEntry image = assets.Should().ContainSingle().Which;
+        image.Path.Should().Be("Van.png");
+        image.Owner.Should().Be("Van.fvvehicle");
     }
 
     [Fact]
