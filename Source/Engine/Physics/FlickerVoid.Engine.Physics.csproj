@@ -1,11 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IsAotCompatible>true</IsAotCompatible>
-    <!-- BepuPhysics 2.5 is only published as betas, so the package depends on a prerelease. -->
-    <NoWarn>$(NoWarn);NU5104</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="BepuPhysics" />
+    <PackageReference Include="JoltPhysicsSharp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Runtime/FlickerVoid.Engine.Runtime.csproj" />
