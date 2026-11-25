@@ -1255,6 +1255,94 @@ public sealed class SceneRendererTests : IDisposable
         motion[6].Y.Should().BeApproximately(1, 0.01f);
     }
 
+    [Fact]
+    public void ShowsTheAlbedoInItsDebugView()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+        _builder.WithRenderer(static renderer => renderer.DebugView = DebugView.Albedo);
+
+        uint[] pixels = _builder.Render();
+
+        pixels[5].Should().Be(RedPixel, "the quad is red however dark its light");
+        pixels[0].Should().Be(BlackPixel, "nothing was drawn there");
+    }
+
+    [Fact]
+    public void ShowsTheNormalsInTheirDebugView()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithRenderer(static renderer => renderer.DebugView = DebugView.Normal);
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(127, 128, "the quad faces +Z, shown as half of each axis plus half");
+        green.Should().BeInRange(127, 128);
+        blue.Should().Be(255);
+    }
+
+    [Fact]
+    public void ShowsEachMaterialInItsOwnColourInItsDebugView()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithFile("Shiny.fvmat", """{ "parameters": { "specular": 0.5 } }""");
+        _builder.WithScene(
+            Camera,
+            """{ "name": "Shiny", "components": { "transform": { "position": [-0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Shiny.fvmat"] } } }""",
+            """{ "name": "Plain", "components": { "transform": { "position": [0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithRenderer(static renderer => renderer.DebugView = DebugView.Material);
+
+        uint[] pixels = _builder.Render();
+
+        pixels[4].Should().Be(pixels[5], "a material keeps its colour across its surfaces");
+        pixels[6].Should().NotBe(pixels[5], "each material has its own colour");
+    }
+
+    [Fact]
+    public void ShowsTheObjectDepthInItsDebugView()
+    {
+        _builder.WithScene(Camera, """{ "name": "Crate", "components": { "transform": { "position": [0, -0.5, 0] }, "greybox": { "size": [1, 1, 1] } } }""");
+        _builder.WithRenderer(static renderer => renderer.DebugView = DebugView.ObjectDepth);
+
+        uint[] pixels = _builder.Render();
+
+        (byte shade, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        shade.Should().BeInRange(84, 86, "the crate tones at its centre, 5 from the camera, shown as 5 / (5 + 10)");
+    }
+
+    [Fact]
+    public void ShowsHowFarEachPixelMovedInTheMotionDebugView()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithRenderer(static renderer => renderer.DebugView = DebugView.Motion);
+        uint[] still = _builder.Render();
+
+        uint[] moved = _builder.WithPosition("Quad", new Vector3(0.5f, 0, 0)).Render();
+
+        (byte stillRed, byte stillGreen, _) = SceneRendererTestsBuilder.Channels(still[5]);
+        (byte movedRed, byte movedGreen, _) = SceneRendererTestsBuilder.Channels(moved[6]);
+        stillRed.Should().BeInRange(127, 128, "nothing moved, shown as middle grey");
+        stillGreen.Should().BeInRange(127, 128);
+        movedRed.Should().BeLessThan(stillRed, "the quad came from the left");
+        movedGreen.Should().BeInRange(127, 128, "it moved across only");
+    }
+
+    [Fact]
+    public void ShowsTheDepthInItsDebugView()
+    {
+        _builder.WithScene(Camera, """{ "name": "Crate", "components": { "transform": { "position": [0, -0.5, 0] }, "greybox": { "size": [1, 1, 1] } } }""");
+        _builder.WithRenderer(static renderer => renderer.DebugView = DebugView.Depth);
+
+        uint[] pixels = _builder.Render();
+
+        (byte shade, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        shade.Should().BeInRange(78, 80, "the crate's front stands 4.5 from the camera, shown as 4.5 / (4.5 + 10)");
+    }
+
     /// <summary>A paper of sixteen different greys under the entities, a camera first.</summary>
     private static uint[] RenderPaper(SceneRendererTestsBuilder builder, params string[] entities)
     {
