@@ -6,7 +6,7 @@ using FlickerVoid.Engine.Rendering.PostProcessing;
 
 namespace FlickerVoid.Engine.Rendering.Shadows;
 
-/// <summary>Works out contact shadows and ambient occlusion from the prepass depth into the screen shadows target.</summary>
+/// <summary>Works out contact shadows and ambient occlusion from the scene depth into the screen shadows target.</summary>
 internal sealed class ScreenShadowPass : IRenderPass
 {
     private const int GroupSize = 8;

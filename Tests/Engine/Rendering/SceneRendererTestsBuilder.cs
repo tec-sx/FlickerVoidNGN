@@ -135,16 +135,17 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     /// <summary>Adds a component the scene files can't give, such as a tag systems set, to the scene's entity of that name.</summary>
     public SceneRendererTestsBuilder WithComponent<T>(string name, T component)
     {
-        Entity? found = null;
-        QueryDescription named = new QueryDescription().WithAll<EntityName>();
-        _game.World.Query(in named, (Entity entity, ref EntityName entityName) =>
-        {
-            if (entityName.Value == name)
-            {
-                found = entity;
-            }
-        });
-        _game.World.Add(found!.Value, component);
+        Entity entity = FindNamed(name);
+        _game.World.Add(entity, component);
+        return this;
+    }
+
+    /// <summary>Moves the scene's entity of that name, as a system would between frames.</summary>
+    public SceneRendererTestsBuilder WithPosition(string name, Vector3 position)
+    {
+        Entity entity = FindNamed(name);
+        ref Transform transform = ref _game.World.Get<Transform>(entity);
+        transform.Position = position;
         return this;
     }
 
@@ -206,15 +207,9 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     public uint[] Render()
     {
         IGraphicsDevice device = BuildDevice();
-        if (_renderer is null)
-        {
-            _renderer = new SceneRenderer(device, _content, PixelFormat.Rgba8UNorm);
-            SceneRendererSetup setup = _game.Services.GetService<SceneRendererSetup>()!;
-            setup.Apply(_renderer);
-        }
-
-        _renderer.Mood = BuildMood();
-        _configure?.Invoke(_renderer);
+        SceneRenderer renderer = BuildRenderer(device);
+        renderer.Mood = BuildMood();
+        _configure?.Invoke(renderer);
 
         TextureDescription colorDescription = new(_targetSize, _targetSize, PixelFormat.Rgba8UNorm, TextureUsage.RenderTarget | TextureUsage.CopySource);
         using ITexture color = device.CreateTexture(colorDescription);
@@ -224,7 +219,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         using ICommandList commands = device.CreateCommandList();
 
         commands.Begin();
-        _renderer.Render(commands, _game.World, color);
+        renderer.Render(commands, _game.World, color);
         commands.Barrier(color, ResourceState.CopySource);
         commands.CopyTextureToBuffer(color, readback, 0);
         commands.End();
@@ -241,6 +236,50 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         }
 
         return pixels;
+    }
+
+    /// <summary>Renders the world and reads back one of the G-buffer's targets of four bytes a texel, each texel's bytes as a little-endian number, top row first.</summary>
+    public uint[] RenderTexels(Func<GBuffer, ITexture> target)
+    {
+        byte[] bytes = RenderGBuffer(target);
+        return MemoryMarshal.Cast<byte, uint>(bytes).ToArray();
+    }
+
+    /// <summary>Renders the world and reads back one of the G-buffer's targets of half floats, every channel of every texel in order, top row first.</summary>
+    public float[] RenderHalfs(Func<GBuffer, ITexture> target)
+    {
+        byte[] bytes = RenderGBuffer(target);
+        ReadOnlySpan<Half> halfs = MemoryMarshal.Cast<byte, Half>(bytes);
+        float[] values = new float[halfs.Length];
+        for (int index = 0; index < values.Length; index++)
+        {
+            values[index] = (float)halfs[index];
+        }
+
+        return values;
+    }
+
+    /// <summary>Renders the world and reads back one of the G-buffer's targets of two half floats a texel, top row first.</summary>
+    public Vector2[] RenderHalfPairs(Func<GBuffer, ITexture> target)
+    {
+        float[] halfs = RenderHalfs(target);
+        Vector2[] pairs = new Vector2[halfs.Length / 2];
+        for (int index = 0; index < pairs.Length; index++)
+        {
+            pairs[index] = new Vector2(halfs[index * 2], halfs[(index * 2) + 1]);
+        }
+
+        return pairs;
+    }
+
+    /// <summary>Unfolds a normal the geometry pass folded onto an octahedron.</summary>
+    public static Vector3 DecodeNormal(Vector2 folded)
+    {
+        Vector3 normal = new(folded.X, folded.Y, 1 - MathF.Abs(folded.X) - MathF.Abs(folded.Y));
+        float fold = Math.Clamp(-normal.Z, 0, 1);
+        normal.X += normal.X >= 0 ? -fold : fold;
+        normal.Y += normal.Y >= 0 ? -fold : fold;
+        return Vector3.Normalize(normal);
     }
 
     /// <summary>Creates a baker on the test device, reading the same content folder, lit like the renderer.</summary>
@@ -321,6 +360,63 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
             FogHeightFalloff = _fogHeightFalloff,
         };
         return mood;
+    }
+
+    private SceneRenderer BuildRenderer(IGraphicsDevice device)
+    {
+        if (_renderer is null)
+        {
+            _renderer = new SceneRenderer(device, _content, PixelFormat.Rgba8UNorm);
+            SceneRendererSetup setup = _game.Services.GetService<SceneRendererSetup>()!;
+            setup.Apply(_renderer);
+        }
+
+        return _renderer;
+    }
+
+    /// <summary>Renders the world with a pass at the end of the pipeline copying the target out, and reads its texels back tightly packed, top row first.</summary>
+    private byte[] RenderGBuffer(Func<GBuffer, ITexture> target)
+    {
+        IGraphicsDevice device = BuildDevice();
+        SceneRenderer renderer = BuildRenderer(device);
+        int widestPitch = PixelFormat.Rgba16Float.GetCopyRowPitch(_targetSize);
+        BufferDescription readbackDescription = new(widestPitch * _targetSize, BufferUsage.CopyDestination, MemoryLocation.Readback);
+        using IBuffer readback = device.CreateBuffer(readbackDescription);
+        GBufferReadbackPass pass = new(target, readback);
+        renderer.Pipeline.Add(pass);
+        try
+        {
+            Render();
+        }
+        finally
+        {
+            renderer.Pipeline.Remove(pass);
+        }
+
+        int rowSize = pass.Format.GetRowSize(_targetSize);
+        int pitch = pass.Format.GetCopyRowPitch(_targetSize);
+        byte[] bytes = new byte[rowSize * _targetSize];
+        for (int y = 0; y < _targetSize; y++)
+        {
+            Span<byte> row = bytes.AsSpan(y * rowSize, rowSize);
+            readback.Read(row, (long)y * pitch);
+        }
+
+        return bytes;
+    }
+
+    private Entity FindNamed(string name)
+    {
+        Entity? found = null;
+        QueryDescription named = new QueryDescription().WithAll<EntityName>();
+        _game.World.Query(in named, (Entity entity, ref EntityName entityName) =>
+        {
+            if (entityName.Value == name)
+            {
+                found = entity;
+            }
+        });
+        return found!.Value;
     }
 
     private IGraphicsDevice BuildDevice()

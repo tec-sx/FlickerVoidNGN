@@ -44,7 +44,7 @@ graph TD
 - Scenes and spawning go through scene files and factories; scene proxies load and unload whole worlds.
 - Game code is plain C#. Hot reload for code and assets in development.
 - Pressing Play runs the game in its own process, so a crash in game code never takes the editor down.
-- Rendering reads a render world, not the game world: each frame an extractor copies cameras, meshes, lights and volumes into a `RenderScene`, which a later stage can extract on the game thread and draw on a render thread. Drawing is an ordered pipeline of render passes (skinning, light gathering, shadows, depth prepass, screen shadows, opaque, post) sharing a frame context; features are added as passes. Barriers stay explicit until a frame graph earns its place.
+- Rendering reads a render world, not the game world: each frame an extractor copies cameras, meshes, lights and volumes into a `RenderScene`, which a later stage can extract on the game thread and draw on a render thread. Drawing is an ordered pipeline of render passes (skinning, light gathering, shadows, geometry into the G-buffer, screen shadows, opaque, post) sharing a frame context; features are added as passes. Barriers stay explicit until a frame graph earns its place.
 
 ## Look and lighting
 

@@ -32,7 +32,7 @@ internal static class MeshDrawing
     }
 
     /// <summary>The scene shader's vertex stage with the given pixel stage, drawing into the given color formats and the scene depth.</summary>
-    public static IPipeline CreatePipeline(IGraphicsDevice device, ShaderLibrary shaders, string pixelEntryPoint, PixelFormat[] colorFormats, string name)
+    public static IPipeline CreatePipeline(IGraphicsDevice device, ShaderLibrary shaders, string pixelEntryPoint, IReadOnlyList<PixelFormat> colorFormats, string name)
     {
         GraphicsPipelineDescription description = new()
         {
