@@ -37,6 +37,9 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
     private static readonly QueryDescription PlacedStatics = new QueryDescription().WithAll<Transform, SimulatedBody, StaticBody>();
 
     private readonly Jolt.ObjectLayerPairFilterTable _layerPairs;
+    /// <summary>Jolt's C API steps every simulation with the one temporary allocator it starts with, so only one may step at a time.</summary>
+    private static readonly Lock StepLock = new();
+
     private readonly Jolt.BroadPhaseLayerInterfaceTable _broadPhaseLayers;
     private readonly Jolt.ObjectVsBroadPhaseLayerFilterTable _layerFilter;
     private readonly Jolt.PhysicsSystem _system;
@@ -117,7 +120,11 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
             _system.OptimizeBroadPhase();
         }
 
-        _system.Update(dt, 1, _jobs);
+        lock (StepLock)
+        {
+            _system.Update(dt, 1, _jobs);
+        }
+
         CopyPosesToTransforms();
     }
 

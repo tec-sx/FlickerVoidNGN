@@ -382,6 +382,23 @@ public sealed class PhysicsSystemTests : IDisposable
     }
 
     [Fact]
+    public void GamesOnSeveralThreadsStepTheirPhysicsAtOnce()
+    {
+        PhysicsSystemTestsBuilder[] others = [new(), new(), new(), new()];
+        IReadOnlyList<Entity>[] piles = [.. others.Select(other => other.SpawnPile())];
+
+        Parallel.For(0, others.Length, index => others[index].Run(seconds: 2));
+
+        for (int index = 0; index < others.Length; index++)
+        {
+            Game game = others[index].Game;
+            Transform top = game.World.Get<Transform>(piles[index][^1]);
+            top.Position.Y.Should().BeLessThan(PhysicsSystemTestsBuilder.PileTop, "every game stepped its own pile");
+            game.Dispose();
+        }
+    }
+
+    [Fact]
     public void RegistersItselfAsAService()
     {
         IPhysicsSystem? service = _game.Services.GetService<IPhysicsSystem>();
