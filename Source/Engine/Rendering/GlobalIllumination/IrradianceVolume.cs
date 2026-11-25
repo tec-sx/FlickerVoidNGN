@@ -6,7 +6,8 @@ namespace FlickerVoid.Engine.Rendering.GlobalIllumination;
 
 /// <summary>
 /// A box round its entity's position (unrotated) filled with a grid of irradiance probes, which light the meshes inside it
-/// with light bounced off the scene. The probes come from a file baked by <see cref="IrradianceBaker"/>.
+/// with light bounced off the scene. A frame that traces rays traces the scene's first volume's probes live (<see cref="ProbePass"/>);
+/// others light with the probes baked into its file by <see cref="IrradianceBaker"/>.
 /// </summary>
 public struct IrradianceVolume
 {
@@ -23,7 +24,7 @@ public struct IrradianceVolume
 
     public int ProbesZ { get; set; } = 4;
 
-    /// <summary>The baked probes file in the content folder; none lights the box by the ambient light alone.</summary>
+    /// <summary>The baked probes file in the content folder, which frames that don't trace rays light with; without one they light the box by the ambient light alone.</summary>
     [ContentFile(".fvprobes")]
     public string? Probes { get; set; }
 

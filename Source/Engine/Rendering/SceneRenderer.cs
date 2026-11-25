@@ -28,9 +28,10 @@ namespace FlickerVoid.Engine.Rendering;
 /// <summary>
 /// Draws a frame: extracts the world into a <see cref="RenderScene"/>, lets every pass of the <see cref="Pipeline"/> prepare,
 /// uploads the frame's view, lights, shadows, clusters and probes, then records the passes in order. The default passes skin
-/// meshes, gather lights, draw the shadow atlas, build the scene's acceleration structures when it traces rays, draw the depth and
-/// G-buffer and the screen shadows, light the G-buffer into HDR, post-process it graded as the <see cref="Mood"/> says, show a
-/// <see cref="DebugView"/> in its place when one is asked for, and draw the outlines of outlined meshes.
+/// meshes, gather lights, draw the shadow atlas, build the scene's acceleration structures and trace its irradiance probes when it
+/// traces rays, draw the depth and G-buffer and the screen shadows, light the G-buffer into HDR, post-process it graded as the
+/// <see cref="Mood"/> says, show a <see cref="DebugView"/> in its place when one is asked for, and draw the outlines of outlined
+/// meshes.
 /// </summary>
 public sealed class SceneRenderer : IDisposable
 {
@@ -51,6 +52,7 @@ public sealed class SceneRenderer : IDisposable
     private readonly TextureLibrary _textures;
     private readonly ProbeCache _probes;
     private readonly FrameDataWriter _frameData;
+    private readonly ProbePass _probePass;
     private readonly RenderScene _scene = new();
     private readonly RenderContext _context;
 
@@ -70,6 +72,7 @@ public sealed class SceneRenderer : IDisposable
         _textures = new TextureLibrary(device, content);
         _probes = new ProbeCache(device, content);
         _frameData = new FrameDataWriter(device, _probes, MaxFramesInFlight);
+        _probePass = new ProbePass(device, shaders, _probes);
         _context = new RenderContext(_scene)
         {
             Targets = _targets,
@@ -83,6 +86,7 @@ public sealed class SceneRenderer : IDisposable
         Pipeline.Add(new LightGatherPass());
         Pipeline.Add(new ShadowPass(device, shaders));
         Pipeline.Add(new RayTracingPass(device));
+        Pipeline.Add(_probePass);
         Pipeline.Add(new GeometryPass(device, shaders));
         Pipeline.Add(new ShadowRayPass(device, shaders));
         Pipeline.Add(new ScreenShadowPass(device, shaders));
@@ -116,6 +120,18 @@ public sealed class SceneRenderer : IDisposable
     public bool Probes { get; set; } = true;
 
     /// <summary>
+    /// Whether the scene's first irradiance volume's probes follow the light, traced by rays every frame, while it draws with the
+    /// ray traced tier; off, or without ray tracing, it lights with the probes baked into the volume's file.
+    /// </summary>
+    public bool LiveProbes { get; set; } = true;
+
+    /// <summary>
+    /// A renderer whose probes it lights with in place of tracing its own, such as the one drawing the same scene's main view; it
+    /// draws after that renderer each frame. Null traces or loads its own.
+    /// </summary>
+    public SceneRenderer? ProbesFrom { get; set; }
+
+    /// <summary>
     /// Whether a sky gradient fills what the scene leaves empty; the game's window and the editor's views draw it, while stages,
     /// previews and probe bakes leave the background empty.
     /// </summary>
@@ -126,7 +142,7 @@ public sealed class SceneRenderer : IDisposable
 
     /// <summary>
     /// Whether it draws with the ray traced tier where the device has ray queries, building the scene's acceleration structures
-    /// each frame for its ray traced passes; the game's window and the editor's viewport do, while stages, previews and probe bakes
+    /// each frame for its ray traced passes; the game's window, the editor's viewport and probe bakes do, while stages and previews
     /// draw without. Ignored on devices without ray queries.
     /// </summary>
     public bool RayTracing { get; set; }
@@ -149,8 +165,8 @@ public sealed class SceneRenderer : IDisposable
     /// <summary>What the last frame drew and culled.</summary>
     public RenderStatistics Statistics => _context.Statistics;
 
-    /// <summary>Probes that replace the world's irradiance volume while a bake renders, or null.</summary>
-    internal ProbeSource? BakeProbes { get; set; }
+    /// <summary>The pass that finds the frame's probes and traces them live, which the baker bakes through.</summary>
+    internal ProbePass ProbePass => _probePass;
 
     /// <summary>Draws the world from its first camera into the color target, or clears it without one; leaves it in the RenderTarget state.</summary>
     public void Render(ICommandList commands, World world, ITexture colorTarget)
@@ -227,6 +243,8 @@ public sealed class SceneRenderer : IDisposable
         context.Mood = Mood;
         context.LocalLights = LocalLights;
         context.Probes = Probes;
+        context.LiveProbes = LiveProbes;
+        context.ProbesFrom = ProbesFrom?._probePass;
         context.Sky = Sky;
         context.DebugView = DebugView;
         context.RayTracing = RayTracing && Device.Features.HasFlag(GraphicsFeatures.RayQueries);
@@ -241,24 +259,8 @@ public sealed class SceneRenderer : IDisposable
         context.FrameSlot = _frameData.Advance();
 
         Pipeline.Prepare(context);
-        context.ProbeSource = FindProbes();
         IBuffer frame = _frameData.Write(context);
         context.FrameBuffer = frame.BindlessIndex;
         Pipeline.Execute(context);
-    }
-
-    private ProbeSource? FindProbes()
-    {
-        if (BakeProbes is not null)
-        {
-            return BakeProbes;
-        }
-
-        if (!Probes)
-        {
-            return null;
-        }
-
-        return _probes.Find(_scene);
     }
 }

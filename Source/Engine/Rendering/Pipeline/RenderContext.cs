@@ -49,6 +49,12 @@ public sealed class RenderContext
 
     public bool Probes { get; internal set; } = true;
 
+    /// <summary>Whether the probes follow the light live while the frame traces rays (<see cref="SceneRenderer.LiveProbes"/>).</summary>
+    public bool LiveProbes { get; internal set; } = true;
+
+    /// <summary>The probe pass of the renderer whose probes this frame lights with in place of its own (<see cref="SceneRenderer.ProbesFrom"/>), or null.</summary>
+    internal ProbePass? ProbesFrom { get; set; }
+
     /// <summary>Whether the sky fills what the scene left empty.</summary>
     public bool Sky { get; internal set; }
 

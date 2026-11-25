@@ -49,6 +49,12 @@ public sealed class RenderingWindow : DebugWindow
             _renderer.RayTracing = rayTracing;
         }
 
+        bool liveProbes = _renderer.LiveProbes;
+        if (ImGui.Checkbox("Live probes (with ray tracing)", ref liveProbes))
+        {
+            _renderer.LiveProbes = liveProbes;
+        }
+
         int view = (int)_renderer.DebugView;
         if (ImGui.Combo("View", ref view, ViewNames, ViewNames.Length))
         {

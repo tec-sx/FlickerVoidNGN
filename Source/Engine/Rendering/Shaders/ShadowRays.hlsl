@@ -49,21 +49,10 @@ static const float RayOffset = 0.005;
 
 static const float RayOffsetPerDepth = 0.001;
 
-// How short of a lamp a ray stops, so the lamp's own bulb or shade standing round it doesn't hide it.
-static const float LampClearance = 0.01;
-
 static const float MaxHistory = 16;
 
 // How far a surface's view depth may lie from the history's, as a share of it, for the history to count as the same surface.
 static const float DepthTolerance = 0.02;
-
-// PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
-uint Hash(uint value)
-{
-    uint state = value * 747796405u + 2891336453u;
-    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-    return (word >> 22u) ^ word;
-}
 
 // The pixel's point for the light in this frame, in the unit square: the R2 sequence (Roberts 2018, "The Unreasonable
 // Effectiveness of Quasirandom Sequences") in 32-bit fixed point, so it wraps exactly, turned by a hash of the pixel and light.

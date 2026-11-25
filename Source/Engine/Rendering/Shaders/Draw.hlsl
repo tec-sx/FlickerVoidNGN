@@ -29,6 +29,8 @@ static const uint DrawSize = 208;
 
 static const uint VertexStride = 32;
 
+static const uint VertexNormal = 12;
+
 static const uint VertexUv = 24;
 
 // The draw's record; its matrices are the rows of System.Numerics matrices, which multiply row vectors.
