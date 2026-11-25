@@ -21,6 +21,7 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Vulkan.Textures;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Editor.Viewports;
@@ -386,7 +387,8 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
 
         try
         {
-            _renderer = new ViewportRenderer(viewModel.Scene.Game.LoggerFactory, viewModel.Scene.Content, viewModel.Validation);
+            RenderingSettings settings = viewModel.Scene.Game.Services.GetService<RenderingSettings>()!;
+            _renderer = new ViewportRenderer(viewModel.Scene.Game.LoggerFactory, viewModel.Scene.Content, viewModel.Validation, settings);
         }
         catch (GraphicsUnavailableException exception)
         {
@@ -487,7 +489,8 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         DepthFade previewFade = viewModel.GetPreviewDepthFade();
         Vector3 focus = viewModel.GetDepthFocus();
         ViewportDepthFade depthFade = new(viewFade, previewFade, focus);
-        renderer.Render(viewModel.Scene.Game.World, camera, transform, preview, depthFade);
+        RenderingSettings rendering = viewModel.Scene.Game.Services.GetService<RenderingSettings>()!;
+        renderer.Render(viewModel.Scene.Game.World, rendering, camera, transform, preview, depthFade);
         _lastUpdate = _surface!.UpdateWithSemaphoresAsync(_image!, _ready!, _released!);
     }
 
