@@ -23,7 +23,7 @@ public class DebugConsoleTests
     [Fact]
     public void ShowsAndSetsVariables()
     {
-        ConsoleVariable<float> scale = new("Time.Debug.Scale", "Game speed.", 1);
+        ConsoleVariable<float> scale = ConsoleVariable.Create("Time.Debug.Scale", "Game speed.", 1f);
         DebugConsole console = _builder.WithEntry(scale).Build();
 
         string shown = console.Execute("time.debug.scale");
@@ -37,7 +37,7 @@ public class DebugConsoleTests
     [Fact]
     public void RaisesChangedWhenAVariableIsSet()
     {
-        ConsoleVariable<bool> paused = new("Physics.Debug.Paused", "Stops physics.", false);
+        ConsoleVariable<bool> paused = ConsoleVariable.Create("Physics.Debug.Paused", "Stops physics.", false);
         Action<bool> changed = Substitute.For<Action<bool>>();
         paused.Changed += changed;
         DebugConsole console = _builder.WithEntry(paused).Build();
@@ -50,7 +50,7 @@ public class DebugConsoleTests
     [Fact]
     public void StringVariablesTakeTheRestOfTheLine()
     {
-        ConsoleVariable<string> greeting = new("Debug.Greeting", "Text to show.", "hello");
+        ConsoleVariable<string> greeting = ConsoleVariable.Create("Debug.Greeting", "Text to show.", "hello");
         DebugConsole console = _builder.WithEntry(greeting).Build();
 
         console.Execute("debug.greeting good evening");
@@ -61,7 +61,7 @@ public class DebugConsoleTests
     [Fact]
     public void RejectsValuesOfTheWrongType()
     {
-        ConsoleVariable<int> count = new("Debug.Count", "A number.", 3);
+        ConsoleVariable<int> count = ConsoleVariable.Create("Debug.Count", "A number.", 3);
         DebugConsole console = _builder.WithEntry(count).Build();
 
         string output = console.Execute("debug.count three");
@@ -93,8 +93,8 @@ public class DebugConsoleTests
     [Fact]
     public void HelpListsEntriesStartingWithTheGivenText()
     {
-        ConsoleVariable<bool> paused = new("Physics.Debug.Paused", "Stops physics.", false);
-        ConsoleVariable<float> scale = new("Time.Debug.Scale", "Game speed.", 1);
+        ConsoleVariable<bool> paused = ConsoleVariable.Create("Physics.Debug.Paused", "Stops physics.", false);
+        ConsoleVariable<float> scale = ConsoleVariable.Create("Time.Debug.Scale", "Game speed.", 1f);
         DebugConsole console = _builder.WithEntry(paused).WithEntry(scale).Build();
 
         string all = console.Execute("help");
