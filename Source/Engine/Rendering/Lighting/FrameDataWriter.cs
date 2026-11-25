@@ -14,8 +14,9 @@ using FlickerVoid.Engine.Runtime.Geometry;
 namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>
-/// Writes the frame's view, sun, lights, shadows, light clusters, probes, indoor volumes, cutaway and draws into the frame buffer
-/// ring, after every pass has prepared and before any executes; remembers the view for the next frame's view before.
+/// Writes the frame's view, sun, lights, shadows, light clusters, probes, indoor volumes, cutaway, draws and the bindless indices
+/// of its depth and G-buffer into the frame buffer ring, after every pass has prepared and before any executes; remembers the
+/// view for the next frame's view before.
 /// </summary>
 internal sealed class FrameDataWriter : IDisposable
 {
@@ -107,6 +108,7 @@ internal sealed class FrameDataWriter : IDisposable
         Matrix4x4 previousViewProjection = _previousViewProjection ?? view.ViewProjection;
         _previousViewProjection = view.ViewProjection;
         Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
+        GBuffer gBuffer = context.GBuffer;
         FrameData data = new(
             view.ViewProjection,
             depthAxis,
@@ -164,8 +166,12 @@ internal sealed class FrameDataWriter : IDisposable
             0,
             previousViewProjection,
             (uint)drawsOffset,
-            0,
-            0,
+            context.Depth.BindlessIndex,
+            gBuffer.Albedo.BindlessIndex,
+            gBuffer.Normal.BindlessIndex,
+            gBuffer.Material.BindlessIndex,
+            gBuffer.ObjectDepth.BindlessIndex,
+            gBuffer.Motion.BindlessIndex,
             0);
 
         IBuffer frame = _frames.Get(size);

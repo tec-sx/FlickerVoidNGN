@@ -27,8 +27,8 @@ namespace FlickerVoid.Engine.Rendering;
 /// <summary>
 /// Draws a frame: extracts the world into a <see cref="RenderScene"/>, lets every pass of the <see cref="Pipeline"/> prepare,
 /// uploads the frame's view, lights, shadows, clusters and probes, then records the passes in order. The default passes skin
-/// meshes, gather lights, draw the shadow atlas, the depth and G-buffer, screen shadows, the lit HDR scene, post-processing
-/// graded as the <see cref="Mood"/> says, and the outlines of outlined meshes.
+/// meshes, gather lights, draw the shadow atlas, the depth and G-buffer and the screen shadows, light the G-buffer into HDR,
+/// post-process it graded as the <see cref="Mood"/> says, and draw the outlines of outlined meshes.
 /// </summary>
 public sealed class SceneRenderer : IDisposable
 {
@@ -82,7 +82,7 @@ public sealed class SceneRenderer : IDisposable
         Pipeline.Add(new ShadowPass(device, shaders));
         Pipeline.Add(new GeometryPass(device, shaders));
         Pipeline.Add(new ScreenShadowPass(device, shaders));
-        Pipeline.Add(new OpaquePass(device, shaders));
+        Pipeline.Add(new LightingPass(device, shaders));
         Pipeline.Add(new PostProcessPass(device, shaders, colorFormat, content));
         Pipeline.Add(new SkyPass(device, shaders, colorFormat));
         Pipeline.Add(new OutlinePass(device, shaders, colorFormat));
