@@ -8,22 +8,20 @@ using FlickerVoid.Editor.Assets.Flows;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Engine.Flow.Graphs;
-using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 
 namespace FlickerVoid.Editor.Assets;
 
 /// <summary>
-/// The asset browser: the content folder's tree, the files of the selected folder, and a kind filter and search that look
-/// through everything below it. Opening a file raises <see cref="Opened"/>, which the editor answers by kind. It creates,
+/// The asset browser: the content folder's tree, the files of the selected folder, and a type filter and search that look
+/// through everything below it. Opening a file raises <see cref="Opened"/>, which the editor answers by type. It creates,
 /// renames and deletes files and folders through the content manager, so their source files follow in a development build.
 /// Given the project's code folder, it shows it as a second root, Code, where it only writes new flow node classes.
 /// </summary>
 public sealed partial class AssetBrowserViewModel : ObservableObject
 {
     private const string SchemaFolder = ".schemas/";
-    private const string LookGroup = "Look";
     private const string FlowGroup = "Flow";
     private const string DataGroup = "Data Asset";
     private const string TableGroup = "Table";
@@ -33,6 +31,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     private readonly List<AssetCatalog> _catalogs;
     private readonly AssetCatalog? _code;
     private readonly bool _hasCode;
+    private readonly HashSet<string> _expanded = [];
 
     /// <summary>
     /// Browses the content; <paramref name="data"/> lists the data asset and table types it can create, and
@@ -52,14 +51,9 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         }
 
         List<AssetFilter> filters = [new AssetFilter("All", null)];
-        foreach (AssetKind kind in Enum.GetValues<AssetKind>())
+        foreach (AssetType type in AssetTypes.Files)
         {
-            if (kind == AssetKind.Folder)
-            {
-                continue;
-            }
-
-            filters.Add(new AssetFilter(kind.ToString(), kind));
+            filters.Add(new AssetFilter(type.Name, type));
         }
 
         Filters = filters;
@@ -67,19 +61,21 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         Refresh();
     }
 
-    /// <summary>Lists what <see cref="NewChoices"/> creates, with the data asset and table types <paramref name="data"/> registers, as again after the project's code is reloaded.</summary>
+    /// <summary>
+    /// Lists what <see cref="NewChoices"/> creates: a folder, each asset type New makes, and the data asset and table types
+    /// <paramref name="data"/> registers, as again after the project's code is reloaded.
+    /// </summary>
     [MemberNotNull(nameof(NewChoices))]
     public void ListDataTypes(DataTypes? data)
     {
-        List<MenuChoice> choices =
-        [
-            new("Folder", CreateFolder, Icon: "NewFolder"),
-            new("Scene", CreateScene, Icon: "Scene"),
-            new("Material", CreateMaterial, LookGroup, "Materials"),
-            new("Mood", CreateMood, LookGroup, "Mood"),
-            new("Canvas", CreateCanvas, LookGroup, "Canvas"),
-            new("Flow Graph", CreateFlow, FlowGroup, "Flow"),
-        ];
+        List<MenuChoice> choices = [new("Folder", CreateFolder, Icon: "NewFolder")];
+        foreach (AssetType type in AssetTypes.Files)
+        {
+            if (type.New is { } made)
+            {
+                choices.Add(new MenuChoice(made.Label, () => Create(type), made.Group, type.Icon));
+            }
+        }
         if (_hasCode)
         {
             choices.Add(new MenuChoice("Flow Node", NewFlowNode, FlowGroup, "Code"));
@@ -172,7 +168,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
             return;
         }
 
-        if (asset.Kind == AssetKind.Folder)
+        if (asset.Type == AssetTypes.Folder)
         {
             SelectFolder(asset.Path);
             return;
@@ -186,6 +182,12 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     {
         string folder = GetFolder(path);
         SelectFolder(folder);
+        AssetEntry? owner = Assets.FirstOrDefault(asset => asset.Owned.Any(owned => owned.Path == path));
+        if (owner is not null && _expanded.Add(owner.Path))
+        {
+            FindAssets();
+        }
+
         AssetEntry? found = Items.FirstOrDefault(item => item.Path == path);
         if (found is not null)
         {
@@ -208,7 +210,22 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         SelectFolder(parent);
     }
 
-    /// <summary>Moves a file or folder into a folder, keeping its name; a folder never goes into itself or below it.</summary>
+    /// <summary>Lists a group's owned files after it, or folds them away again.</summary>
+    [RelayCommand]
+    public void ToggleExpanded(AssetEntry entry)
+    {
+        if (!_expanded.Remove(entry.Path))
+        {
+            _expanded.Add(entry.Path);
+        }
+
+        FindAssets();
+    }
+
+    /// <summary>
+    /// Moves a file or folder into a folder, keeping its name, and a file of a group with the whole group; a folder never goes
+    /// into itself or below it.
+    /// </summary>
     public void MoveTo(AssetEntry item, string folder)
     {
         Status = "";
@@ -218,20 +235,19 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         }
 
         bool intoItself = folder == item.Path || folder.StartsWith(item.Path + "/", StringComparison.Ordinal);
-        if (item.Kind == AssetKind.Folder && intoItself)
+        if (item.Type == AssetTypes.Folder && intoItself)
         {
             Status = $"{item.Name} can't go into itself.";
             return;
         }
 
-        string name = item.Path[(item.Path.LastIndexOf('/') + 1)..];
-        string newPath = Combine(folder, name);
-        if (newPath == item.Path)
+        AssetEntry group = GetGroup(item);
+        if (GetFolder(group.Path) == folder)
         {
             return;
         }
 
-        if (Move(item.Path, newPath))
+        if (MoveGroup(group, folder, group.Name, copy: false) is not null)
         {
             SelectedAsset = null;
             Refresh();
@@ -253,51 +269,33 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         SelectFolder(path);
     }
 
-    [RelayCommand]
-    public void CreateScene()
+    /// <summary>Creates a file of the type, as its <see cref="AssetType.New"/> writes one, in the selected folder and selects it.</summary>
+    public void Create(AssetType type)
     {
-        CreateFile("New Scene", ".fvscene", "scene", "\"entities\": []");
-    }
-
-    [RelayCommand]
-    public void CreateMaterial()
-    {
-        CreateFile("New Material", ".fvmat", "material", "\"parameters\": {}");
-    }
-
-    [RelayCommand]
-    public void CreateMood()
-    {
-        CreateFile("New Mood", ".fvmood", "mood", null);
-    }
-
-    [RelayCommand]
-    public void CreateCanvas()
-    {
-        CreateFile("New Canvas", ".fvcanvas", "canvas", null);
-    }
-
-    [RelayCommand]
-    public void CreateFlow()
-    {
-        CreateFile("New Flow", FlowGraph.Extension, "flow", "\"nodes\": [ { \"$type\": \"start\", \"id\": \"start\" } ],\n  \"links\": []");
+        AssetNew made = type.New ?? throw new ArgumentException($"New makes no {type.Name} files.", nameof(type));
+        CreateFile(made.FileName, type.Extensions[0], made.Schema, made.Write);
     }
 
     /// <summary>Creates a data asset of the type registered under <paramref name="type"/>, with its default values.</summary>
     public void CreateData(string type)
     {
         string name = DisplayNames.FromIdentifier(type);
-        CreateFile($"New {name}", DataAssets.AssetExtension, "data", $"\"type\": \"{type}\"");
+        Func<string, string> write = AssetNew.Json($"\"type\": \"{type}\"");
+        CreateFile($"New {name}", DataAssets.AssetExtension, "data", write);
     }
 
     /// <summary>Creates an empty data table of the row type registered under <paramref name="type"/>.</summary>
     public void CreateTable(string type)
     {
         string name = DisplayNames.FromIdentifier(type);
-        CreateFile($"New {name} Table", DataAssets.TableExtension, "table", $"\"type\": \"{type}\",\n  \"rows\": {{}}");
+        Func<string, string> write = AssetNew.Json($"\"type\": \"{type}\",\n  \"rows\": {{}}");
+        CreateFile($"New {name} Table", DataAssets.TableExtension, "table", write);
     }
 
-    /// <summary>Renames the selected file, keeping its extensions, or the selected folder when no file is selected.</summary>
+    /// <summary>
+    /// Renames the selected file, keeping its extensions, with the other files of its group, or the selected folder when no file
+    /// is selected.
+    /// </summary>
     [RelayCommand]
     public void Rename(string? name)
     {
@@ -314,13 +312,13 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
             return;
         }
 
-        if (SelectedAsset is { } asset)
+        if (SelectedAsset is { } selected)
         {
-            string extension = asset.Path[(asset.Path.LastIndexOf('/') + 1 + asset.Name.Length)..];
-            string newPath = Combine(GetFolder(asset.Path), name + extension);
-            if (Move(asset.Path, newPath))
+            AssetEntry asset = GetGroup(selected);
+            string assetFolder = GetFolder(asset.Path);
+            if (MoveGroup(asset, assetFolder, name, copy: false) is { } newPath)
             {
-                if (asset.Kind == AssetKind.Folder)
+                if (asset.Type == AssetTypes.Folder)
                 {
                     Refresh();
                 }
@@ -343,7 +341,10 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         }
     }
 
-    /// <summary>Deletes the selected file, or the selected folder with everything in it when no file is selected.</summary>
+    /// <summary>
+    /// Deletes the selected file with the files it owns (an owned file goes alone), or the selected folder with everything in it
+    /// when no file is selected.
+    /// </summary>
     [RelayCommand]
     public void Delete()
     {
@@ -356,11 +357,15 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
         if (SelectedAsset is { } asset)
         {
-            _content.Delete(asset.Path);
-            _imports.Remove(asset.Path);
-            DeleteSettings(asset.Path);
+            List<AssetEntry> files = [asset, .. asset.Owned];
+            foreach (AssetEntry file in files)
+            {
+                _content.Delete(file.Path);
+                _imports.Remove(file.Path);
+            }
+
             SelectedAsset = null;
-            if (asset.Kind == AssetKind.Folder)
+            if (asset.Type == AssetTypes.Folder)
             {
                 Refresh();
             }
@@ -377,6 +382,30 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
             Refresh();
             SelectFolder(parent);
         }
+    }
+
+    /// <summary>Copies the selected file with the other files of its group under the first free numbered name, and selects the copy.</summary>
+    [RelayCommand]
+    public void Duplicate()
+    {
+        Status = "";
+        if (SelectedAsset is not { } selected || RefuseCode(selected.Path))
+        {
+            return;
+        }
+
+        if (selected.Type == AssetTypes.Folder)
+        {
+            Status = "Only files are duplicated.";
+            return;
+        }
+
+        AssetEntry asset = GetGroup(selected);
+        string folder = GetFolder(asset.Path);
+        string name = FindFreeName(asset, folder);
+        string? copy = MoveGroup(asset, folder, name, copy: true);
+        FindAssets();
+        SelectedAsset = Items.FirstOrDefault(entry => entry.Path == copy);
     }
 
     /// <summary>Whether the selected file was imported from outside the content folder, so it can be imported again.</summary>
@@ -443,7 +472,6 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         Status = $"Imported {asset.Name} again from {source}.";
     }
 
-    /// <summary>The full path of a file or folder the browser shows, in the content or the code.</summary>
     /// <summary>The full path of a content file's source, which is the content folder's own file without a build.</summary>
     public string GetSourcePath(string path)
     {
@@ -451,6 +479,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         return catalog.GetFullPath(path);
     }
 
+    /// <summary>The full path of a file or folder the browser shows, in the content or the code.</summary>
     public string GetFullPath(AssetEntry entry)
     {
         AssetCatalog catalog = FindCatalog(entry.Path);
@@ -551,28 +580,36 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         }
 
         string folder = SelectedFolder?.Path ?? Folders[0].Path;
-        AssetKind? kind = SelectedFilter?.Kind;
+        AssetType? type = SelectedFilter?.Type;
         string text = SearchText ?? "";
-        bool recursive = kind is not null || text.Length > 0;
+        bool recursive = type is not null || text.Length > 0;
         AssetCatalog catalog = FindCatalog(folder);
-        Assets = catalog.Find(folder, recursive, kind, text);
-        if (recursive || SelectedFolder is null)
-        {
-            Items = Assets;
-            return;
-        }
-
+        Assets = catalog.Find(folder, recursive, type, text);
         List<AssetEntry> items = [];
-        foreach (AssetFolder child in SelectedFolder.Children)
+        if (!recursive && SelectedFolder is not null)
         {
-            items.Add(new AssetEntry(child.Path, child.Name, AssetKind.Folder));
+            foreach (AssetFolder child in SelectedFolder.Children)
+            {
+                items.Add(new AssetEntry(child.Path, child.Name, AssetTypes.Folder));
+            }
         }
 
-        items.AddRange(Assets);
+        foreach (AssetEntry asset in Assets)
+        {
+            if (asset.Owned.Count == 0 || !_expanded.Contains(asset.Path))
+            {
+                items.Add(asset);
+                continue;
+            }
+
+            items.Add(asset with { IsExpanded = true });
+            items.AddRange(asset.Owned);
+        }
+
         Items = items;
     }
 
-    private void CreateFile(string name, string extension, string schema, string? body)
+    private void CreateFile(string name, string extension, string schema, Func<string, string> write)
     {
         Status = "";
         string folder = SelectedFolder?.Path ?? "";
@@ -585,16 +622,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         AssetCatalog catalog = FindCatalog(folder);
         string local = folder[catalog.Prefix.Length..].TrimStart('/');
         string schemaPath = GetSchemaPath(local, schema);
-        StringBuilder text = new();
-        text.Append("{\n");
-        text.Append($"  \"$schema\": \"{schemaPath}\"");
-        if (body is not null)
-        {
-            text.Append($",\n  {body}");
-        }
-
-        text.Append("\n}\n");
-        string contents = text.ToString();
+        string contents = write(schemaPath);
         byte[] bytes = Encoding.UTF8.GetBytes(contents);
         _content.Write(path, bytes);
         SearchText = "";
@@ -644,31 +672,107 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
         _content.Move(path, newPath);
         _imports.Move(path, newPath);
-        string settings = TextureSettings.GetPath(path);
-        if (File.Exists(_content.GetFullPath(settings)))
-        {
-            string newSettings = TextureSettings.GetPath(newPath);
-            _content.Move(settings, newSettings);
-        }
-
         return true;
     }
 
-    /// <summary>Deletes an image's settings with it, as they are listed as part of it.</summary>
-    private void DeleteSettings(string path)
+    /// <summary>The group a file is part of: its owner with the owned files, or the file itself when no file owns it.</summary>
+    private AssetEntry GetGroup(AssetEntry entry)
     {
-        string settings = TextureSettings.GetPath(path);
-        if (File.Exists(_content.GetFullPath(settings)))
+        if (entry.Owner is not { } owner)
         {
-            _content.Delete(settings);
+            return entry;
+        }
+
+        string folder = GetFolder(owner);
+        AssetCatalog catalog = FindCatalog(folder);
+        IReadOnlyList<AssetEntry> entries = catalog.Find(folder, recursive: false, type: null, text: "");
+        return entries.FirstOrDefault(found => found.Path == owner) ?? entry;
+    }
+
+    /// <summary>
+    /// Moves or copies a group to the name in the folder, each file keeping what follows the group's name (Van.blend goes as
+    /// Truck.blend with Van.fvvehicle as Truck.fvvehicle); refused, with nothing moved, when any new path is taken. Returns the
+    /// group's new path.
+    /// </summary>
+    private string? MoveGroup(AssetEntry group, string folder, string name, bool copy)
+    {
+        List<AssetEntry> files = [group, .. group.Owned];
+        List<string> newPaths = [];
+        foreach (AssetEntry file in files)
+        {
+            string newPath = GetGroupPath(file, group, folder, name);
+            if (Exists(newPath))
+            {
+                Status = $"{newPath} already exists.";
+                return null;
+            }
+
+            newPaths.Add(newPath);
+        }
+
+        for (int index = 0; index < files.Count; index++)
+        {
+            string path = files[index].Path;
+            if (copy)
+            {
+                string sourcePath = GetSourcePath(path);
+                byte[] bytes = File.ReadAllBytes(sourcePath);
+                _content.Write(newPaths[index], bytes);
+            }
+            else
+            {
+                _content.Move(path, newPaths[index]);
+                _imports.Move(path, newPaths[index]);
+            }
+        }
+
+        if (!copy && _expanded.Remove(group.Path))
+        {
+            _expanded.Add(newPaths[0]);
+        }
+
+        return newPaths[0];
+    }
+
+    /// <summary>The group's name numbered from 2, the first that none of its files takes in the folder.</summary>
+    private string FindFreeName(AssetEntry group, string folder)
+    {
+        List<AssetEntry> files = [group, .. group.Owned];
+        int number = 2;
+        while (true)
+        {
+            string name = $"{group.Name} {number}";
+            bool taken = false;
+            foreach (AssetEntry file in files)
+            {
+                string path = GetGroupPath(file, group, folder, name);
+                taken |= Exists(path);
+            }
+
+            if (!taken)
+            {
+                return name;
+            }
+
+            number++;
         }
     }
 
+    /// <summary>The path a file of the group has once the group is named <paramref name="name"/> in the folder.</summary>
+    private static string GetGroupPath(AssetEntry file, AssetEntry group, string folder, string name)
+    {
+        string fileName = file.Path[(file.Path.LastIndexOf('/') + 1)..];
+        string rest = fileName[group.Name.Length..];
+        return Combine(folder, name + rest);
+    }
+
+    /// <summary>Whether the path is taken in the content or in its source, which holds files the build leaves out (Van.blend).</summary>
     private bool Exists(string path)
     {
-        AssetEntry entry = new(path, "", AssetKind.Other);
+        AssetEntry entry = new(path, "", AssetTypes.Other);
         string fullPath = GetFullPath(entry);
-        return File.Exists(fullPath) || Directory.Exists(fullPath);
+        string sourcePath = GetSourcePath(path);
+        return File.Exists(fullPath) || Directory.Exists(fullPath) || File.Exists(sourcePath) || Directory.Exists(sourcePath);
     }
 
     private void SelectFolder(string path)

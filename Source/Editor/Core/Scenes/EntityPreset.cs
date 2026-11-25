@@ -59,6 +59,15 @@ public sealed record EntityPreset(string Name, IReadOnlyList<string> Components,
         return new EntityPreset(name, ["transform", "meshRenderer"], "Model") { Values = values, Icon = "Model" };
     }
 
+    /// <summary>A vehicle entity named after a vehicle file in the content folder, whose parts it spawns.</summary>
+    public static EntityPreset ForVehicle(string path)
+    {
+        string name = Path.GetFileNameWithoutExtension(path);
+        JsonEncodedText file = JsonEncodedText.Encode(path);
+        Dictionary<string, string> values = new() { ["vehicle"] = $$"""{ "file": "{{file}}" }""" };
+        return new EntityPreset(name, ["transform", "vehicle"]) { Values = values, Icon = "Vehicle" };
+    }
+
     /// <summary>The scene data of a new entity at <paramref name="position"/>, named apart from the entities in <paramref name="world"/>.</summary>
     public EntityData Create(World world, IEnumerable<Entity> entities, Vector3 position)
     {

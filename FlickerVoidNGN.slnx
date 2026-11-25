@@ -15,6 +15,7 @@
     <Project Path="Source/Engine/Attributes/FlickerVoid.Engine.Attributes.csproj" />
     <Project Path="Source/Engine/Cameras/FlickerVoid.Engine.Cameras.csproj" />
     <Project Path="Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
+    <Project Path="Source/Engine/Creations/FlickerVoid.Engine.Creations.csproj" />
     <Project Path="Source/Engine/Interaction/FlickerVoid.Engine.Interaction.csproj" />
     <Project Path="Source/Engine/Inventory/FlickerVoid.Engine.Inventory.csproj" />
     <Project Path="Source/Engine/Maps/FlickerVoid.Engine.Maps.csproj" />
@@ -51,6 +52,7 @@
     <Project Path="Tests/Engine/Attributes/FlickerVoid.Engine.Attributes.Tests.csproj" />
     <Project Path="Tests/Engine/Cameras/FlickerVoid.Engine.Cameras.Tests.csproj" />
     <Project Path="Tests/Engine/Characters/FlickerVoid.Engine.Characters.Tests.csproj" />
+    <Project Path="Tests/Engine/Creations/FlickerVoid.Engine.Creations.Tests.csproj" />
     <Project Path="Tests/Engine/Interaction/FlickerVoid.Engine.Interaction.Tests.csproj" />
     <Project Path="Tests/Engine/Inventory/FlickerVoid.Engine.Inventory.Tests.csproj" />
     <Project Path="Tests/Engine/Maps/FlickerVoid.Engine.Maps.Tests.csproj" />

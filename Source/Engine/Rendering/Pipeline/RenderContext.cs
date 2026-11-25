@@ -57,6 +57,9 @@ public sealed class RenderContext
     /// <summary>The world point the depth fade is measured from; null measures from the camera.</summary>
     public Vector3? Focus { get; internal set; }
 
+    /// <summary>Turns the scene's mesh names into models.</summary>
+    public MeshSources Meshes { get; internal set; } = null!;
+
     /// <summary>What the frame drew and culled so far.</summary>
     public RenderStatistics Statistics { get; } = new();
 

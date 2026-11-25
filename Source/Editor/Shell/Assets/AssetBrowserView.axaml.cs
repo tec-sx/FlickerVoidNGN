@@ -8,8 +8,9 @@ using Avalonia.Platform.Storage;
 namespace FlickerVoid.Editor.Assets;
 
 /// <summary>
-/// The asset browser's folder tree and tiles. A double-click or Enter opens a file or folder, F2 renames and Delete deletes after
-/// asking; a tile dragged a few pixels can be dropped on a folder (a tile or in the tree) to move it there, or a model on the viewport.
+/// The asset browser's folder tree and tiles. A double-click or Enter opens a file or folder, F2 renames, Ctrl+D duplicates and
+/// Delete deletes after asking; a group's arrow shows or hides the files named after it; a tile dragged a few pixels can be
+/// dropped on a folder (a tile or in the tree) to move it there, or a model on the viewport.
 /// Files dropped from outside the editor, or picked with Import, are imported into the folder they land on or the selected one.
 /// </summary>
 public sealed partial class AssetBrowserView : UserControl
@@ -105,6 +106,19 @@ public sealed partial class AssetBrowserView : UserControl
                 Browser?.UpCommand.Execute(null);
                 e.Handled = true;
                 break;
+            case Key.D when e.KeyModifiers == KeyModifiers.Control:
+                Browser?.DuplicateCommand.Execute(null);
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void HandleExpandClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { DataContext: AssetEntry entry })
+        {
+            Browser?.ToggleExpandedCommand.Execute(entry);
+            e.Handled = true;
         }
     }
 
@@ -164,7 +178,7 @@ public sealed partial class AssetBrowserView : UserControl
 
         browser.SelectedAsset = null;
         Control anchor = FindTreeItem(folder);
-        ShowDelete(anchor, folder.Name);
+        ShowDelete(anchor, $"Delete {folder.Name}, with its source file?");
     }
 
     private void AskRename()
@@ -186,7 +200,13 @@ public sealed partial class AssetBrowserView : UserControl
         }
 
         Control anchor = FindTile(asset);
-        ShowDelete(anchor, asset.Name);
+        string question = $"Delete {asset.Label}, with its source file?";
+        if (asset.Owned.Count > 0)
+        {
+            question = $"Delete {asset.Name} and the {asset.Owned.Count} files named after it, with their source files?";
+        }
+
+        ShowDelete(anchor, question);
     }
 
     private void ShowRename(Control anchor, string name)
@@ -215,11 +235,11 @@ public sealed partial class AssetBrowserView : UserControl
         flyout.ShowAt(anchor);
     }
 
-    private void ShowDelete(Control anchor, string name)
+    private void ShowDelete(Control anchor, string question)
     {
         Button delete = new() { Content = "Delete", Classes = { "delete" } };
-        TextBlock question = new() { Text = $"Delete {name}, with its source file?" };
-        StackPanel panel = new() { Spacing = 4, Children = { question, delete } };
+        TextBlock text = new() { Text = question };
+        StackPanel panel = new() { Spacing = 4, Children = { text, delete } };
         Flyout flyout = new() { Content = panel, Placement = PlacementMode.Bottom };
         delete.Click += (_, _) =>
         {
@@ -341,7 +361,7 @@ public sealed partial class AssetBrowserView : UserControl
         StyledElement? target = e.Source as StyledElement;
         switch (target?.DataContext)
         {
-            case AssetEntry { Kind: AssetKind.Folder } tile:
+            case AssetEntry tile when tile.Type == AssetTypes.Folder:
                 return tile.Path;
             case AssetFolder folder:
                 return folder.Path;

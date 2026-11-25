@@ -6,6 +6,7 @@
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Attributes/FlickerVoid.Engine.Attributes.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Cameras/FlickerVoid.Engine.Cameras.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
+    <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Creations/FlickerVoid.Engine.Creations.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Interaction/FlickerVoid.Engine.Interaction.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Inventory/FlickerVoid.Engine.Inventory.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Maps/FlickerVoid.Engine.Maps.csproj" />
@@ -26,6 +27,7 @@
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Runtime/FlickerVoid.Engine.Runtime.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Story/FlickerVoid.Engine.Story.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Ui/FlickerVoid.Engine.Ui.csproj" />
+    <Project Path="ENGINE_FOLDER_PATH/Source/Engine/Vehicles/FlickerVoid.Engine.Vehicles.csproj" />
     <Project Path="ENGINE_FOLDER_PATH/Source/Tools/ShaderCompiler/FlickerVoid.Tools.ShaderCompiler.csproj" />
   </Folder>
   <Folder Name="/Source/">

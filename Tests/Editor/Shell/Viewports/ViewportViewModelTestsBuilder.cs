@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json;
 
 using Arch.Core;
 
@@ -12,6 +13,8 @@ using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 
 using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Vehicles;
+using FlickerVoid.Engine.Vehicles.Serialization;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -54,6 +57,17 @@ internal sealed class ViewportViewModelTestsBuilder : IDisposable
         Entity entity = World.Create(new Transform(), new Camera(), shot);
         ViewModel.Selection.Select(entity);
         return entity;
+    }
+
+    /// <summary>Writes a new car's vehicle file at the content path.</summary>
+    public void WithVehicle(string path)
+    {
+        VehicleFile car = VehicleFile.Create(VehicleType.Car);
+        string json = JsonSerializer.Serialize(car, VehiclesJsonContext.Default.VehicleFile);
+        string fullPath = Path.Combine(_contentFolder, path);
+        string folder = Path.GetDirectoryName(fullPath)!;
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(fullPath, json);
     }
 
     /// <summary>Opens a scene file holding one entity, Lamp, and returns it.</summary>

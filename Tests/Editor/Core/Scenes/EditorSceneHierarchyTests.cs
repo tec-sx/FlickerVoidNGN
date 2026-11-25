@@ -141,6 +141,22 @@ public sealed class EditorSceneHierarchyTests : IDisposable
     }
 
     [Fact]
+    public void LeavesRenderMarksOutOfTheSavedScene()
+    {
+        _builder.WithScene("Stairs.fvscene", Stairs).Open("Stairs.fvscene");
+        Greyed greyed = new();
+        Undrawn undrawn = new();
+        World.Add(Named("Lamp"), greyed);
+        World.Add(Named("Trigger"), undrawn);
+        Transform moved = new() { Position = new Vector3(6, 0, 0) };
+        _builder.Scene.SetComponent(Named("Lamp"), moved);
+
+        _builder.Scene.Save();
+
+        _builder.ReadScene("Stairs.fvscene").Should().Contain("\"name\":\"Lamp\"").And.NotContain("greyed").And.NotContain("undrawn");
+    }
+
+    [Fact]
     public void DuplicatingAnEntityCopiesWhatIsNestedUnderItUnderTheCopies()
     {
         _builder.WithScene("Stairs.fvscene", Stairs).Open("Stairs.fvscene");

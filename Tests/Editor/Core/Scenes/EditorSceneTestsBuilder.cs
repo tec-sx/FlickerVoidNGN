@@ -32,10 +32,16 @@ internal sealed class EditorSceneTestsBuilder : IDisposable
 
     public EditorSceneTestsBuilder WithScene(string path, string json)
     {
+        return WithFile(path, json);
+    }
+
+    /// <summary>Writes a text file into the content folder, such as a file a module's meshes are made from.</summary>
+    public EditorSceneTestsBuilder WithFile(string path, string text)
+    {
         string fullPath = Path.Combine(_contentFolder, path);
         string folder = Path.GetDirectoryName(fullPath)!;
         Directory.CreateDirectory(folder);
-        File.WriteAllText(fullPath, json);
+        File.WriteAllText(fullPath, text);
         return this;
     }
 
