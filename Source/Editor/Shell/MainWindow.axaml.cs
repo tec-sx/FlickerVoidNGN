@@ -7,6 +7,7 @@ using Avalonia.VisualTree;
 using FlickerVoid.Editor.Assets.Materials;
 using FlickerVoid.Editor.Assets.Textures;
 using FlickerVoid.Editor.Core.Flows;
+using FlickerVoid.Editor.Core.Settings;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Flows;
 using FlickerVoid.Editor.Inspector;
@@ -14,6 +15,7 @@ using FlickerVoid.Editor.Materials;
 using FlickerVoid.Editor.Persistence.Projects;
 using FlickerVoid.Editor.Projects;
 using FlickerVoid.Editor.Scenes;
+using FlickerVoid.Editor.Settings;
 using FlickerVoid.Editor.Textures;
 
 namespace FlickerVoid.Editor;
@@ -23,6 +25,7 @@ public sealed partial class MainWindow : Window
 {
     private readonly Dictionary<string, FlowEditorWindow> _flows = new(StringComparer.OrdinalIgnoreCase);
     private MaterialEditorWindow? _materials;
+    private ProjectSettingsWindow? _projectSettings;
     private bool _closingDecided;
 
     /// <summary>The project the editor reopens on once this window has closed, chosen with Open Project.</summary>
@@ -160,6 +163,30 @@ public sealed partial class MainWindow : Window
     {
         UnsavedAssetsDialog dialog = new(paths);
         return dialog.ShowDialog<UnsavedAssetsChoice?>(this);
+    }
+
+    /// <summary>Shows the project settings window, opening it once.</summary>
+    private void HandleProjectSettingsClick(object? sender, RoutedEventArgs e)
+    {
+        if (_projectSettings is not null)
+        {
+            _projectSettings.Activate();
+            return;
+        }
+
+        if (DataContext is not MainWindowViewModel main)
+        {
+            return;
+        }
+
+        ProjectSettingsViewModel settings = new(main.Viewport.Scene);
+        _projectSettings = new ProjectSettingsWindow { DataContext = settings };
+        _projectSettings.Closed += (_, _) =>
+        {
+            settings.Dispose();
+            _projectSettings = null;
+        };
+        _projectSettings.Show(this);
     }
 
     private void HandleMaterialsClick(object? sender, RoutedEventArgs e)

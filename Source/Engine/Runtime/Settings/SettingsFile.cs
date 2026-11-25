@@ -23,6 +23,9 @@ public static class SettingsFile
     /// <summary>The name of the schema of settings files among <see cref="ContentSchemas"/>.</summary>
     public const string SchemaName = "settings";
 
+    /// <summary>The schema a settings file at the root of a content folder names: the one a development build writes beside it.</summary>
+    public const string SchemaPath = ContentSchemas.FolderName + "/" + SchemaName + ".schema.json";
+
     private static readonly JsonDocumentOptions ReadOptions = new() { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip };
     private static readonly JsonWriterOptions WriteOptions = new() { Indented = true };
 
@@ -140,8 +143,7 @@ public static class SettingsFile
     /// <summary>Writes the file at the root of a content folder, naming the schema a development build writes beside it.</summary>
     public static void Save(string path, IDebugConsole console)
     {
-        string schema = $"{ContentSchemas.FolderName}/{SchemaName}.schema.json";
-        string json = Write(console, schema);
+        string json = Write(console, SchemaPath);
         File.WriteAllText(path, json);
     }
 
