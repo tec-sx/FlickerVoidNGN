@@ -20,7 +20,7 @@ namespace FlickerVoid.Engine.Rendering;
 /// <summary>Adds rendering to a game.</summary>
 public static class RenderingGameExtensions
 {
-    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume", "sceneMood", "sceneEnvironment", "outline", "mainCamera", "depthFadeOverride", "indoorVolume", "uncut" and "doorway" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, the <see cref="MeshSources"/> service, the <see cref="SceneRendererSetup"/> service (which gives renderers those sources), and the mood, environment, material, canvas and texture settings file kinds with their schemas.</summary>
+    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume", "sceneMood", "sceneEnvironment", "outline", "mainCamera", "indoorVolume", "uncut" and "doorway" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, the <see cref="MeshSources"/> service, the <see cref="SceneRendererSetup"/> service (which gives renderers those sources), and the mood, environment, lens, material, canvas and texture settings file kinds with their schemas.</summary>
     public static void AddRendering(this Game game)
     {
         game.Spawner.Register("camera", RenderingJsonContext.Default.Camera);
@@ -33,12 +33,12 @@ public static class RenderingGameExtensions
         game.Spawner.Register("sceneEnvironment", RenderingJsonContext.Default.SceneEnvironment);
         game.Spawner.Register("outline", RenderingJsonContext.Default.Outline);
         game.Spawner.Register("mainCamera", RenderingJsonContext.Default.MainCamera);
-        game.Spawner.Register("depthFadeOverride", RenderingJsonContext.Default.DepthFadeOverride);
         game.Spawner.Register("indoorVolume", RenderingJsonContext.Default.IndoorVolume);
         game.Spawner.Register("uncut", RenderingJsonContext.Default.Uncut);
         game.Spawner.Register("doorway", RenderingJsonContext.Default.Doorway);
         game.Schemas.AddFile("mood", LightingMood.Extension, static () => RenderingJsonContext.Default.LightingMood);
         game.Schemas.AddFile("environment", LightingEnvironment.Extension, static () => RenderingJsonContext.Default.LightingEnvironment);
+        game.Schemas.AddFile("lens", CameraLens.Extension, static () => RenderingJsonContext.Default.CameraLens, CameraLens.CreateSchema);
         game.Schemas.AddFile("material", MaterialFile.Extension, static () => RenderingJsonContext.Default.MaterialFile);
         game.Schemas.AddFile("canvas", CanvasFile.Extension, static () => RenderingJsonContext.Default.CanvasFile);
         game.Schemas.AddFile("texture", TextureSettings.Extension, static () => RenderingJsonContext.Default.TextureSettings);

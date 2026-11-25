@@ -17,17 +17,4 @@ public readonly record struct DepthFade(
 {
     /// <summary>Whether it changes the image at all.</summary>
     public bool IsVisible => NearAmount > 0 || FarAmount > 0;
-
-    /// <summary>The fade <paramref name="amount"/> of the way from <paramref name="from"/> to <paramref name="to"/>, every value blended.</summary>
-    public static DepthFade Lerp(in DepthFade from, in DepthFade to, float amount)
-    {
-        return new DepthFade(
-            float.Lerp(from.NearStart, to.NearStart, amount),
-            float.Lerp(from.NearEnd, to.NearEnd, amount),
-            float.Lerp(from.NearAmount, to.NearAmount, amount),
-            float.Lerp(from.FarStart, to.FarStart, amount),
-            float.Lerp(from.FarEnd, to.FarEnd, amount),
-            float.Lerp(from.FarAmount, to.FarAmount, amount),
-            Vector3.Lerp(from.FarColor, to.FarColor, amount));
-    }
 }

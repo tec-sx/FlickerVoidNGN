@@ -124,7 +124,7 @@ public sealed class SceneRenderer : IDisposable
     /// <summary>Whether the depth fade is drawn; on by default.</summary>
     public bool DepthFades { get; set; } = true;
 
-    /// <summary>The depth fade drawn in place of the scene's first camera's, such as the main camera's for an editor's own view; null keeps the scene's.</summary>
+    /// <summary>The depth fade drawn in place of the mood's, such as a camera preview's in an editor; null draws the mood's.</summary>
     public DepthFade? DepthFade { get; set; }
 
     /// <summary>The world point the depth fade is measured from in place of the scene's; null keeps the scene's.</summary>
@@ -222,7 +222,7 @@ public sealed class SceneRenderer : IDisposable
         context.DepthFade = default;
         if (DepthFades)
         {
-            context.DepthFade = DepthFade ?? _scene.DepthFade;
+            context.DepthFade = DepthFade ?? Mood.ToDepthFade();
         }
 
         context.Focus = Focus ?? _scene.Focus;

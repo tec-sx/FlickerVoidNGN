@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 
+using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Moods;
 
@@ -46,11 +47,53 @@ public sealed class MoodValuesTests
     }
 
     [Fact]
-    public void GivesTheLensTheGlowAndTheFinishAndTheEnvironmentTheRest()
+    public void GivesTheLensTheGlowTheFinishAndTheDepthFadeAndTheEnvironmentTheRest()
     {
         IEnumerable<string> lens = MoodValues.All.Where(value => value.Owner == MoodOwner.Lens).Select(value => value.Name);
 
-        lens.Should().Equal("bloom", "tonemapper", "whitePoint", "canvas");
+        lens.Should().Equal(
+            "bloom",
+            "tonemapper",
+            "whitePoint",
+            "canvas",
+            "depthNearStart",
+            "depthNearEnd",
+            "depthNearAmount",
+            "depthFarStart",
+            "depthFarEnd",
+            "depthFarAmount",
+            "depthFarColor");
+    }
+
+    [Fact]
+    public void FadesNothingByDepthUnlessALensSaysSo()
+    {
+        DepthFade fade = new LightingMood().ToDepthFade();
+
+        fade.NearAmount.Should().Be(0);
+        fade.FarAmount.Should().Be(0);
+    }
+
+    [Fact]
+    public void DrawsTheDepthFadeItsValuesSpell()
+    {
+        LightingMood mood = _builder.BuildChanged();
+
+        DepthFade fade = mood.ToDepthFade();
+
+        DepthFade expected = new(mood.DepthNearStart, mood.DepthNearEnd, mood.DepthNearAmount, mood.DepthFarStart, mood.DepthFarEnd, mood.DepthFarAmount, mood.DepthFarColor);
+        fade.Should().Be(expected);
+    }
+
+    [Fact]
+    public void TakesTheDepthFadeOutWithThePostProcessing()
+    {
+        LightingMood mood = _builder.BuildChanged();
+
+        LightingMood plain = mood.WithoutPost();
+
+        plain.DepthNearAmount.Should().Be(0);
+        plain.DepthFarAmount.Should().Be(0);
     }
 
     [Fact]

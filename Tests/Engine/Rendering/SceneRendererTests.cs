@@ -565,9 +565,9 @@ public sealed class SceneRendererTests : IDisposable
     [Fact]
     public void DarkensWhatStandsNearerThanTheFocus()
     {
-        const string main = """{ "name": "Main", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2 }, "mainCamera": { "nearStart": 0, "nearEnd": 1, "nearAmount": 0.5, "farAmount": 0 } } }""";
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
-        _builder.WithScene(main, Quad);
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(static mood => mood with { DepthNearStart = 0, DepthNearEnd = 1, DepthNearAmount = 0.5f });
         _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, -5));
 
         uint[] pixels = _builder.Render();
@@ -582,9 +582,9 @@ public sealed class SceneRendererTests : IDisposable
     [Fact]
     public void MeltsWhatLiesFartherThanTheFocusIntoTheFarColour()
     {
-        const string main = """{ "name": "Main", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2 }, "mainCamera": { "nearAmount": 0, "farStart": 0, "farEnd": 1, "farAmount": 0.5, "farColor": [0, 0, 1] } } }""";
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
-        _builder.WithScene(main, Quad);
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(static mood => mood with { DepthFarStart = 0, DepthFarEnd = 1, DepthFarAmount = 0.5f, DepthFarColor = new Vector3(0, 0, 1) });
         _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, 3));
 
         uint[] pixels = _builder.Render();
@@ -599,9 +599,9 @@ public sealed class SceneRendererTests : IDisposable
     [Fact]
     public void MeasuresTheDepthFadeFromTheCameraWithoutAFocus()
     {
-        const string main = """{ "name": "Main", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2 }, "mainCamera": { "nearAmount": 0, "farStart": 4, "farEnd": 4.5, "farAmount": 1, "farColor": [0, 0, 0] } } }""";
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
-        _builder.WithScene(main, Quad);
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(static mood => mood with { DepthFarStart = 4, DepthFarEnd = 4.5f, DepthFarAmount = 1, DepthFarColor = Vector3.Zero });
 
         uint[] pixels = _builder.Render();
 
@@ -611,9 +611,9 @@ public sealed class SceneRendererTests : IDisposable
     [Fact]
     public void LeavesTheDepthFadeOutWhileItIsSwitchedOff()
     {
-        const string main = """{ "name": "Main", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2 }, "mainCamera": { "farStart": 0, "farEnd": 1, "farAmount": 1, "farColor": [0, 0, 0] } } }""";
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
-        _builder.WithScene(main, Quad);
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(static mood => mood with { DepthFarStart = 0, DepthFarEnd = 1, DepthFarAmount = 1, DepthFarColor = Vector3.Zero });
         _builder.WithRenderer(static renderer => renderer.DepthFades = false);
 
         uint[] pixels = _builder.Render();

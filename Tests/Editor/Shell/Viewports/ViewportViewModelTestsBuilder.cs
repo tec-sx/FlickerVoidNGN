@@ -70,6 +70,12 @@ internal sealed class ViewportViewModelTestsBuilder : IDisposable
         File.WriteAllText(fullPath, json);
     }
 
+    public void WithFile(string path, string contents)
+    {
+        string fullPath = Path.Combine(_contentFolder, path);
+        File.WriteAllText(fullPath, contents);
+    }
+
     /// <summary>Opens a scene file holding one entity, Lamp, and returns it.</summary>
     public Entity OpenLampScene()
     {

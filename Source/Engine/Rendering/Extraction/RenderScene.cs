@@ -27,9 +27,6 @@ public sealed class RenderScene
     /// <summary>What the first camera's director lays over the frame, if anything.</summary>
     public RenderTransition Transition { get; set; }
 
-    /// <summary>The depth fade the first camera draws with.</summary>
-    public DepthFade DepthFade { get; set; }
-
     /// <summary>The world point the first camera's depth fade is measured from; null measures from the camera.</summary>
     public Vector3? Focus { get; set; }
 
@@ -43,7 +40,6 @@ public sealed class RenderScene
         Indoors.Clear();
         Cutaway = null;
         Transition = default;
-        DepthFade = default;
         Focus = null;
     }
 
@@ -59,7 +55,6 @@ public sealed class RenderScene
         Indoors.AddRange(other.Indoors);
         Cutaway = other.Cutaway;
         Transition = other.Transition;
-        DepthFade = other.DepthFade;
         Focus = other.Focus;
     }
 }

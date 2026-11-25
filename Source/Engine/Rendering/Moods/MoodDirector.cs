@@ -4,7 +4,7 @@ namespace FlickerVoid.Engine.Rendering.Moods;
 
 /// <summary>
 /// Builds the mood on screen from layers, lowest first: the defaults, the environment at the hour of the day, then the
-/// overrides of the scene, the story, the shot and the tools, each changing only the values it names. When a layer changes,
+/// overrides of the lens, the scene, the story, the shot and the tools, each changing only the values it names. When a layer changes,
 /// the mood on screen blends to the new build over the change's seconds, still following the hour.
 /// </summary>
 public sealed class MoodDirector

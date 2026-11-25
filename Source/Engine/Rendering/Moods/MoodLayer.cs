@@ -3,6 +3,9 @@ namespace FlickerVoid.Engine.Rendering.Moods;
 /// <summary>The overrides a mood director lays over the environment, lowest first.</summary>
 public enum MoodLayer
 {
+    /// <summary>The lens the scene's main camera names.</summary>
+    Lens,
+
     /// <summary>The mood the scene names.</summary>
     Scene,
 
