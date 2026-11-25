@@ -40,6 +40,7 @@ Each module's behaviour, API and decisions are in `Docs/Modules`; read the one y
 - `Interaction.md`, `Maps.md`, `Inventory.md`, `Attributes.md` (attributes and abilities), `Flow.md`, `Story.md` (quests, knowledge and dialogue), `Saves.md` and `Ui.md` (the game's interface and stages).
 - `Creations.md`: the parts of creations: kinds, spawning under a placed entity and patching by part id.
 - `Projects.md`: users' projects, the solutions, `.fvproject` files, the editor's project picker and splash, Compile and Play, and the template.
+- `Vehicles.md`: vehicle files, their parts and the wheel rules.
 
 ## Porting from Unreal
 
