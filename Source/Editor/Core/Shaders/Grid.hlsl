@@ -1,5 +1,6 @@
 // The editor's ground grid on the plane y = 0: one triangle covers the screen, each pixel finds where its view ray meets the
-// plane and writes that point's depth, so the scene hides the grid. Lines every cell and every major cell, the X axis red and the
+// plane and keeps it only where it lies nearer than the scene's depth there (read at the render size, which an upscaler makes
+// smaller than the output's), so the scene hides the grid. Lines every cell and every major cell, the X axis red and the
 // Z axis blue, all thin and faint so they only hint at the ground; lines fade where cells shrink to a few pixels and toward
 // the horizon.
 
@@ -12,10 +13,15 @@ struct GridConstants
     float CellSize;
     float MajorCellSize;
     float Opacity;
-    float Padding;
+    // The scene's depth, by its bindless index, and render pixels to an output pixel.
+    uint Depth;
+    float2 DepthScale;
+    float2 Padding;
 };
 
 [[vk::push_constant]] ConstantBuffer<GridConstants> Grid : register(b0, space0);
+
+Texture2D Textures[] : register(t0, space1);
 
 static const float3 LineColor = float3(0.62, 0.6, 0.52);
 static const float3 XAxisColor = float3(0.9, 0.15, 0.15);
@@ -26,12 +32,6 @@ static const float AxisWidth = 0.75;
 static const float AxisAlpha = 0.7;
 // Lines are this many pixels wide, so the grid only hints at the ground.
 static const float LineWidth = 0.5;
-
-struct PixelOutput
-{
-    float4 Color : SV_Target;
-    float Depth : SV_Depth;
-};
 
 struct VertexOutput
 {
@@ -72,7 +72,7 @@ float AxisLine(float coordinate)
     return 1 - min(abs(coordinate) / (fwidth(coordinate) * AxisWidth), 1);
 }
 
-PixelOutput PixelMain(VertexOutput input)
+float4 PixelMain(VertexOutput input) : SV_Target
 {
     float3 nearPoint = WorldAt(input.Clip, 0);
     float3 farPoint = WorldAt(input.Clip, 1);
@@ -110,11 +110,15 @@ PixelOutput PixelMain(VertexOutput input)
         alpha = 0;
     }
 
-    clip(alpha - 0.001);
     float4 hitPosition = float4(hit, 1);
-    float depth = dot(hitPosition, Grid.DepthColumn) / dot(hitPosition, Grid.WColumn);
-    PixelOutput output;
-    output.Color = float4(color, alpha);
-    output.Depth = saturate(depth);
-    return output;
+    float depth = saturate(dot(hitPosition, Grid.DepthColumn) / dot(hitPosition, Grid.WColumn));
+    int2 texel = int2(input.Position.xy * Grid.DepthScale);
+    float sceneDepth = Textures[Grid.Depth].Load(int3(texel, 0)).r;
+    if (depth > sceneDepth)
+    {
+        alpha = 0;
+    }
+
+    clip(alpha - 0.001);
+    return float4(color, alpha);
 }

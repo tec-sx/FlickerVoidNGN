@@ -4,6 +4,7 @@ using FlickerVoid.Engine.Graphics.AccelerationStructures;
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
@@ -29,9 +30,29 @@ public sealed class RenderContext
 
     public ITexture ColorTarget { get; internal set; } = null!;
 
+    /// <summary>The output's width: the color target's.</summary>
     public int Width { get; internal set; }
 
+    /// <summary>The output's height: the color target's.</summary>
     public int Height { get; internal set; }
+
+    /// <summary>The width the scene is drawn at before post-processing: the output's, or an upscaler's smaller one.</summary>
+    public int RenderWidth { get; internal set; }
+
+    /// <summary>The height the scene is drawn at before post-processing: the output's, or an upscaler's smaller one.</summary>
+    public int RenderHeight { get; internal set; }
+
+    /// <summary>
+    /// How far the frame's view is moved for the upscaler, in render pixels right and down, from -0.5 to 0.5; zero without one.
+    /// The frame data's view carries it, while <see cref="View"/> stays without it for passes drawing at the output's size.
+    /// </summary>
+    public Vector2 Jitter { get; internal set; }
+
+    /// <summary>
+    /// Whether what passes keep from frame to frame starts afresh this frame, as the view jumped or the targets were made anew:
+    /// the first frame, a camera cut, and a change of size or upscaling.
+    /// </summary>
+    public bool ResetsHistory { get; internal set; }
 
     public Camera Camera { get; internal set; }
 
@@ -70,7 +91,7 @@ public sealed class RenderContext
     /// </summary>
     public IAccelerationStructure? AccelerationStructure { get; internal set; }
 
-    /// <summary>The depth fade post-processing draws.</summary>
+    /// <summary>The depth fade laid on the lit scene (DepthFadePass).</summary>
     public DepthFade DepthFade { get; internal set; }
 
     /// <summary>The world point the depth fade is measured from; null measures from the camera.</summary>
@@ -82,7 +103,10 @@ public sealed class RenderContext
     /// <summary>What the frame drew and culled so far.</summary>
     public RenderStatistics Statistics { get; } = new();
 
-    /// <summary>The scene's depth, which passes after the geometry pass can test against, such as overlays drawn over the output.</summary>
+    /// <summary>
+    /// The scene's depth at the render size, which passes after the geometry pass can test against, such as overlays drawn over
+    /// the output, reading it at their pixel scaled from the output's size to the render size.
+    /// </summary>
     public ITexture Depth => Targets.Depth;
 
     /// <summary>What the geometry pass left at every pixel for lighting, beside the depth.</summary>
@@ -95,6 +119,12 @@ public sealed class RenderContext
     internal ISampler Sampler { get; set; } = null!;
 
     internal ISampler ClampSampler { get; set; } = null!;
+
+    /// <summary>The sampler of the draws' textures: the wrapping one, sharpened by a mip bias while an upscaler fills the frame in.</summary>
+    internal ISampler MaterialSampler { get; set; } = null!;
+
+    /// <summary>The upscaler filling the output from the frame, or null when it is drawn at the output's size.</summary>
+    internal IUpscaler? Upscaler { get; set; }
 
     internal ITexture White { get; set; } = null!;
 

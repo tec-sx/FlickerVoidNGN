@@ -1,7 +1,7 @@
-// Shows one of the G-buffer's targets or the depth in place of the lit frame (DebugView.cs), black where nothing was drawn:
-// the albedo; the world normal as half of each axis plus half; each material in a color of its own, lightened where the paint
-// stands thick; the object depth and each pixel's own view depth as grey, depth over depth plus 10; and the motion as middle
-// grey when still, red and green across and down, full at 8 pixels.
+// Shows one of the G-buffer's targets or the depth in place of the lit frame (DebugView.cs), over the whole output whatever the
+// render size, black where nothing was drawn: the albedo; the world normal as half of each axis plus half; each material in a
+// color of its own, lightened where the paint stands thick; the object depth and each pixel's own view depth as grey, depth
+// over depth plus 10; and the motion as middle grey when still, red and green across and down, full at 8 pixels.
 
 #include "Frame.hlsl"
 #include "GBuffer.hlsl"
@@ -10,6 +10,8 @@ struct DebugViewConstants
 {
     uint Frame;
     uint View;
+    // Render pixels to an output pixel, across and down: the G-buffer is drawn at the render size.
+    float2 Scale;
 };
 
 [[vk::push_constant]] ConstantBuffer<DebugViewConstants> Pass : register(b0, space0);
@@ -90,13 +92,14 @@ float3 Show(FrameData frame, uint view, int3 texel, float2 pixel, float depth)
 float4 PixelMain(float4 position : SV_Position) : SV_Target
 {
     FrameData frame = LoadFrame(Pass.Frame);
-    int3 texel = int3(position.xy, 0);
+    int3 texel = int3(position.xy * Pass.Scale, 0);
     float depth = Textures[frame.Depth].Load(texel).r;
     if (depth >= 1)
     {
         return float4(0, 0, 0, 1);
     }
 
-    float3 color = Show(frame, Pass.View, texel, position.xy, depth);
+    float2 pixel = float2(texel.xy) + 0.5;
+    float3 color = Show(frame, Pass.View, texel, pixel, depth);
     return float4(color, 1);
 }

@@ -15,9 +15,10 @@ using FlickerVoid.Engine.Runtime.Geometry;
 namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>
-/// Writes the frame's view, sun, lights, shadows, light clusters, probes, indoor volumes, cutaway, draws and the bindless indices
-/// of its traced shadows and occlusion, depth, G-buffer and acceleration structure into the frame buffer ring, after every pass
-/// has prepared and before any executes; remembers the view for the next frame's view before.
+/// Writes the frame's view (jittered for an upscaler), sun, lights, shadows, light clusters, probes, indoor volumes, cutaway, draws
+/// and the bindless indices of its traced shadows and occlusion, depth, G-buffer and acceleration structure into the frame buffer
+/// ring, after every pass has prepared and before any executes; remembers the view without its jitter, and the jitter, for the
+/// next frame's view before, which a frame that starts its history afresh takes from its own.
 /// </summary>
 internal sealed class FrameDataWriter : IDisposable
 {
@@ -28,7 +29,8 @@ internal sealed class FrameDataWriter : IDisposable
     private readonly FrameBufferRing _frames;
     private readonly ProbeCache _probes;
     private readonly List<GpuDraw> _draws = [];
-    private Matrix4x4? _previousViewProjection;
+    private Matrix4x4 _previousViewProjection;
+    private Vector2 _previousJitter;
 
     public FrameDataWriter(IGraphicsDevice device, ProbeCache probes, int framesInFlight)
     {
@@ -95,7 +97,9 @@ internal sealed class FrameDataWriter : IDisposable
         }
 
         Matrix4x4.Invert(viewMatrix, out Matrix4x4 cameraWorld);
-        Matrix4x4.Invert(view.ViewProjection, out Matrix4x4 inverseViewProjection);
+        CameraView jittered = view.Jittered(context.Jitter, context.RenderWidth, context.RenderHeight);
+        Matrix4x4 viewProjection = jittered.ViewProjection;
+        Matrix4x4.Invert(viewProjection, out Matrix4x4 inverseViewProjection);
         LightingMood mood = context.Mood;
         DepthFade fade = context.DepthFade;
         float focusDepth = 0;
@@ -104,8 +108,16 @@ internal sealed class FrameDataWriter : IDisposable
             focusDepth = Vector4.Dot(new Vector4(focus, 1), depthAxis);
         }
 
-        Matrix4x4 previousViewProjection = _previousViewProjection ?? view.ViewProjection;
+        if (context.ResetsHistory)
+        {
+            _previousViewProjection = view.ViewProjection;
+            _previousJitter = context.Jitter;
+        }
+
+        Matrix4x4 previousViewProjection = _previousViewProjection;
+        Vector2 previousJitter = _previousJitter;
         _previousViewProjection = view.ViewProjection;
+        _previousJitter = context.Jitter;
         Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
         GBuffer gBuffer = context.GBuffer;
         uint accelerationStructure = BindlessIndex.None;
@@ -127,11 +139,11 @@ internal sealed class FrameDataWriter : IDisposable
         }
 
         FrameData data = new(
-            view.ViewProjection,
+            viewProjection,
             depthAxis,
             sunDirection,
             mood.Ambient,
-            new Vector2(context.Width, context.Height),
+            new Vector2(context.RenderWidth, context.RenderHeight),
             _clusters.SliceScale,
             _clusters.SliceBias,
             logarithmic,
@@ -148,8 +160,7 @@ internal sealed class FrameDataWriter : IDisposable
             (uint)volume.ProbesX,
             (uint)volume.ProbesY,
             (uint)volume.ProbesZ,
-            0,
-            0,
+            context.Jitter,
             cameraWorld.Translation,
             camera.NearPlane,
             mood.FogColor,
@@ -171,8 +182,7 @@ internal sealed class FrameDataWriter : IDisposable
             fade.FarStart,
             fade.FarEnd,
             fade.FarAmount,
-            0,
-            0,
+            previousJitter,
             cutaway.Min,
             cut,
             cutaway.Max,
@@ -183,7 +193,7 @@ internal sealed class FrameDataWriter : IDisposable
             rayOcclusion,
             previousViewProjection,
             (uint)drawsOffset,
-            context.Depth.BindlessIndex,
+            context.Targets.Depth.BindlessIndex,
             gBuffer.Albedo.BindlessIndex,
             gBuffer.Normal.BindlessIndex,
             gBuffer.Material.BindlessIndex,
@@ -252,7 +262,7 @@ internal sealed class FrameDataWriter : IDisposable
                 draw.Vertices.BindlessIndex,
                 draw.PreviousVertices.BindlessIndex,
                 texture.BindlessIndex,
-                context.Sampler.BindlessIndex,
+                context.MaterialSampler.BindlessIndex,
                 draw.Material.Parameters.BindlessIndex,
                 (uint)draw.Flags,
                 part.Indices.BindlessIndex,

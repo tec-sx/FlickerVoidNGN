@@ -44,5 +44,16 @@ public readonly record struct CameraView(Matrix4x4 View, Matrix4x4 Projection)
 
         return new CameraView(view, projection);
     }
+
+    /// <summary>
+    /// The view with its image moved by a jitter in pixels of a viewport that size, right and down, as frames drawn for an
+    /// upscaler are; the camera stays where it is, so only the projection moves.
+    /// </summary>
+    public CameraView Jittered(Vector2 jitter, int width, int height)
+    {
+        Matrix4x4 shift = Matrix4x4.CreateTranslation(2 * jitter.X / width, -2 * jitter.Y / height, 0);
+        Matrix4x4 projection = Projection * shift;
+        return this with { Projection = projection };
+    }
 }
 

@@ -1,9 +1,10 @@
 // Draws a mesh part whose vertices (float3 position, float3 normal, float2 uv) are pulled from a bindless buffer, as its record
 // among the frame buffer's draws says (pushed by its number). The geometry pass leaves its surface in the G-buffer (GBuffer.cs)
 // for Lighting.hlsl: its base color times its texture and its material's tint, its normal tilted by a painting's relief, its
-// material, its object's depth and its motion. While the camera looks into an indoor volume (the cutaway), whatever stands in
-// front of its box is cut away. The outline pass draws outlined meshes' silhouettes in their outline's color. Neither draws
-// a cutout card's holes, where its paint covers less than its material's cutoff.
+// material, its object's depth and its motion, without the jitter. While the camera looks into an indoor volume (the cutaway),
+// whatever stands in front of its box is cut away. The outline pass draws outlined meshes' silhouettes in their outline's color
+// at the output's size, without the jitter. Neither draws a cutout card's holes, where its paint covers less than its
+// material's cutoff.
 // The frame buffer holds FrameData (Frame.hlsl), then the lights, the shadows, each cluster's range of light indices, the
 // indices, the indoor volumes and the draws (Draw.hlsl).
 
@@ -28,9 +29,9 @@ struct VertexOutput
     float4 PreviousClip : TEXCOORD1;
 };
 
-VertexOutput VertexMain(uint vertexId : SV_VertexID)
+// Where the frame's view, jittered for an upscaler, puts the vertex.
+VertexOutput Project(FrameData frame, uint vertexId)
 {
-    FrameData frame = LoadFrame(Scene.Frame);
     Draw draw = LoadDraw(frame, Scene.Draw);
     ByteAddressBuffer vertices = Buffers[draw.Vertices];
     uint offset = vertexId * VertexStride;
@@ -51,6 +52,21 @@ VertexOutput VertexMain(uint vertexId : SV_VertexID)
     float3 previousPosition = Buffers[draw.PreviousVertices].Load<float3>(offset);
     float4 previousWorld = mul(float4(previousPosition, 1), draw.PreviousWorld);
     output.PreviousClip = mul(previousWorld, frame.PreviousViewProjection);
+    return output;
+}
+
+VertexOutput VertexMain(uint vertexId : SV_VertexID)
+{
+    FrameData frame = LoadFrame(Scene.Frame);
+    return Project(frame, vertexId);
+}
+
+// For passes drawing at the output's size, such as the outlines' silhouettes: where the view puts the vertex without the jitter.
+VertexOutput SilhouetteVertexMain(uint vertexId : SV_VertexID)
+{
+    FrameData frame = LoadFrame(Scene.Frame);
+    VertexOutput output = Project(frame, vertexId);
+    output.Position = Unjitter(frame, output.Position);
     return output;
 }
 
@@ -208,7 +224,8 @@ GeometryOutput GeometryMain(VertexOutput input)
     float depth = dot(float4(input.WorldPosition, 1), frame.DepthAxis);
     float centerDepth = dot(float4(draw.Center, 1), frame.DepthAxis);
     output.ObjectDepth = lerp(depth, centerDepth, draw.Wholeness);
+    // The pixel without the jitter, as the frame before's view is without it too.
     float2 previous = ClipToPixel(frame, input.PreviousClip);
-    output.Motion = previous - input.Position.xy;
+    output.Motion = previous - (input.Position.xy - frame.Jitter);
     return output;
 }

@@ -55,7 +55,12 @@ internal sealed class ShadowRayPass : IRenderPass
             return;
         }
 
-        Ensure(context.Width, context.Height);
+        Ensure(context.RenderWidth, context.RenderHeight);
+        if (context.ResetsHistory)
+        {
+            _historyKept = false;
+        }
+
         _current = 1 - _current;
         context.RayShadows = _visibility[_current];
         context.RayOcclusion = _history[_current];
@@ -73,15 +78,15 @@ internal sealed class ShadowRayPass : IRenderPass
         ITexture rawOcclusion = _rawOcclusion!;
         ITexture history = _history[_current]!;
         ShadowRayConstants constants = CreateConstants(context, visibility, history);
-        commands.Barrier(context.Depth, ResourceState.ShaderRead);
+        commands.Barrier(context.Targets.Depth, ResourceState.ShaderRead);
         commands.Barrier(context.GBuffer.Normal, ResourceState.ShaderRead);
         commands.Barrier(context.GBuffer.Motion, ResourceState.ShaderRead);
         commands.Barrier(raw, ResourceState.ShaderWrite);
         commands.Barrier(rawOcclusion, ResourceState.ShaderWrite);
         commands.SetPipeline(_trace!);
         commands.PushConstants(constants);
-        int groupsX = (context.Width + GroupSize - 1) / GroupSize;
-        int groupsY = (context.Height + GroupSize - 1) / GroupSize;
+        int groupsX = (context.RenderWidth + GroupSize - 1) / GroupSize;
+        int groupsY = (context.RenderHeight + GroupSize - 1) / GroupSize;
         commands.Dispatch(groupsX, groupsY);
         commands.Barrier(raw, ResourceState.ShaderRead);
         commands.Barrier(rawOcclusion, ResourceState.ShaderRead);

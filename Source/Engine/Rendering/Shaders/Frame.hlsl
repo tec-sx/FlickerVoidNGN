@@ -30,6 +30,9 @@ struct FrameData
     uint Probes;
     float3 ProbeSize;
     uint3 ProbeCounts;
+    // How far this frame's view, and so ViewProjection, was moved for an upscaler, in render pixels right and down; zero without
+    // one. TargetSize is the render size.
+    float2 Jitter;
     float3 CameraPosition;
     float NearPlane;
     float3 FogColor;
@@ -50,6 +53,8 @@ struct FrameData
     float FarStart;
     float FarEnd;
     float FarAmount;
+    // The frame before's jitter; PreviousViewProjection is without it.
+    float2 PreviousJitter;
     float3 CutMin;
     uint Cut;
     float3 CutMax;
@@ -103,6 +108,7 @@ FrameData LoadFrame(uint index)
     frame.Probes = buffer.Load<uint>(156);
     frame.ProbeSize = buffer.Load<float3>(160);
     frame.ProbeCounts = buffer.Load<uint3>(172);
+    frame.Jitter = buffer.Load<float2>(184);
     frame.CameraPosition = buffer.Load<float3>(192);
     frame.NearPlane = buffer.Load<float>(204);
     frame.FogColor = buffer.Load<float3>(208);
@@ -123,6 +129,7 @@ FrameData LoadFrame(uint index)
     frame.FarStart = buffer.Load<float>(348);
     frame.FarEnd = buffer.Load<float>(352);
     frame.FarAmount = buffer.Load<float>(356);
+    frame.PreviousJitter = buffer.Load<float2>(360);
     frame.CutMin = buffer.Load<float3>(368);
     frame.Cut = buffer.Load<uint>(380);
     frame.CutMax = buffer.Load<float3>(384);
@@ -151,6 +158,14 @@ float3 WorldAtPixel(FrameData frame, float2 pixel, float depth)
     float4 ndc = float4(uv.x * 2 - 1, 1 - uv.y * 2, depth, 1);
     float4 world = mul(ndc, frame.InverseViewProjection);
     return world.xyz / world.w;
+}
+
+// The clip position without the frame's jitter, as passes drawing at the output's size want.
+float4 Unjitter(FrameData frame, float4 clip)
+{
+    float2 shift = float2(2, -2) * frame.Jitter / frame.TargetSize;
+    clip.xy -= shift * clip.w;
+    return clip;
 }
 
 // The pixel (with fraction) a clip position lands on.

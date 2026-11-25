@@ -17,6 +17,7 @@ using FlickerVoid.Engine.Graphics.Presentation;
 using FlickerVoid.Engine.Graphics.Resources;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Graphics.Vulkan.AccelerationStructures;
 using FlickerVoid.Engine.Graphics.Vulkan.Buffers;
 using FlickerVoid.Engine.Graphics.Vulkan.Commands;
@@ -207,6 +208,11 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
     {
         RequireAccelerationStructures();
         return VulkanAccelerationStructure.CreateTopLevel(this, description);
+    }
+
+    public IUpscaler CreateUpscaler(in UpscalerDescription description)
+    {
+        throw new NotSupportedException($"{AdapterName} has no DLSS; check {nameof(Features)} first.");
     }
 
     public ICommandList CreateCommandList() => new VulkanCommandList(this);

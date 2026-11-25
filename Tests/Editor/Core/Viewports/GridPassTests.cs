@@ -43,6 +43,20 @@ public sealed class GridPassTests : IDisposable
     }
 
     [Fact]
+    public void HidesTheGridBehindWhatTheSceneDraws()
+    {
+        _builder.Camera.LookAt(Vector3.Zero, 0, -float.Pi / 2, 10);
+        _builder.WithBox(Vector3.Zero, new Vector3(4, 1, 4));
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, byte blue) offBox = GridPassTestsBuilder.Channels(pixels[(Centre * Size) + 5]);
+        (byte red, byte green, byte blue) onBox = GridPassTestsBuilder.Channels(pixels[(Centre * Size) + Centre - 5]);
+        offBox.red.Should().BeGreaterThan((byte)(offBox.blue + 50), "the X axis shows beside the box");
+        onBox.red.Should().BeCloseTo(onBox.green, 10, "the box's top hides the axis below it");
+    }
+
+    [Fact]
     public void DrawsNothingAboveTheHorizon()
     {
         // Even the bottom of the 60 degree view looks upward.

@@ -28,6 +28,7 @@ internal sealed unsafe class VulkanSampler : ISampler
             AddressModeU = address,
             AddressModeV = address,
             AddressModeW = address,
+            MipLodBias = description.MipBias,
             MaxLod = Vk.LodClampNone,
         };
         VulkanResult.Check(device.Vk.CreateSampler(device.Handle, &info, null, out Sampler sampler));

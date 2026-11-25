@@ -37,10 +37,11 @@ internal sealed class PostProcessor : IDisposable
         _composite = device.CreateGraphicsPipeline(composite);
     }
 
-    /// <summary>Leaves the output in the RenderTarget state.</summary>
+    /// <summary>Post-processes the lit scene at the output's size (<see cref="ScreenTargets.Lit"/>); leaves the output in the RenderTarget state.</summary>
     public void Run(ICommandList commands, ScreenTargets targets, ITexture output, LightingMood mood, PostCanvas canvas, ISampler clamp, ISampler wrap)
     {
-        commands.Barrier(targets.Hdr, ResourceState.ShaderRead);
+        ITexture lit = targets.Lit;
+        commands.Barrier(lit, ResourceState.ShaderRead);
         uint bloom = GpuLight.None;
         if (mood.Bloom > 0)
         {
@@ -66,7 +67,7 @@ internal sealed class PostProcessor : IDisposable
             Grading.From(mood),
             mood.Bloom,
             canvas.File.Intensity,
-            targets.Hdr.BindlessIndex,
+            lit.BindlessIndex,
             bloom,
             canvasIndex,
             clamp.BindlessIndex,
@@ -91,7 +92,7 @@ internal sealed class PostProcessor : IDisposable
     {
         ITexture[] levels = targets.Bloom;
         commands.SetPipeline(_down);
-        ITexture source = targets.Hdr;
+        ITexture source = targets.Lit;
         foreach (ITexture level in levels)
         {
             commands.Barrier(level, ResourceState.ShaderWrite);

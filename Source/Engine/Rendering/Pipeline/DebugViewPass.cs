@@ -1,3 +1,5 @@
+using System.Numerics;
+
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
@@ -51,7 +53,9 @@ internal sealed class DebugViewPass : IRenderPass
         commands.SetViewport(new Viewport(0, 0, context.Width, context.Height));
         commands.SetScissor(0, 0, context.Width, context.Height);
         commands.SetPipeline(_pipeline);
-        DebugViewConstants constants = new(context.FrameBuffer, (uint)context.DebugView);
+        Vector2 renderSize = new(context.RenderWidth, context.RenderHeight);
+        Vector2 outputSize = new(context.Width, context.Height);
+        DebugViewConstants constants = new(context.FrameBuffer, (uint)context.DebugView, renderSize / outputSize);
         commands.PushConstants(constants);
         commands.Draw(3);
         commands.EndRendering();

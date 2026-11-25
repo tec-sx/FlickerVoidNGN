@@ -39,6 +39,7 @@ public sealed class WorldExtractor : IRenderExtractor
             scene.Transition = new RenderTransition(active.Fade, active.FadeColor, active.Dissolve, dissolveFrom);
             scene.DepthFade = active.DepthFade;
             scene.Focus = active.Focus;
+            scene.Cuts = active.Cuts;
         });
         bool directed = scene.Cameras.Count > 0;
         Entity first = Entity.Null;
