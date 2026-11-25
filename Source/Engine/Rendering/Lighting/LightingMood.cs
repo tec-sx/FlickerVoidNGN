@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Numerics;
 using System.Text.Json.Serialization;
 
+using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Serialization;
@@ -97,46 +98,14 @@ public sealed record LightingMood
     /// </summary>
     public static LightingMood Lerp(LightingMood from, LightingMood to, float amount)
     {
-        Vector3 sunDirection = Vector3.Lerp(from.SunDirection, to.SunDirection, amount);
-        if (sunDirection.LengthSquared() > 1e-12f)
+        LightingMood blended = new();
+        IReadOnlyList<MoodValue> values = MoodValues.All;
+        for (int index = 0; index < values.Count; index++)
         {
-            sunDirection = Vector3.Normalize(sunDirection);
-        }
-        else
-        {
-            sunDirection = to.SunDirection;
+            values[index].Blend(from, to, amount, blended);
         }
 
-        string? canvas = from.Canvas;
-        Tonemapper tonemapper = from.Tonemapper;
-        if (amount >= 0.5f)
-        {
-            canvas = to.Canvas;
-            tonemapper = to.Tonemapper;
-        }
-
-        return new LightingMood
-        {
-            SunDirection = sunDirection,
-            Ambient = float.Lerp(from.Ambient, to.Ambient, amount),
-            SunShadowDistance = float.Lerp(from.SunShadowDistance, to.SunShadowDistance, amount),
-            FogDensity = float.Lerp(from.FogDensity, to.FogDensity, amount),
-            FogColor = Vector3.Lerp(from.FogColor, to.FogColor, amount),
-            FogAnisotropy = float.Lerp(from.FogAnisotropy, to.FogAnisotropy, amount),
-            FogHeight = float.Lerp(from.FogHeight, to.FogHeight, amount),
-            FogHeightFalloff = float.Lerp(from.FogHeightFalloff, to.FogHeightFalloff, amount),
-            AmbientOcclusion = float.Lerp(from.AmbientOcclusion, to.AmbientOcclusion, amount),
-            AmbientOcclusionRadius = float.Lerp(from.AmbientOcclusionRadius, to.AmbientOcclusionRadius, amount),
-            ContactShadowLength = float.Lerp(from.ContactShadowLength, to.ContactShadowLength, amount),
-            Bloom = float.Lerp(from.Bloom, to.Bloom, amount),
-            Exposure = float.Lerp(from.Exposure, to.Exposure, amount),
-            Contrast = float.Lerp(from.Contrast, to.Contrast, amount),
-            Saturation = float.Lerp(from.Saturation, to.Saturation, amount),
-            Tint = Vector3.Lerp(from.Tint, to.Tint, amount),
-            Tonemapper = tonemapper,
-            WhitePoint = float.Lerp(from.WhitePoint, to.WhitePoint, amount),
-            Canvas = canvas,
-        };
+        return blended;
     }
 
     /// <summary>This mood with neutral post-processing, for captures that need the light as it is.</summary>

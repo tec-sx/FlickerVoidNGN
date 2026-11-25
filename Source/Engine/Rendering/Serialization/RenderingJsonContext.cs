@@ -7,6 +7,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Runtime.Serialization;
@@ -31,6 +32,7 @@ namespace FlickerVoid.Engine.Rendering.Serialization;
 [JsonSerializable(typeof(SpotLight))]
 [JsonSerializable(typeof(IrradianceVolume))]
 [JsonSerializable(typeof(LightingMood))]
+[JsonSerializable(typeof(MoodOverride))]
 [JsonSerializable(typeof(TextureSettings))]
 [JsonSerializable(typeof(SceneMood))]
 [JsonSerializable(typeof(IndoorVolume))]
