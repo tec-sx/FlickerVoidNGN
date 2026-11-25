@@ -1,5 +1,5 @@
 {
-  "entryPoints": { "VertexMain": "Vertex", "DepthMain": "Pixel", "PixelMain": "Pixel", "OutlineMain": "Pixel" },
+  "entryPoints": { "VertexMain": "Vertex", "GeometryMain": "Pixel", "PixelMain": "Pixel", "OutlineMain": "Pixel" },
   // The shading controls materials set (Name.fvmat), packed in this order into the buffer LoadMaterial reads.
   // Every default keeps the plain look: the base color lit by plain diffuse light.
   "parameters": [

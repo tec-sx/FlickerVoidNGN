@@ -1,10 +1,12 @@
 // Draws a mesh part whose vertices (float3 position, float3 normal, float2 uv) are pulled from a bindless buffer, as its record
-// among the frame buffer's draws says (pushed by its number): its base color times its texture and its material's tint, shaded by the material's controls (Scene.fvshader) and lit by the sun, an even ambient light, and the point and spot lights of the pixel's cluster,
-// shadowed through the shadow atlas and tinted by spot light cookies, plus bounced light from irradiance probes, seen
-// through fog lit by the same lights. Indoor volumes scale the ambient light inside them, and while the camera looks into one
-// (the cutaway) whatever stands in front of its box is cut away and the world outside it muted.
-// The frame buffer holds FrameData (Frame.hlsl), then the lights, the shadows, each cluster's
-// range of light indices, the indices, the indoor volumes and the draws. ScreenShadows.hlsl gives each pixel its ambient occlusion and contact shadow.
+// among the frame buffer's draws says (pushed by its number). The geometry pass leaves its surface in the G-buffer (GBuffer.cs):
+// its base color times its texture and its material's tint, its normal, its material, its object's depth and its motion. The lit
+// pass draws that surface shaded by the material's controls (Scene.fvshader) and lit by the sun, an even ambient light, and the
+// point and spot lights of the pixel's cluster, shadowed through the shadow atlas and tinted by spot light cookies, plus bounced
+// light from irradiance probes, seen through fog lit by the same lights. Indoor volumes scale the ambient light inside them, and
+// while the camera looks into one (the cutaway) whatever stands in front of its box is cut away and the world outside it muted.
+// The frame buffer holds FrameData (Frame.hlsl), then the lights, the shadows, each cluster's range of light indices, the
+// indices, the indoor volumes and the draws. ScreenShadows.hlsl gives each pixel its ambient occlusion and contact shadow.
 
 #include "Frame.hlsl"
 
@@ -15,7 +17,7 @@ struct SceneConstants
 };
 
 // A draw's record (GpuDraw.cs): where its mesh stands this frame and the frame before, its vertices then and now, its looks,
-// its outline's color and its MeshFlags.
+// its outline's color, its MeshFlags, and the centre of its box with how wholly it takes that depth for the depth tone.
 struct Draw
 {
     float4x4 World;
@@ -28,9 +30,11 @@ struct Draw
     uint Sampler;
     uint Material;
     uint Flags;
+    float3 Center;
+    float Wholeness;
 };
 
-static const uint DrawSize = 192;
+static const uint DrawSize = 208;
 
 // MeshFlags.Uncut: the cutaway keeps the mesh, such as a door.
 static const uint FlagUncut = 4;
@@ -103,6 +107,8 @@ struct VertexOutput
     float3 WorldPosition : POSITION;
     float3 Normal : NORMAL;
     float2 Uv : TEXCOORD0;
+    // Where the vertex stood in the frame before, as the view then saw it.
+    float4 PreviousClip : TEXCOORD1;
 };
 
 // The draw's record; its matrices are the rows of System.Numerics matrices, which multiply row vectors.
@@ -121,6 +127,8 @@ Draw LoadDraw(FrameData frame, uint index)
     draw.Sampler = buffer.Load<uint>(offset + 172);
     draw.Material = buffer.Load<uint>(offset + 176);
     draw.Flags = buffer.Load<uint>(offset + 180);
+    draw.Center = buffer.Load<float3>(offset + 192);
+    draw.Wholeness = buffer.Load<float>(offset + 204);
     return draw;
 }
 
@@ -144,6 +152,9 @@ VertexOutput VertexMain(uint vertexId : SV_VertexID)
     output.WorldPosition = world.xyz;
     output.Normal = mul(normal, cofactor) * mirror;
     output.Uv = vertices.Load<float2>(offset + 24);
+    float3 previousPosition = Buffers[draw.PreviousVertices].Load<float3>(offset);
+    float4 previousWorld = mul(float4(previousPosition, 1), draw.PreviousWorld);
+    output.PreviousClip = mul(previousWorld, frame.PreviousViewProjection);
     return output;
 }
 
@@ -570,17 +581,6 @@ float2 BlurScreenShadows(FrameData frame, float2 pixel)
     return float2(occlusion / 9, contact);
 }
 
-// The depth prepass runs VertexMain too, so its depth matches the scene pass exactly; it cuts away what the scene pass does.
-void DepthMain(VertexOutput input)
-{
-    FrameData frame = LoadFrame(Scene.Frame);
-    Draw draw = LoadDraw(frame, Scene.Draw);
-    if ((draw.Flags & FlagUncut) == 0 && IsCutAway(frame, input.WorldPosition))
-    {
-        discard;
-    }
-}
-
 // The outline pass draws outlined meshes' silhouettes in their outline's color.
 float4 OutlineMain(VertexOutput input) : SV_Target
 {
@@ -627,16 +627,17 @@ float RaiseRelief(Material material, SamplerState sampler, float2 uv, float2 uvX
 // The relief's height (a share of the painting's impasto range) at which paint stands thick enough to hide the canvas.
 static const float ImpastoCover = 0.1;
 
-float4 PixelMain(VertexOutput input) : SV_Target
+// A draw's surface at a pixel before any light: its color and coverage, its normal tilted by a painting's relief, and how thick
+// its paint stands (1 where the impasto hides the canvas).
+struct Surface
 {
-    FrameData frame = LoadFrame(Scene.Frame);
-    Draw draw = LoadDraw(frame, Scene.Draw);
-    if ((draw.Flags & FlagUncut) == 0 && IsCutAway(frame, input.WorldPosition))
-    {
-        discard;
-    }
+    float4 Albedo;
+    float3 Normal;
+    float Impasto;
+};
 
-    Material material = LoadMaterial(draw.Material);
+Surface ReadSurface(VertexOutput input, Draw draw, Material material)
+{
     SamplerState sampler = Samplers[draw.Sampler];
     uint texture = draw.Texture;
     float2 uv = input.Uv;
@@ -646,20 +647,103 @@ float4 PixelMain(VertexOutput input) : SV_Target
         uv *= material.TextureScale;
     }
 
-    float4 albedo = Textures[texture].Sample(sampler, uv) * draw.BaseColor;
-    albedo.rgb *= material.Tint;
-    float3 normal = normalize(input.Normal);
+    Surface surface;
+    surface.Albedo = Textures[texture].Sample(sampler, uv) * draw.BaseColor;
+    surface.Albedo.rgb *= material.Tint;
+    surface.Normal = normalize(input.Normal);
     float2 uvX = ddx(uv);
     float2 uvY = ddy(uv);
     float3 positionX = ddx(input.WorldPosition);
     float3 positionY = ddy(input.WorldPosition);
-    float impasto = 0;
+    surface.Impasto = 0;
     if (material.Texture != None && material.Relief != None)
     {
-        float height = RaiseRelief(material, sampler, uv, uvX, uvY, positionX, positionY, normal);
-        impasto = saturate(height / ImpastoCover);
+        float height = RaiseRelief(material, sampler, uv, uvX, uvY, positionX, positionY, surface.Normal);
+        surface.Impasto = saturate(height / ImpastoCover);
     }
 
+    return surface;
+}
+
+// Whether the cutaway cuts the draw away at a point: anything in front of its box but the meshes it keeps.
+bool IsCut(FrameData frame, Draw draw, float3 worldPosition)
+{
+    return (draw.Flags & FlagUncut) == 0 && IsCutAway(frame, worldPosition);
+}
+
+// A unit vector folded onto an octahedron's square, so two channels hold it (Cigolle et al. 2014, "A Survey of Efficient
+// Representations for Independent Unit Vectors").
+float2 EncodeNormal(float3 normal)
+{
+    float2 folded = normal.xy / (abs(normal.x) + abs(normal.y) + abs(normal.z));
+    if (normal.z < 0)
+    {
+        float2 signs = select(folded >= 0, float2(1, 1), float2(-1, -1));
+        folded = (1 - abs(folded.yx)) * signs;
+    }
+
+    return folded;
+}
+
+// The pixel (with fraction) a clip position lands on.
+float2 ClipToPixel(FrameData frame, float4 clip)
+{
+    float2 ndc = clip.xy / clip.w;
+    return float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5) * frame.TargetSize;
+}
+
+// The G-buffer's targets, in GBuffer.Formats' order.
+struct GeometryOutput
+{
+    float4 Albedo : SV_Target0;
+    float2 Normal : SV_Target1;
+    float4 Material : SV_Target2;
+    float ObjectDepth : SV_Target3;
+    float2 Motion : SV_Target4;
+};
+
+// The geometry pass leaves the surface for lighting, unlit. It runs VertexMain as the lit pass does, so their depths match
+// exactly, and cuts away what the lit pass does. Its material target holds bytes: the material's bindless index in two, the
+// paint's thickness and the mesh's flags. The object depth leans from the pixel's own view depth to its box centre's as the draw
+// is small (Draw.Wholeness), and the motion is where the surface stood in the frame before less where it stands now, in pixels.
+GeometryOutput GeometryMain(VertexOutput input)
+{
+    FrameData frame = LoadFrame(Scene.Frame);
+    Draw draw = LoadDraw(frame, Scene.Draw);
+    if (IsCut(frame, draw, input.WorldPosition))
+    {
+        discard;
+    }
+
+    Material material = LoadMaterial(draw.Material);
+    Surface surface = ReadSurface(input, draw, material);
+    GeometryOutput output;
+    output.Albedo = surface.Albedo;
+    output.Normal = EncodeNormal(surface.Normal);
+    uint2 materialBytes = uint2(draw.Material & 0xFF, (draw.Material >> 8) & 0xFF);
+    output.Material = float4(float2(materialBytes) / 255, surface.Impasto, float(draw.Flags & 0xFF) / 255);
+    float depth = dot(float4(input.WorldPosition, 1), frame.DepthAxis);
+    float centerDepth = dot(float4(draw.Center, 1), frame.DepthAxis);
+    output.ObjectDepth = lerp(depth, centerDepth, draw.Wholeness);
+    float2 previous = ClipToPixel(frame, input.PreviousClip);
+    output.Motion = previous - input.Position.xy;
+    return output;
+}
+
+float4 PixelMain(VertexOutput input) : SV_Target
+{
+    FrameData frame = LoadFrame(Scene.Frame);
+    Draw draw = LoadDraw(frame, Scene.Draw);
+    if (IsCut(frame, draw, input.WorldPosition))
+    {
+        discard;
+    }
+
+    Material material = LoadMaterial(draw.Material);
+    Surface surface = ReadSurface(input, draw, material);
+    float4 albedo = surface.Albedo;
+    float3 normal = surface.Normal;
+    float impasto = surface.Impasto;
     float3 toCamera = ToCamera(frame, input.WorldPosition);
     float2 screenShadows = BlurScreenShadows(frame, input.Position.xy);
     float3 toSun = -normalize(frame.SunDirection);

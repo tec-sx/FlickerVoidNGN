@@ -66,6 +66,9 @@ public sealed class RenderContext
     /// <summary>The scene's depth, which passes after the opaque pass can test against, such as overlays drawn over the output.</summary>
     public ITexture Depth => Targets.Depth;
 
+    /// <summary>What the geometry pass left at every pixel for lighting, beside the depth.</summary>
+    public GBuffer GBuffer => Targets.GBuffer;
+
     internal ScreenTargets Targets { get; set; } = null!;
 
     internal TextureLibrary Textures { get; set; } = null!;

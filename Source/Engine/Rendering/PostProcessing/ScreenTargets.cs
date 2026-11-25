@@ -1,6 +1,7 @@
 
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Rendering.Pipeline;
 
 namespace FlickerVoid.Engine.Rendering.PostProcessing;
 
@@ -21,8 +22,11 @@ internal sealed class ScreenTargets : IDisposable
 
     public int Height { get; private set; }
 
-    /// <summary>The depth prepass and scene pass draw into it; the screen shadows pass reads it.</summary>
+    /// <summary>The geometry pass draws into it, the scene pass tests against it and the screen shadows pass reads it.</summary>
     public ITexture Depth { get; private set; } = null!;
+
+    /// <summary>What the geometry pass leaves at every pixel for lighting.</summary>
+    public GBuffer GBuffer { get; private set; } = null!;
 
     /// <summary>The lit scene before post-processing.</summary>
     public ITexture Hdr { get; private set; } = null!;
@@ -48,6 +52,7 @@ internal sealed class ScreenTargets : IDisposable
         Hdr = _device.CreateTexture(hdr);
         TextureDescription depth = new(width, height, SceneRenderer.DepthFormat, TextureUsage.DepthStencil | TextureUsage.ShaderRead) { Name = "Scene depth" };
         Depth = _device.CreateTexture(depth);
+        GBuffer = new GBuffer(_device, width, height);
         TextureDescription screenShadows = new(width, height, PixelFormat.Rgba8UNorm, TextureUsage.ShaderWrite | TextureUsage.ShaderRead) { Name = "Screen shadows" };
         ScreenShadows = _device.CreateTexture(screenShadows);
         Bloom = new ITexture[BloomLevels];
@@ -69,6 +74,7 @@ internal sealed class ScreenTargets : IDisposable
 
         Bloom = [];
         ScreenShadows?.Dispose();
+        GBuffer?.Dispose();
         Depth?.Dispose();
         Hdr?.Dispose();
     }
