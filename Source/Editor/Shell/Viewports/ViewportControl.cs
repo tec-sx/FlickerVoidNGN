@@ -127,7 +127,14 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
             ViewportViewModel? viewModel = ViewModel;
             PixelSize size = GetPixelSize();
             Vector2 pixel = ToPixels(point.Position);
-            viewModel?.PointerPressed(pixel, size.Width, size.Height);
+            if (e.ClickCount == 2)
+            {
+                viewModel?.DoubleClicked(pixel, size.Width, size.Height);
+            }
+            else
+            {
+                viewModel?.PointerPressed(pixel, size.Width, size.Height);
+            }
         }
 
         e.Handled = true;
@@ -236,12 +243,18 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
 
         PixelSize size = GetPixelSize();
         Vector2 pixel = ToPixels(position);
-        viewModel.SelectAt(pixel, size.Width, size.Height);
         _keys.Clear();
+        if (viewModel.IsCreating)
+        {
+            ShowCreatorOptions(viewModel);
+            return;
+        }
+
+        viewModel.SelectAt(pixel, size.Width, size.Height);
         MenuChoice add = EditorMenus.AddEntry(this);
         MenuChoice duplicate = new("Duplicate", viewModel.DuplicateSelected, "Entity", "Duplicate", "Ctrl+D");
         MenuChoice delete = new("Delete", viewModel.DeleteSelected, "Entity", "Delete", "Delete");
-        MenuChoice frame = new("Frame Selected", viewModel.FrameSelected, "View", "Zoom", "F");
+        MenuChoice frame = new("Frame Selected", viewModel.FrameSelected, "View", "Search", "F");
         List<MenuChoice> choices = [add, frame];
         if (viewModel.Selection.Selected is not null)
         {
@@ -249,7 +262,22 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
             choices.Add(delete);
         }
 
-        UndoHistory history = viewModel.Scene.History;
+        AddUndoChoices(choices, viewModel.Scene.History);
+        EditorMenus.ShowOptions(this, choices, MenuGrouping.Separators);
+    }
+
+    /// <summary>The creator's options: frame the creation, undo and redo its file, and leave.</summary>
+    private void ShowCreatorOptions(ViewportViewModel viewModel)
+    {
+        MenuChoice frame = new("Frame Creation", viewModel.FrameSelected, "View", "Search", "F");
+        MenuChoice leave = new("Leave Creator", viewModel.LeaveCreator, "View", "Back", "Escape");
+        List<MenuChoice> choices = [frame, leave];
+        AddUndoChoices(choices, viewModel.Mode.History);
+        EditorMenus.ShowOptions(this, choices, MenuGrouping.Separators);
+    }
+
+    private static void AddUndoChoices(List<MenuChoice> choices, UndoHistory history)
+    {
         if (history.UndoName is { } undoName)
         {
             choices.Add(new MenuChoice($"Undo {undoName}", () => history.Undo(), "Edit", "Undo", "Ctrl+Z"));
@@ -259,8 +287,6 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         {
             choices.Add(new MenuChoice($"Redo {redoName}", () => history.Redo(), "Edit", "Redo", "Ctrl+Y"));
         }
-
-        EditorMenus.ShowOptions(this, choices, MenuGrouping.Separators);
     }
 
     private void HandleDragOver(object? sender, DragEventArgs e)

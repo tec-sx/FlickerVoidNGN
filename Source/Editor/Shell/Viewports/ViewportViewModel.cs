@@ -219,7 +219,10 @@ public sealed partial class ViewportViewModel : ObservableObject
         Mode.Update();
     }
 
-    /// <summary>Q, W, E and R switch the gizmo, unless the right button is held, when they fly the camera; G toggles the game view.</summary>
+    /// <summary>
+    /// Q, W, E and R switch the gizmo, unless the right button is held, when they fly the camera; G toggles the game view; Escape
+    /// leaves the creator.
+    /// </summary>
     public void KeyPressed(ViewportKey key, ViewportButtons held)
     {
         if ((held & ViewportButtons.Right) != 0)
@@ -250,18 +253,26 @@ public sealed partial class ViewportViewModel : ObservableObject
             case ViewportKey.F:
                 FrameSelected();
                 break;
+            case ViewportKey.Escape:
+                LeaveCreator();
+                break;
         }
     }
 
     /// <summary>
     /// Moves the camera, still looking the same way, so the selection fills the view (F): meshes by their boxes, anything else
-    /// as a small sphere round its place. With nothing selected it frames every entity of the scene.
+    /// as a small sphere round its place. With nothing selected it frames every entity of the scene, and in the creator the creation.
     /// </summary>
     [RelayCommand]
     public void FrameSelected()
     {
         World world = Scene.Game.World;
         IEnumerable<Entity> framed = Selection.Entities.Count > 0 ? Selection.Entities : Scene.Entities;
+        if (Creator is { } creator)
+        {
+            framed = [creator.Root];
+        }
+
         Vector3 min = new(float.MaxValue);
         Vector3 max = new(float.MinValue);
         bool any = false;
@@ -312,7 +323,7 @@ public sealed partial class ViewportViewModel : ObservableObject
     public void DuplicateSelected()
     {
         World world = Scene.Game.World;
-        if (Scene.ScenePath is null)
+        if (Scene.ScenePath is null || IsCreating)
         {
             return;
         }
@@ -396,10 +407,15 @@ public sealed partial class ViewportViewModel : ObservableObject
         Status = $"Added {data.Name}.";
     }
 
-    /// <summary>Destroys the selected entities; the next save leaves them out of the scene file.</summary>
+    /// <summary>Destroys the selected entities; the next save leaves them out of the scene file. The creator never edits the level.</summary>
     [RelayCommand]
     public void DeleteSelected()
     {
+        if (IsCreating)
+        {
+            return;
+        }
+
         List<Entity> selected = [.. Selection.Entities];
         Scene.History.BeginGroup(DescribeMany("Delete", selected));
         foreach (Entity entity in selected)
@@ -424,10 +440,17 @@ public sealed partial class ViewportViewModel : ObservableObject
         return SceneMode.DescribeMany(Scene.Game.World, verb, entities);
     }
 
-    /// <summary>Saves the world into its scene file.</summary>
+    /// <summary>Saves the world into its scene file, or in the creator the creation's file.</summary>
     [RelayCommand]
     public void Save()
     {
+        if (CreatorFile is { } file)
+        {
+            Mode.Save();
+            Status = $"Saved {file}.";
+            return;
+        }
+
         if (!Scene.Save())
         {
             Status = "The world has no scene file to save into; open one with --scene.";

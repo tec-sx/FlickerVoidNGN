@@ -88,6 +88,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         viewport.Scene.Opened += HandleSceneOpened;
         viewport.Scene.UnsavedChanged += HandleUnsavedChanged;
         viewport.Scene.Edited += HandleSceneEdited;
+        viewport.CreationRequested += EditCreation;
+        viewport.PropertyChanged += HandleViewportChanged;
         ShowSceneMood();
         WatchHistory();
     }
@@ -167,7 +169,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnSideTabChanged(int value) => WatchHistory();
 
-    /// <summary>The open tab under the scene outliner: 0 inspector, 1 view, 2 data.</summary>
+    /// <summary>The open tab under the scene outliner: 0 inspector, 1 view, 2 data, 3 the creator's.</summary>
     [ObservableProperty]
     public partial int SideTab { get; set; }
 
@@ -204,10 +206,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    /// <summary>Builds the project's game again and reloads its code into the scene, keeping the scene's unsaved edits.</summary>
+    /// <summary>Builds the project's game again and reloads its code into the scene, keeping the scene's unsaved edits; the creator is left first.</summary>
     [RelayCommand(CanExecute = nameof(CanCompile))]
     public async Task Compile()
     {
+        Viewport.LeaveCreator();
         Viewport.Status = "Compiling the project's code...";
         Stopwatch watch = Stopwatch.StartNew();
         try
@@ -351,6 +354,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(MoodHeading));
         OnPropertyChanged(nameof(DataHeading));
+        OnPropertyChanged(nameof(CreatorHeading));
         SaveAssetsCommand.NotifyCanExecuteChanged();
         DiscardAssetsCommand.NotifyCanExecuteChanged();
     }
@@ -382,6 +386,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             }
         }
 
+        Viewport.LeaveCreator();
         try
         {
             Viewport.Scene.Open(path);

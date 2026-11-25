@@ -1,4 +1,6 @@
+using System.Numerics;
 using System.Text;
+using System.Text.Json;
 
 using Arch.Core;
 
@@ -8,6 +10,8 @@ using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Viewports;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Scenes;
+using FlickerVoid.Engine.Vehicles;
+using FlickerVoid.Engine.Vehicles.Serialization;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -16,6 +20,7 @@ namespace FlickerVoid.Editor.Tests;
 /// <summary>
 /// Builds the main window's view model over a temporary content folder holding Room.fvscene and Hall.fvscene, each with a Lamp,
 /// Paper.fvmat, Night.fvmood, whose exposure is 0.5, Lantern.fvdata, a lantern of 6 hours, Cellar.fvflow, a flow with a start node, and Lit.fvscene, which names Night.fvmood as its mood; the user's answer to the unsaved files prompt is <see cref="Answer"/>.
+/// <see cref="OpenStreet"/> opens a street with a van of a car file at the origin and a crate, seen in a 640x480 viewport.
 /// </summary>
 internal sealed class MainWindowViewModelTestsBuilder : IDisposable
 {
@@ -26,6 +31,17 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
     public const string Lit = "Lit.fvscene";
     public const string Lantern = "Lantern.fvdata";
     public const string Cellar = "Cellar.fvflow";
+    public const string Street = "Street.fvscene";
+    public const string Van = "Vans/Van.fvvehicle";
+    public const int Width = 640;
+    public const int Height = 480;
+
+    private const string StreetScene = """
+        { "entities": [
+          { "name": "Van", "components": { "transform": {}, "vehicle": { "file": "Vans/Van.fvvehicle" } } },
+          { "name": "Crate", "components": { "transform": { "position": [-4, 0, 0] }, "greybox": { "size": [1, 1, 1] } } }
+        ] }
+        """;
 
     private const string LampScene = """{ "entities": [ { "name": "Lamp", "components": { "transform": {} } } ] }""";
 
@@ -66,6 +82,61 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
 
     /// <summary>The files each prompt listed, one list per prompt.</summary>
     public List<IReadOnlyList<string>> Prompts { get; } = [];
+
+    /// <summary>Writes the car file and the street, lists them in the asset browser, opens the street from there and looks at the van.</summary>
+    public void OpenStreet()
+    {
+        string folder = Path.Combine(_contentFolder, "Vans");
+        Directory.CreateDirectory(folder);
+        VehicleFile car = VehicleFile.Create(VehicleType.Car);
+        string json = JsonSerializer.Serialize(car, VehiclesJsonContext.Default.VehicleFile);
+        WriteFile(Van, json);
+        WriteFile(Street, StreetScene);
+        ViewModel.Assets.Refresh();
+        OpenInBrowser(Street);
+        ViewModel.Viewport.Camera.LookAt(Vector3.Zero, yaw: 0.6f, pitch: -0.4f, distance: 8);
+    }
+
+    public Entity Find(string name) => _scene.Find(name)!.Value;
+
+    /// <summary>The middle of the entity's box, its parts' for a creation, where a click lands on it.</summary>
+    public Vector3 MiddleOf(string name)
+    {
+        Entity entity = Find(name);
+        World world = _scene.Game.World;
+        _scene.Picker.TryGetBounds(world, entity, out Vector3 low, out Vector3 high).Should().BeTrue();
+        Matrix4x4 matrix = world.Get<Engine.Runtime.Components.Transform>(entity).ToMatrix();
+        Vector3 middle = (low + high) / 2;
+        return Vector3.Transform(middle, matrix);
+    }
+
+    /// <summary>Double-clicks the viewport where the point shows: a press, a release, then the second press.</summary>
+    public void DoubleClick(Vector3 point)
+    {
+        ViewportViewModel viewport = ViewModel.Viewport;
+        Vector2 pixel = viewport.Camera.Project(point, Width, Height);
+        viewport.PointerPressed(pixel, Width, Height);
+        viewport.PointerReleased();
+        viewport.DoubleClicked(pixel, Width, Height);
+    }
+
+    /// <summary>Double-clicks the viewport's top left corner, where the sky shows.</summary>
+    public void DoubleClickSky()
+    {
+        ViewportViewModel viewport = ViewModel.Viewport;
+        Vector2 corner = new(2, 2);
+        viewport.PointerPressed(corner, Width, Height);
+        viewport.PointerReleased();
+        viewport.DoubleClicked(corner, Width, Height);
+    }
+
+    /// <summary>The wheel count the file holds as saved on disk.</summary>
+    public int WheelsOnDisk(string path)
+    {
+        string json = ReadFile(path);
+        VehicleFile vehicle = JsonSerializer.Deserialize(json, VehiclesJsonContext.Default.VehicleFile)!;
+        return vehicle.Wheels.Count;
+    }
 
     /// <summary>Moves the open scene's lamp, leaving the scene unsaved.</summary>
     public void EditScene()

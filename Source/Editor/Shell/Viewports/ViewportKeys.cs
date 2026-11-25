@@ -20,6 +20,7 @@ public static class ViewportKeys
         Key.G => ViewportKey.G,
         Key.F => ViewportKey.F,
         Key.Delete => ViewportKey.Delete,
+        Key.Escape => ViewportKey.Escape,
         _ => null,
     };
 }
