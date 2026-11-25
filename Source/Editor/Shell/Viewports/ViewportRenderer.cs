@@ -14,6 +14,7 @@ using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 
@@ -80,6 +81,13 @@ internal sealed class ViewportRenderer : IDisposable
     {
         get => _scene.Mood;
         set => _scene.Mood = value;
+    }
+
+    /// <summary>Turns the world's mesh names into models; give it the edited game's, so the meshes its modules make are drawn.</summary>
+    public MeshSources Meshes
+    {
+        get => _scene.Meshes;
+        set => _scene.Meshes = value;
     }
 
     public bool ShowGrid
@@ -160,6 +168,7 @@ internal sealed class ViewportRenderer : IDisposable
 
         _previewScene ??= new SceneRenderer(_device, _content, ViewFormat) { Sky = true };
         _previewScene.Mood = _scene.Mood;
+        _previewScene.Meshes = _scene.Meshes;
         _previewScene.DepthFade = depthFade.Preview;
         _previewScene.Focus = depthFade.Focus;
         _previewScene.Render(_commands, world, _preview, preview.Camera, preview.Transform);
