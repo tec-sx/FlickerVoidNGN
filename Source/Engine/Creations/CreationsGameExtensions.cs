@@ -5,7 +5,10 @@ namespace FlickerVoid.Engine.Creations;
 /// <summary>Adds creations to a game.</summary>
 public static class CreationsGameExtensions
 {
-    /// <summary>The game's <see cref="CreationParts"/>, a service added the first time, which each kind of creation spawns its parts with.</summary>
+    /// <summary>
+    /// The game's <see cref="CreationParts"/>, a service added the first time with the <see cref="JointSystem"/> as a frame system,
+    /// which each kind of creation spawns its parts with.
+    /// </summary>
     public static CreationParts AddCreations(this Game game)
     {
         if (game.Services.GetService<CreationParts>() is { } added)
@@ -15,6 +18,8 @@ public static class CreationsGameExtensions
 
         CreationParts parts = new(game.World, game.Lifecycle);
         game.Services.AddService(parts);
+        JointSystem joints = new(game.World, game.Lifecycle);
+        game.FrameSystems.Add(joints);
         return parts;
     }
 }
