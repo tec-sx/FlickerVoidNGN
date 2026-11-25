@@ -20,7 +20,7 @@ namespace FlickerVoid.Engine.Cameras.Directing;
 /// Directs the camera each frame, a frame system and service: keeps one shot live (the scene's starting shot until told otherwise),
 /// switches shots with a transition (cut, cross-fade, fade or blend), keeps a stack of shots to return to, drives the live shot
 /// along its rail, moves it by its camera layers (shakes and zoom punches asked for by commands), and writes its posed lens and world pose, with the transition laid over the frame
-/// and its depth fade (the main camera's, changed by the shot's override, measured from its target, blended as shots change), into its
+/// and the point its depth fade is measured from (its target, blended as shots change), into its
 /// <see cref="ActiveCamera"/>, which the renderer draws from.
 /// </summary>
 public sealed class CameraDirector : BaseSystem<World, GameTime>
@@ -47,7 +47,6 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
     private float _dissolveSpeed;
 
     private RenderCamera _blendFrom;
-    private DepthFade _blendFromFade;
     private Vector3? _blendFromFocus;
     private float _blend = 1;
 
@@ -91,6 +90,12 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
 
     /// <summary>The shot drawn now, or <see cref="Entity.Null"/> before the first frame or without shots.</summary>
     public Entity Live { get; private set; } = Entity.Null;
+
+    /// <summary>
+    /// The seconds the switch to the live shot moves over on screen: a cross-fade's or blend's duration, and 0 after a cut, a fade
+    /// (whose shot goes live while the world is dark), the scene's start or a load.
+    /// </summary>
+    public float SwitchSeconds { get; private set; }
 
     /// <summary>The shots <see cref="Return"/> goes back to, the latest last.</summary>
     public IReadOnlyList<Entity> Stack => _stack;
@@ -225,11 +230,11 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
                 break;
             case TransitionKind.CrossFade:
                 StartCrossFade(transition.Duration);
-                GoLive(shot);
+                GoLive(shot, transition.Duration);
                 break;
             case TransitionKind.Blend:
                 StartBlend(transition);
-                GoLive(shot);
+                GoLive(shot, transition.Duration);
                 break;
             default:
                 EndMoves();
@@ -517,7 +522,6 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         if (IsShot(Live) && World.TryGet(Live, out ActiveCamera active))
         {
             drawn = new RenderCamera(active.Lens, active.Pose);
-            _blendFromFade = active.DepthFade;
             _blendFromFocus = active.Focus;
         }
 
@@ -541,13 +545,15 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         _blend = 1;
     }
 
-    private void GoLive(Entity shot)
+    private void GoLive(Entity shot, float seconds = 0)
     {
         Entity previous = Live;
         if (previous == shot)
         {
             return;
         }
+
+        SwitchSeconds = MathF.Max(seconds, 0);
 
         if (World.IsAlive(previous) && World.Has<ActiveCamera>(previous))
         {
@@ -586,13 +592,11 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
             view = _layers.Apply(Live, shot.Rig, view, target, Pointer, seconds);
         }
 
-        DepthFade fade = MainCamera.FindFor(World, Live);
         Vector3? focus = target;
         if (_blend < 1)
         {
             float eased = _blendEase.Apply(_blend);
             view = Mix(_blendFrom, view, eased);
-            fade = DepthFade.Lerp(_blendFromFade, fade, eased);
             focus = MixFocus(_blendFromFocus, focus, eased);
         }
 
@@ -603,11 +607,8 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
             active.Dissolve = _dissolve;
             active.DissolveLens = from.Camera;
             active.DissolvePose = from.Transform;
-            DepthFade fromFade = MainCamera.FindFor(World, _dissolveFrom);
-            fade = DepthFade.Lerp(fade, fromFade, _dissolve);
         }
 
-        active.DepthFade = fade;
         active.Focus = focus;
 
         if (World.Has<ActiveCamera>(Live))

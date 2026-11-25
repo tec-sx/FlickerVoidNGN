@@ -37,25 +37,13 @@ public sealed class WorldExtractor : IRenderExtractor
             scene.Cameras.Add(new RenderCamera(active.Lens, active.Pose));
             RenderCamera dissolveFrom = new(active.DissolveLens, active.DissolvePose);
             scene.Transition = new RenderTransition(active.Fade, active.FadeColor, active.Dissolve, dissolveFrom);
-            scene.DepthFade = active.DepthFade;
             scene.Focus = active.Focus;
             scene.Cuts = active.Cuts;
         });
-        bool directed = scene.Cameras.Count > 0;
-        Entity first = Entity.Null;
-        world.Query(in Cameras, (Entity entity, ref Camera camera, ref Transform transform) =>
+        world.Query(in Cameras, (ref Camera camera, ref Transform transform) =>
         {
-            if (first == Entity.Null)
-            {
-                first = entity;
-            }
-
             scene.Cameras.Add(new RenderCamera(camera, transform));
         });
-        if (!directed && first != Entity.Null)
-        {
-            scene.DepthFade = MainCamera.FindFor(world, first);
-        }
 
         world.Query(in Meshes, (Entity entity, ref MeshRenderer renderer, ref Transform transform) =>
         {

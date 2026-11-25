@@ -1,6 +1,9 @@
 using System.Numerics;
 
+using AwesomeAssertions.Equivalency;
+
 using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Rendering.Tests.Moods;
 
 namespace FlickerVoid.Engine.Rendering.Tests;
 
@@ -70,8 +73,30 @@ public sealed class LightingMoodTests : IDisposable
         late.Canvas.Should().Be("Paper.fvcanvas");
     }
 
+    [Fact]
+    public void IsEitherMoodAtTheEndsOfABlend()
+    {
+        LightingMood plain = new();
+        LightingMood changed = new MoodValuesTestsBuilder().BuildChanged();
+
+        LightingMood start = LightingMood.Lerp(plain, changed, 0);
+        LightingMood end = LightingMood.Lerp(plain, changed, 1);
+
+        start.Should().BeEquivalentTo(plain, CompareClosely);
+        end.Should().BeEquivalentTo(changed, CompareClosely);
+    }
+
     public void Dispose()
     {
         _builder.Dispose();
+    }
+
+    private static EquivalencyOptions<LightingMood> CompareClosely(EquivalencyOptions<LightingMood> options)
+    {
+        return options
+            .ComparingRecordsByMembers()
+            .ComparingByMembers<Vector3>()
+            .Using<float>(context => context.Subject.Should().BeApproximately(context.Expectation, 1e-6f))
+            .WhenTypeIs<float>();
     }
 }

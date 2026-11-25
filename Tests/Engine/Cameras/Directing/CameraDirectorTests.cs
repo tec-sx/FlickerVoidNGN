@@ -530,30 +530,26 @@ public sealed class CameraDirectorTests : IDisposable
     }
 
     [Fact]
-    public void DrawsTheLiveShotWithTheMainCamerasFadeChangedByItsOverrideMeasuredFromItsTarget()
+    public void MeasuresTheLiveShotsDepthFadeFromItsTarget()
     {
         _builder.Build();
-        _builder.Spawn("""{ "name": "Main", "components": { "transform": {}, "camera": {}, "mainCamera": { "nearAmount": 0.4, "farAmount": 0.6 } } }""");
         _builder.SpawnTarget("Fox", new Vector3(1, 0, 2));
-        _builder.SpawnShot("Hall", """{ "position": [0, 0, 0] }""", start: true, extra: """}, "depthFadeOverride": { "overrideNear": false, "farAmount": 1 """);
+        _builder.SpawnShot("Hall", """{ "position": [0, 0, 0] }""", start: true);
 
         _builder.Run(1 / 60f);
         RenderScene scene = _builder.Extract();
 
-        scene.DepthFade.NearAmount.Should().Be(0.4f);
-        scene.DepthFade.FarAmount.Should().Be(1);
         scene.Focus.Should().Be(new Vector3(1, 0, 2));
     }
 
     [Fact]
-    public void ABlendBlendsTheDepthFadeAndFocusToo()
+    public void ABlendBlendsTheFocusToo()
     {
         CameraDirector director = _builder.Build();
-        _builder.Spawn("""{ "name": "Main", "components": { "transform": {}, "camera": {}, "mainCamera": { "nearAmount": 0, "farAmount": 0 } } }""");
         _builder.SpawnTarget("Fox", new Vector3(0, 0, 0));
         _builder.SpawnTarget("Door", new Vector3(10, 0, 0));
         _builder.SpawnShot("Hall", """{ "position": [0, 0, 0] }""", start: true);
-        Entity cellar = _builder.SpawnShot("Cellar", """{ "position": [10, 0, 0] }""", extra: """, "target": "Door" }, "depthFadeOverride": { "nearAmount": 1, "farAmount": 1 """);
+        Entity cellar = _builder.SpawnShot("Cellar", """{ "position": [10, 0, 0] }""", extra: """, "target": "Door" """);
         _builder.Run(1 / 60f);
         ShotTransition blend = new() { Kind = TransitionKind.Blend, Duration = 2 };
 
@@ -563,9 +559,7 @@ public sealed class CameraDirectorTests : IDisposable
         _builder.Run(1.1f);
         RenderScene after = _builder.Extract();
 
-        halfway.DepthFade.NearAmount.Should().BeApproximately(0.5f, 0.05f);
         halfway.Focus!.Value.X.Should().BeApproximately(5, 0.1f);
-        after.DepthFade.FarAmount.Should().Be(1);
         after.Focus.Should().Be(new Vector3(10, 0, 0));
     }
 

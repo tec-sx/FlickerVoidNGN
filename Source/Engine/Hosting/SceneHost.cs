@@ -10,9 +10,8 @@ using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Platform.Windowing;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Cameras;
-using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Rendering.Pipeline;
-using FlickerVoid.Engine.Rendering.Serialization;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -66,10 +65,8 @@ public sealed partial class SceneHost : IDisposable
         Travel = Game.AddSceneTravel(Scenes);
         ContentWatcher watcher = new(Content, Game.Schemas);
         Game.FrameSystems.Add(watcher);
-        if (options.Mood is { } mood)
-        {
-            Mood = Content.Load(mood, RenderingJsonContext.Default.LightingMood);
-        }
+        Moods = Game.AddMoods(Content);
+        Moods.SceneMoodPath = options.Mood;
     }
 
     public IGraphicsDevice Device { get; }
@@ -97,8 +94,11 @@ public sealed partial class SceneHost : IDisposable
     /// <summary>Moves the game from scene to scene; <see cref="Start"/> travels to the options' scene.</summary>
     public SceneTravel Travel { get; }
 
-    /// <summary>The mood the renderer starts with: the options' mood file, else the one the scene names (<see cref="SceneMood"/>), else the default.</summary>
-    public LightingMood Mood { get; set; } = new();
+    /// <summary>
+    /// Keeps the mood the renderer draws with each frame: the scene's environment and mood (the options' mood file in place of
+    /// the one the scene names), the story's and the live shot's over them.
+    /// </summary>
+    public MoodSystem Moods { get; }
 
     /// <summary>The render system, once <see cref="Start"/> has created it.</summary>
     public SceneRenderSystem? Renderer { get; private set; }
@@ -121,10 +121,8 @@ public sealed partial class SceneHost : IDisposable
 
         Game.Lifecycle.Play(Game.World);
 
-        if (_options.Mood is null && SceneMood.Find(Game.World) is { } sceneMood)
-        {
-            Mood = Content.Load(sceneMood, RenderingJsonContext.Default.LightingMood);
-        }
+        GameTime beforeTheFirstFrame = default;
+        Moods.Update(in beforeTheFirstFrame);
 
         int cameras = Game.World.CountEntities(in Cameras);
         if (cameras == 0)
@@ -133,7 +131,7 @@ public sealed partial class SceneHost : IDisposable
         }
 
         createOverlay ??= static (_, _) => null;
-        Renderer = new SceneRenderSystem(Window, Device, Game.World, CreateRenderer, _options.FrameLimit, createOverlay);
+        Renderer = new SceneRenderSystem(Window, Device, Game.World, CreateRenderer, _options.FrameLimit, createOverlay) { MoodSource = () => Moods.Current };
         return Renderer;
     }
 
@@ -163,7 +161,7 @@ public sealed partial class SceneHost : IDisposable
 
     private SceneRenderer CreateRenderer(PixelFormat format)
     {
-        SceneRenderer renderer = new(Device, Content, format) { Mood = Mood, Sky = true, RayTracing = true, Upscaling = UpscaleMode.Quality };
+        SceneRenderer renderer = new(Device, Content, format) { Mood = Moods.Current, Sky = true, RayTracing = true, Upscaling = UpscaleMode.Quality };
         SceneRendererSetup? setup = Game.Services.GetService<SceneRendererSetup>();
         setup?.Apply(renderer);
         return renderer;

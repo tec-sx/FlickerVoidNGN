@@ -34,9 +34,6 @@ public struct ActiveCamera
 
     public Transform DissolvePose { get; set; }
 
-    /// <summary>The depth fade the view is drawn with, from the main camera and this shot's override.</summary>
-    public DepthFade DepthFade { get; set; }
-
     /// <summary>The world point the depth fade is measured from, such as the shot's target; null measures from the camera.</summary>
     public Vector3? Focus { get; set; }
 
