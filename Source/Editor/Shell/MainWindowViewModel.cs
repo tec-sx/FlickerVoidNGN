@@ -52,6 +52,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string? _sceneMood;
 
     private readonly HashSet<string> _openFlows = new(ContentManager.PathComparer);
+    private Dictionary<AssetType, Action<AssetEntry>>? _openers;
 
     /// <summary>
     /// Shows the scene over <paramref name="content"/>, the scene's content with its unsaved edits; <paramref name="player"/>

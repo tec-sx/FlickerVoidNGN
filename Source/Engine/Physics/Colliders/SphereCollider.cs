@@ -1,5 +1,4 @@
-using BepuPhysics;
-using BepuPhysics.Collidables;
+using Jolt = JoltPhysicsSharp;
 
 namespace FlickerVoid.Engine.Physics.Colliders;
 
@@ -8,15 +7,8 @@ public sealed class SphereCollider : Collider
 {
     public float Radius { get; set; } = 0.5f;
 
-    internal override TypedIndex AddShape(Shapes shapes)
+    internal override Jolt.Shape CreateShape()
     {
-        Sphere sphere = new(Radius);
-        return shapes.Add(sphere);
-    }
-
-    internal override BodyInertia ComputeInertia(float mass)
-    {
-        Sphere sphere = new(Radius);
-        return sphere.ComputeInertia(mass);
+        return new Jolt.SphereShape(Radius);
     }
 }

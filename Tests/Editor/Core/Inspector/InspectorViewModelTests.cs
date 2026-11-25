@@ -336,7 +336,7 @@ public sealed class InspectorViewModelTests : IDisposable
         collider.Kind = "Sphere";
         _builder.ViewModel.Refresh();
 
-        collider.Kinds.Should().Equal("Box", "Sphere", "Capsule");
+        collider.Kinds.Should().Equal("Box", "Sphere", "Capsule", "Hull", "Triangles");
         boxKind.Should().Be("Box");
         boxLabels.Should().Equal("Size", "Offset");
         SphereCollider sphere = _builder.World.Get<StaticBody>(door).Collider.Should().BeOfType<SphereCollider>().Subject;

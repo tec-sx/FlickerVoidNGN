@@ -89,9 +89,10 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         _content.Edit(Paper, contents);
     }
 
-    public void OpenInBrowser(string path, AssetKind kind = AssetKind.Scene)
+    /// <summary>Opens the file as the asset browser would, as a scene unless another type is given.</summary>
+    public void OpenInBrowser(string path, AssetType? type = null)
     {
-        AssetEntry entry = new(path, Path.GetFileNameWithoutExtension(path), kind);
+        AssetEntry entry = new(path, Path.GetFileNameWithoutExtension(path), type ?? AssetTypes.Scene);
         ViewModel.Assets.Open(entry);
     }
 

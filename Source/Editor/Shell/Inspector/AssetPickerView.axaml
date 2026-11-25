@@ -12,8 +12,8 @@
     <ToggleButton x:Name="Current" Classes="asset" IsChecked="{Binding IsOpen}" HorizontalAlignment="Stretch"
                   HorizontalContentAlignment="Stretch" ToolTip.Tip="{Binding Current}">
       <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="4">
-        <PathIcon Width="12" Height="12" Data="{Binding Current, Converter={x:Static assets:AssetKindLooks.PathIcon}}"
-                  Foreground="{Binding Current, Converter={x:Static assets:AssetKindLooks.PathBrush}}" />
+        <PathIcon Width="12" Height="12" Data="{Binding Current, Converter={x:Static assets:AssetTypeLooks.PathIcon}}"
+                  Foreground="{Binding Current, Converter={x:Static assets:AssetTypeLooks.PathBrush}}" />
         <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
         <PathIcon Grid.Column="2" Width="10" Height="10" Data="{x:Static shell:MaterialIcons.Expand}" Opacity="0.7" />
       </Grid>
@@ -34,8 +34,8 @@
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="x:String">
                 <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding}">
-                  <PathIcon Width="12" Height="12" Data="{Binding Converter={x:Static assets:AssetKindLooks.PathIcon}}"
-                            Foreground="{Binding Converter={x:Static assets:AssetKindLooks.PathBrush}}" />
+                  <PathIcon Width="12" Height="12" Data="{Binding Converter={x:Static assets:AssetTypeLooks.PathIcon}}"
+                            Foreground="{Binding Converter={x:Static assets:AssetTypeLooks.PathBrush}}" />
                   <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
               </DataTemplate>
