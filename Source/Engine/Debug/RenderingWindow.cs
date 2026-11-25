@@ -9,8 +9,8 @@ using Hexa.NET.ImGui;
 namespace FlickerVoid.Engine.Debug;
 
 /// <summary>
-/// Switches the scene renderer's features, shows the G-buffer's targets in place of the frame and tweaks its lighting mood live: the
-/// sun, ambient light, shadows, fog, screen-space shadows, bloom and grade.
+/// Switches the scene renderer's features (lights, probes, ray tracing), shows the G-buffer's targets in place of the frame and
+/// tweaks its lighting mood live: the sun, ambient light, shadows, fog, screen-space shadows, bloom and grade.
 /// </summary>
 public sealed class RenderingWindow : DebugWindow
 {
@@ -41,6 +41,12 @@ public sealed class RenderingWindow : DebugWindow
         if (ImGui.Checkbox("Irradiance probes", ref probes))
         {
             _renderer.Probes = probes;
+        }
+
+        bool rayTracing = _renderer.RayTracing;
+        if (ImGui.Checkbox("Ray tracing (where the GPU has ray queries)", ref rayTracing))
+        {
+            _renderer.RayTracing = rayTracing;
         }
 
         int view = (int)_renderer.DebugView;
@@ -74,6 +80,12 @@ public sealed class RenderingWindow : DebugWindow
             if (ImGui.SliderFloat("Sun shadow distance (0 is off)", ref shadowDistance, 0, 100))
             {
                 mood.SunShadowDistance = shadowDistance;
+            }
+
+            float sunAngle = mood.SunAngle;
+            if (ImGui.SliderFloat("Sun angle (softens traced shadows)", ref sunAngle, 0, 30))
+            {
+                mood.SunAngle = sunAngle;
             }
         }
 

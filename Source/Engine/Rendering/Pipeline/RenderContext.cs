@@ -106,6 +106,12 @@ public sealed class RenderContext
 
     internal uint ShadowAtlas { get; set; } = GpuLight.None;
 
+    /// <summary>The lights whose shadows the frame traces, by their place in <see cref="Lights"/>, after the sun's.</summary>
+    internal List<uint> RayShadowLights { get; } = [];
+
+    /// <summary>The traced shadows the lighting pass reads, the sun's in red and the lamps' after it, or null without ray tracing.</summary>
+    internal ITexture? RayShadows { get; set; }
+
     internal ProbeSource? ProbeSource { get; set; }
 
     /// <summary>Empties what the last frame's passes worked out.</summary>
@@ -119,6 +125,8 @@ public sealed class RenderContext
         ShadowViews.Clear();
         SunShadow = GpuLight.None;
         ShadowAtlas = GpuLight.None;
+        RayShadowLights.Clear();
+        RayShadows = null;
         ProbeSource = null;
         AccelerationStructure = null;
     }

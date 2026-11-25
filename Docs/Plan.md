@@ -53,7 +53,7 @@ graph TD
 - Scenes are real 3D geometry with painted textures; characters are skinned meshes with painted textures. Painted cards and decals add 2D detail.
 - One shading model with artist controls per material (ramp softness, wrap, rim, specular, emissive, shadow tint) on physically based light maths. Stage 4 shipped plain diffuse; the controls come with the editor (owner, 2026-11-19), where they can be tuned live.
 - Deferred clustered lighting for many point, spot and directional lights (owner, 2026-11-25, in place of clustered forward): meshes are drawn into a G-buffer and lit in one compute pass, so ray tracing on RTX and DLSS can read the frame's surfaces.
-- Shadows: one orthographic sun shadow map fitted to the view, a shadow atlas for local lights, soft filtering, contact shadows.
+- Shadows: one orthographic sun shadow map fitted to the view, a shadow atlas for local lights, soft filtering, contact shadows; traced where the GPU has ray queries (below), softened by the sun's width and the lamps' sizes. Painted cards cut out their clear paint, in shadows too.
 - Ray tracing on RTX (owner, 2026-11-25): where the GPU has ray queries, the scene's acceleration structures are built every frame for ray traced shadows, ambient occlusion and probes; elsewhere the shadow maps, screen-space shadows and baked probes stay.
 - Light cookies: spot lights project painted textures.
 - Baked irradiance probes for bounce light.

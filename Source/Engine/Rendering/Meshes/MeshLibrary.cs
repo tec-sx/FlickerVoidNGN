@@ -114,7 +114,7 @@ internal sealed class MeshLibrary : IDisposable
         byte[] vertexData = MemoryMarshal.AsBytes(part.Vertices.AsSpan()).ToArray();
         byte[] indexData = MemoryMarshal.AsBytes(part.Indices.AsSpan()).ToArray();
         BufferDescription vertexDescription = new(vertexData.Length, BufferUsage.ShaderRead | BufferUsage.AccelerationStructureInput) { Name = $"{name} vertices" };
-        BufferDescription indexDescription = new(indexData.Length, BufferUsage.Index | BufferUsage.AccelerationStructureInput) { Name = $"{name} indices" };
+        BufferDescription indexDescription = new(indexData.Length, BufferUsage.Index | BufferUsage.ShaderRead | BufferUsage.AccelerationStructureInput) { Name = $"{name} indices" };
         IBuffer vertices = _device.CreateBuffer(vertexDescription, vertexData);
         IBuffer indices = _device.CreateBuffer(indexDescription, indexData);
 

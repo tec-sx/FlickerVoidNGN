@@ -3,6 +3,7 @@ using System.Numerics;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 
@@ -18,6 +19,12 @@ public sealed class SceneRendererTests : IDisposable
 
     /// <summary>A part a module's mesh source makes, standing two metres below the view's centre, so a box four high covers the view.</summary>
     private const string VanBody = """{ "name": "Van", "components": { "transform": { "position": [0, -2, 0] }, "meshRenderer": { "mesh": "Van.fvtest#body" } } }""";
+
+    /// <summary>A wall a unit high and wide standing on the floor's right, facing +X, from the floor's middle up and down.</summary>
+    private const string Wall = """{ "name": "Wall", "components": { "transform": { "position": [0.5, 0, 0.5], "rotation": [0, 0.70710677, 0, 0.70710677], "scale": [0.5, 0.5, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""";
+
+    /// <summary>A card 0.8 wide a unit above the floor, from 0.1 to 0.9 right of its centre, in the cutout material.</summary>
+    private const string Card = """{ "name": "Card", "components": { "transform": { "position": [0.5, 0, 1], "scale": [0.4, 0.4, 1] }, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Card.fvmat"] } } }""";
 
     private static readonly Vector3 Down = -Vector3.UnitZ;
     private static readonly Vector4 Red = new(1, 0, 0, 1);
@@ -1423,6 +1430,187 @@ public sealed class SceneRendererTests : IDisposable
 
         pixels[5].Should().Be(RedPixel, "the frame draws as it does on any device");
         _builder.TracedRays.Should().BeFalse("the device has no ray queries");
+    }
+
+    [Fact]
+    public void TracesSunShadowsSharpBesideTheirCasterAndSofterFartherAway()
+    {
+        _builder.WithRayQueries().WithTargetSize(16).WithMood(static mood => mood with { SunAngle = 20 });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, Wall);
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+        _builder.WithRenderer(static renderer => renderer.RayTracing = true);
+
+        uint[] pixels = _builder.RenderFrames(16);
+
+        // Rows 3 and 4 lie either side of the edge of the wall's shadow; column 11 a sixteenth of the wall's height from its foot,
+        // column 5 four fifths.
+        (byte nearOutside, _, _) = SceneRendererTestsBuilder.Channels(pixels[(3 * 16) + 11]);
+        (byte nearInside, _, _) = SceneRendererTestsBuilder.Channels(pixels[(4 * 16) + 11]);
+        (byte farOutside, _, _) = SceneRendererTestsBuilder.Channels(pixels[(3 * 16) + 5]);
+        (byte farInside, _, _) = SceneRendererTestsBuilder.Channels(pixels[(4 * 16) + 5]);
+        nearOutside.Should().BeInRange(195, 203, "beside the wall's foot, the edge of its shadow is sharp");
+        nearInside.Should().BeInRange(62, 66);
+        farOutside.Should().BeInRange(80, 185, "far from the wall's foot, the sun's width softens the edge");
+        farInside.Should().BeInRange(80, 185);
+        farOutside.Should().BeGreaterThan(farInside);
+    }
+
+    [Theory]
+    [InlineData("pointLight", "")]
+    [InlineData("spotLight", """, "innerConeAngle": 70, "outerConeAngle": 80""")]
+    public void TracesSharpShadowsFromALampWithoutSize(string light, string cone)
+    {
+        WithLampOverABlocker(light, cone, sourceRadius: 0);
+
+        uint[] pixels = _builder.RenderFrames(16);
+
+        (byte inside, byte outside, byte mirrored) = LampShadowEdge(pixels);
+        inside.Should().Be(0, "the blocker hides the whole lamp");
+        outside.Should().BeCloseTo(mirrored, 3, "nothing hides any of the lamp");
+    }
+
+    [Theory]
+    [InlineData("pointLight", "")]
+    [InlineData("spotLight", """, "innerConeAngle": 70, "outerConeAngle": 80""")]
+    public void SoftensLampShadowsByTheSizeOfTheirSource(string light, string cone)
+    {
+        WithLampOverABlocker(light, cone, sourceRadius: 0.3f);
+
+        uint[] pixels = _builder.RenderFrames(16);
+
+        (byte inside, byte outside, byte mirrored) = LampShadowEdge(pixels);
+        inside.Should().BeGreaterThan(10, "part of the lamp shows past the blocker's edge");
+        outside.Should().BeLessThan((byte)(mirrored - 10), "the blocker hides part of the lamp");
+    }
+
+    [Fact]
+    public void TracesSunShadowsBeyondTheShadowMapsReach()
+    {
+        _builder.WithRayQueries().WithMood(static mood => mood with { SunShadowDistance = 2 });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Blocker", "components": { "transform": { "position": [0.75, 0.25, 1], "scale": [0.25, 0.25, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+
+        uint[] mapped = _builder.Render();
+        uint[] traced = _builder.WithRenderer(static renderer => renderer.RayTracing = true).Render();
+
+        (byte mappedRed, _, _) = SceneRendererTestsBuilder.Channels(mapped[5]);
+        (byte tracedRed, _, _) = SceneRendererTestsBuilder.Channels(traced[5]);
+        mappedRed.Should().BeInRange(195, 203, "the floor lies five from the camera, beyond the shadow map's two");
+        tracedRed.Should().BeInRange(62, 66, "rays reach as far as the scene does");
+    }
+
+    [Fact]
+    public void LetsATracedShadowGoTheMomentItsCasterMoves()
+    {
+        _builder.WithRayQueries().WithTargetSize(16).WithRenderer(static renderer => renderer.RayTracing = true);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Blocker", "components": { "transform": { "position": [0.5, 0.5, 1], "scale": [0.5, 0.5, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+        _builder.RenderFrames(16);
+
+        uint[] pixels = _builder.WithPosition("Blocker", new Vector3(0.5f, -0.5f, 1)).Render();
+
+        (byte left, _, _) = SceneRendererTestsBuilder.Channels(pixels[(4 * 16) + 4]);
+        (byte fallen, _, _) = SceneRendererTestsBuilder.Channels(pixels[(11 * 16) + 4]);
+        left.Should().BeInRange(195, 203, "the shadow leaves the top left with its caster, with no trace of the frames before");
+        fallen.Should().BeInRange(62, 66, "and falls on the bottom left at once");
+    }
+
+    [Fact]
+    public void CutsHolesWhereACutoutCardsPaintIsClear()
+    {
+        WithCutoutCard();
+
+        uint[] pixels = _builder.Render();
+
+        (byte throughRed, _, byte throughBlue) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 10]);
+        (byte paintedRed, _, byte paintedBlue) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 13]);
+        throughRed.Should().BeInRange(195, 203, "the white floor shows through where the card's paint is clear");
+        throughBlue.Should().BeInRange(195, 203);
+        paintedRed.Should().Be(0, "the card is painted blue on its right");
+        paintedBlue.Should().BeInRange(195, 203);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CastsTheShadowOfACutoutCardsPaint(bool rayTracing)
+    {
+        if (rayTracing)
+        {
+            _builder.WithRayQueries();
+        }
+
+        WithCutoutCard();
+        _builder.WithRenderer(renderer => renderer.RayTracing = rayTracing);
+
+        uint[] pixels = _builder.Render();
+
+        (byte belowClear, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 2]);
+        (byte belowPainted, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 5]);
+        belowClear.Should().BeInRange(195, 203, "light passes where the card's paint is clear");
+        belowPainted.Should().BeInRange(62, 66, "the card's paint casts its shadow");
+    }
+
+    [Fact]
+    public void OutlinesOnlyACutoutCardsPaint()
+    {
+        uint yellow = SceneRendererTestsBuilder.Rgba(255, 255, 0, 255);
+        WithCutoutCard();
+        _builder.WithComponent("Card", new Outline { Color = new Vector3(1, 1, 0) });
+
+        uint[] pixels = _builder.Render();
+
+        pixels[(8 * 16) + 7].Should().NotBe(yellow, "the clear left of the card is a hole, so no line runs along its left edge");
+        pixels[(8 * 16) + 15].Should().Be(yellow, "a line runs along the painted right of the card, the width of the outline");
+    }
+
+    /// <summary>
+    /// A lamp two above the floor's centre and a blocker a quarter wide half way down, to the right, so the blocker's shadow falls
+    /// right of it; ambient light and the sun are off.
+    /// </summary>
+    private void WithLampOverABlocker(string light, string cone, float sourceRadius)
+    {
+        string radius = sourceRadius.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        _builder.WithRayQueries().WithTargetSize(16).WithRenderer(static renderer => renderer.RayTracing = true);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(
+            Camera,
+            Quad,
+            """{ "name": "Blocker", "components": { "transform": { "position": [0.5, 0, 1], "scale": [0.25, 0.25, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""",
+            $$"""{ "name": "Lamp", "components": { "transform": { "position": [0, 0, 2] }, "{{light}}": { "intensity": 4, "range": 5, "castsShadows": true, "sourceRadius": {{radius}}{{cone}} } } }""");
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+    }
+
+    /// <summary>
+    /// The floor's red either side of the side edge of the blocker's shadow, past the blocker itself (column 13, rows 4 and 3), and
+    /// mirrored left of the lamp, where nothing stands.
+    /// </summary>
+    private static (byte Inside, byte Outside, byte Mirrored) LampShadowEdge(uint[] pixels)
+    {
+        (byte inside, _, _) = SceneRendererTestsBuilder.Channels(pixels[(4 * 16) + 13]);
+        (byte outside, _, _) = SceneRendererTestsBuilder.Channels(pixels[(3 * 16) + 13]);
+        (byte mirrored, _, _) = SceneRendererTestsBuilder.Channels(pixels[(3 * 16) + 2]);
+        return (inside, outside, mirrored);
+    }
+
+    /// <summary>
+    /// A white floor lit by the sun at 45 degrees, with a quarter ambient light, and a card a unit above it, right of the centre,
+    /// whose material cuts out its left half, painted clear, and paints its right half blue; the sun casts the card's shadow a
+    /// unit to the left.
+    /// </summary>
+    private void WithCutoutCard()
+    {
+        uint clear = SceneRendererTestsBuilder.Rgba(0, 0, 255, 0);
+        uint blue = SceneRendererTestsBuilder.Rgba(0, 0, 255, 255);
+        _builder.WithTargetSize(16);
+        _builder.WithTexture("Card.tga", 4, 1, [clear, clear, blue, blue]);
+        _builder.WithFile("Card.fvmat", """{ "parameters": { "texture": "Card.tga", "cutoff": 0.5 } }""");
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Vector4.One));
+        _builder.WithScene(Camera, Quad, Card);
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
     }
 
     /// <summary>A paper of sixteen different greys under the entities, a camera first.</summary>

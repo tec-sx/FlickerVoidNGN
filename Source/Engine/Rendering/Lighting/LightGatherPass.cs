@@ -8,8 +8,10 @@ using FlickerVoid.Engine.Rendering.Shadows;
 namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>
-/// Turns the scene's lights into GPU lights and hands out shadow atlas tiles: the sun first, then point and spot lights in
-/// scene order while tiles last.
+/// Turns the scene's lights into GPU lights and hands out their shadows: while the frame traces rays, the sun's and the first
+/// <see cref="ShadowRayPass.LampSlots"/> shadow-casting lamps' are traced, and shadow atlas tiles go to the rest, the sun
+/// first, then point and spot lights in scene order while tiles last; traced lights keep their tiles only for the fog, which
+/// rays don't light.
 /// </summary>
 internal sealed class LightGatherPass : IRenderPass
 {
@@ -25,7 +27,7 @@ internal sealed class LightGatherPass : IRenderPass
     {
         _atlas.Reset();
         LightingMood mood = context.Mood;
-        if (mood.SunShadowDistance > 0)
+        if (mood.SunShadowDistance > 0 && (!context.RayTracing || NeedsFogShadows(context)))
         {
             Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
             Matrix4x4 sun = ShadowProjections.FitSun(context.Camera, context.View, sunDirection, mood.SunShadowDistance, SunCasterReach);
@@ -59,8 +61,10 @@ internal sealed class LightGatherPass : IRenderPass
     private void AddPointLight(RenderContext context, in RenderPointLight point)
     {
         PointLight light = point.Light;
+        uint raySlot = TakeRaySlot(context, light.CastsShadows);
         uint shadow = GpuLight.None;
-        if (light.CastsShadows && _atlas.FreeTiles >= ShadowProjections.PointFaces)
+        bool mapped = raySlot == GpuLight.None || NeedsFogShadows(context);
+        if (light.CastsShadows && mapped && _atlas.FreeTiles >= ShadowProjections.PointFaces)
         {
             shadow = (uint)context.Shadows.Count;
             for (int face = 0; face < ShadowProjections.PointFaces; face++)
@@ -72,15 +76,17 @@ internal sealed class LightGatherPass : IRenderPass
         }
 
         Vector3 color = light.Color * light.Intensity;
-        context.Lights.Add(new GpuLight(point.Position, light.Range, color, -3, -Vector3.UnitZ, -2, Vector3.UnitX, GpuLight.None, shadow));
+        context.Lights.Add(new GpuLight(point.Position, light.Range, color, -3, -Vector3.UnitZ, -2, Vector3.UnitX, GpuLight.None, shadow, light.SourceRadius, raySlot));
         context.LightBounds.Add(new LightBounds(point.Position, light.Range));
     }
 
     private void AddSpotLight(RenderContext context, in RenderSpotLight spot)
     {
         SpotLight light = spot.Light;
+        uint raySlot = TakeRaySlot(context, light.CastsShadows);
         uint shadow = GpuLight.None;
-        if (light.CastsShadows && _atlas.TryAllocate(out ShadowTile tile))
+        bool mapped = raySlot == GpuLight.None || NeedsFogShadows(context);
+        if (light.CastsShadows && mapped && _atlas.TryAllocate(out ShadowTile tile))
         {
             Matrix4x4 spotView = ShadowProjections.Spot(spot.Position, spot.Rotation, light.OuterConeAngle, light.Range);
             shadow = AddShadow(context, spotView, tile, orthographic: false);
@@ -98,8 +104,29 @@ internal sealed class LightGatherPass : IRenderPass
         Vector3 right = Vector3.Transform(Vector3.UnitX, spot.Rotation);
         float cosOuter = MathF.Cos(float.DegreesToRadians(light.OuterConeAngle));
         float cosInner = MathF.Cos(float.DegreesToRadians(light.InnerConeAngle));
-        context.Lights.Add(new GpuLight(spot.Position, light.Range, color, cosOuter, direction, cosInner, right, cookie, shadow));
+        context.Lights.Add(new GpuLight(spot.Position, light.Range, color, cosOuter, direction, cosInner, right, cookie, shadow, light.SourceRadius, raySlot));
         context.LightBounds.Add(new LightBounds(spot.Position, light.Range));
+    }
+
+    /// <summary>
+    /// The next light's channel of the traced shadows (the sun's is 0) while the frame traces rays and lamp channels are free,
+    /// else <see cref="GpuLight.None"/>.
+    /// </summary>
+    private static uint TakeRaySlot(RenderContext context, bool castsShadows)
+    {
+        if (!castsShadows || !context.RayTracing || context.RayShadowLights.Count >= ShadowRayPass.LampSlots)
+        {
+            return GpuLight.None;
+        }
+
+        context.RayShadowLights.Add((uint)context.Lights.Count);
+        return (uint)context.RayShadowLights.Count;
+    }
+
+    /// <summary>Whether the fog marches through the air, where traced shadows don't reach, so it needs shadow maps.</summary>
+    private static bool NeedsFogShadows(RenderContext context)
+    {
+        return context.Mood.FogDensity > 0;
     }
 
     private static uint AddShadow(RenderContext context, Matrix4x4 viewProjection, ShadowTile tile, bool orthographic)

@@ -5,8 +5,8 @@ namespace FlickerVoid.Engine.Graphics.AccelerationStructures;
 
 /// <summary>
 /// A bottom-level acceleration structure placed in a top-level one, as the GPU reads it from the buffer of instances a build is
-/// given (64 bytes): where it stands, the id shaders see on a hit, and the mask rays select it by. Its triangles are opaque and
-/// hit from both sides.
+/// given (64 bytes): where it stands, the id shaders see on a hit, the mask rays select it by, and whether it is opaque. Its
+/// triangles are hit from both sides.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct AccelerationStructureInstance
@@ -16,6 +16,7 @@ public readonly struct AccelerationStructureInstance
 
     private const int MaskShift = 24;
     private const uint TriangleFacingCullDisable = 1u << 24;
+    private const uint ForceNoOpaque = 8u << 24;
 
     // The world matrix's first three columns as rows, the 3x4 matrix the GPU multiplies column vectors by.
     private readonly Vector4 _row0;
@@ -29,7 +30,11 @@ public readonly struct AccelerationStructureInstance
     /// <param name="id">What shaders see as the instance's id on a hit, at most <see cref="MaxId"/>.</param>
     /// <param name="bottomLevel">The bottom-level structure placed.</param>
     /// <param name="mask">Rays whose mask shares no bit with it pass through it.</param>
-    public AccelerationStructureInstance(in Matrix4x4 world, uint id, IAccelerationStructure bottomLevel, byte mask = 0xFF)
+    /// <param name="opaque">
+    /// Whether a ray stops at its triangles; when not, a ray query hands each hit to its shader as a candidate to commit or pass,
+    /// as for a cutout card.
+    /// </param>
+    public AccelerationStructureInstance(in Matrix4x4 world, uint id, IAccelerationStructure bottomLevel, byte mask = 0xFF, bool opaque = true)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(id, MaxId);
         _row0 = new Vector4(world.M11, world.M21, world.M31, world.M41);
@@ -37,6 +42,11 @@ public readonly struct AccelerationStructureInstance
         _row2 = new Vector4(world.M13, world.M23, world.M33, world.M43);
         _idAndMask = id | ((uint)mask << MaskShift);
         _offsetAndFlags = TriangleFacingCullDisable;
+        if (!opaque)
+        {
+            _offsetAndFlags |= ForceNoOpaque;
+        }
+
         _bottomLevel = bottomLevel.Address;
     }
 }

@@ -16,8 +16,8 @@ namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>
 /// Writes the frame's view, sun, lights, shadows, light clusters, probes, indoor volumes, cutaway, draws and the bindless indices
-/// of its depth, G-buffer and acceleration structure into the frame buffer ring, after every pass has prepared and before any
-/// executes; remembers the view for the next frame's view before.
+/// of its traced shadows, depth, G-buffer and acceleration structure into the frame buffer ring, after every pass has prepared
+/// and before any executes; remembers the view for the next frame's view before.
 /// </summary>
 internal sealed class FrameDataWriter : IDisposable
 {
@@ -61,9 +61,8 @@ internal sealed class FrameDataWriter : IDisposable
         ReadOnlySpan<byte> indoorBytes = MemoryMarshal.AsBytes(indoors.AsSpan());
         int indoorsOffset = indicesOffset + indexBytes.Length;
 
-        // A pixel's view depth is the dot product of its world position and the view matrix's negated third column.
         Matrix4x4 viewMatrix = view.View;
-        Vector4 depthAxis = -new Vector4(viewMatrix.M13, viewMatrix.M23, viewMatrix.M33, viewMatrix.M43);
+        Vector4 depthAxis = view.DepthAxis;
         Vector3 viewDirection = new(depthAxis.X, depthAxis.Y, depthAxis.Z);
         CollectDraws(context, viewDirection);
         ReadOnlySpan<byte> drawBytes = MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(_draws));
@@ -114,6 +113,12 @@ internal sealed class FrameDataWriter : IDisposable
         if (context.AccelerationStructure is { } scene)
         {
             accelerationStructure = scene.BindlessIndex;
+        }
+
+        uint rayShadows = GpuLight.None;
+        if (context.RayShadows is { } traced)
+        {
+            rayShadows = traced.BindlessIndex;
         }
 
         FrameData data = new(
@@ -169,7 +174,7 @@ internal sealed class FrameDataWriter : IDisposable
             cutaway.OutsideMuted,
             (uint)indoors.Length,
             (uint)indoorsOffset,
-            0,
+            rayShadows,
             0,
             previousViewProjection,
             (uint)drawsOffset,
@@ -227,9 +232,9 @@ internal sealed class FrameDataWriter : IDisposable
                 draw.PreviousVertices.BindlessIndex,
                 texture.BindlessIndex,
                 context.Sampler.BindlessIndex,
-                draw.Material.BindlessIndex,
+                draw.Material.Parameters.BindlessIndex,
                 (uint)draw.Flags,
-                0,
+                part.Indices.BindlessIndex,
                 0,
                 box.Center,
                 wholeness);

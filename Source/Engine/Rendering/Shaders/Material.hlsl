@@ -1,5 +1,5 @@
 // The material buffer's parameters, as Scene.fvshader declares them and MaterialLayout packs them: the geometry pass reads a
-// surface's texture, tint and relief, the lighting pass its shading controls.
+// surface's texture, tint, relief and cutoff, the lighting pass its shading controls, and shadows its cutoff.
 
 #pragma once
 
@@ -23,6 +23,7 @@ struct Material
     uint Relief;
     float TextureScale;
     float ReliefDepth;
+    float Cutoff;
 };
 
 // The material's parameters, packed tightly in declared order by MaterialLayout.
@@ -45,5 +46,6 @@ Material LoadMaterial(uint index)
     material.Relief = buffer.Load<uint>(80);
     material.TextureScale = buffer.Load<float>(84);
     material.ReliefDepth = buffer.Load<float>(88);
+    material.Cutoff = buffer.Load<float>(92);
     return material;
 }
