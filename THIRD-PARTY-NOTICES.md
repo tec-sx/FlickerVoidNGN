@@ -54,6 +54,12 @@ Used in: `Source/Editor/Icons/*.png`, the Rounded filled glyphs `lightbulb`, `hi
 
 Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0), Copyright Google LLC.
 
+## Inter
+
+https://rsms.me/inter (through the `Avalonia.Fonts.Inter` package, MIT)
+
+Used in: the editor's text (`Source/Editor/Shell/Program.cs`, `WithInterFont`). Inter is licensed under the [SIL Open Font License 1.1](https://openfontlicense.org), Copyright the Inter Project Authors.
+
 ## Simple Icons
 
 https://simpleicons.org (v9.21.0)

@@ -258,13 +258,20 @@
     <Setter Property="Height" Value="12" />
   </Style>
 
-  <!-- The asset browser's narrow column of kind filters. -->
+  <!-- The asset browser's kind filters: a row of chips over the tiles, the chosen one in the accent. -->
   <Style Selector="ListBox.filters">
-    <Setter Property="Width" Value="88" />
+    <Setter Property="Background" Value="Transparent" />
   </Style>
   <Style Selector="ListBox.filters ListBoxItem">
-    <Setter Property="Padding" Value="6,1" />
+    <Setter Property="Padding" Value="7,1" />
+    <Setter Property="Margin" Value="0,0,3,3" />
     <Setter Property="MinHeight" Value="18" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+  </Style>
+  <Style Selector="ListBox.filters ListBoxItem:selected">
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
   </Style>
   <Style Selector="TextBlock.menuDetail">
     <Setter Property="FontSize" Value="{StaticResource EditorSmallFontSize}" />

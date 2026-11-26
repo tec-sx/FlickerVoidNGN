@@ -6,9 +6,9 @@
              xmlns:controls="using:FlickerVoid.Editor.Controls"
              x:Class="FlickerVoid.Editor.Assets.AssetBrowserView"
              x:DataType="assets:AssetBrowserViewModel">
-  <!-- The folder tree under its search box, a narrow column of kind filters, and the tiles; everything else is in the context
-       menus (right-click) and the New menu (Shift+A). -->
-  <Grid ColumnDefinitions="170,2,Auto,*" controls:EditorMenus.AddChoices="{Binding NewChoices}">
+  <!-- The folder tree under its search box, and the tiles under a row of kind chips; everything else is in the context menus
+       (right-click) and the New menu (Shift+A). -->
+  <Grid ColumnDefinitions="170,1,*" controls:EditorMenus.AddChoices="{Binding NewChoices}">
     <DockPanel>
       <controls:SearchBox DockPanel.Dock="Top" Margin="3" Text="{Binding SearchText}"
                           ToolTip.Tip="Search every file below the selected folder." />
@@ -49,29 +49,33 @@
       </Border>
     </DockPanel>
     <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-    <Border Grid.Column="2" Classes="well">
-    <ListBox ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Classes="filters"
-             ToolTip.Tip="Show one kind of file, from every folder below the selected one.">
-      <ListBox.ItemTemplate>
-        <DataTemplate DataType="assets:AssetFilter">
-          <StackPanel Orientation="Horizontal" Spacing="5">
-            <Panel Width="12" Height="12">
-              <PathIcon Width="12" Height="12" Data="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Icon}}"
-                        Foreground="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}"
-                        IsVisible="{Binding Type, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            </Panel>
-            <TextBlock Text="{Binding Label}" Classes="small" VerticalAlignment="Center" />
-          </StackPanel>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
-    </Border>
-    <DockPanel Grid.Column="3">
+    <DockPanel Grid.Column="2">
       <DockPanel DockPanel.Dock="Top" Margin="6,2" Height="18">
         <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" VerticalAlignment="Center" Margin="6,0"
                    Foreground="{StaticResource EditorDeleteBrush}" TextTrimming="CharacterEllipsis" />
         <TextBlock Text="{Binding SelectedFolder.Path}" VerticalAlignment="Center" Opacity="0.6" TextTrimming="CharacterEllipsis" />
       </DockPanel>
+      <ListBox DockPanel.Dock="Top" Margin="6,2,6,0" ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Classes="filters"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+               ToolTip.Tip="Show one kind of file, from every folder below the selected one.">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel />
+          </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="assets:AssetFilter">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Panel Width="12" Height="12">
+                <PathIcon Width="12" Height="12" Data="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Icon}}"
+                          Foreground="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}"
+                          IsVisible="{Binding Type, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </Panel>
+              <TextBlock Text="{Binding Label}" Classes="small" VerticalAlignment="Center" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
       <!-- Asks for a new flow node class's name and code folder; Enter creates it, Escape cancels. -->
       <Border DockPanel.Dock="Top" Margin="6,2" Padding="8" CornerRadius="5" BorderBrush="{StaticResource EditorLineBrush}" BorderThickness="1"
               IsVisible="{Binding Prompt, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -115,8 +119,13 @@
               <Border BorderThickness="1" CornerRadius="4" IsHitTestVisible="False" IsVisible="{Binding IsGrouped}"
                       BorderBrush="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}" />
               <StackPanel Width="76" Spacing="2" ToolTip.Tip="{Binding Path}">
-                <PathIcon Width="40" Height="40" Margin="0,4,0,0" Data="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Icon}}"
-                          Foreground="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}" />
+                <Panel Height="44" Margin="0,4,0,0">
+                  <PathIcon Width="40" Height="40" Data="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Icon}}"
+                            Foreground="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}"
+                            IsVisible="{Binding Thumbnail, Converter={x:Static ObjectConverters.IsNull}}" />
+                  <Image Width="64" Height="44" Stretch="Uniform" Source="{Binding Thumbnail, Converter={x:Static assets:AssetThumbnails.Image}}"
+                         IsVisible="{Binding Thumbnail, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </Panel>
                 <Border Height="2" Margin="6,0" Background="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}" />
                 <TextBlock Text="{Binding Label}" TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
                            FontSize="{StaticResource EditorSmallFontSize}" />

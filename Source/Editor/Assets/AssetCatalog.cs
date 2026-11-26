@@ -246,7 +246,21 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
         string path = ToContentPath(fullPath);
         string name = GetName(fileName);
         AssetType type = AssetTypes.Find(fileName);
-        return new AssetEntry(path, name, type);
+        string? thumbnail = null;
+        if (IsDrawnImage(fileName))
+        {
+            thumbnail = fullPath;
+        }
+
+        return new AssetEntry(path, name, type) { Thumbnail = thumbnail };
+    }
+
+    /// <summary>Whether the browser can decode the image for a thumbnail (the formats Avalonia reads).</summary>
+    private static bool IsDrawnImage(string fileName)
+    {
+        string extension = Path.GetExtension(fileName);
+        return extension.Equals(".png", StringComparison.OrdinalIgnoreCase) || extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase) || extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase);
     }
 
     private AssetFolder ReadFolder(string fullFolder, string path, string name)
