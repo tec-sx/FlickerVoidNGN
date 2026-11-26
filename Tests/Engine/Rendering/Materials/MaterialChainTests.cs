@@ -103,6 +103,52 @@ public sealed class MaterialChainTests : IDisposable
 
         IReadOnlyList<ContentProblem> problems = _builder.Check();
 
-        problems.Should().ContainSingle().Which.Message.Should().Contain("isn't a .fvmat file");
+        problems.Should().ContainSingle().Which.Message.Should().Contain("isn't a .fvmat or .fvmaster file");
+    }
+
+    [Fact]
+    public void EndsTheChainAtItsMaster()
+    {
+        _builder
+            .With("Surface.fvmat", """{ "parent": "Masters/Brick.fvmaster", "parameters": { "wrap": 0.5 } }""")
+            .With("Brick.fvmat", """{ "parent": "Surface.fvmat" }""");
+        MaterialFile material = MaterialChainTestsBuilder.Material("""{ "parent": "Brick.fvmat", "parameters": { "mortar": 1 } }""");
+
+        MaterialFile flat = MaterialChain.Flatten(material, _builder.Load);
+
+        flat.Parent.Should().Be("Masters/Brick.fvmaster");
+        flat.Parameters.Keys.Should().BeEquivalentTo("wrap", "mortar");
+        _builder.Loaded.Should().Equal("Brick.fvmat", "Surface.fvmat");
+    }
+
+    [Fact]
+    public void KeepsAnInstanceOfAMasterAsItIs()
+    {
+        MaterialFile material = MaterialChainTestsBuilder.Material("""{ "parent": "Masters/Brick.fvmaster", "parameters": { "mortar": 1 } }""");
+
+        MaterialFile flat = MaterialChain.Flatten(material, _builder.Load);
+
+        flat.Should().BeSameAs(material);
+        _builder.Loaded.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void IsCheckedWithTheEnginesMastersAsItsContent()
+    {
+        _builder.With("Wall.fvmat", """{ "parent": "Engine/Rendering/Masters/Painted.fvmaster" }""");
+
+        IReadOnlyList<ContentProblem> problems = _builder.Check();
+
+        problems.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void IsCheckedForAnEngineMasterThatIsNotBuilt()
+    {
+        _builder.With("Wall.fvmat", """{ "parent": "Engine/Rendering/Masters/Missing.fvmaster" }""");
+
+        IReadOnlyList<ContentProblem> problems = _builder.Check();
+
+        problems.Should().ContainSingle().Which.Message.Should().Contain("Missing.fvmaster");
     }
 }

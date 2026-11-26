@@ -1184,6 +1184,57 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void DrawsAMaterialWithAMasterThroughTheMastersSurface()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithBuiltContent("Tests/Masters");
+        _builder.WithFile("Green.fvmat", """{ "parent": "Tests/Masters/Flat.fvmaster", "parameters": { "flatColor": [0, 1, 0] } }""");
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Green.fvmat"] } } }""");
+
+        uint[] albedo = _builder.RenderTexels(static gBuffer => gBuffer.Albedo);
+
+        albedo[5].Should().Be(SceneRendererTestsBuilder.Rgba(0, 255, 0, 255), "the master paints its own parameter's color");
+    }
+
+    [Fact]
+    public void DrawsMaterialsWithAndWithoutAMasterSideBySide()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithBuiltContent("Tests/Masters");
+        _builder.WithFile("Thick.fvmat", """{ "parent": "Tests/Masters/Flat.fvmaster", "parameters": { "flatColor": [0, 0, 1], "thickness": 1 } }""");
+        _builder.WithFile("Instance.fvmat", """{ "parent": "Thick.fvmat" }""");
+        _builder.WithScene(
+            Camera,
+            """{ "name": "Plain", "components": { "transform": { "position": [-0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb" } } }""",
+            """{ "name": "Mastered", "components": { "transform": { "position": [0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Instance.fvmat"] } } }""");
+
+        uint[] albedo = _builder.RenderTexels(static gBuffer => gBuffer.Albedo);
+        uint[] materials = _builder.RenderTexels(static gBuffer => gBuffer.Material);
+
+        albedo[5].Should().Be(RedPixel, "a material without a master keeps the scene shader's surface");
+        albedo[6].Should().Be(SceneRendererTestsBuilder.Rgba(0, 0, 255, 255), "an instance of an instance draws through the chain's master");
+        uint thickness = (materials[6] >> 16) & 0xFF;
+        thickness.Should().Be(255, "the master reads its parameters after the scene shader's");
+    }
+
+    [Fact]
+    public void DrawsTheEnginesPaintedMasterAsTheSceneShaderDoes()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithBuiltContent("Engine/Rendering/Masters");
+        _builder.WithFile("Painted.fvmat", """{ "parent": "Engine/Rendering/Masters/Painted.fvmaster", "parameters": { "tint": [0.5, 1, 1] } }""");
+        _builder.WithFile("Plain.fvmat", """{ "parameters": { "tint": [0.5, 1, 1] } }""");
+        _builder.WithScene(
+            Camera,
+            """{ "name": "Plain", "components": { "transform": { "position": [-0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Plain.fvmat"] } } }""",
+            """{ "name": "Painted", "components": { "transform": { "position": [0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Painted.fvmat"] } } }""");
+
+        uint[] albedo = _builder.RenderTexels(static gBuffer => gBuffer.Albedo);
+
+        albedo[6].Should().Be(albedo[5]);
+    }
+
+    [Fact]
     public void LeavesEachSurfacesMaterialInTheGBuffer()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));

@@ -17,8 +17,8 @@ public sealed record MaterialFile
     [JsonPropertyName(JsonSchemas.SchemaProperty)]
     public string? Schema { get; set; }
 
-    /// <summary>The material this one is an instance of, whose values it keeps where it sets none.</summary>
-    [ContentFile(Extension)]
+    /// <summary>The master or material this one is an instance of, whose values it keeps where it sets none.</summary>
+    [ContentFile(Extension, MasterFile.Extension)]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Parent { get; init; }
 

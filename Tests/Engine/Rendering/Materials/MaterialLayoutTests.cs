@@ -75,4 +75,13 @@ public sealed class MaterialLayoutTests
 
         pack.Should().Throw<InvalidDataException>().WithMessage("*emissive*3*");
     }
+
+    [Fact]
+    public void SizesTheParametersAsTheyPack()
+    {
+        int size = MaterialLayout.Size(_builder.Parameters);
+
+        byte[] packed = MaterialLayout.Pack(_builder.Parameters, null);
+        size.Should().Be(packed.Length).And.Be(24);
+    }
 }

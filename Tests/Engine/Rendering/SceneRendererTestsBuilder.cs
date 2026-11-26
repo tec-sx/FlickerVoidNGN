@@ -120,6 +120,21 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Copies a folder of the content the test project's build made, such as its masters, into the content folder.</summary>
+    public SceneRendererTestsBuilder WithBuiltContent(string folder)
+    {
+        string source = Path.Combine(AppContext.BaseDirectory, "Content", folder);
+        foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            string relative = Path.GetRelativePath(source, file);
+            string destination = Path.Combine(_contentFolder, folder, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(file, destination, overwrite: true);
+        }
+
+        return this;
+    }
+
     /// <summary>Saves the probes into the content folder.</summary>
     public SceneRendererTestsBuilder WithProbes(string path, IrradianceProbes probes)
     {

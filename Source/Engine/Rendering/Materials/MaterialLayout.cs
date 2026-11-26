@@ -13,6 +13,12 @@ public static class MaterialLayout
     /// <summary>The index of an unset texture, the shaders' <c>None</c>.</summary>
     public const uint NoTexture = uint.MaxValue;
 
+    /// <summary>How many bytes the parameters take packed: where a master's own parameters start after the scene shader's.</summary>
+    public static int Size(IReadOnlyList<ShaderParameter> parameters)
+    {
+        return parameters.Sum(static parameter => parameter.Components) * sizeof(float);
+    }
+
     /// <summary>Packs the values; <paramref name="loadTexture"/> loads a texture by its content path and gives its indices.</summary>
     public static byte[] Pack(IReadOnlyList<ShaderParameter> parameters, MaterialFile? material, Func<string, MaterialTexture>? loadTexture = null)
     {

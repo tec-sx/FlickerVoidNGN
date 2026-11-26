@@ -1,0 +1,5 @@
+{
+  // The painted look of every material without a master: the scene shader's parameters and nothing of its own.
+  "shadingModel": "Painted",
+  "parameters": []
+}
