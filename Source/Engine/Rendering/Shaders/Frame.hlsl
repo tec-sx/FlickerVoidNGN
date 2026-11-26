@@ -52,7 +52,7 @@ struct FrameData
     float NearStart;
     float NearEnd;
     float NearAmount;
-    float3 FarColor;
+    float NearBurn;
     float FarStart;
     float FarEnd;
     float FarAmount;
@@ -152,7 +152,7 @@ FrameData LoadFrame(uint index)
     frame.NearStart = buffer.Load<float>(324);
     frame.NearEnd = buffer.Load<float>(328);
     frame.NearAmount = buffer.Load<float>(332);
-    frame.FarColor = buffer.Load<float3>(336);
+    frame.NearBurn = buffer.Load<float>(336);
     frame.FarStart = buffer.Load<float>(348);
     frame.FarEnd = buffer.Load<float>(352);
     frame.FarAmount = buffer.Load<float>(356);

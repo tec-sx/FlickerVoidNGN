@@ -65,10 +65,10 @@ public static class MoodValues
         new MoodNumber("depthNearStart", MoodGroup.Depth, Lens, mood => mood.DepthNearStart, (mood, value) => mood.DepthNearStart = value),
         new MoodNumber("depthNearEnd", MoodGroup.Depth, Lens, mood => mood.DepthNearEnd, (mood, value) => mood.DepthNearEnd = value),
         new MoodNumber("depthNearAmount", MoodGroup.Depth, Lens, mood => mood.DepthNearAmount, (mood, value) => mood.DepthNearAmount = value),
+        new MoodNumber("depthNearBurn", MoodGroup.Depth, Lens, mood => mood.DepthNearBurn, (mood, value) => mood.DepthNearBurn = value),
         new MoodNumber("depthFarStart", MoodGroup.Depth, Lens, mood => mood.DepthFarStart, (mood, value) => mood.DepthFarStart = value),
         new MoodNumber("depthFarEnd", MoodGroup.Depth, Lens, mood => mood.DepthFarEnd, (mood, value) => mood.DepthFarEnd = value),
         new MoodNumber("depthFarAmount", MoodGroup.Depth, Lens, mood => mood.DepthFarAmount, (mood, value) => mood.DepthFarAmount = value),
-        new MoodColor("depthFarColor", MoodGroup.Depth, Lens, mood => mood.DepthFarColor, (mood, value) => mood.DepthFarColor = value),
     ];
 
     private static readonly Dictionary<string, MoodValue> ByName = Values.ToDictionary(value => value.Name);
