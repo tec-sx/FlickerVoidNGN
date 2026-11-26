@@ -7,6 +7,8 @@ using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Outlines;
+using FlickerVoid.Engine.Rendering.Sky;
+using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Greyboxes;
 
@@ -28,6 +30,7 @@ public sealed class WorldExtractor : IRenderExtractor
     private static readonly QueryDescription Doorways = new QueryDescription().WithAll<Doorway, Transform>().WithNone<Hidden, Undrawn, Greyed>();
     private static readonly QueryDescription IndoorVolumes = new QueryDescription().WithAll<IndoorVolume, Transform>();
     private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
+    private static readonly QueryDescription Environments = new QueryDescription().WithAll<SceneEnvironment>();
 
     public void Extract(World world, RenderScene scene)
     {
@@ -39,6 +42,13 @@ public sealed class WorldExtractor : IRenderExtractor
             scene.Transition = new RenderTransition(active.Fade, active.FadeColor, active.Dissolve, dissolveFrom);
             scene.Focus = active.Focus;
             scene.Cuts = active.Cuts;
+        });
+        world.Query(in Environments, (ref SceneEnvironment environment) =>
+        {
+            if (scene.Sky is null && !string.IsNullOrEmpty(environment.SkyMask))
+            {
+                scene.Sky = new RenderSky(environment.SkyMask, environment.North);
+            }
         });
         world.Query(in Cameras, (ref Camera camera, ref Transform transform) =>
         {
