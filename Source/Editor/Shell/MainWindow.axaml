@@ -25,119 +25,166 @@
     <KeyBinding Gesture="Ctrl+Alt+F11" Command="{Binding CompileCommand}" />
     <KeyBinding Gesture="Ctrl+D" Command="{Binding Viewport.DuplicateSelectedCommand}" />
   </Window.KeyBindings>
-  <DockPanel>
-    <!-- The title bar: the window's own buttons stay on the right, the editor's tools fill the rest, and the empty bar behind
-         them drags the window. -->
-    <Border DockPanel.Dock="Top" Classes="toolbar titleBar">
+  <Grid RowDefinitions="30,*,24">
+    <!-- The top bar: the project's menu and the document tabs, the command search in the middle, then what is unsaved, undo,
+         Compile and Play. The empty bar behind them drags the window, whose own buttons are drawn over its right end. -->
+    <Border Classes="topBar">
       <Grid ColumnDefinitions="*,Auto,*">
         <Border Grid.ColumnSpan="3" Background="Transparent" chrome:WindowDecorationProperties.ElementRole="TitleBar" />
         <StackPanel Orientation="Horizontal">
-          <PathIcon Classes="logo" Data="{x:Static shell:MaterialIcons.Logo}" />
-          <TextBlock Text="{Binding Title}" Classes="windowTitle" IsHitTestVisible="False" />
-          <Separator />
-          <Button Classes="icon" Click="HandleOpenProjectClick" ToolTip.Tip="Open another project; the editor reopens on it.">
-            <PathIcon Data="{x:Static shell:MaterialIcons.FolderOpen}" />
+          <Button Classes="quiet project" ToolTip.Tip="The project: open another, save, the material editor, the settings.">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <PathIcon Classes="logo" Data="{x:Static shell:LucideIcons.Logo}" />
+              <TextBlock Text="{Binding ProjectName}" Classes="title" VerticalAlignment="Center" />
+              <PathIcon Classes="small faint" Data="{x:Static shell:LucideIcons.Expand}" />
+            </StackPanel>
+            <Button.Flyout>
+              <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                <MenuItem Header="Open project..." Click="HandleOpenProjectClick" ToolTip.Tip="Open another project; the editor reopens on it.">
+                  <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.FolderOpen}" /></MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="Save" InputGesture="Ctrl+S" Command="{Binding SaveShownCommand}"
+                          ToolTip.Tip="Save what is shown: the scene, the creation's file in the creator, or the open document.">
+                  <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Save}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Save assets" InputGesture="Ctrl+Shift+S" Command="{Binding SaveAssetsCommand}" ToolTip.Tip="Save the edited materials, moods and other assets.">
+                  <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.SaveAssets}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Discard asset edits" Command="{Binding DiscardAssetsCommand}" ToolTip.Tip="Forget the unsaved asset edits.">
+                  <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Discard}" /></MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="Materials" Click="HandleMaterialsClick" ToolTip.Tip="Open the material editor in a tab.">
+                  <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Materials}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Project settings" Click="HandleProjectSettingsClick"
+                          ToolTip.Tip="The graphics settings, kept in the project's Content/Settings.fvsettings.">
+                  <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Settings}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Bake light probes" Command="{Binding Viewport.BakeProbesCommand}"
+                          ToolTip.Tip="Bake the irradiance volumes' probes with the viewport's lighting.">
+                  <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Bake}" /></MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="Open in Visual Studio" Command="{Binding OpenInVisualStudioCommand}" ToolTip.Tip="Opens the project's solution. Needs an open project.">
+                  <MenuItem.Icon><PathIcon Classes="filled" Data="{x:Static shell:LucideIcons.VisualStudio}" /></MenuItem.Icon>
+                </MenuItem>
+              </MenuFlyout>
+            </Button.Flyout>
           </Button>
-          <Button Classes="icon save" Command="{Binding SaveShownCommand}" ToolTip.Tip="Save what is shown: the scene, the creation's file in the creator, or the open document (Ctrl+S).">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Save}" />
+          <!-- The document tabs (rule R6): the level, then every editor opened in place. -->
+          <Button Classes="docTab" Classes.shown="{Binding Documents.IsLevelShown}" Command="{Binding Documents.ShowLevelCommand}"
+                  ToolTip.Tip="The level's viewport; the open editors stay in their tabs.">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Data="{x:Static shell:LucideIcons.Scene}" />
+              <TextBlock Text="{Binding LevelName}" VerticalAlignment="Center" />
+              <Ellipse Classes="unsavedDot" IsVisible="{Binding IsLevelUnsaved}" ToolTip.Tip="The scene has unsaved edits (Ctrl+S)." />
+            </StackPanel>
           </Button>
-          <Button Classes="icon save" Command="{Binding SaveAssetsCommand}" ToolTip.Tip="Save the edited materials and moods (Ctrl+Shift+S).">
-            <PathIcon Data="{x:Static shell:MaterialIcons.SaveAssets}" />
+          <ListBox Classes="docTabs" ItemsSource="{Binding Documents.Documents}" SelectedItem="{Binding Documents.Selected}">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="documents:EditorDocument">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}" />
+                  <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                  <Button Classes="icon small" Margin="2,0,-4,0" Focusable="False"
+                          Command="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).Documents.CloseCommand}" CommandParameter="{Binding}"
+                          ToolTip.Tip="Close the tab; unsaved edits stay held until they are saved.">
+                    <PathIcon Data="{x:Static shell:LucideIcons.Close}" />
+                  </Button>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
+        <Button Grid.Column="1" Classes="command" Click="HandleCommandClick" Focusable="False" ToolTip.Tip="Search every command and run it (Ctrl+K).">
+          <DockPanel>
+            <PathIcon DockPanel.Dock="Left" Classes="small" Data="{x:Static shell:LucideIcons.Search}" Margin="0,0,8,0" />
+            <Border DockPanel.Dock="Right" Classes="kbd"><TextBlock Text="Ctrl K" /></Border>
+            <TextBlock Text="Search or run a command" VerticalAlignment="Center" />
+          </DockPanel>
+        </Button>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button Classes="quiet unsaved" Command="{Binding SaveEverythingCommand}" IsVisible="{Binding HasUnsavedChanges}" ToolTip.Tip="{Binding UnsavedTip}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Data="{x:Static shell:LucideIcons.Unsaved}" />
+              <TextBlock Text="{Binding UnsavedText}" VerticalAlignment="Center" />
+            </StackPanel>
           </Button>
-          <Button Classes="icon" Command="{Binding DiscardAssetsCommand}" ToolTip.Tip="Forget the unsaved material and mood edits.">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Discard}" />
-          </Button>
-          <Separator />
+          <Border Classes="vsep" IsVisible="{Binding HasUnsavedChanges}" />
           <Button Classes="icon" Command="{Binding UndoCommand}" Focusable="False" ToolTip.Tip="{Binding UndoTip}">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Undo}" />
+            <PathIcon Data="{x:Static shell:LucideIcons.Undo}" />
           </Button>
           <Button Classes="icon" Command="{Binding RedoCommand}" Focusable="False" ToolTip.Tip="{Binding RedoTip}">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Redo}" />
+            <PathIcon Data="{x:Static shell:LucideIcons.Redo}" />
           </Button>
-          <Separator />
-          <Button Classes="icon" Command="{Binding Viewport.DuplicateSelectedCommand}" ToolTip.Tip="Duplicate the selected entity (Ctrl+D).">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Duplicate}" />
-          </Button>
-          <Button Classes="icon delete" Command="{Binding Viewport.DeleteSelectedCommand}" ToolTip.Tip="Delete the selected entity (Delete).">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Delete}" />
-          </Button>
-          <Separator />
-          <Button Classes="icon" Click="HandleMaterialsClick" ToolTip.Tip="Open the material editor.">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Materials}" />
-          </Button>
-          <Button Classes="icon bake" Command="{Binding Viewport.BakeProbesCommand}" ToolTip.Tip="Bake the irradiance volumes' probes with the View tab's lighting.">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Bake}" />
-          </Button>
-          <ToggleButton Classes="icon" IsChecked="{Binding Viewport.IsGameView}"
-                        ToolTip.Tip="Game View (G): hides the grid, sky, icons, selection and gizmo to show the world as the game will.">
-            <PathIcon Data="{x:Static shell:MaterialIcons.GameView}" />
-          </ToggleButton>
-        </StackPanel>
-        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button Classes="icon" Click="HandleProjectSettingsClick"
-                  ToolTip.Tip="Project Settings: the graphics settings, kept in the project's Content/Settings.fvsettings.">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Settings}" />
-          </Button>
-          <Button Classes="icon" Command="{Binding OpenInVisualStudioCommand}"
-                  ToolTip.Tip="Open in Visual Studio: opens the project's solution. Needs an open project.">
-            <PathIcon Data="{x:Static shell:MaterialIcons.VisualStudio}" />
-          </Button>
-          <Button Classes="icon" Command="{Binding CompileCommand}"
+          <Border Classes="vsep" />
+          <Button Classes="quiet" Command="{Binding CompileCommand}"
                   ToolTip.Tip="Compile (Ctrl+Alt+F11): builds the project's code again and reloads it, keeping the scene's unsaved edits. Needs an open project.">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Code}" />
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Data="{x:Static shell:LucideIcons.Code}" />
+              <TextBlock Text="Compile" VerticalAlignment="Center" />
+            </StackPanel>
           </Button>
-          <Button Classes="icon play" Command="{Binding PlayCommand}"
+          <Button Classes="primary" Command="{Binding PlayCommand}" Margin="2,0"
                   ToolTip.Tip="Play (F5): runs the project's game on the scene as it is now, without saving it. Needs an open project.">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Play}" />
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Classes="solid" Data="{x:Static shell:LucideIcons.Play}" />
+              <TextBlock Text="Play" VerticalAlignment="Center" />
+            </StackPanel>
           </Button>
+          <Button Classes="icon" Click="HandleProjectSettingsClick" Margin="2,0,6,0"
+                  ToolTip.Tip="Project Settings: the graphics settings, kept in the project's Content/Settings.fvsettings.">
+            <PathIcon Data="{x:Static shell:LucideIcons.Settings}" />
+          </Button>
+          <!-- Room for the window's own three buttons, drawn over the bar's end. -->
+          <Border Width="132" IsVisible="{Binding $parent[Window].IsExtendedIntoWindowDecorations}" IsHitTestVisible="False" />
         </StackPanel>
       </Grid>
     </Border>
-    <Border DockPanel.Dock="Bottom" Classes="statusbar">
+    <!-- The bottom strip: the docks' tabs, the last message, then the selection. -->
+    <Border Grid.Row="2" Classes="strip">
       <DockPanel>
-        <ToggleButton DockPanel.Dock="Left" Classes="viewportIcon" IsChecked="{Binding IsContentOpen}" Content="Content  Ctrl Space" Margin="0,0,8,0" Padding="6,0"
-                      ToolTip.Tip="Open or close the content drawer (Ctrl+Space): the files of the project." />
-        <TextBlock DockPanel.Dock="Right" Text="{Binding Viewport.SelectionText}" Margin="12,0,0,0" />
-        <TextBlock Text="{Binding Viewport.Status}" TextTrimming="CharacterEllipsis"
+        <ToggleButton DockPanel.Dock="Left" Classes="stripTab" IsChecked="{Binding IsContentOpen}"
+                      ToolTip.Tip="Open or close the content drawer (Ctrl+Space): the files of the project.">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <PathIcon Data="{x:Static shell:LucideIcons.Folder}" />
+            <TextBlock Text="Content" />
+            <Border Classes="kbd"><TextBlock Text="Ctrl Space" /></Border>
+          </StackPanel>
+        </ToggleButton>
+        <ToggleButton DockPanel.Dock="Left" Classes="stripTab" IsChecked="{Binding IsDayDockOpen, Mode=OneWay}" Command="{Binding ToggleDayDockCommand}"
+                      ToolTip.Tip="Open or close the Day dock: the scene's environment over the day, edited under the viewport it lights.">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <PathIcon Data="{x:Static shell:LucideIcons.Sun}" />
+            <TextBlock Text="Day" />
+          </StackPanel>
+        </ToggleButton>
+        <Border DockPanel.Dock="Right" Classes="stripCell">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Select}" />
+            <TextBlock Text="{Binding Viewport.SelectionText}" />
+          </StackPanel>
+        </Border>
+        <TextBlock Text="{Binding Viewport.Status}" Classes="muted" TextTrimming="CharacterEllipsis" Margin="12,0"
                    ToolTip.Tip="Shift+A over the viewport adds an entity at the camera's pivot. Alt+left drag orbits, Alt+middle drag pans, Alt+right drag or the wheel zooms; hold the right button to look round and fly with WASD, Q and E." />
       </DockPanel>
     </Border>
-    <!-- The viewport over the content browser, and the side column beside them: the context panel over the outliner, or under it
-         once swapped. Every splitter resizes. -->
-    <Grid ColumnDefinitions="*,1,320">
-      <Grid>
-        <Grid.RowDefinitions>
-          <RowDefinition Height="*" />
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="{Binding ContentRowHeight}" MinHeight="0" />
-        </Grid.RowDefinitions>
-        <!-- The document tabs (rule R6): the level, then every editor opened in place, shown only once one is open. -->
-        <DockPanel>
-        <Border DockPanel.Dock="Top" Height="26" Background="{DynamicResource EditorFrameBrush}" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,0,0,1"
-                IsVisible="{Binding Documents.HasDocuments}">
-          <StackPanel Orientation="Horizontal">
-            <Button Classes="viewportIcon" Classes.shown="{Binding Documents.IsLevelShown}" Content="Level" Command="{Binding Documents.ShowLevelCommand}" Padding="10,0"
-                    ToolTip.Tip="Show the level's viewport; the open editors stay in their tabs.">
-              <Button.Styles>
-                <Style Selector="Button.shown">
-                  <Setter Property="Foreground" Value="{DynamicResource EditorAccentBrush}" />
-                </Style>
-              </Button.Styles>
-            </Button>
-            <TabStrip ItemsSource="{Binding Documents.Documents}" SelectedItem="{Binding Documents.Selected}">
-              <TabStrip.ItemTemplate>
-                <DataTemplate DataType="documents:EditorDocument">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
-                    <Button Classes="viewportIcon" Content="x" Padding="4,0" VerticalAlignment="Center"
-                            Command="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).Documents.CloseCommand}" CommandParameter="{Binding}"
-                            ToolTip.Tip="Close the tab; unsaved edits stay held until the assets are saved." />
-                  </StackPanel>
-                </DataTemplate>
-              </TabStrip.ItemTemplate>
-            </TabStrip>
-          </StackPanel>
-        </Border>
+    <!-- The viewport over the docks, and the side column beside them: the context panel over the outliner, or under it once
+         swapped. Every edge between them drags. -->
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" MinWidth="320" />
+        <ColumnDefinition Width="1" />
+        <ColumnDefinition Width="{Binding SideWidth, Mode=TwoWay}" MinWidth="240" MaxWidth="900" />
+      </Grid.ColumnDefinitions>
+      <Grid RowDefinitions="*,Auto,Auto">
         <Panel>
         <ContentControl Content="{Binding Documents.Selected.Content}" IsVisible="{Binding !Documents.IsLevelShown}" />
         <Border Classes="well viewport" IsVisible="{Binding Documents.IsLevelShown}">
@@ -146,57 +193,66 @@
                                      controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
           <viewports:ViewportOverlay DataContext="{Binding Viewport}" />
           <!-- While a creation is made: its file, carrying on in a copy of it, and the way back to the level. -->
-          <Border Classes="viewportBar" Margin="4" HorizontalAlignment="Center" VerticalAlignment="Top" IsVisible="{Binding Viewport.IsCreating}">
+          <Border Classes="viewportBar" Margin="12" HorizontalAlignment="Center" VerticalAlignment="Top" IsVisible="{Binding Viewport.IsCreating}">
             <StackPanel Orientation="Horizontal" Spacing="4" Margin="6,0,0,0">
-              <PathIcon Data="{x:Static shell:MaterialIcons.Vehicle}" Width="14" Height="14" />
-              <TextBlock Text="{Binding CreatorHeading}" VerticalAlignment="Center" />
-              <Button Content="Duplicate and Edit" Command="{Binding DuplicateAndEditCommand}"
+              <PathIcon Data="{x:Static shell:LucideIcons.Vehicle}" />
+              <TextBlock Text="{Binding CreatorHeading}" VerticalAlignment="Center" FontWeight="Medium" Margin="2,0,4,0" />
+              <Button Classes="viewportIcon text" Content="Duplicate and Edit" Command="{Binding DuplicateAndEditCommand}"
                       ToolTip.Tip="Carry on in a copy of the file, which this placed one then names; the first file keeps how it was saved." />
-              <Button Content="Leave" Command="{Binding Viewport.LeaveCreatorCommand}"
+              <Button Classes="viewportIcon text" Content="Leave" Command="{Binding Viewport.LeaveCreatorCommand}"
                       ToolTip.Tip="Go back to the level (Escape, or a double-click beside the creation)." />
             </StackPanel>
           </Border>
         </Panel>
         </Border>
         </Panel>
-        </DockPanel>
         <!-- The Day dock: an opened environment's day, edited under the viewport it lights. -->
-        <environments:EnvironmentEditorView x:Name="DayDock" Grid.Row="1" DataContext="{Binding DayDock}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).IsDayDockOpen}" />
-        <assets:AssetBrowserView Grid.Row="2" DataContext="{Binding Assets}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).IsContentOpen}" />
+        <Panel Grid.Row="1" IsVisible="{Binding IsDayDockOpen}">
+          <environments:EnvironmentEditorView x:Name="DayDock" DataContext="{Binding DayDock}"
+                                              Height="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).DayDockHeight}" />
+          <controls:HeightGrip Value="{Binding DayDockHeight}"><Border /></controls:HeightGrip>
+        </Panel>
+        <Panel Grid.Row="2" IsVisible="{Binding IsContentOpen}">
+          <assets:AssetBrowserView DataContext="{Binding Assets}" Height="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).ContentHeight}" />
+          <controls:HeightGrip Value="{Binding ContentHeight}"><Border /></controls:HeightGrip>
+        </Panel>
       </Grid>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-      <Grid Grid.Column="2" RowDefinitions="*,1,*" Classes="sidePanel">
+      <Grid Grid.Column="2" RowDefinitions="*,1,*" Background="{DynamicResource EditorPanelBrush}">
         <!-- The context panel holds only what is selected or open, the newest in front; empty, it says how to fill it. -->
         <Panel Grid.Row="{Binding ContextRow}">
           <TextBlock Classes="hint" IsVisible="{Binding !HasContext}" TextWrapping="Wrap" Margin="12" VerticalAlignment="Top"
-                     Text="Select an entity, or open a data asset or a vehicle in the content browser, to edit it here." />
-          <TabControl x:Name="SidePanel" Padding="0" SelectedIndex="{Binding SideTab}" IsVisible="{Binding HasContext}">
-            <TabItem Header="Inspector" IsVisible="{Binding ShowsInspector}">
+                     Text="Select an entity, or open a data asset or a vehicle in the content drawer, to edit it here." />
+          <TabControl x:Name="SidePanel" SelectedIndex="{Binding SideTab}" IsVisible="{Binding HasContext}">
+            <TabItem IsVisible="{Binding ShowsInspector}">
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <PathIcon Data="{x:Static shell:LucideIcons.Inspector}" />
+                  <TextBlock Text="Inspector" />
+                </StackPanel>
+              </TabItem.Header>
               <inspector:InspectorView DataContext="{Binding Inspector}" />
             </TabItem>
             <TabItem IsVisible="{Binding ShowsData}">
               <TabItem.Header>
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                  <TextBlock Text="Data" VerticalAlignment="Center" />
-                  <Button Classes="icon small" Command="{Binding CloseDataCommand}" Focusable="False" ToolTip.Tip="Close the data asset; unsaved edits stay held.">
-                    <PathIcon Data="{x:Static shell:MaterialIcons.Close}" />
+                <StackPanel Classes="tabHeader">
+                  <PathIcon Data="{x:Static shell:LucideIcons.Data}" />
+                  <TextBlock Text="{Binding DataTitle}" ToolTip.Tip="{Binding DataHeading}" />
+                  <Button Classes="icon small" Margin="2,0,-4,0" Command="{Binding CloseDataCommand}" Focusable="False" ToolTip.Tip="Close the data asset; unsaved edits stay held.">
+                    <PathIcon Data="{x:Static shell:LucideIcons.Close}" />
                   </Button>
                 </StackPanel>
               </TabItem.Header>
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="{Binding DataHeading}" Classes="heading" TextTrimming="CharacterEllipsis" />
-                <Border Classes="well">
-                  <data:DataView DataContext="{Binding DataContent}" />
-                </Border>
-              </DockPanel>
+              <data:DataView DataContext="{Binding DataContent}" />
             </TabItem>
-            <TabItem Header="Vehicle" IsVisible="{Binding ShowsCreator}">
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="{Binding CreatorHeading}" Classes="heading" TextTrimming="CharacterEllipsis" />
-                <Border Classes="well">
-                  <vehicles:VehiclePanelView DataContext="{Binding CreatorPanel}" />
-                </Border>
-              </DockPanel>
+            <TabItem IsVisible="{Binding ShowsCreator}">
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <PathIcon Data="{x:Static shell:LucideIcons.Vehicle}" />
+                  <TextBlock Text="Vehicle" ToolTip.Tip="{Binding CreatorHeading}" />
+                </StackPanel>
+              </TabItem.Header>
+              <vehicles:VehiclePanelView DataContext="{Binding CreatorPanel}" />
             </TabItem>
           </TabControl>
         </Panel>
@@ -204,43 +260,70 @@
         <!-- The outliner: the scene's entities and the selection's whole tree, or the creation's parts in the creator, and the view's
              mood. Its corner button swaps it with the context panel. -->
         <Panel Grid.Row="{Binding OutlinerRow}">
-          <TabControl x:Name="Outliner" Padding="0" SelectedIndex="{Binding OutlinerTab}">
-            <TabItem Header="Scene" IsVisible="{Binding !Viewport.IsCreating}">
-              <Border Classes="well">
-                <scenes:SceneTreeView x:Name="SceneTree" DataContext="{Binding SceneTree}"
-                                      controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
-              </Border>
+          <TabControl x:Name="Outliner" SelectedIndex="{Binding OutlinerTab}">
+            <TabItem IsVisible="{Binding !Viewport.IsCreating}">
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <PathIcon Data="{x:Static shell:LucideIcons.Scene}" />
+                  <TextBlock Text="Scene" />
+                </StackPanel>
+              </TabItem.Header>
+              <scenes:SceneTreeView x:Name="SceneTree" DataContext="{Binding SceneTree}"
+                                    controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
             </TabItem>
-            <TabItem Header="{Binding EntityTree.Title, StringFormat='Entity {0}'}" IsVisible="{Binding !Viewport.IsCreating}">
-              <Border Classes="well">
-                <scenes:EntityTreeView x:Name="EntityTree" DataContext="{Binding EntityTree}" />
-              </Border>
+            <TabItem IsVisible="{Binding !Viewport.IsCreating}">
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <PathIcon Data="{x:Static shell:LucideIcons.Network}" />
+                  <TextBlock Text="Entity" ToolTip.Tip="{Binding EntityTree.Title, StringFormat='The whole tree of {0}'}" />
+                </StackPanel>
+              </TabItem.Header>
+              <scenes:EntityTreeView x:Name="EntityTree" DataContext="{Binding EntityTree}" />
             </TabItem>
-            <TabItem Header="View">
+            <TabItem>
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <PathIcon Data="{x:Static shell:LucideIcons.Visible}" />
+                  <TextBlock Text="View" />
+                </StackPanel>
+              </TabItem.Header>
               <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="{Binding MoodHeading}" Classes="heading"
-                           TextTrimming="CharacterEllipsis" ToolTip.Tip="The lighting mood the viewport draws with. Open a mood file in the content browser to edit it." />
-                <CheckBox DockPanel.Dock="Top" Content="Canvas" IsChecked="{Binding Viewport.ShowCanvas}" Margin="6,2"
-                          ToolTip.Tip="Draw the canvas the scene is painted on. Off hides it in the viewport only; the mood and lens keep it." />
-                <Border Classes="well">
-                <ScrollViewer>
-                  <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" ItemTemplate="{StaticResource FieldRow}" Margin="4,2" />
-                </ScrollViewer>
+                <Border DockPanel.Dock="Top" Classes="entityHeader">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <Border Classes="iconTile"><PathIcon Data="{x:Static shell:LucideIcons.Mood}" /></Border>
+                    <TextBlock Grid.Column="1" Text="{Binding MoodHeading}" Classes="title" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="The lighting mood the viewport draws with. Open a mood file in the content drawer to edit it." />
+                  </Grid>
                 </Border>
+                <ScrollViewer>
+                  <Border Classes="sectionBody">
+                    <StackPanel>
+                      <Grid ColumnDefinitions="96,*" Margin="0,1" ToolTip.Tip="Draw the canvas the scene is painted on. Off hides it in the viewport only; the mood and lens keep it.">
+                        <TextBlock Text="Canvas" Classes="fieldLabel" />
+                        <ToggleButton Grid.Column="1" Theme="{StaticResource Switch}" IsChecked="{Binding Viewport.ShowCanvas}" HorizontalAlignment="Left" />
+                      </Grid>
+                      <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" ItemTemplate="{StaticResource FieldRow}" />
+                    </StackPanel>
+                  </Border>
+                </ScrollViewer>
               </DockPanel>
             </TabItem>
-            <TabItem Header="Parts" IsVisible="{Binding Viewport.IsCreating}">
-              <Border Classes="well">
-                <ListBox ItemsSource="{Binding CreatorParts}" SelectedItem="{Binding CreatorPart}" />
-              </Border>
+            <TabItem IsVisible="{Binding Viewport.IsCreating}">
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <PathIcon Data="{x:Static shell:LucideIcons.Layers}" />
+                  <TextBlock Text="Parts" />
+                </StackPanel>
+              </TabItem.Header>
+              <ListBox ItemsSource="{Binding CreatorParts}" SelectedItem="{Binding CreatorPart}" />
             </TabItem>
           </TabControl>
           <Button Classes="icon" Command="{Binding SwapPanelsCommand}" Focusable="False" HorizontalAlignment="Right" VerticalAlignment="Top"
                   Margin="2" ToolTip.Tip="Swap the outliner and the context panel.">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Swap}" />
+            <PathIcon Data="{x:Static shell:LucideIcons.Swap}" />
           </Button>
         </Panel>
       </Grid>
     </Grid>
-  </DockPanel>
+  </Grid>
 </Window>

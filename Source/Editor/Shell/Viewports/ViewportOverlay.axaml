@@ -6,73 +6,87 @@
              x:Class="FlickerVoid.Editor.Viewports.ViewportOverlay"
              x:DataType="viewports:ViewportViewModel">
   <Panel>
-    <StackPanel Orientation="Horizontal" Spacing="1" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Top">
-      <Border Classes="viewportBar">
-        <StackPanel Orientation="Horizontal">
-          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsSelectMode}" ToolTip.Tip="Select (Q)">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Select}" />
-          </ToggleButton>
-          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsMoveMode}" ToolTip.Tip="Move (W)">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Move}" />
-          </ToggleButton>
-          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsRotateMode}" ToolTip.Tip="Rotate (E)">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Rotate}" />
-          </ToggleButton>
-          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsScaleMode}" ToolTip.Tip="Scale (R)">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Scale}" />
-          </ToggleButton>
-          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsLocalSpace}" ToolTip.Tip="World or local axes">
+    <!-- Top left, the tools in hand: select, move, turn and scale, the axes they follow, and the snap of the tool chosen. -->
+    <Border Classes="viewportBar" Margin="12" HorizontalAlignment="Left" VerticalAlignment="Top">
+      <StackPanel Orientation="Horizontal">
+        <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsSelectMode}" ToolTip.Tip="Select (Q)">
+          <PathIcon Data="{x:Static shell:LucideIcons.Select}" />
+        </ToggleButton>
+        <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsMoveMode}" ToolTip.Tip="Move (W)">
+          <PathIcon Data="{x:Static shell:LucideIcons.Move}" />
+        </ToggleButton>
+        <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsRotateMode}" ToolTip.Tip="Rotate (E)">
+          <PathIcon Data="{x:Static shell:LucideIcons.Rotate}" />
+        </ToggleButton>
+        <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsScaleMode}" ToolTip.Tip="Scale (R)">
+          <PathIcon Data="{x:Static shell:LucideIcons.Scale}" />
+        </ToggleButton>
+        <Border Classes="vsep" />
+        <ToggleButton Classes="viewportIcon text flat" IsChecked="{Binding IsLocalSpace}" ToolTip.Tip="The axes the handles follow: the world's, or the selected entity's own.">
+          <StackPanel Orientation="Horizontal" Spacing="6">
             <Panel>
-              <PathIcon Data="{x:Static shell:MaterialIcons.WorldSpace}" IsVisible="{Binding !IsLocalSpace}" />
-              <PathIcon Data="{x:Static shell:MaterialIcons.LocalSpace}" IsVisible="{Binding IsLocalSpace}" />
+              <PathIcon Data="{x:Static shell:LucideIcons.WorldSpace}" IsVisible="{Binding !IsLocalSpace}" />
+              <PathIcon Data="{x:Static shell:LucideIcons.LocalSpace}" IsVisible="{Binding IsLocalSpace}" />
             </Panel>
-          </ToggleButton>
-        </StackPanel>
-      </Border>
-      <Border Classes="viewportBar">
-        <StackPanel Orientation="Horizontal">
-          <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.MoveSnap.IsOn}" ToolTip.Tip="Snap moves to the grid, in world units">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Grid}" />
+            <Panel>
+              <TextBlock Text="World" IsVisible="{Binding !IsLocalSpace}" VerticalAlignment="Center" />
+              <TextBlock Text="Local" IsVisible="{Binding IsLocalSpace}" VerticalAlignment="Center" />
+            </Panel>
+          </StackPanel>
+        </ToggleButton>
+        <Border Classes="vsep" />
+        <StackPanel Orientation="Horizontal" IsVisible="{Binding ShowsMoveSnap}">
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.MoveSnap.IsOn}" ToolTip.Tip="Snap moves to the grid">
+            <PathIcon Data="{x:Static shell:LucideIcons.Snap}" />
           </ToggleButton>
           <ComboBox Classes="viewportSnap" ItemsSource="{Binding Gizmo.MoveSnap.Steps}" SelectedItem="{Binding Gizmo.MoveSnap.Step}"
-                    ToolTip.Tip="Grid size, in world units" />
-          <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.RotateSnap.IsOn}" ToolTip.Tip="Snap turns to steps, in degrees">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Rotate}" />
+                    ToolTip.Tip="Grid size, in metres">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding StringFormat='{}{0} m'}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" IsVisible="{Binding IsRotateMode}">
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.RotateSnap.IsOn}" ToolTip.Tip="Snap turns to steps">
+            <PathIcon Data="{x:Static shell:LucideIcons.Snap}" />
           </ToggleButton>
           <ComboBox Classes="viewportSnap" ItemsSource="{Binding Gizmo.RotateSnap.Steps}" SelectedItem="{Binding Gizmo.RotateSnap.Step}"
-                    ToolTip.Tip="Turn step, in degrees" />
+                    ToolTip.Tip="Turn step, in degrees">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding StringFormat='{}{0}°'}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" IsVisible="{Binding IsScaleMode}">
           <ToggleButton Classes="viewportIcon" IsChecked="{Binding Gizmo.ScaleSnap.IsOn}" ToolTip.Tip="Snap scaling to steps of the starting scale">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Scale}" />
+            <PathIcon Data="{x:Static shell:LucideIcons.Snap}" />
           </ToggleButton>
           <ComboBox Classes="viewportSnap" ItemsSource="{Binding Gizmo.ScaleSnap.Steps}" SelectedItem="{Binding Gizmo.ScaleSnap.Step}"
-                    ToolTip.Tip="Scale step, as a share of the starting scale" />
+                    ToolTip.Tip="Scale step, as a share of the starting scale">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding StringFormat='{}{0} x'}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
         </StackPanel>
-      </Border>
-      <Border Classes="viewportBar">
-        <StackPanel Orientation="Horizontal">
-          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsPerspective}" ToolTip.Tip="Perspective or orthographic view">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Perspective}" />
-          </ToggleButton>
-          <ToggleButton Classes="viewportIcon" IsChecked="{Binding ShowGrid}" ToolTip.Tip="Grid">
-            <PathIcon Data="{x:Static shell:MaterialIcons.Grid}" />
-          </ToggleButton>
-          <ToggleButton Classes="viewportIcon" IsChecked="{Binding ShowDepthFade}" ToolTip.Tip="Depth fade (the main camera's)">
-            <PathIcon Data="{x:Static shell:MaterialIcons.DepthFade}" />
-          </ToggleButton>
-        </StackPanel>
-      </Border>
-    </StackPanel>
+      </StackPanel>
+    </Border>
     <!-- The selected shot's timeline, left of the camera preview in the bottom right corner. -->
     <Grid ColumnDefinitions="3*,*" VerticalAlignment="Bottom" IsVisible="{Binding Timeline.HasShot}">
-      <Border Classes="viewportBar" Margin="4,4,8,12">
+      <Border Classes="viewportBar" Margin="12,4,8,12" Height="34">
         <DockPanel>
           <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
             <Button Classes="icon" Command="{Binding AddShotKeyCommand}"
                     ToolTip.Tip="Add a key where the view stands, at the scrubbed time.">
-              <PathIcon Data="{x:Static shell:MaterialIcons.Add}" />
+              <PathIcon Data="{x:Static shell:LucideIcons.Add}" />
             </Button>
             <Button Classes="icon delete" Command="{Binding Timeline.DeleteSelectedKeyCommand}" ToolTip.Tip="Delete the selected key.">
-              <PathIcon Data="{x:Static shell:MaterialIcons.Remove}" />
+              <PathIcon Data="{x:Static shell:LucideIcons.Remove}" />
             </Button>
           </StackPanel>
           <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0" MinWidth="48" TextAlignment="Right"
@@ -81,14 +95,51 @@
         </DockPanel>
       </Border>
     </Grid>
-    <StackPanel Margin="4" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Top">
-      <viewports:NavigationGizmo Width="80" Height="80" Camera="{Binding Camera}" />
-      <viewports:CameraDragButton Classes="viewportRound" Drag="Pan" Camera="{Binding Camera}"
+    <!-- Top right, the picture: the hour of the day, what is drawn over the scene, the projection and the game's view. -->
+    <StackPanel Margin="12" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Top">
+      <Border Classes="viewportBar" HorizontalAlignment="Right">
+        <StackPanel Orientation="Horizontal">
+          <Button Classes="viewportIcon text" Command="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).ToggleDayDockCommand}"
+                  ToolTip.Tip="The hour the viewport is lit at; opens the Day dock, where the scene's environment is edited over the day.">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Classes="accent" Data="{x:Static shell:LucideIcons.Sun}" />
+              <TextBlock Text="{Binding HourText}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Border Classes="vsep" />
+          <Button Classes="viewportIcon text" ToolTip.Tip="What the viewport draws over the scene.">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Data="{x:Static shell:LucideIcons.Visible}" />
+              <TextBlock Text="Show" VerticalAlignment="Center" />
+              <PathIcon Classes="small faint" Data="{x:Static shell:LucideIcons.Expand}" />
+            </StackPanel>
+            <Button.Flyout>
+              <MenuFlyout Placement="BottomEdgeAlignedRight">
+                <MenuItem Header="Grid" ToggleType="CheckBox" IsChecked="{Binding ShowGrid}" />
+                <MenuItem Header="Depth fade" ToggleType="CheckBox" IsChecked="{Binding ShowDepthFade}" ToolTip.Tip="The main camera's depth fade." />
+                <MenuItem Header="Canvas" ToggleType="CheckBox" IsChecked="{Binding ShowCanvas}"
+                          ToolTip.Tip="The canvas the scene is painted on. Off hides it in the viewport only." />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsPerspective}" ToolTip.Tip="Perspective or orthographic view">
+            <PathIcon Data="{x:Static shell:LucideIcons.Perspective}" />
+          </ToggleButton>
+          <Border Classes="vsep" />
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsGameView}"
+                        ToolTip.Tip="Game View (G): hides the grid, sky, icons, selection and gizmo to show the world as the game will.">
+            <PathIcon Data="{x:Static shell:LucideIcons.GameView}" />
+          </ToggleButton>
+        </StackPanel>
+      </Border>
+      <viewports:NavigationGizmo Width="80" Height="80" Camera="{Binding Camera}" HorizontalAlignment="Right" />
+      <viewports:CameraDragButton Classes="viewportRound" Drag="Pan" Camera="{Binding Camera}" HorizontalAlignment="Right" Margin="0,0,26,0"
                                   ViewportHeight="{Binding $parent[UserControl].Bounds.Height}" ToolTip.Tip="Drag to pan the view.">
-        <PathIcon Data="{x:Static shell:MaterialIcons.Pan}" />
+        <PathIcon Data="{x:Static shell:LucideIcons.Pan}" />
       </viewports:CameraDragButton>
-      <viewports:CameraDragButton Classes="viewportRound" Drag="Zoom" Camera="{Binding Camera}" ToolTip.Tip="Drag to zoom the view.">
-        <PathIcon Data="{x:Static shell:MaterialIcons.Zoom}" />
+      <viewports:CameraDragButton Classes="viewportRound" Drag="Zoom" Camera="{Binding Camera}" HorizontalAlignment="Right" Margin="0,0,26,0"
+                                  ToolTip.Tip="Drag to zoom the view.">
+        <PathIcon Data="{x:Static shell:LucideIcons.Zoom}" />
       </viewports:CameraDragButton>
     </StackPanel>
   </Panel>

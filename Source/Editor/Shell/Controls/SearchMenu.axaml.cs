@@ -41,6 +41,29 @@ public sealed partial class SearchMenu : UserControl
         flyout.ShowAt(anchor, showAtPointer: atPointer);
     }
 
+    /// <summary>Opens the command palette under the top of <paramref name="window"/>: the choices under their groups' headings.</summary>
+    public static void ShowPalette(Control window, IReadOnlyList<MenuChoice> choices)
+    {
+        SearchMenuViewModel menu = new(choices, MenuGrouping.Sections);
+        SearchMenu view = new() { DataContext = menu, Classes = { "palette" } };
+        view._search.PlaceholderText = "Search or run a command";
+        Flyout flyout = new()
+        {
+            Content = view,
+            Placement = PlacementMode.AnchorAndGravity,
+            PlacementAnchor = Avalonia.Controls.Primitives.PopupPositioning.PopupAnchor.Top,
+            PlacementGravity = Avalonia.Controls.Primitives.PopupPositioning.PopupGravity.Bottom,
+            VerticalOffset = PaletteTop,
+            FlyoutPresenterClasses = { "searchMenu" },
+        };
+        view._flyout = flyout;
+        flyout.Opened += (_, _) => view._search.Focus();
+        flyout.ShowAt(window);
+    }
+
+    /// <summary>How far under the window's top the palette opens.</summary>
+    private const double PaletteTop = 72;
+
     private void HandleKeyDown(object? sender, KeyEventArgs e)
     {
         if (Menu is not { } menu)

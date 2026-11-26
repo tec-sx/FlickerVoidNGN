@@ -37,12 +37,29 @@ public sealed partial class MainWindow : Window
     /// <summary>Ctrl+K opens the command palette in the middle of the window.</summary>
     private void HandlePaletteKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.K && e.KeyModifiers == KeyModifiers.Control && DataContext is MainWindowViewModel viewModel)
+        if (e.Key == Key.K && e.KeyModifiers == KeyModifiers.Control)
         {
-            IReadOnlyList<MenuChoice> choices = viewModel.PaletteChoices;
-            SearchMenu.Show(this, choices, MenuGrouping.Separators, atPointer: false);
+            ShowPalette();
             e.Handled = true;
         }
+    }
+
+    /// <summary>The top bar's search box opens the command palette, as Ctrl+K does.</summary>
+    private void HandleCommandClick(object? sender, RoutedEventArgs e) => ShowPalette();
+
+    /// <summary>Opens the command palette under the top bar: the view model's choices and the tabs only the window opens.</summary>
+    private void ShowPalette()
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        List<MenuChoice> choices = [.. viewModel.PaletteChoices];
+        int first = choices.FindIndex(choice => choice.Group == "View");
+        choices.Insert(first, new MenuChoice("Project settings", () => HandleProjectSettingsClick(null, new RoutedEventArgs()), "Commands", "Settings"));
+        choices.Insert(first, new MenuChoice("Materials", () => HandleMaterialsClick(null, new RoutedEventArgs()), "Commands", "Materials"));
+        SearchMenu.ShowPalette(this, choices);
     }
 
     public MainWindow()
@@ -205,7 +222,7 @@ public sealed partial class MainWindow : Window
         {
             ProjectSettingsViewModel settings = new(main.Viewport.Scene);
             ProjectSettingsView view = new() { DataContext = settings };
-            open = new EditorDocument(ProjectSettingsKey, "Project settings", view, settings.Dispose);
+            open = new EditorDocument(ProjectSettingsKey, "Project settings", view, settings.Dispose, icon: "Settings");
         }
 
         main.Documents.Show(open);
@@ -235,7 +252,7 @@ public sealed partial class MainWindow : Window
         {
             MaterialEditorViewModel created = main.CreateMaterialEditor();
             MaterialEditorView view = new() { DataContext = created };
-            open = new EditorDocument(MaterialsKey, "Materials", view, created.Dispose, created.SaveCommand);
+            open = new EditorDocument(MaterialsKey, "Materials", view, created.Dispose, created.SaveCommand, "Materials");
         }
 
         main.Documents.Show(open);
@@ -261,7 +278,7 @@ public sealed partial class MainWindow : Window
         }
 
         FlowEditorView view = new() { DataContext = graph, History = main.GetFlowHistory(path) };
-        EditorDocument created = new(path, graph.Title, view, () => main.CloseFlow(path));
+        EditorDocument created = new(path, graph.Title, view, () => main.CloseFlow(path), icon: "Flow");
         main.Documents.Show(created);
     }
 
@@ -294,7 +311,7 @@ public sealed partial class MainWindow : Window
 
         TextureEditorView view = new() { DataContext = editor };
         UndoShortcuts.Attach(view, () => editor.History);
-        EditorDocument created = new(editor.Path, editor.Heading, view, editor.Dispose, editor.SaveCommand);
+        EditorDocument created = new(editor.Path, editor.Heading, view, editor.Dispose, editor.SaveCommand, "Texture");
         main.Documents.Show(created);
     }
 

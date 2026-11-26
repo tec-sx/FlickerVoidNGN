@@ -90,6 +90,57 @@ public sealed class InspectorViewModelTests : IDisposable
     }
 
     [Fact]
+    public void TheHeaderShowsTheEntitysIconAndWhereItIs()
+    {
+        _builder.OpenScene("""
+            { "entities": [
+              { "name": "Inn", "folder": "Street", "components": { "transform": {} } },
+              { "name": "Lamp", "parent": "Inn", "components": { "transform": {}, "pointLight": {} } } ] }
+            """);
+        Entity lamp = _builder.Scene.Find("Lamp")!.Value;
+
+        _builder.Scene.Selection.Select(lamp);
+
+        _builder.ViewModel.Icon.Should().Be("PointLight");
+        _builder.ViewModel.Place.Should().Be("Street / Inn");
+        _builder.ViewModel.HasSelection.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ComponentsCarryTheirIconAndTheRailsModulesTheirs()
+    {
+        _builder.Select("Lamp", new Transform(), new PointLight());
+
+        _builder.Component("Transform").Icon.Should().Be("Transform");
+        _builder.Component("Point Light").Icon.Should().Be("PointLight");
+        ComponentChoices.GetModuleIcon("Rendering").Should().Be("Look");
+        ComponentChoices.GetModuleIcon("Unknown").Should().Be("Entity");
+    }
+
+    [Fact]
+    public void AFoldedComponentSaysItsFirstValuesOnOneLine()
+    {
+        _builder.Select("Lamp", new Transform(), new PointLight { Intensity = 2, Range = 7.5f });
+
+        _builder.Component("Point Light").Summary.Should().Be("intensity 2, range 7.5");
+        _builder.Component("Transform").Summary.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FoldingAComponentIsRememberedForTheNextEntity()
+    {
+        _builder.Select("Lamp", new Transform(), new PointLight());
+        bool open = _builder.Component("Point Light").IsExpanded;
+
+        _builder.Component("Point Light").IsExpanded = false;
+        _builder.Select("Torch", new Transform(), new PointLight());
+
+        open.Should().BeTrue("the first three components start open");
+        _builder.Component("Point Light").IsExpanded.Should().BeFalse();
+        _builder.Component("Transform").IsExpanded.Should().BeTrue();
+    }
+
+    [Fact]
     public void AddsAndRemovesComponents()
     {
         Entity lamp = _builder.Select("Lamp", new Transform(), new PointLight());

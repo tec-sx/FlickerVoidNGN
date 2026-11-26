@@ -19,8 +19,16 @@ public sealed partial class InspectorViewModel : ObservableObject
 {
     private const string NothingSelected = "Nothing selected";
 
+    /// <summary>How many components start open; the rest fold into one line each until they are opened.</summary>
+    private const int OpenComponents = 3;
+
+    private const string NoIcon = "Empty";
+
     private readonly EditorScene _scene;
     private readonly FindContentFiles _files;
+
+    /// <summary>The components the user folded or opened, by name, kept from one selection to the next.</summary>
+    private readonly Dictionary<string, bool> _expanded = [];
 
     /// <param name="scene">The scene whose selection is inspected.</param>
     /// <param name="files">Finds the content files a field may name, to suggest them.</param>
@@ -32,6 +40,20 @@ public sealed partial class InspectorViewModel : ObservableObject
         _scene.History.Applied += Rebuild;
         Rebuild();
     }
+
+    /// <summary>The name of the selected entity's icon, the outline's.</summary>
+    [ObservableProperty]
+    public partial string Icon { get; set; } = NoIcon;
+
+    /// <summary>Where the selected entity is: its folder, then the entities it is nested under (Street / Inn); empty at the top.</summary>
+    [ObservableProperty]
+    public partial string Place { get; set; } = "";
+
+    /// <summary>Whether an entity is selected, so the header and the rail show.</summary>
+    public bool HasSelection => Components.Count > 0;
+
+    /// <summary>Whether every category shows: the rail's All is the one chosen.</summary>
+    public bool ShowsAllCategories => SelectedCategory is null;
 
     /// <summary>The selected entity's name.</summary>
     [ObservableProperty]
@@ -63,7 +85,11 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     partial void OnFilterTextChanged(string value) => OnPropertyChanged(nameof(VisibleComponents));
 
-    partial void OnSelectedCategoryChanged(string? value) => OnPropertyChanged(nameof(VisibleComponents));
+    partial void OnSelectedCategoryChanged(string? value)
+    {
+        OnPropertyChanged(nameof(VisibleComponents));
+        OnPropertyChanged(nameof(ShowsAllCategories));
+    }
 
     /// <summary>The rail's All: shows every category again.</summary>
     [RelayCommand]
@@ -78,6 +104,7 @@ public sealed partial class InspectorViewModel : ObservableObject
 
         OnPropertyChanged(nameof(Categories));
         OnPropertyChanged(nameof(HasCategories));
+        OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(VisibleComponents));
     }
 
@@ -160,6 +187,8 @@ public sealed partial class InspectorViewModel : ObservableObject
         if (_scene.Selection.Selected is not { } entity || !world.IsAlive(entity))
         {
             Title = NothingSelected;
+            Icon = NoIcon;
+            Place = "";
             Template = null;
             Components = [];
             AddableComponents = [];
@@ -176,6 +205,8 @@ public sealed partial class InspectorViewModel : ObservableObject
             Title = $"Entity {entity.Id}";
         }
 
+        Icon = SceneIcons.For(world, entity, _scene.Game.Spawner.Components);
+        Place = DescribePlace(entity);
         Template = CreateTemplatePicker(entity);
         List<ComponentViewModel> components = [];
         List<SceneComponent> addable = [];
@@ -184,6 +215,8 @@ public sealed partial class InspectorViewModel : ObservableObject
             if (component.Has(world, entity))
             {
                 ComponentViewModel shown = new(_scene, entity, component, _files);
+                shown.IsExpanded = _expanded.GetValueOrDefault(component.Name, components.Count < OpenComponents);
+                shown.PropertyChanged += (_, change) => RememberFolding(shown, change.PropertyName);
                 components.Add(shown);
             }
             else
@@ -195,6 +228,41 @@ public sealed partial class InspectorViewModel : ObservableObject
         Components = components;
         AddableComponents = addable;
         AddChoices = ComponentChoices.Build(addable, AddComponent);
+    }
+
+    private void RememberFolding(ComponentViewModel component, string? property)
+    {
+        if (property == nameof(ComponentViewModel.IsExpanded))
+        {
+            _expanded[component.Component.Name] = component.IsExpanded;
+        }
+    }
+
+    /// <summary>The entity's folder, then the names of the entities it is nested under, outermost first.</summary>
+    private string DescribePlace(Entity entity)
+    {
+        World world = _scene.Game.World;
+        List<string> names = [];
+        Entity top = entity;
+        Entity? parent = _scene.GetParent(entity);
+        while (parent is { } above)
+        {
+            if (world.TryGet(above, out EntityName name))
+            {
+                names.Insert(0, name.Value);
+            }
+
+            top = above;
+            parent = _scene.GetParent(above);
+        }
+
+        if (world.TryGet(top, out EntityFolder folder))
+        {
+            string[] folders = folder.Path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            names.InsertRange(0, folders);
+        }
+
+        return string.Join(" / ", names);
     }
 
     private AssetPickerViewModel? CreateTemplatePicker(Entity entity)

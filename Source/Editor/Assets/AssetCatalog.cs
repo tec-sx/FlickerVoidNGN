@@ -48,6 +48,18 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
     /// </summary>
     public IReadOnlyList<AssetEntry> Find(string folder, bool recursive, AssetType? type, string text)
     {
+        IReadOnlyList<AssetType> types = [];
+        if (type is not null)
+        {
+            types = [type];
+        }
+
+        return Find(folder, recursive, types, text);
+    }
+
+    /// <summary>As the search by one type, for a filter's types; none means any type.</summary>
+    public IReadOnlyList<AssetEntry> Find(string folder, bool recursive, IReadOnlyList<AssetType> types, string text)
+    {
         string fullFolder = GetFullPath(folder);
         List<AssetEntry> found = [];
         if (!Directory.Exists(fullFolder))
@@ -55,7 +67,7 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
             return found;
         }
 
-        Collect(fullFolder, recursive, type, text, found);
+        Collect(fullFolder, recursive, types, text, found);
         found.Sort(static (first, second) => StringComparer.OrdinalIgnoreCase.Compare(first.Path, second.Path));
         return found;
     }
@@ -120,12 +132,12 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
         return catalogs;
     }
 
-    private void Collect(string fullFolder, bool recursive, AssetType? type, string text, List<AssetEntry> found)
+    private void Collect(string fullFolder, bool recursive, IReadOnlyList<AssetType> types, string text, List<AssetEntry> found)
     {
         List<AssetEntry> groups = ReadGroups(fullFolder);
         foreach (AssetEntry entry in groups)
         {
-            if (Matches(entry, type, text))
+            if (Matches(entry, types, text))
             {
                 found.Add(entry);
                 continue;
@@ -133,7 +145,7 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
 
             foreach (AssetEntry owned in entry.Owned)
             {
-                if (Matches(owned, type, text))
+                if (Matches(owned, types, text))
                 {
                     found.Add(owned);
                 }
@@ -149,14 +161,14 @@ public sealed class AssetCatalog(string root, string prefix = "", string? name =
         {
             if (!IsSkipped(subfolder))
             {
-                Collect(subfolder, recursive, type, text, found);
+                Collect(subfolder, recursive, types, text, found);
             }
         }
     }
 
-    private static bool Matches(AssetEntry entry, AssetType? type, string text)
+    private static bool Matches(AssetEntry entry, IReadOnlyList<AssetType> types, string text)
     {
-        return entry.Name.Contains(text, StringComparison.OrdinalIgnoreCase) && (type is null || entry.Type == type);
+        return entry.Name.Contains(text, StringComparison.OrdinalIgnoreCase) && (types.Count == 0 || types.Contains(entry.Type));
     }
 
     /// <summary>The folder's visible files that no other file owns, each with the files it owns, sorted by name.</summary>

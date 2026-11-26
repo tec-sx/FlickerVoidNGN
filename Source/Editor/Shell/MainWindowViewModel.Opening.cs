@@ -297,6 +297,7 @@ public sealed partial class MainWindowViewModel
         _dataPath = path;
         DataContent = content;
         OnPropertyChanged(nameof(DataHeading));
+        OnPropertyChanged(nameof(DataTitle));
         ShowContext(DataTab);
         WatchHistory();
     }

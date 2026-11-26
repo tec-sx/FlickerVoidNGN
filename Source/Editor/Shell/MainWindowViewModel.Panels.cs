@@ -1,10 +1,15 @@
+using Arch.Core;
+
 using Avalonia.Controls;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Menus;
+using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Persistence.Layout;
+using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Editor;
 
@@ -92,27 +97,114 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(OutlinerRow));
     }
 
-    /// <summary>Whether the content drawer is open; closed, the viewport takes its height.</summary>
+    /// <summary>Whether the content drawer is open; closed, the viewport takes its height. Remembered for the next run.</summary>
     [ObservableProperty]
     public partial bool IsContentOpen { get; set; }
 
-    /// <summary>The height of the content drawer's row: nothing while it is closed.</summary>
-    public GridLength ContentRowHeight => IsContentOpen ? new GridLength(300) : new GridLength(0);
+    /// <summary>The content drawer's height, dragged by its top edge and remembered for the next run.</summary>
+    [ObservableProperty]
+    public partial double ContentHeight { get; set; } = EditorLayout.DefaultContentHeight;
 
-    partial void OnIsContentOpenChanged(bool value) => OnPropertyChanged(nameof(ContentRowHeight));
+    /// <summary>The Day dock's height, dragged by its top edge and remembered for the next run.</summary>
+    [ObservableProperty]
+    public partial double DayDockHeight { get; set; } = EditorLayout.DefaultDayDockHeight;
 
-    /// <summary>The commands of the command palette (Ctrl+K), each with its key.</summary>
-    public IReadOnlyList<MenuChoice> PaletteChoices =>
-    [
-        new("Play", Play, "Run", "Play", "F5"),
-        new("Compile", () => _ = Compile(), "Run", null, "Ctrl+Alt+F11"),
-        new("Save", SaveShown, "File", null, "Ctrl+S"),
-        new("Save assets", SaveAssets, "File", null, "Ctrl+Shift+S"),
-        new("Undo", Undo, "Edit", null, "Ctrl+Z"),
-        new("Redo", Redo, "Edit", null, "Ctrl+Y"),
-        new("Open or close the content drawer", ToggleContent, "View", null, "Ctrl+Space"),
-        new("Swap the outliner and the context panel", SwapPanels, "View"),
-    ];
+    /// <summary>The side column's width, dragged by its left edge and remembered for the next run.</summary>
+    [ObservableProperty]
+    public partial GridLength SideWidth { get; set; } = new(EditorLayout.DefaultSideWidth);
+
+    /// <summary>Takes the drawer's state and the panels' sizes the last run left.</summary>
+    private void RestoreLayout()
+    {
+        if (_layout is null)
+        {
+            return;
+        }
+
+        IsContentOpen = _layout.ContentOpen;
+        ContentHeight = _layout.ContentHeight;
+        DayDockHeight = _layout.DayDockHeight;
+        SideWidth = new GridLength(_layout.SideWidth);
+    }
+
+    partial void OnIsContentOpenChanged(bool value)
+    {
+        if (_layout is not null && _layout.ContentOpen != value)
+        {
+            _layout.ContentOpen = value;
+        }
+    }
+
+    partial void OnContentHeightChanged(double value)
+    {
+        if (_layout is not null && _layout.ContentHeight != value)
+        {
+            _layout.ContentHeight = value;
+        }
+    }
+
+    partial void OnDayDockHeightChanged(double value)
+    {
+        if (_layout is not null && _layout.DayDockHeight != value)
+        {
+            _layout.DayDockHeight = value;
+        }
+    }
+
+    partial void OnSideWidthChanged(GridLength value)
+    {
+        if (_layout is not null && value.IsAbsolute && _layout.SideWidth != value.Value)
+        {
+            _layout.SideWidth = value.Value;
+        }
+    }
+
+    /// <summary>
+    /// What the command palette (Ctrl+K) offers: the commands, each with its key, and, found only by searching, every content file
+    /// (opened as a double-click would) and every entity of the level (selected).
+    /// </summary>
+    public IReadOnlyList<MenuChoice> PaletteChoices
+    {
+        get
+        {
+            List<MenuChoice> choices =
+            [
+                new("Play", Play, "Commands", "Play", "F5"),
+                new("Compile", () => _ = Compile(), "Commands", "Code", "Ctrl+Alt+F11"),
+                new("Save", SaveShown, "Commands", "Save", "Ctrl+S"),
+                new("Save assets", SaveAssets, "Commands", "SaveAssets", "Ctrl+Shift+S"),
+                new("Undo", Undo, "Commands", "Undo", "Ctrl+Z"),
+                new("Redo", Redo, "Commands", "Redo", "Ctrl+Y"),
+                new("Edit the day's light", ToggleDayDock, "Commands", "Sun", Detail: "opens the Day dock"),
+                new("Bake light probes", () => Viewport.BakeProbesCommand.Execute(null), "Commands", "Bake"),
+                new("Open or close the content drawer", ToggleContent, "View", "Folder", "Ctrl+Space"),
+                new("Swap the outliner and the context panel", SwapPanels, "View", "Swap"),
+            ];
+            foreach (AssetEntry asset in Assets.FindFiles())
+            {
+                string path = asset.Path;
+                string? folder = System.IO.Path.GetDirectoryName(path)?.Replace('\\', '/');
+                string file = System.IO.Path.GetFileName(path);
+                choices.Add(new MenuChoice(file, () => OpenContentFile(path), "Content", asset.Type.Icon, Detail: folder, SearchOnly: true));
+            }
+
+            World world = Viewport.Scene.Game.World;
+            foreach (Entity entity in Viewport.Scene.Entities)
+            {
+                if (!world.TryGet(entity, out EntityName name))
+                {
+                    continue;
+                }
+
+                Entity found = entity;
+                string icon = SceneIcons.For(world, entity, Viewport.Scene.Game.Spawner.Components);
+                string? place = world.TryGet(entity, out EntityFolder filed) ? filed.Path.Replace("/", " / ") : null;
+                choices.Add(new MenuChoice(name.Value, () => Viewport.Scene.Selection.Select(found), "Entities", icon, Detail: place, SearchOnly: true));
+            }
+
+            return choices;
+        }
+    }
 
     /// <summary>
     /// Ctrl+S (rule R21, one way to save): saves the document shown in place of the viewport when it saves on its own, else the
@@ -147,6 +239,7 @@ public sealed partial class MainWindowViewModel
         _dataPath = null;
         DataContent = null;
         OnPropertyChanged(nameof(DataHeading));
+        OnPropertyChanged(nameof(DataTitle));
         HideContext(DataTab);
         WatchHistory();
     }

@@ -124,6 +124,29 @@ public sealed class EnvironmentEditorViewModelTests
     }
 
     [Fact]
+    public void EachValueKnowsWhichShownCurveIsItsOwn()
+    {
+        EnvironmentEditorViewModel editor = _builder.Build();
+
+        editor.Find("exposure").IsSelected = true;
+        editor.Find("contrast").IsSelected = true;
+        int second = editor.Find("contrast").TrackIndex;
+        editor.Find("exposure").IsSelected = false;
+
+        second.Should().Be(1);
+        editor.Find("contrast").TrackIndex.Should().Be(0);
+        editor.Find("exposure").TrackIndex.Should().Be(EnvironmentValueViewModel.NoTrack);
+    }
+
+    [Fact]
+    public void StartsOnTheFirstGroupsTab()
+    {
+        EnvironmentEditorViewModel editor = _builder.Build();
+
+        editor.SelectedGroup.Should().BeSameAs(editor.Groups[0]);
+    }
+
+    [Fact]
     public void WritesACurveEditedInTheViewToTheEnvironment()
     {
         EnvironmentEditorViewModel editor = _builder.Build();

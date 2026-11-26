@@ -1,38 +1,41 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="using:FlickerVoid.Editor"
              xmlns:textures="using:FlickerVoid.Editor.Assets.Textures"
-             xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
              x:Class="FlickerVoid.Editor.Textures.TextureEditorView"
              x:DataType="textures:TextureEditorViewModel">
-  <Grid ColumnDefinitions="Auto,*">
-    <!-- The preview: what the build makes of the image, or the canvas repeated by its tiling. -->
-    <StackPanel Grid.Column="0" Margin="12" Spacing="8">
-      <Border Classes="well" Width="384" Height="384" ClipToBounds="True">
-        <Image x:Name="Preview" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None" />
+  <Grid ColumnDefinitions="*,1,320">
+    <!-- The preview fills the working area: what the build makes of the image, or the canvas repeated by its tiling. -->
+    <Panel Grid.Column="0" Background="{DynamicResource EditorDeepBrush}">
+      <Image x:Name="Preview" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None" Margin="24" MaxWidth="768" MaxHeight="768" />
+      <Border Classes="viewportBar" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Padding="8,3">
+        <TextBlock Text="{Binding Summary}" Classes="muted small" />
       </Border>
-      <TextBlock Text="{Binding Summary}" HorizontalAlignment="Center" />
-      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxWidth="384" Foreground="#E0AC2C" />
-    </StackPanel>
+      <Border Classes="toast" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="12"
+              IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxWidth="480" Foreground="{DynamicResource EditorBakeBrush}" />
+      </Border>
+    </Panel>
+    <Border Grid.Column="1" Background="{DynamicResource EditorLineBrush}" />
     <!-- The settings, held unsaved as they change until saved or discarded. -->
-    <Border Grid.Column="1" Classes="well" Margin="0,12,12,12">
+    <Border Grid.Column="2" Classes="well">
       <DockPanel>
-        <DockPanel DockPanel.Dock="Top" Margin="12,8">
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-            <Button Content="Discard" Classes="delete" Command="{Binding DiscardCommand}" ToolTip.Tip="Forget the unsaved edits." />
-          </StackPanel>
-          <TextBlock Text="{Binding Heading}" Classes="heading" Margin="0" VerticalAlignment="Center" />
-        </DockPanel>
+        <Border DockPanel.Dock="Top" Classes="entityHeader">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding DiscardCommand}" ToolTip.Tip="Forget the unsaved edits."
+                    VerticalAlignment="Center">
+              <PathIcon Data="{x:Static shell:LucideIcons.Discard}" />
+            </Button>
+            <Border DockPanel.Dock="Left" Classes="iconTile">
+              <PathIcon Data="{x:Static shell:LucideIcons.Texture}" />
+            </Border>
+            <TextBlock Text="{Binding Heading}" Classes="title" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          </DockPanel>
+        </Border>
         <ScrollViewer>
-          <ItemsControl ItemsSource="{Binding Fields}" Margin="12,0,12,12">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate DataType="inspector:FieldViewModel">
-                <Grid ColumnDefinitions="110,*" Margin="0,3">
-                  <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-                  <ContentControl Grid.Column="1" Content="{Binding}" />
-                </Grid>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+          <Border Classes="sectionBody">
+            <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" />
+          </Border>
         </ScrollViewer>
       </DockPanel>
     </Border>

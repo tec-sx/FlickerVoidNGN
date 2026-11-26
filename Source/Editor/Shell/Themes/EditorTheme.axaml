@@ -1,11 +1,14 @@
-<!-- The editor's one theme: Fluent recoloured with a warm dark palette (lamp-lit browns with one amber accent, never grey; palette A, Ember), compact
-     sizes (smaller fonts, square corners, tight padding) and the shared classes of the shell's bars, icon buttons, headings and
-     viewport overlay, so the viewport gets as much of the window as it can. Views use these classes and resources instead of
-     their own colours and sizes. -->
+<!-- The editor's one theme (Docs/Design/EditorUi.md): palette A, Ember (lamp-lit browns with one amber accent, never grey), and
+     the component kit every view is built from: 22 px rows, 1 px lines, the outline icons, quiet buttons with one filled primary,
+     fields, switches, chips, panel and document tabs, tree rows, the viewport's floating pills. Fluent stays underneath for the
+     controls the kit does not redraw (text boxes, menus, scroll bars). Views use these classes and resources, never their own
+     colours and sizes. -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:menus="using:FlickerVoid.Editor.Core.Menus"
-        xmlns:shell="using:FlickerVoid.Editor">
+        xmlns:shell="using:FlickerVoid.Editor"
+        xmlns:controls="using:FlickerVoid.Editor.Controls"
+        xmlns:chrome="using:Avalonia.Controls.Chrome">
   <FluentTheme>
     <FluentTheme.Palettes>
       <ColorPaletteResources x:Key="Dark"
@@ -21,24 +24,37 @@
   <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
 
   <Styles.Resources>
-    <!-- The editor's palette, from deepest to lightest, then the colours of actions and axes. -->
+    <!-- The palette, from deepest to lightest: input, base (bars), panel, raised (headers, buttons), line, then the three texts. -->
     <SolidColorBrush x:Key="EditorDeepBrush" Color="#0B0705" />
-    <SolidColorBrush x:Key="EditorPanelBrush" Color="#1D1610" />
-    <!-- The frame around the content: bars, headers, tabs and the gaps between panels, lighter than the wells it holds. -->
     <SolidColorBrush x:Key="EditorFrameBrush" Color="#120D09" />
+    <SolidColorBrush x:Key="EditorPanelBrush" Color="#1D1610" />
     <SolidColorBrush x:Key="EditorControlBrush" Color="#2A2119" />
+    <SolidColorBrush x:Key="EditorHoverBrush" Color="#34291F" />
+    <SolidColorBrush x:Key="EditorRowHoverBrush" Color="#241B13" />
     <SolidColorBrush x:Key="EditorLineBrush" Color="#3A2F26" />
     <SolidColorBrush x:Key="EditorTextBrush" Color="#EDE5D8" />
     <SolidColorBrush x:Key="EditorMutedTextBrush" Color="#B6AB99" />
+    <SolidColorBrush x:Key="EditorHintBrush" Color="#8F8372" />
+    <!-- The one accent: selection, focus, unsaved work and the single primary action; its ink, its wash and its line. -->
     <SolidColorBrush x:Key="EditorAccentBrush" Color="#F5A639" />
-    <SolidColorBrush x:Key="EditorOverlayBrush" Color="#E01D1610" />
+    <SolidColorBrush x:Key="EditorAccentInkBrush" Color="#211201" />
+    <SolidColorBrush x:Key="EditorAccentSoftBrush" Color="#422F17" />
+    <SolidColorBrush x:Key="EditorAccentLineBrush" Color="#946527" />
+    <SolidColorBrush x:Key="EditorFillBrush" Color="#38F5A639" />
+    <SolidColorBrush x:Key="EditorNumberFillBrush" Color="#3E2A10" />
+    <SolidColorBrush x:Key="EditorFolderBrush" Color="#CC9A4F" />
+    <!-- Things floating over the picture. -->
+    <SolidColorBrush x:Key="EditorOverlayBrush" Color="#E0120D09" />
+    <SolidColorBrush x:Key="EditorOverlayLineBrush" Color="#B33A2F26" />
+    <SolidColorBrush x:Key="EditorScrimBrush" Color="#52000000" />
+    <!-- Meaning: done, warning, destructive, information; and the axes. -->
     <SolidColorBrush x:Key="EditorPlayBrush" Color="#A6C33F" />
-    <SolidColorBrush x:Key="EditorSaveBrush" Color="#4A9BBF" />
-    <SolidColorBrush x:Key="EditorDeleteBrush" Color="#C8553D" />
+    <SolidColorBrush x:Key="EditorSaveBrush" Color="#5BA3D0" />
+    <SolidColorBrush x:Key="EditorDeleteBrush" Color="#E0664A" />
     <SolidColorBrush x:Key="EditorBakeBrush" Color="#E0AC2C" />
-    <SolidColorBrush x:Key="EditorAxisXBrush" Color="#C8553D" />
+    <SolidColorBrush x:Key="EditorAxisXBrush" Color="#E0664A" />
     <StaticResource x:Key="EditorAxisYBrush" ResourceKey="EditorPlayBrush" />
-    <SolidColorBrush x:Key="EditorAxisZBrush" Color="#4A8FBF" />
+    <SolidColorBrush x:Key="EditorAxisZBrush" Color="#5B9BE0" />
     <!-- The bar of every other number box, which drags like the axes do. -->
     <SolidColorBrush x:Key="EditorValueBrush" Color="#D9B23A" />
 
@@ -46,36 +62,553 @@
     <Color x:Key="EditorCurveBlue">#5ACCFF</Color>
     <Color x:Key="EditorCurvePink">#D97BA6</Color>
     <Color x:Key="EditorCodeColor">#B48EC9</Color>
+    <SolidColorBrush x:Key="EditorCodeBrush" Color="#B48EC9" />
     <Color x:Key="EditorSplashTrack">#26FFFFFF</Color>
     <Color x:Key="EditorNodeShadow">#E0000000</Color>
+    <BoxShadows x:Key="EditorFloatShadow">0 2 10 0 #59000000</BoxShadows>
+    <BoxShadows x:Key="EditorPopupShadow">0 8 28 0 #99000000</BoxShadows>
+    <BoxShadows x:Key="EditorDrawerShadow">0 -12 32 0 #73000000</BoxShadows>
+    <BoxShadows x:Key="EditorSelectedBar">inset 2 0 0 0 #F5A639</BoxShadows>
+    <BoxShadows x:Key="EditorTabTopBar">inset 0 2 0 0 #F5A639</BoxShadows>
+    <BoxShadows x:Key="EditorTabBottomBar">inset 0 -2 0 0 #F5A639</BoxShadows>
 
-    <!-- Fluent's own tokens, read by its control themes. -->
+    <!-- Fluent's own tokens, read by the control themes the kit keeps (text boxes, menus, tooltips, scroll bars). -->
     <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
-    <CornerRadius x:Key="ControlCornerRadius">2</CornerRadius>
-    <CornerRadius x:Key="OverlayCornerRadius">2</CornerRadius>
-    <Thickness x:Key="ButtonPadding">6,1</Thickness>
+    <CornerRadius x:Key="ControlCornerRadius">3</CornerRadius>
+    <CornerRadius x:Key="OverlayCornerRadius">6</CornerRadius>
+    <Thickness x:Key="ButtonPadding">8,0</Thickness>
     <x:Double x:Key="TextControlThemeMinHeight">20</x:Double>
-    <x:Double x:Key="ExpanderMinHeight">20</x:Double>
-    <x:Double x:Key="ExpanderChevronButtonSize">16</x:Double>
-    <Thickness x:Key="ExpanderChevronMargin">4,0</Thickness>
     <StaticResource x:Key="TextControlBorderBrush" ResourceKey="EditorLineBrush" />
-    <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="EditorMutedTextBrush" />
+    <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="EditorHintBrush" />
+    <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="EditorAccentBrush" />
     <StaticResource x:Key="TextControlBackground" ResourceKey="EditorDeepBrush" />
     <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="EditorDeepBrush" />
     <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="EditorDeepBrush" />
-    <Thickness x:Key="TextControlThemePadding">4,1</Thickness>
+    <StaticResource x:Key="TextControlPlaceholderForeground" ResourceKey="EditorHintBrush" />
+    <StaticResource x:Key="TextControlPlaceholderForegroundPointerOver" ResourceKey="EditorHintBrush" />
+    <StaticResource x:Key="TextControlPlaceholderForegroundFocused" ResourceKey="EditorHintBrush" />
+    <Thickness x:Key="TextControlBorderThemeThickness">1</Thickness>
+    <Thickness x:Key="TextControlBorderThemeThicknessFocused">1</Thickness>
+    <Thickness x:Key="TextControlThemePadding">6,1</Thickness>
+    <StaticResource x:Key="ToolTipBackground" ResourceKey="EditorControlBrush" />
+    <StaticResource x:Key="ToolTipBorderBrush" ResourceKey="EditorLineBrush" />
+    <StaticResource x:Key="ToolTipForeground" ResourceKey="EditorTextBrush" />
+    <StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="EditorPanelBrush" />
+    <StaticResource x:Key="MenuFlyoutPresenterBorderBrush" ResourceKey="EditorLineBrush" />
+    <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="EditorAccentSoftBrush" />
+    <StaticResource x:Key="MenuFlyoutItemBackgroundPressed" ResourceKey="EditorAccentSoftBrush" />
+    <StaticResource x:Key="FlyoutPresenterBackground" ResourceKey="EditorPanelBrush" />
+    <StaticResource x:Key="FlyoutBorderThemeBrush" ResourceKey="EditorLineBrush" />
+    <x:Double x:Key="ScrollBarSize">8</x:Double>
 
-    <!-- The editor's own sizes. -->
+    <!-- The kit's measures. -->
     <x:Double x:Key="EditorFontSize">12</x:Double>
+    <x:Double x:Key="EditorTitleFontSize">13</x:Double>
     <x:Double x:Key="EditorHeadingFontSize">12</x:Double>
     <x:Double x:Key="EditorSmallFontSize">11</x:Double>
+    <x:Double x:Key="EditorCapsFontSize">10.5</x:Double>
+    <x:Double x:Key="EditorRowHeight">22</x:Double>
     <x:Double x:Key="EditorSpacing">2</x:Double>
     <!-- Menus scroll past this height. -->
     <x:Double x:Key="EditorMenuMaxHeight">360</x:Double>
-    <CornerRadius x:Key="EditorSearchCornerRadius">10</CornerRadius>
-    <!-- The wells: content sunk into the frame, slightly rounded, shaded along their top and sides. -->
-    <CornerRadius x:Key="EditorWellCornerRadius">3</CornerRadius>
-    <BoxShadows x:Key="EditorWellShadow">0 0 0 0 #00000000</BoxShadows>
+    <CornerRadius x:Key="EditorFieldCornerRadius">3</CornerRadius>
+    <CornerRadius x:Key="EditorButtonCornerRadius">4</CornerRadius>
+    <CornerRadius x:Key="EditorFloatCornerRadius">7</CornerRadius>
+    <CornerRadius x:Key="EditorSearchCornerRadius">4</CornerRadius>
+    <CornerRadius x:Key="EditorWellCornerRadius">6</CornerRadius>
+
+    <!-- The outline icons: every PathIcon strokes its 24 by 24 path in the text colour; PathIcon.filled fills it instead. -->
+    <!-- The window's own buttons, drawn over the top bar's right end (Avalonia's Fluent decorations, MIT, without their title,
+         which the top bar replaces): 44 px wide, outline icons, the close button red under the pointer. -->
+    <ControlTheme x:Key="EditorCaptionButton" TargetType="Button">
+      <Setter Property="Background" Value="{StaticResource EditorHoverBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+      <Setter Property="Width" Value="44" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="(WindowDecorationProperties.ElementRole)" Value="DecorationsElement" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter Name="PART_ContentPresenter" Background="Transparent" Content="{TemplateBinding Content}"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{TemplateBinding Background}" />
+      </Style>
+      <Style Selector="^:pointerover">
+        <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="{x:Type WindowDrawnDecorations}" TargetType="WindowDrawnDecorations">
+      <Setter Property="DefaultTitleBarHeight" Value="30" />
+      <Setter Property="DefaultFrameThickness" Value="1" />
+      <Setter Property="DefaultShadowThickness" Value="8" />
+      <Setter Property="Template">
+        <WindowDrawnDecorationsTemplate>
+          <WindowDrawnDecorationsContent>
+            <WindowDrawnDecorationsContent.Underlay>
+              <Panel x:Name="PART_UnderlayWrapper">
+                <Border x:Name="PART_WindowBorder" Background="Transparent" BorderThickness="{TemplateBinding FrameThickness}"
+                        BorderBrush="{StaticResource EditorLineBrush}" IsHitTestVisible="False" />
+                <Panel x:Name="PART_TitleBar" VerticalAlignment="Top" Height="{TemplateBinding TitleBarHeight}"
+                       Background="{StaticResource EditorFrameBrush}" IsVisible="{TemplateBinding HasTitleBar}"
+                       WindowDecorationProperties.ElementRole="TitleBar" />
+              </Panel>
+            </WindowDrawnDecorationsContent.Underlay>
+            <WindowDrawnDecorationsContent.Overlay>
+              <Panel x:Name="PART_OverlayWrapper">
+                <StackPanel x:Name="PART_OverlayPanel" VerticalAlignment="Top" HorizontalAlignment="Right" Height="29"
+                            IsVisible="{TemplateBinding HasTitleBar}" Orientation="Horizontal">
+                  <Button x:Name="PART_MinimizeButton" Theme="{StaticResource EditorCaptionButton}"
+                          WindowDecorationProperties.ElementRole="MinimizeButton">
+                    <PathIcon Width="12" Height="12" Data="{x:Static shell:LucideIcons.Minimize}" />
+                  </Button>
+                  <Button x:Name="PART_MaximizeButton" Theme="{StaticResource EditorCaptionButton}"
+                          WindowDecorationProperties.ElementRole="MaximizeButton">
+                    <Panel>
+                      <PathIcon x:Name="MaximizeIcon" Width="12" Height="12" Data="{x:Static shell:LucideIcons.Restore}" />
+                      <PathIcon x:Name="RestoreIcon" Width="12" Height="12" Data="{x:Static shell:LucideIcons.Duplicate}" IsVisible="False" />
+                    </Panel>
+                  </Button>
+                  <Button x:Name="PART_CloseButton" Background="{StaticResource EditorDeleteBrush}" Theme="{StaticResource EditorCaptionButton}"
+                          WindowDecorationProperties.ElementRole="CloseButton">
+                    <PathIcon Width="12" Height="12" Data="{x:Static shell:LucideIcons.Close}" />
+                  </Button>
+                </StackPanel>
+              </Panel>
+            </WindowDrawnDecorationsContent.Overlay>
+          </WindowDrawnDecorationsContent>
+        </WindowDrawnDecorationsTemplate>
+      </Setter>
+      <Style Selector="^:has-shadow /template/ Panel#PART_UnderlayWrapper">
+        <Setter Property="Margin" Value="{TemplateBinding ShadowThickness}" />
+      </Style>
+      <Style Selector="^:has-shadow /template/ Border#PART_WindowBorder">
+        <Setter Property="BoxShadow" Value="0 2 10 2 #80000000" />
+      </Style>
+      <Style Selector="^:has-shadow /template/ Panel#PART_OverlayWrapper">
+        <Setter Property="Margin" Value="{TemplateBinding ShadowThickness}" />
+      </Style>
+      <Style Selector="^:has-border /template/ Panel#PART_TitleBar">
+        <Setter Property="Margin" Value="1,1,1,0" />
+      </Style>
+      <Style Selector="^:has-border /template/ StackPanel#PART_OverlayPanel">
+        <Setter Property="Margin" Value="0,1,1,0" />
+      </Style>
+      <Style Selector="^:maximized /template/ PathIcon#MaximizeIcon">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^:maximized /template/ PathIcon#RestoreIcon">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^ /template/ Button:disabled">
+        <Setter Property="Opacity" Value="0.2" />
+      </Style>
+      <Style Selector="^:not(:has-minimize) /template/ Button#PART_MinimizeButton">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^:not(:has-maximize) /template/ Button#PART_MaximizeButton">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^:fullscreen /template/ StackPanel#PART_OverlayPanel">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^:fullscreen /template/ Panel#PART_TitleBar">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="{x:Type PathIcon}" TargetType="PathIcon">
+      <Setter Property="Width" Value="14" />
+      <Setter Property="Height" Value="14" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}">
+            <Viewbox Stretch="Uniform">
+              <Canvas Width="24" Height="24">
+                <Path x:Name="PART_Path" Data="{TemplateBinding Data}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.75"
+                      StrokeLineCap="Round" StrokeJoin="Round" />
+              </Canvas>
+            </Viewbox>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^.filled /template/ Path#PART_Path">
+        <Setter Property="Fill" Value="{Binding $parent[PathIcon].Foreground}" />
+        <Setter Property="StrokeThickness" Value="0" />
+      </Style>
+      <Style Selector="^.solid /template/ Path#PART_Path">
+        <Setter Property="Fill" Value="{Binding $parent[PathIcon].Foreground}" />
+      </Style>
+      <Style Selector="^.thin /template/ Path#PART_Path">
+        <Setter Property="StrokeThickness" Value="1.3" />
+      </Style>
+      <Style Selector="^.bold /template/ Path#PART_Path">
+        <Setter Property="StrokeThickness" Value="2.6" />
+      </Style>
+    </ControlTheme>
+
+    <!-- Buttons: quiet until hovered, 22 px tall. Button.primary is the one filled amber action of a screen. -->
+    <ControlTheme x:Key="{x:Type Button}" TargetType="Button">
+      <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource EditorButtonCornerRadius}" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter x:Name="PART_ContentPresenter" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                            Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Padding="{TemplateBinding Padding}" RecognizesAccessKey="True"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource EditorHoverBrush}" />
+      </Style>
+      <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource EditorLineBrush}" />
+      </Style>
+      <Style Selector="^:disabled">
+        <Setter Property="Opacity" Value="0.4" />
+      </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="{x:Type ToggleButton}" TargetType="ToggleButton" BasedOn="{StaticResource {x:Type Button}}">
+      <Style Selector="^:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+      </Style>
+      <Style Selector="^:checked">
+        <Setter Property="Foreground" Value="{StaticResource EditorAccentInkBrush}" />
+      </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="{x:Type RepeatButton}" TargetType="RepeatButton" BasedOn="{StaticResource {x:Type Button}}" />
+
+    <!-- A switch, for a setting that applies at once: a ToggleButton with Theme="{StaticResource Switch}". -->
+    <ControlTheme x:Key="Switch" TargetType="ToggleButton">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="Transparent" Padding="0,3">
+            <Border x:Name="Track" Width="26" Height="14" CornerRadius="7" Background="{StaticResource EditorDeepBrush}"
+                    BorderBrush="{StaticResource EditorLineBrush}" BorderThickness="1">
+              <Ellipse x:Name="Knob" Width="10" Height="10" Fill="{StaticResource EditorHintBrush}" HorizontalAlignment="Left" Margin="1,0" />
+            </Border>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:checked /template/ Border#Track">
+        <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+      </Style>
+      <Style Selector="^:checked /template/ Ellipse#Knob">
+        <Setter Property="Fill" Value="{StaticResource EditorAccentInkBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+      </Style>
+      <Style Selector="^:disabled">
+        <Setter Property="Opacity" Value="0.4" />
+      </Style>
+    </ControlTheme>
+
+    <!-- A checkbox, inside lists: a 14 px box, amber with a dark tick when checked. -->
+    <ControlTheme x:Key="{x:Type CheckBox}" TargetType="CheckBox">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      <Setter Property="Padding" Value="6,0,0,0" />
+      <Setter Property="MinHeight" Value="20" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid ColumnDefinitions="Auto,*" Background="Transparent">
+            <Border x:Name="Box" Width="14" Height="14" CornerRadius="3" Background="{StaticResource EditorDeepBrush}"
+                    BorderBrush="{StaticResource EditorLineBrush}" BorderThickness="1" VerticalAlignment="Center">
+              <PathIcon x:Name="Tick" Classes="bold" Data="{x:Static shell:LucideIcons.Check}" Width="10" Height="10"
+                        Foreground="{StaticResource EditorAccentInkBrush}" IsVisible="False" />
+            </Border>
+            <ContentPresenter x:Name="PART_ContentPresenter" Grid.Column="1" Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}" Margin="{TemplateBinding Padding}"
+                              VerticalAlignment="Center" RecognizesAccessKey="True" />
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:checked /template/ Border#Box">
+        <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+      </Style>
+      <Style Selector="^:checked /template/ PathIcon#Tick">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^:pointerover /template/ Border#Box">
+        <Setter Property="BorderBrush" Value="{StaticResource EditorHintBrush}" />
+      </Style>
+      <Style Selector="^:disabled">
+        <Setter Property="Opacity" Value="0.4" />
+      </Style>
+    </ControlTheme>
+
+    <!-- A choice: the field's look, the chosen item and a chevron, over a popup of rows. -->
+    <ControlTheme x:Key="{x:Type ComboBox}" TargetType="ComboBox">
+      <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource EditorFieldCornerRadius}" />
+      <Setter Property="Padding" Value="6,0,2,0" />
+      <Setter Property="MinHeight" Value="20" />
+      <Setter Property="MaxDropDownHeight" Value="{StaticResource EditorMenuMaxHeight}" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid ColumnDefinitions="*,Auto">
+            <Border x:Name="Background" Grid.ColumnSpan="2" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" />
+            <TextBlock x:Name="PlaceholderTextBlock" Text="{TemplateBinding PlaceholderText}" Margin="{TemplateBinding Padding}"
+                       Foreground="{StaticResource EditorHintBrush}" VerticalAlignment="Center"
+                       IsVisible="{TemplateBinding SelectionBoxItem, Converter={x:Static ObjectConverters.IsNull}}" />
+            <ContentControl x:Name="ContentPresenter" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding ItemTemplate}"
+                            Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" ClipToBounds="True" />
+            <PathIcon Grid.Column="1" Data="{x:Static shell:LucideIcons.Expand}" Width="11" Height="11" Margin="2,0,5,0"
+                      Foreground="{StaticResource EditorHintBrush}" IsHitTestVisible="False" />
+            <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}" IsLightDismissEnabled="True"
+                   MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}"
+                   MaxHeight="{TemplateBinding MaxDropDownHeight}" PlacementTarget="Background" InheritsTransform="True"
+                   WindowManagerAddShadowHint="False">
+              <Border Background="{StaticResource EditorPanelBrush}" BorderBrush="{StaticResource EditorLineBrush}" BorderThickness="1"
+                      CornerRadius="{StaticResource EditorButtonCornerRadius}" Padding="2" Margin="0,2">
+                <ScrollViewer HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                              VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
+                  <ItemsPresenter x:Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+                </ScrollViewer>
+              </Border>
+            </Popup>
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="{StaticResource EditorHintBrush}" />
+      </Style>
+      <Style Selector="^:dropdownopen /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+      </Style>
+      <Style Selector="^:disabled">
+        <Setter Property="Opacity" Value="0.4" />
+      </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="{x:Type ComboBoxItem}" TargetType="ComboBoxItem">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="MinHeight" Value="{StaticResource EditorRowHeight}" />
+      <Setter Property="CornerRadius" Value="{StaticResource EditorFieldCornerRadius}" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter x:Name="PART_ContentPresenter" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}"
+                            Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Padding="{TemplateBinding Padding}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource EditorHoverBrush}" />
+      </Style>
+      <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
+      </Style>
+    </ControlTheme>
+
+    <!-- List rows: 22 px, a soft amber wash and a 2 px bar when selected. -->
+    <ControlTheme x:Key="{x:Type ListBoxItem}" TargetType="ListBoxItem">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="MinHeight" Value="{StaticResource EditorRowHeight}" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter x:Name="PART_ContentPresenter" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                            Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Padding="{TemplateBinding Padding}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource EditorRowHoverBrush}" />
+      </Style>
+      <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
+        <Setter Property="BoxShadow" Value="{StaticResource EditorSelectedBar}" />
+      </Style>
+      <Style Selector="^:disabled">
+        <Setter Property="Opacity" Value="0.6" />
+      </Style>
+    </ControlTheme>
+
+    <!-- An expander is a section: the 24 px header with a chevron, and its body under it. -->
+    <ControlTheme x:Key="{x:Type Expander}" TargetType="Expander">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <DockPanel>
+            <ToggleButton x:Name="PART_Toggle" DockPanel.Dock="Top" IsChecked="{TemplateBinding IsExpanded, Mode=TwoWay}"
+                          Background="{StaticResource EditorControlBrush}" BorderBrush="{StaticResource EditorLineBrush}"
+                          BorderThickness="0,0,0,1" CornerRadius="0" Height="24" MinHeight="24" Padding="6,0" FontWeight="SemiBold"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+              <DockPanel>
+                <Panel DockPanel.Dock="Left" Width="14" Margin="0,0,6,0">
+                  <PathIcon x:Name="Closed" Data="{x:Static shell:LucideIcons.Next}" Width="12" Height="12"
+                            Foreground="{StaticResource EditorHintBrush}" />
+                  <PathIcon x:Name="Opened" Data="{x:Static shell:LucideIcons.Expand}" Width="12" Height="12" IsVisible="False"
+                            Foreground="{StaticResource EditorHintBrush}" />
+                </Panel>
+                <ContentPresenter Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                  VerticalAlignment="Center" />
+              </DockPanel>
+            </ToggleButton>
+            <Border x:Name="Body" IsVisible="{TemplateBinding IsExpanded}" Padding="10,5,8,7" Grid.IsSharedSizeScope="True"
+                    BorderBrush="{StaticResource EditorLineBrush}" BorderThickness="0,0,0,1">
+              <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}" />
+            </Border>
+          </DockPanel>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:expanded /template/ PathIcon#Closed">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^:expanded /template/ PathIcon#Opened">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^ /template/ ToggleButton#PART_Toggle:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      </Style>
+      <Style Selector="^ /template/ ToggleButton#PART_Toggle:not(:checked) /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+      </Style>
+    </ControlTheme>
+
+    <!-- Tree rows: the same 22 px row, indented 14 px a level, with an outline chevron. -->
+    <ControlTheme x:Key="TreeChevron" TargetType="ToggleButton">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Height" Value="{StaticResource EditorRowHeight}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="Transparent">
+            <Panel>
+              <PathIcon x:Name="Closed" Data="{x:Static shell:LucideIcons.Next}" Width="12" Height="12" />
+              <PathIcon x:Name="Opened" Data="{x:Static shell:LucideIcons.Expand}" Width="12" Height="12" IsVisible="False" />
+            </Panel>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:checked /template/ PathIcon#Closed">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^:checked /template/ PathIcon#Opened">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="{x:Type TreeViewItem}" TargetType="TreeViewItem">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      <Setter Property="MinHeight" Value="{StaticResource EditorRowHeight}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <StackPanel>
+            <Border x:Name="PART_LayoutRoot" Classes="TreeViewItemLayoutRoot" Focusable="True" Background="{TemplateBinding Background}"
+                    MinHeight="{TemplateBinding MinHeight}" TemplatedControl.IsTemplateFocusTarget="True">
+              <Grid x:Name="PART_Header" ColumnDefinitions="Auto,*"
+                    Margin="{TemplateBinding Level, Mode=OneWay, Converter={x:Static shell:TreeIndent.FromLevel}}">
+                <Panel Width="16" Margin="2,0,2,0">
+                  <ToggleButton x:Name="PART_ExpandCollapseChevron" Theme="{StaticResource TreeChevron}" Focusable="False"
+                                IsChecked="{TemplateBinding IsExpanded, Mode=TwoWay}" />
+                </Panel>
+                <ContentPresenter x:Name="PART_HeaderPresenter" Grid.Column="1" Content="{TemplateBinding Header}"
+                                  ContentTemplate="{TemplateBinding HeaderTemplate}" Focusable="False"
+                                  HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+              </Grid>
+            </Border>
+            <ItemsPresenter x:Name="PART_ItemsPresenter" IsVisible="{TemplateBinding IsExpanded}" ItemsPanel="{TemplateBinding ItemsPanel}" />
+          </StackPanel>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:empty /template/ ToggleButton#PART_ExpandCollapseChevron">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^ /template/ Border#PART_LayoutRoot:pointerover">
+        <Setter Property="Background" Value="{StaticResource EditorRowHoverBrush}" />
+      </Style>
+      <Style Selector="^:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
+        <Setter Property="BoxShadow" Value="{StaticResource EditorSelectedBar}" />
+      </Style>
+    </ControlTheme>
+
+    <!-- Panel tabs: a 26 px strip on the base colour; the tab in front takes the panel's colour and joins it. -->
+    <ControlTheme x:Key="{x:Type TabControl}" TargetType="TabControl">
+      <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="ItemsPanel">
+        <ItemsPanelTemplate>
+          <StackPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </Setter>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <DockPanel Background="{TemplateBinding Background}">
+            <Panel DockPanel.Dock="Top" Height="26" Background="{StaticResource EditorFrameBrush}">
+              <Border Height="1" VerticalAlignment="Bottom" Background="{StaticResource EditorLineBrush}" />
+              <ItemsPresenter x:Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" HorizontalAlignment="Left" />
+            </Panel>
+            <ContentPresenter x:Name="PART_SelectedContentHost" Content="{TemplateBinding SelectedContent}"
+                              ContentTemplate="{TemplateBinding SelectedContentTemplate}" Margin="{TemplateBinding Padding}" />
+          </DockPanel>
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+    <ControlTheme x:Key="{x:Type TabItem}" TargetType="TabItem">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+      <Setter Property="FontSize" Value="{StaticResource EditorFontSize}" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="Height" Value="26" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="PART_LayoutRoot" Background="{TemplateBinding Background}" BorderBrush="{StaticResource EditorLineBrush}"
+                  BorderThickness="0,0,1,0" Padding="{TemplateBinding Padding}">
+            <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
+                              VerticalAlignment="Center" RecognizesAccessKey="True" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      </Style>
+      <Style Selector="^:selected">
+        <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      </Style>
+    </ControlTheme>
 
     <!-- The item of a menu built from choices (MenuNode): its icon, its key and its submenu, or a separator. -->
     <ControlTheme x:Key="ChoiceMenuItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="menus:MenuNode">
@@ -85,330 +618,171 @@
       <Setter Property="ItemsSource" Value="{Binding Children}" />
       <Setter Property="Icon">
         <Template>
-          <PathIcon Data="{Binding Icon, Converter={x:Static shell:MaterialIcons.ByName}}"
+          <PathIcon Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}"
                     IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
         </Template>
       </Setter>
     </ControlTheme>
   </Styles.Resources>
 
-  <!-- Text: every control inherits the window's size. The window is the frame that the wells sink into. -->
+  <!-- Text: every control inherits the window's size and colour. The window is the base the panels sit on. -->
   <Style Selector="Window">
     <Setter Property="FontSize" Value="{StaticResource EditorFontSize}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
     <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
+    <Setter Property="FontFeatures" Value="+tnum" />
   </Style>
 
-  <!-- A well: an area of content (a tree, list, form or canvas) sunk into the frame, so the content reads as deeper than the
-       bars and headers around it. Lists and trees inside let it show through. -->
+  <!-- A well: an area of content (a tree, list, form or canvas) in the panel's colour. -->
   <Style Selector="Border.well">
     <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
-    <Setter Property="CornerRadius" Value="0" />
-    <Setter Property="BoxShadow" Value="{StaticResource EditorWellShadow}" />
     <Setter Property="ClipToBounds" Value="True" />
-    <Setter Property="Margin" Value="0" />
-    <Setter Property="Padding" Value="1,3,1,1" />
   </Style>
-  <Style Selector="Border.well.viewport">
+  <Style Selector="ListBox, TreeView">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Padding" Value="0" />
   </Style>
-  <Style Selector="Border.well ListBox, Border.well TreeView, Border.well ScrollViewer">
-    <Setter Property="Background" Value="Transparent" />
-  </Style>
+  <!-- Splitters and grips are 1 px lines that can be grabbed 3 px to either side. -->
   <Style Selector="GridSplitter">
     <Setter Property="Background" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="MinWidth" Value="1" />
+    <Setter Property="MinHeight" Value="1" />
+    <Setter Property="ZIndex" Value="10" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+          <Border Background="{TemplateBinding Background}" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="GridSplitter[ResizeDirection=Columns]">
+    <Setter Property="Padding" Value="3,0" />
+    <Setter Property="Margin" Value="-3,0" />
+  </Style>
+  <Style Selector="GridSplitter[ResizeDirection=Rows]">
+    <Setter Property="Padding" Value="0,3" />
+    <Setter Property="Margin" Value="0,-3" />
+  </Style>
+  <Style Selector="GridSplitter:pointerover, GridSplitter:pressed">
+    <Setter Property="Background" Value="{StaticResource EditorAccentLineBrush}" />
+  </Style>
+  <Style Selector="controls|HeightGrip">
+    <Setter Property="Height" Value="7" />
+    <Setter Property="Margin" Value="0,-3,0,0" />
+    <Setter Property="Padding" Value="0,3" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="ZIndex" Value="10" />
+  </Style>
+  <Style Selector="controls|HeightGrip > Border">
+    <Setter Property="Background" Value="{StaticResource EditorLineBrush}" />
+  </Style>
+  <Style Selector="controls|HeightGrip:pointerover > Border">
+    <Setter Property="Background" Value="{StaticResource EditorAccentLineBrush}" />
+  </Style>
+
+  <!-- Type: 13 semibold for names and titles, 12 semibold for section headers, 12 for everything else, 11 for hints and units,
+       10.5 caps for group labels. -->
+  <Style Selector="TextBlock.title">
+    <Setter Property="FontSize" Value="{StaticResource EditorTitleFontSize}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
   <Style Selector="TextBlock.heading">
     <Setter Property="FontSize" Value="{StaticResource EditorHeadingFontSize}" />
     <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Margin" Value="6,4" />
+    <Setter Property="Margin" Value="10,6" />
   </Style>
-  <!-- What fills an empty panel. -->
   <Style Selector="TextBlock.hint">
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="TextBlock.muted">
     <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="PathIcon.muted">
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="TextBlock.faint">
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="PathIcon.faint">
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
   </Style>
   <Style Selector="TextBlock.small">
     <Setter Property="FontSize" Value="{StaticResource EditorSmallFontSize}" />
   </Style>
-
-  <!-- Buttons and inputs: square and tight. -->
-  <Style Selector="Button, ToggleButton, DropDownButton, SplitButton, RepeatButton">
-    <Setter Property="Padding" Value="6,1" />
-    <Setter Property="MinHeight" Value="20" />
-    <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
+  <Style Selector="TextBlock.caps">
+    <Setter Property="FontSize" Value="{StaticResource EditorCapsFontSize}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+    <Setter Property="LetterSpacing" Value="0.6" />
   </Style>
-  <Style Selector="TextBox, AutoCompleteBox">
-    <Setter Property="MinHeight" Value="20" />
-    <Setter Property="Padding" Value="4,1" />
-    <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
-  </Style>
-  <Style Selector="ComboBox">
-    <Setter Property="MinHeight" Value="20" />
-    <Setter Property="Padding" Value="6,1,0,1" />
-    <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
-  </Style>
-  <Style Selector="CheckBox">
-    <Setter Property="MinHeight" Value="20" />
-    <Setter Property="Padding" Value="4,0,0,0" />
-  </Style>
-
-  <!-- Lists, trees, menus and tabs. -->
-  <Style Selector="ListBoxItem">
-    <Setter Property="Padding" Value="6,2" />
-    <Setter Property="MinHeight" Value="20" />
-  </Style>
-  <Style Selector="TreeViewItem">
-    <Setter Property="MinHeight" Value="20" />
-  </Style>
-  <Style Selector="MenuItem">
-    <Setter Property="Padding" Value="8,3" />
-  </Style>
-  <Style Selector="MenuItem PathIcon">
-    <Setter Property="Width" Value="14" />
-    <Setter Property="Height" Value="14" />
-  </Style>
-  <!-- Menus and submenus scroll once they hold more than fits. -->
-  <Style Selector="MenuFlyoutPresenter, ContextMenu, MenuItem /template/ Popup > Border">
-    <Setter Property="MaxHeight" Value="{StaticResource EditorMenuMaxHeight}" />
-  </Style>
-
-  <!-- The asset picker (AssetPickerView): a field showing the current file, over a popup like the searchable menu. -->
-  <Style Selector="ToggleButton.asset">
-    <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+  <!-- A key hint: Ctrl K, Shift A. -->
+  <Style Selector="Border.kbd">
     <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="Padding" Value="5,2" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Padding" Value="4,0" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
-  <Style Selector="ToggleButton.asset:checked /template/ ContentPresenter">
-    <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+  <Style Selector="Border.kbd > TextBlock">
+    <Setter Property="FontSize" Value="{StaticResource EditorCapsFontSize}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
-  <Style Selector="Border.pickerPopup">
-    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{StaticResource EditorWellCornerRadius}" />
-    <Setter Property="BoxShadow" Value="0 4 12 0 #80000000" />
-  </Style>
-  <Style Selector="Button.pickerNone">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
-    <Setter Property="HorizontalContentAlignment" Value="Left" />
-    <Setter Property="Margin" Value="4,0" />
-    <Setter Property="Opacity" Value="0.8" />
-  </Style>
-
-  <!-- The search box (SearchBox) and the searchable menu (SearchMenu). -->
-  <Style Selector="TextBox.search">
-    <Setter Property="CornerRadius" Value="{StaticResource EditorSearchCornerRadius}" />
-    <Setter Property="Padding" Value="2,1,4,1" />
-  </Style>
-  <Style Selector="TextBox.search PathIcon.searchGlass">
-    <Setter Property="Width" Value="12" />
-    <Setter Property="Height" Value="12" />
-    <Setter Property="Margin" Value="7,0,0,0" />
-    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
-  </Style>
-  <Style Selector="TextBox.search Button.searchClear">
-    <Setter Property="Margin" Value="0,0,3,0" />
-  </Style>
-  <Style Selector="FlyoutPresenter.searchMenu">
-    <Setter Property="Padding" Value="0" />
-    <Setter Property="MinWidth" Value="0" />
-  </Style>
-  <Style Selector="ListBox.menuRows ListBoxItem">
-    <Setter Property="Padding" Value="8,3" />
-  </Style>
-  <Style Selector="ListBox.menuRows ListBoxItem:disabled">
-    <Setter Property="Padding" Value="8,6,8,1" />
-  </Style>
-  <Style Selector="TextBlock.menuHeading">
-    <Setter Property="FontSize" Value="{StaticResource EditorSmallFontSize}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
-  </Style>
-  <!-- The scene outline: small icons, folders in the asset browser's folder colour. -->
-  <Style Selector="TreeView.outline TreeViewItem">
-    <Setter Property="MinHeight" Value="20" />
-  </Style>
-  <Style Selector="PathIcon.outlineIcon">
-    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
-  </Style>
-  <Style Selector="PathIcon.outlineIcon.folder">
-    <Setter Property="Foreground" Value="#DCBC98" />
-  </Style>
-  <Style Selector="TreeView.outline TreeViewItem /template/ ContentPresenter#PART_HeaderPresenter">
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-  </Style>
-  <!-- Entities shown under the entity they are nested under, in the axis blue; hidden ones faded. -->
-  <Style Selector="TextBlock.outlineName.nested">
-    <Setter Property="Foreground" Value="{StaticResource EditorAxisZBrush}" />
-  </Style>
-  <Style Selector="TextBlock.outlineName.hidden, PathIcon.outlineIcon.hidden">
-    <Setter Property="Opacity" Value="0.45" />
-  </Style>
-  <Style Selector=":is(Button).icon.outlineRow">
-    <Setter Property="Width" Value="18" />
-    <Setter Property="Height" Value="18" />
-    <Setter Property="Padding" Value="2" />
-  </Style>
-  <Style Selector=":is(Button).icon.outlineRow PathIcon">
-    <Setter Property="Width" Value="12" />
-    <Setter Property="Height" Value="12" />
-  </Style>
-
-  <!-- The asset browser's kind filters: a row of chips over the tiles, the chosen one in the accent. -->
-  <Style Selector="ListBox.filters">
-    <Setter Property="Background" Value="Transparent" />
-  </Style>
-  <Style Selector="ListBox.filters ListBoxItem">
-    <Setter Property="Padding" Value="7,1" />
-    <Setter Property="Margin" Value="0,0,3,3" />
-    <Setter Property="MinHeight" Value="18" />
+  <!-- A small rounded label: a template's name, a count. -->
+  <Style Selector="Border.chip">
+    <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
     <Setter Property="CornerRadius" Value="9" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="Height" Value="18" />
+    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
-  <Style Selector="ListBox.filters ListBoxItem:selected">
-    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
-  </Style>
-  <Style Selector="TextBlock.menuDetail">
-    <Setter Property="FontSize" Value="{StaticResource EditorSmallFontSize}" />
-    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
-  </Style>
-  <Style Selector="TabItem">
-    <Setter Property="FontSize" Value="{StaticResource EditorHeadingFontSize}" />
-    <Setter Property="MinHeight" Value="22" />
-    <Setter Property="Padding" Value="8,1" />
-  </Style>
-  <Style Selector="Expander">
-    <Setter Property="Padding" Value="6,2" />
-    <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
-  </Style>
-  <Style Selector="Expander /template/ ToggleButton#ExpanderHeader">
-    <Setter Property="MinHeight" Value="20" />
-    <Setter Property="Padding" Value="6,0,2,0" />
-  </Style>
-  <!-- Views that want the chevron somewhere else draw their own and hide Fluent's. -->
-  <Style Selector="Expander.ownChevron /template/ ToggleButton#ExpanderHeader /template/ Border#ExpandCollapseChevronBorder">
-    <Setter Property="IsVisible" Value="False" />
-  </Style>
-
-  <!-- The shell's bars: the toolbar above the viewport and the status bar below it, part of the frame. -->
-  <Style Selector="Border.toolbar, Border.statusbar">
-    <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
-  </Style>
-  <Style Selector="Border.toolbar">
-    <Setter Property="Padding" Value="2,1" />
-  </Style>
-  <Style Selector="Border.toolbar StackPanel">
-    <Setter Property="Spacing" Value="{StaticResource EditorSpacing}" />
-  </Style>
-  <Style Selector="Border.toolbar Separator">
+  <Style Selector="Border.vsep">
     <Setter Property="Width" Value="1" />
     <Setter Property="Height" Value="16" />
-    <Setter Property="Margin" Value="4,0" />
+    <Setter Property="Margin" Value="5,0" />
     <Setter Property="Background" Value="{StaticResource EditorLineBrush}" />
-  </Style>
-  <!-- The toolbar doubles as the window's title bar, leaving room on the right for the window's own buttons. -->
-  <Style Selector="Border.titleBar">
-    <Setter Property="Height" Value="30" />
-    <Setter Property="Padding" Value="6,0,140,0" />
-  </Style>
-  <Style Selector="Border.titleBar StackPanel">
     <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-  <Style Selector="PathIcon.logo">
-    <Setter Property="Width" Value="16" />
-    <Setter Property="Height" Value="16" />
-    <Setter Property="Margin" Value="2,0,4,0" />
-    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
-  </Style>
-  <Style Selector="TextBlock.windowTitle">
-    <Setter Property="VerticalAlignment" Value="Center" />
-    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
-    <Setter Property="Margin" Value="0,0,4,0" />
-  </Style>
-  <Style Selector="Border.statusbar">
-    <Setter Property="Padding" Value="6,1" />
-  </Style>
-  <Style Selector="Border.statusbar TextBlock">
-    <Setter Property="FontSize" Value="{StaticResource EditorSmallFontSize}" />
   </Style>
 
-  <!-- The viewport's floating tool bars and camera buttons. -->
-  <Style Selector="Border.viewportBar">
-    <Setter Property="Background" Value="{StaticResource EditorOverlayBrush}" />
-    <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
-    <Setter Property="Padding" Value="1" />
+  <!-- Buttons by role. -->
+  <Style Selector="Button.primary">
+    <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentInkBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
-  <Style Selector="ToggleButton.viewportIcon">
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="#FFB955" />
+  </Style>
+  <Style Selector="Button.delete">
+    <Setter Property="Foreground" Value="{StaticResource EditorDeleteBrush}" />
+  </Style>
+  <!-- Quiet: no box until hovered; the bars' and headers' buttons. -->
+  <Style Selector=":is(Button).quiet, :is(Button).icon">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+    <Setter Property="Padding" Value="7,0" />
+  </Style>
+  <Style Selector=":is(Button).icon">
+    <Setter Property="Width" Value="22" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector=":is(Button).icon.small">
     <Setter Property="Width" Value="18" />
     <Setter Property="Height" Value="18" />
-    <Setter Property="MinHeight" Value="0" />
-    <Setter Property="Margin" Value="4" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
   </Style>
-  <Style Selector="ComboBox.viewportSnap">
-    <Setter Property="MinWidth" Value="52" />
-    <Setter Property="Height" Value="24" />
-    <Setter Property="MinHeight" Value="0" />
-    <Setter Property="Padding" Value="4,0" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.viewportIcon:checked /template/ ContentPresenter">
-    <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
-  </Style>
-  <Style Selector="Button.viewportRound">
-    <Setter Property="Width" Value="26" />
-    <Setter Property="Height" Value="26" />
-    <Setter Property="MinHeight" Value="0" />
-    <Setter Property="Padding" Value="5" />
-    <Setter Property="CornerRadius" Value="13" />
-    <Setter Property="HorizontalAlignment" Value="Center" />
-    <Setter Property="Background" Value="{StaticResource EditorOverlayBrush}" />
-    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
-  </Style>
-  <Style Selector="Button.viewportRound PathIcon, ToggleButton.viewportIcon PathIcon">
-    <Setter Property="Width" Value="16" />
-    <Setter Property="Height" Value="16" />
-  </Style>
-  <!-- Icon buttons in the shell's bars; a colour class marks what an action does: play, save, delete or bake. -->
-  <Style Selector="Button.icon, ToggleButton.icon, DropDownButton.icon">
-    <Setter Property="Width" Value="24" />
-    <Setter Property="Height" Value="20" />
-    <Setter Property="MinHeight" Value="0" />
-    <Setter Property="Padding" Value="3" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
-    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
-  </Style>
-  <Style Selector="DropDownButton.icon">
-    <Setter Property="Width" Value="32" />
-  </Style>
-  <Style Selector=":is(Button).icon PathIcon">
-    <Setter Property="Width" Value="16" />
-    <Setter Property="Height" Value="16" />
-  </Style>
-  <Style Selector="Button.icon.small">
-    <Setter Property="Width" Value="16" />
-    <Setter Property="Height" Value="16" />
-    <Setter Property="Padding" Value="2" />
-  </Style>
-  <Style Selector="Button.icon.small PathIcon, PathIcon.small">
+  <Style Selector=":is(Button).icon.small PathIcon, PathIcon.small">
     <Setter Property="Width" Value="12" />
     <Setter Property="Height" Value="12" />
   </Style>
-  <Style Selector="ToggleButton.icon:checked /template/ ContentPresenter">
-    <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.icon:checked">
-    <Setter Property="Foreground" Value="{StaticResource EditorDeepBrush}" />
+  <Style Selector="ToggleButton.icon:checked, ToggleButton.quiet:checked">
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentInkBrush}" />
   </Style>
   <Style Selector="Button.icon.save">
     <Setter Property="Foreground" Value="{StaticResource EditorSaveBrush}" />
@@ -419,28 +793,338 @@
   <Style Selector="Button.icon.bake">
     <Setter Property="Foreground" Value="{StaticResource EditorBakeBrush}" />
   </Style>
-  <Style Selector="Button.icon.play">
-    <Setter Property="Foreground" Value="{StaticResource EditorPlayBrush}" />
+
+  <!-- Fields: 20 px inside a 22 px row, 3 px corners, the deepest colour, an amber border when focused. -->
+  <Style Selector="TextBox">
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Padding" Value="6,1" />
+    <Setter Property="CornerRadius" Value="{StaticResource EditorFieldCornerRadius}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
-  <Style Selector="Button.icon.play PathIcon">
-    <Setter Property="Width" Value="20" />
-    <Setter Property="Height" Value="20" />
+  <Style Selector="AutoCompleteBox">
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Padding" Value="6,1" />
+    <Setter Property="CornerRadius" Value="{StaticResource EditorFieldCornerRadius}" />
   </Style>
-  <Style Selector="Button.icon.play:pointerover /template/ ContentPresenter">
-    <Setter Property="Foreground" Value="#C2DB5E" />
+  <Style Selector="TextBox.drag">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Padding" Value="5,1" />
+    <Setter Property="Cursor" Value="SizeWestEast" />
   </Style>
-  <Style Selector="Button.icon.play:disabled /template/ ContentPresenter">
-    <Setter Property="Foreground" Value="{StaticResource EditorPlayBrush}" />
+  <Style Selector="TextBox.drag:pointerover /template/ Border#PART_BorderElement, TextBox.drag:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{Binding $parent[TextBox].Background}" />
   </Style>
-  <Style Selector="Button.icon.play:disabled">
-    <Setter Property="Opacity" Value="0.4" />
+  <Style Selector="TextBox.drag.typing">
+    <Setter Property="Cursor" Value="Ibeam" />
+  </Style>
+  <!-- A number box's axis letter, unit and the fill that shows where it sits in its range. -->
+  <Style Selector="TextBlock.axis">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="5,0,0,0" />
+  </Style>
+  <Style Selector="TextBlock.unit">
+    <Setter Property="FontSize" Value="{StaticResource EditorSmallFontSize}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,0,6,0" />
   </Style>
 
-  <!-- The inspector: a line under each component's header and number boxes that fit three to a row. -->
+  <!-- Menus. -->
+  <Style Selector="MenuItem">
+    <Setter Property="Padding" Value="8,3" />
+  </Style>
+  <Style Selector="MenuFlyoutPresenter, ContextMenu, MenuItem /template/ Popup > Border">
+    <Setter Property="MaxHeight" Value="{StaticResource EditorMenuMaxHeight}" />
+  </Style>
+  <Style Selector="ContextMenu, MenuFlyoutPresenter">
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+  </Style>
+
+  <!-- The asset picker (AssetPickerView): a field showing the current file, over a popup like the searchable menu. -->
+  <Style Selector="ToggleButton.asset">
+    <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource EditorFieldCornerRadius}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+    <Setter Property="Padding" Value="6,0,5,0" />
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="ToggleButton.asset:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.asset:checked">
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.asset:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="Border.pickerPopup">
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource EditorWellCornerRadius}" />
+    <Setter Property="BoxShadow" Value="{StaticResource EditorPopupShadow}" />
+  </Style>
+  <Style Selector="Button.pickerNone">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Margin" Value="4,0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+
+  <!-- The search box (SearchBox) and the searchable menu (SearchMenu). -->
+  <Style Selector="TextBox.search">
+    <Setter Property="CornerRadius" Value="{StaticResource EditorSearchCornerRadius}" />
+    <Setter Property="Padding" Value="4,1,4,1" />
+  </Style>
+  <Style Selector="TextBox.search PathIcon.searchGlass">
+    <Setter Property="Width" Value="13" />
+    <Setter Property="Height" Value="13" />
+    <Setter Property="Margin" Value="7,0,0,0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="TextBox.search Button.searchClear">
+    <Setter Property="Margin" Value="0,0,2,0" />
+  </Style>
+  <!-- A search row at the top of a panel: no box, only a line under it. -->
+  <Style Selector="TextBox.search.row">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="MinHeight" Value="26" />
+  </Style>
+  <Style Selector="TextBox.search.row:focus /template/ Border#PART_BorderElement, TextBox.search.row:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="Border.searchRow">
+    <Setter Property="Height" Value="26" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="0,0,4,0" />
+  </Style>
+  <Style Selector="Border.searchRow TextBox.search.row">
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="MinHeight" Value="25" />
+  </Style>
+  <Style Selector="Border.searchRow TextBox.search.row:focus /template/ Border#PART_BorderElement, Border.searchRow TextBox.search.row:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <!-- A panel tab's header: an icon, then its name. -->
+  <Style Selector="StackPanel.tabHeader">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="6" />
+  </Style>
+  <Style Selector="StackPanel.tabHeader > TextBlock">
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="FlyoutPresenter.searchMenu">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MaxWidth" Value="640" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+  </Style>
+  <Style Selector="ListBox.menuRows ListBoxItem">
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="MinHeight" Value="26" />
+  </Style>
+  <Style Selector="ListBox.menuRows ListBoxItem:disabled">
+    <Setter Property="Padding" Value="12,6,12,1" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="TextBlock.menuHeading">
+    <Setter Property="FontSize" Value="{StaticResource EditorCapsFontSize}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+    <Setter Property="LetterSpacing" Value="0.6" />
+  </Style>
+  <Style Selector="TextBlock.menuDetail">
+    <Setter Property="FontSize" Value="{StaticResource EditorSmallFontSize}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+
+  <!-- The scene outline: type icons in the hint colour, folders warmer; nested entities dimmer, hidden ones faint. -->
+  <Style Selector="PathIcon.outlineIcon">
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="PathIcon.outlineIcon.folder">
+    <Setter Property="Foreground" Value="{StaticResource EditorFolderBrush}" />
+  </Style>
+  <Style Selector="TextBlock.outlineName.folder">
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+    <Setter Property="FontWeight" Value="Medium" />
+  </Style>
+  <Style Selector="TextBlock.outlineName.nested">
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="TextBlock.outlineName.hidden">
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+    <Setter Property="Opacity" Value="0.7" />
+  </Style>
+  <Style Selector="PathIcon.outlineIcon.hidden">
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+    <Setter Property="Opacity" Value="0.7" />
+  </Style>
+  <Style Selector=":is(Button).icon.outlineRow">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector=":is(Button).icon.outlineRow PathIcon">
+    <Setter Property="Width" Value="13" />
+    <Setter Property="Height" Value="13" />
+  </Style>
+  <!-- A row's eye shows on the row under the pointer, on the selected row and on a hidden entity. -->
+  <Style Selector="TreeViewItem :is(Button).rowEye">
+    <Setter Property="Opacity" Value="0" />
+  </Style>
+  <Style Selector="TreeViewItem /template/ Border#PART_LayoutRoot:pointerover :is(Button).rowEye, TreeViewItem:selected /template/ Border#PART_LayoutRoot :is(Button).rowEye, TreeViewItem :is(Button).rowEye.on">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+
+  <!-- Chips: a row of filters; the chosen one washed in the accent. -->
+  <Style Selector="ListBox.filters ListBoxItem">
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="Margin" Value="0,0,3,0" />
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="ListBox.filters ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <Style Selector="ListBox.filters ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentLineBrush}" />
+    <Setter Property="BoxShadow" Value="none" />
+  </Style>
+
+  <!-- The category rail: a 30 px column of icon buttons; the chosen one washed, with a 2 px bar at the panel's edge. -->
+  <Style Selector="ListBox.rail">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="ListBox.rail ListBoxItem">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="3,1" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ListBox.rail ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="ListBox.rail ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BoxShadow" Value="-3 0 0 -1 #F5A639" />
+  </Style>
+
+  <Style Selector="Border.rail">
+    <Setter Property="Width" Value="30" />
+    <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="Padding" Value="0,5" />
+  </Style>
+  <Style Selector=":is(Button).railButton">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="3,1" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector=":is(Button).railButton.on, ToggleButton.railButton:checked">
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector=":is(Button).railButton.on /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.railButton:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
+    <Setter Property="BoxShadow" Value="-3 0 0 -1 #F5A639" />
+  </Style>
+  <!-- The inspector's header: the entity's icon on a tile, its name over where it is. -->
+  <Style Selector="Border.entityHeader">
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="Border.iconTile">
+    <Setter Property="Width" Value="22" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.iconTile > PathIcon">
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="Button.addRow">
+    <Setter Property="Height" Value="26" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+
+  <!-- Sections (a component in the inspector): a 24 px raised header with a chevron, an icon and a menu; closed, the header
+       sinks into the panel and says what the section holds. -->
+  <Style Selector="ToggleButton.section">
+    <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="ToggleButton.section:checked">
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.section:checked /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.section:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.section:not(:checked)">
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.section:not(:checked) /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.sectionBody">
+    <Setter Property="Grid.IsSharedSizeScope" Value="True" />
+    <Setter Property="Padding" Value="10,5,8,7" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
   <!-- A field's value sits beside its label, or, holding fields of its own, under it, across the row and indented (FieldRow in
        App.axaml); set by style, as a local column would win over the nested one. -->
   <Style Selector="ContentControl.fieldValue">
     <Setter Property="Grid.Column" Value="1" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
   <Style Selector="ContentControl.fieldValue.nested">
     <Setter Property="Grid.Row" Value="1" />
@@ -448,17 +1132,309 @@
     <Setter Property="Grid.ColumnSpan" Value="2" />
     <Setter Property="Margin" Value="10,2,0,0" />
   </Style>
-  <Style Selector="Border.category">
+  <Style Selector="TextBlock.fieldLabel">
+    <Setter Property="Margin" Value="0,0,8,0" />
+    <Setter Property="MaxWidth" Value="170" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+
+  <!-- The top bar (30 px): the project menu, the document tabs, the command search, then unsaved work, undo, Compile and Play. -->
+  <Style Selector="Border.topBar">
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
     <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
     <Setter Property="BorderThickness" Value="0,0,0,1" />
-    <Setter Property="Padding" Value="0,0,0,2" />
   </Style>
-  <Style Selector="TextBox.drag">
+  <Style Selector="PathIcon.logo">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="Button.project">
+    <Setter Property="Height" Value="29" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <Style Selector="Button.unsaved">
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <!-- A document tab: the level, or an editor opened in place; the one shown has a 2 px amber bar on top. -->
+  <Style Selector="ListBox.docTabs ListBoxItem">
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="MinHeight" Value="29" />
+    <Setter Property="Height" Value="29" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1,0,0,0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="ListBox.docTabs ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <Style Selector="ListBox.docTabs ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="BoxShadow" Value="{StaticResource EditorTabTopBar}" />
+  </Style>
+  <Style Selector="Button.docTab">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1,0,1,0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="Height" Value="29" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="Button.docTab.shown">
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <Style Selector="Button.docTab.shown /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="BoxShadow" Value="{StaticResource EditorTabTopBar}" />
+  </Style>
+  <Style Selector="Ellipse.unsavedDot">
+    <Setter Property="Width" Value="6" />
+    <Setter Property="Height" Value="6" />
+    <Setter Property="Fill" Value="{StaticResource EditorAccentBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <!-- The command search in the middle of the top bar. -->
+  <Style Selector="Button.command">
+    <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Width" Value="380" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.command:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <!-- The window's own buttons. -->
+  <Style Selector="Button.caption">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Width" Value="44" />
+    <Setter Property="Height" Value="29" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="Button.caption PathIcon">
+    <Setter Property="Width" Value="12" />
+    <Setter Property="Height" Value="12" />
+  </Style>
+  <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorDeleteBrush}" />
+  </Style>
+
+  <!-- The bottom strip (24 px): the docks' tabs, the last message, then tasks, the selection and the GPU. -->
+  <Style Selector="Border.strip">
+    <Setter Property="Height" Value="24" />
+    <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+  </Style>
+  <Style Selector="Border.strip TextBlock">
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ToggleButton.stripTab">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="11,0" />
+    <Setter Property="Height" Value="23" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.stripTab:checked">
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.stripTab:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BoxShadow" Value="{StaticResource EditorTabTopBar}" />
+  </Style>
+  <Style Selector="Border.stripCell">
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1,0,0,0" />
+    <Setter Property="Padding" Value="10,0" />
+  </Style>
+
+  <!-- Over the viewport: pills floating on the picture at 88% opacity, 28 px tall, holding 22 px buttons. -->
+  <Style Selector="Border.viewportBar">
+    <Setter Property="Background" Value="{StaticResource EditorOverlayBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorOverlayLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource EditorFloatCornerRadius}" />
+    <Setter Property="BoxShadow" Value="{StaticResource EditorFloatShadow}" />
+    <Setter Property="Padding" Value="3,2" />
+    <Setter Property="Height" Value="28" />
+  </Style>
+  <Style Selector=":is(Button).viewportIcon">
+    <Setter Property="MinWidth" Value="22" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="4,0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <Style Selector=":is(Button).viewportIcon.text">
+    <Setter Property="Padding" Value="7,0" />
+    <Setter Property="FontWeight" Value="Medium" />
+  </Style>
+  <Style Selector="ToggleButton.viewportIcon:checked">
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentInkBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.viewportIcon.flat:checked">
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.viewportIcon.flat:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="PathIcon.accent">
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="ComboBox.viewportSnap">
     <Setter Property="MinWidth" Value="0" />
-    <Setter Property="Padding" Value="2,1" />
-    <Setter Property="Cursor" Value="SizeWestEast" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="5,0,0,0" />
+    <Setter Property="FontWeight" Value="Medium" />
   </Style>
-  <Style Selector="TextBox.drag.typing">
-    <Setter Property="Cursor" Value="Ibeam" />
+  <Style Selector="Button.viewportRound">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="Background" Value="{StaticResource EditorOverlayBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorOverlayLineBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <!-- A message floating at the bottom left of the picture. -->
+  <Style Selector="Border.toast">
+    <Setter Property="Background" Value="{StaticResource EditorOverlayBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorOverlayLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Height" Value="26" />
+    <Setter Property="Padding" Value="10,0" />
+  </Style>
+
+  <!-- The Day dock: tabs with a 2 px amber bar under the chosen one, 20 px value rows, and the transport under the curves. -->
+  <Style Selector="Border.dockTabs">
+    <Setter Property="Height" Value="26" />
+    <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="ListBox.dockTabs">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="ListBox.dockTabs ListBoxItem">
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="MinHeight" Value="25" />
+    <Setter Property="Height" Value="25" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="ListBox.dockTabs ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <Style Selector="ListBox.dockTabs ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="BoxShadow" Value="{StaticResource EditorTabBottomBar}" />
+  </Style>
+  <Style Selector="TextBlock.fieldLabel.undrawn">
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.eye:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ToggleButton.eye:checked">
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.eye">
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="Border.transport">
+    <Setter Property="Height" Value="26" />
+    <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+  </Style>
+  <Style Selector="TextBlock.stripName">
+    <Setter Property="FontSize" Value="{StaticResource EditorCapsFontSize}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentInkBrush}" />
+    <Setter Property="Margin" Value="6,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <!-- A folder's tile: a dashed frame in place of a thumbnail. -->
+  <Style Selector="Rectangle.folderFrame">
+    <Setter Property="Stroke" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="StrokeThickness" Value="1" />
+    <Setter Property="StrokeDashArray" Value="3,3" />
+    <Setter Property="RadiusX" Value="4" />
+    <Setter Property="RadiusY" Value="4" />
+  </Style>
+  <!-- The content drawer's header (30 px on the base colour): the breadcrumb, the search, the chips, then New, Import and Close. -->
+  <Style Selector="Border.drawerHeader">
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="PathIcon.tileIcon">
+    <Setter Property="Width" Value="26" />
+    <Setter Property="Height" Value="26" />
+  </Style>
+  <Style Selector="TextBlock.tileKind">
+    <Setter Property="FontSize" Value="{StaticResource EditorCapsFontSize}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <!-- The content drawer's tiles: a 104 by 78 thumbnail with its type's colour along the bottom, the name and the kind. -->
+  <Style Selector="ListBox.tiles ListBoxItem">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0,0,8,8" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="VerticalContentAlignment" Value="Top" />
+  </Style>
+  <Style Selector="ListBox.tiles ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter, ListBox.tiles ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BoxShadow" Value="none" />
+  </Style>
+  <Style Selector="Border.thumb">
+    <Setter Property="Width" Value="104" />
+    <Setter Property="Height" Value="78" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="Border.thumb.folder">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.tiles ListBoxItem:pointerover Border.thumb">
+    <Setter Property="BorderBrush" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="ListBox.tiles ListBoxItem:selected Border.thumb">
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+    <Setter Property="BoxShadow" Value="0 0 0 1 #F5A639" />
   </Style>
 </Styles>

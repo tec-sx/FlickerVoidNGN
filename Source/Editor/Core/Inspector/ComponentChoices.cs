@@ -12,32 +12,46 @@ public static class ComponentChoices
         ["camera"] = "Camera",
         ["pointLight"] = "PointLight",
         ["spotLight"] = "SpotLight",
-        ["irradianceVolume"] = "Grid",
+        ["irradianceVolume"] = "Probe",
         ["sceneMood"] = "Mood",
-        ["sceneEnvironment"] = "Mood",
-        ["meshRenderer"] = "Model",
-        ["greybox"] = "Model",
+        ["sceneEnvironment"] = "Environment",
+        ["meshRenderer"] = "Look",
+        ["greybox"] = "Cube",
         ["protagonist"] = "Character",
-        ["transform"] = "Move",
+        ["transform"] = "Transform",
+        ["interactable"] = "Talk",
+        ["scannable"] = "Scan",
+        ["mapMarker"] = "Pin",
+        ["perception"] = "Visible",
+        ["outline"] = "Outline",
+        ["vehicle"] = "Vehicle",
     };
 
     private static readonly Dictionary<string, string> ByModule = new()
     {
-        ["Rendering"] = "Materials",
+        ["Rendering"] = "Look",
         ["Cameras"] = "Camera",
-        ["Characters"] = "Character",
-        ["Ai"] = "Character",
-        ["Physics"] = "Model",
-        ["Interaction"] = "Entity",
-        ["Inventory"] = "Data",
-        ["Attributes"] = "Table",
-        ["Abilities"] = "Table",
-        ["Story"] = "Flow",
-        ["Dialogue"] = "Flow",
+        ["Characters"] = "Behaviour",
+        ["Ai"] = "Behaviour",
+        ["Gameplay"] = "Behaviour",
+        ["Physics"] = "Physics",
+        ["Interaction"] = "Interact",
+        ["Inventory"] = "Inventory",
+        ["Attributes"] = "Attributes",
+        ["Abilities"] = "Attributes",
+        ["Story"] = "Story",
+        ["Dialogue"] = "Story",
         ["Flow"] = "Flow",
-        ["Maps"] = "Grid",
-        ["Runtime"] = "Empty",
+        ["Maps"] = "Pin",
+        ["Runtime"] = "Transform",
+        ["Vehicles"] = "Vehicle",
+        ["Creations"] = "Cube",
     };
+
+    /// <summary>The icon of everything: the inspector rail's All.</summary>
+    public const string AllIcon = "Layers";
+
+    private const string OtherIcon = "Entity";
 
     public static IReadOnlyList<MenuChoice> Build(IEnumerable<SceneComponent> components, Action<SceneComponent> add)
     {
@@ -70,18 +84,17 @@ public static class ComponentChoices
         return "Other";
     }
 
-    private static string GetIcon(string component, string module)
+    /// <summary>The icon of a module on the inspector's category rail.</summary>
+    public static string GetModuleIcon(string module) => ByModule.GetValueOrDefault(module, OtherIcon);
+
+    /// <summary>The icon of a component: its own when it says what it is, else its module's.</summary>
+    internal static string GetIcon(string component, string module)
     {
         if (ByComponent.TryGetValue(component, out string? icon))
         {
             return icon;
         }
 
-        if (ByModule.TryGetValue(module, out string? moduleIcon))
-        {
-            return moduleIcon;
-        }
-
-        return "Entity";
+        return GetModuleIcon(module);
     }
 }

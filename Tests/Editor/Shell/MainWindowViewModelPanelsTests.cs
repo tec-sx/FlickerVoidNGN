@@ -37,6 +37,21 @@ public sealed class MainWindowViewModelPanelsTests : IDisposable
     }
 
     [Fact]
+    public void TheCommandPaletteFindsContentFilesAndEntitiesToo()
+    {
+        IReadOnlyList<MenuChoice> choices = ViewModel.PaletteChoices;
+        MenuChoice paper = choices.Single(choice => choice.Group == "Content" && choice.Name == MainWindowViewModelTestsBuilder.Paper);
+        MenuChoice entity = choices.First(choice => choice.Group == "Entities");
+
+        entity.Run();
+
+        paper.SearchOnly.Should().BeTrue();
+        entity.SearchOnly.Should().BeTrue();
+        _builder.Scene.Selection.Selected.Should().NotBeNull();
+        choices.Select(choice => choice.Name).Should().Contain(["Edit the day's light", "Bake light probes"]);
+    }
+
+    [Fact]
     public void SaveSavesTheDocumentShownInPlaceOfTheViewport()
     {
         int saved = 0;
@@ -53,18 +68,65 @@ public sealed class MainWindowViewModelPanelsTests : IDisposable
     public void TheContentDrawerIsClosedUntilItIsToggled()
     {
         bool closed = ViewModel.IsContentOpen;
-        double closedHeight = ViewModel.ContentRowHeight.Value;
 
         ViewModel.ToggleContentCommand.Execute(null);
         bool opened = ViewModel.IsContentOpen;
-        double openHeight = ViewModel.ContentRowHeight.Value;
         ViewModel.ToggleContentCommand.Execute(null);
 
         closed.Should().BeFalse();
-        closedHeight.Should().Be(0);
         opened.Should().BeTrue();
-        openHeight.Should().BeGreaterThan(0);
         ViewModel.IsContentOpen.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TheDrawerAndThePanelSizesAreRememberedForTheNextRun()
+    {
+        ViewModel.ToggleContentCommand.Execute(null);
+        ViewModel.ContentHeight = 400;
+        ViewModel.DayDockHeight = 240;
+        ViewModel.SideWidth = new Avalonia.Controls.GridLength(360);
+
+        EditorLayout next = new(_builder.LayoutFile);
+
+        next.ContentOpen.Should().BeTrue();
+        next.ContentHeight.Should().Be(400);
+        next.DayDockHeight.Should().Be(240);
+        next.SideWidth.Should().Be(360);
+    }
+
+    [Fact]
+    public void ThePanelsStartAtTheirDesignedSizes()
+    {
+        ViewModel.ContentHeight.Should().Be(318);
+        ViewModel.DayDockHeight.Should().Be(300);
+        ViewModel.SideWidth.Value.Should().Be(320);
+    }
+
+    [Fact]
+    public void TheTopBarNamesTheLevelAndCountsWhatIsUnsaved()
+    {
+        string name = ViewModel.LevelName;
+        int saved = ViewModel.UnsavedCount;
+        _builder.EditScene();
+        _builder.EditMaterial();
+
+        name.Should().Be("Room");
+        saved.Should().Be(0);
+        ViewModel.IsLevelUnsaved.Should().BeTrue();
+        ViewModel.UnsavedCount.Should().Be(2);
+        ViewModel.UnsavedText.Should().Be("2 unsaved");
+    }
+
+    [Fact]
+    public void TheUnsavedChipSavesEverything()
+    {
+        _builder.EditScene();
+        _builder.EditMaterial();
+
+        ViewModel.SaveEverythingCommand.Execute(null);
+
+        ViewModel.UnsavedCount.Should().Be(0);
+        ViewModel.IsLevelUnsaved.Should().BeFalse();
     }
 
     [Fact]

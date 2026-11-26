@@ -5,82 +5,102 @@
              xmlns:curves="using:FlickerVoid.Editor.Curves"
              xmlns:corecurves="using:FlickerVoid.Editor.Core.Curves"
              xmlns:inspector="using:FlickerVoid.Editor.Inspector"
+             xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Environments.EnvironmentEditorView"
-             x:DataType="environments:EnvironmentEditorViewModel"
-             Height="260">
-  <!-- The Day dock: the environment's day under the viewport, its title and Close in a strip over it. -->
-  <DockPanel>
-    <Border DockPanel.Dock="Top" Height="24" Background="{DynamicResource EditorPanelBrush}" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,1,0,1">
-      <DockPanel Margin="8,0,2,0">
-        <Button DockPanel.Dock="Right" Classes="viewportIcon" Content="Close" Click="HandleClose" Padding="6,0"
-                ToolTip.Tip="Close the Day dock; its edits stay unsaved until the assets are saved." />
-        <TextBlock Text="{Binding Title, StringFormat='Day  {0}'}" VerticalAlignment="Center" FontWeight="SemiBold" />
-      </DockPanel>
-    </Border>
-  <Grid ColumnDefinitions="300,1,*">
-    <!-- The values at the cursor's hour, by group: editing one writes a key there; ticking it shows its curve. -->
-    <Border Grid.Column="0" Classes="well">
-      <ScrollViewer>
-        <ItemsControl ItemsSource="{Binding Groups}" Margin="4,2">
-          <ItemsControl.ItemTemplate>
+             x:DataType="environments:EnvironmentEditorViewModel">
+  <!-- The Day dock: the environment's day under the viewport. On the left the tabs Sun, Sky, Fog and Grade and the chosen one's
+       values at the cursor's hour (the eye shows a value's curve, editing it writes a key there); on the right the hours, the
+       shown colours as strips, the curves, and under them the hour, Play and its speed. -->
+  <Grid ColumnDefinitions="300,1,*" Background="{DynamicResource EditorPanelBrush}">
+    <DockPanel>
+      <Border DockPanel.Dock="Top" Classes="dockTabs">
+        <ListBox Classes="dockTabs" ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
             <DataTemplate DataType="environments:EnvironmentGroupViewModel">
-              <StackPanel Margin="0,0,0,6">
-                <TextBlock Text="{Binding Name}" Classes="heading" />
-                <ItemsControl ItemsSource="{Binding Values}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="environments:EnvironmentValueViewModel">
-                      <Grid ColumnDefinitions="24,110,*" Margin="0,1" Background="Transparent">
-                        <Grid.ContextMenu>
-                          <ContextMenu>
-                            <MenuItem Header="Remove curve" Click="HandleRemoveCurve" IsEnabled="{Binding IsDrawn}" />
-                          </ContextMenu>
-                        </Grid.ContextMenu>
-                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" ToolTip.Tip="Show its curve" />
-                        <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                   Classes.undrawn="{Binding !IsDrawn}"
-                                   ToolTip.Tip="Greyed when the environment draws no curve for it, so what lies under it shows.">
-                          <TextBlock.Styles>
-                            <Style Selector="TextBlock.undrawn">
-                              <Setter Property="Opacity" Value="0.5" />
-                            </Style>
-                          </TextBlock.Styles>
-                        </TextBlock>
-                        <ContentControl Grid.Column="2" Content="{Binding Field}" />
-                      </Grid>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
+              <StackPanel Classes="tabHeader">
+                <PathIcon Data="{Binding Name, Converter={x:Static shell:LucideIcons.ByName}}" />
+                <TextBlock Text="{Binding Name}" />
               </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Border>
+      <TextBlock DockPanel.Dock="Bottom" Classes="hint small" TextWrapping="Wrap" Margin="10,6"
+                 Text="Editing a value writes a key at the hour. A grey name has no curve yet: what lies under it shows." />
+      <ScrollViewer>
+        <ItemsControl ItemsSource="{Binding SelectedGroup.Values}" Margin="0,6,8,6" Grid.IsSharedSizeScope="True">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="environments:EnvironmentValueViewModel">
+              <Grid Margin="0,1" Background="Transparent" Height="20">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="28" />
+                  <ColumnDefinition Width="14" />
+                  <ColumnDefinition Width="Auto" MinWidth="112" SharedSizeGroup="DayLabel" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="Remove curve" Click="HandleRemoveCurve" IsEnabled="{Binding IsDrawn}" />
+                  </ContextMenu>
+                </Grid.ContextMenu>
+                <ToggleButton Classes="icon small eye" IsChecked="{Binding IsSelected}" HorizontalAlignment="Center" ToolTip.Tip="Show its curve">
+                  <Panel>
+                    <PathIcon Data="{x:Static shell:LucideIcons.Visible}" IsVisible="{Binding IsSelected}" />
+                    <PathIcon Data="{x:Static shell:LucideIcons.Invisible}" IsVisible="{Binding !IsSelected}" />
+                  </Panel>
+                </ToggleButton>
+                <Ellipse Grid.Column="1" Width="7" Height="7" HorizontalAlignment="Left" VerticalAlignment="Center"
+                         Fill="{Binding TrackIndex, Converter={x:Static curves:CurveView.TrackBrush}}" />
+                <TextBlock Grid.Column="2" Text="{Binding Label}" Classes="fieldLabel" Classes.undrawn="{Binding !IsDrawn}"
+                           ToolTip.Tip="Greyed when the environment draws no curve for it, so what lies under it shows." />
+                <ContentControl Grid.Column="3" Content="{Binding Field}" VerticalAlignment="Center" />
+              </Grid>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </ScrollViewer>
-    </Border>
+    </DockPanel>
     <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
     <DockPanel Grid.Column="2">
-      <!-- The hour, play and its speed. -->
-      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="8,4">
-        <TextBlock Text="{Binding HourText}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" MinWidth="56" />
-        <ToggleButton IsChecked="{Binding IsPlaying}" Content="Play" ToolTip.Tip="Play the day on" />
-        <TextBlock Text="Hours a second" VerticalAlignment="Center" />
-        <inspector:DragNumberBox Value="{Binding Speed}" Minimum="0" Maximum="24" Step="0.1" Width="80" />
-      </StackPanel>
-      <shellenvironments:HourRuler DockPanel.Dock="Top" Height="24" Range="{Binding Curves.Range}" Hour="{Binding Hour}" />
+      <!-- The hour, play and its speed; Close at the far end. -->
+      <Border DockPanel.Dock="Bottom" Classes="transport">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Classes="icon" Click="HandleClose" Margin="0,0,4,0"
+                  ToolTip.Tip="Close the Day dock; its edits stay unsaved until the assets are saved.">
+            <PathIcon Data="{x:Static shell:LucideIcons.Close}" />
+          </Button>
+          <TextBlock DockPanel.Dock="Right" Text="{Binding Title}" Classes="muted" VerticalAlignment="Center" Margin="0,0,10,0" />
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="8,0">
+            <ToggleButton Classes="icon" IsChecked="{Binding IsPlaying}" ToolTip.Tip="Play the day on">
+              <Panel>
+                <PathIcon Data="{x:Static shell:LucideIcons.Play}" IsVisible="{Binding !IsPlaying}" />
+                <PathIcon Data="{x:Static shell:LucideIcons.Stop}" IsVisible="{Binding IsPlaying}" />
+              </Panel>
+            </ToggleButton>
+            <TextBlock Text="{Binding HourText}" Classes="title" VerticalAlignment="Center" MinWidth="40" />
+            <inspector:DragNumberBox Value="{Binding Speed}" Minimum="0" Maximum="24" Step="0.1" Width="64" ToolTip.Tip="Hours a second" />
+            <TextBlock Text="h/s" Classes="hint small" VerticalAlignment="Center" Margin="-4,0,0,0" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+      <shellenvironments:HourRuler DockPanel.Dock="Top" Height="22" Range="{Binding Curves.Range}" Hour="{Binding Hour}" />
       <!-- The selected colors, each a strip of its curve over the same hours. -->
       <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding ColorTracks}">
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="corecurves:ColorTrack">
-            <Grid ColumnDefinitions="*" Height="26" Margin="0,1">
+            <Panel Height="16">
               <curves:ColorStrip x:Name="Strip" Track="{Binding}" Range="{Binding $parent[shellenvironments:EnvironmentEditorView].((environments:EnvironmentEditorViewModel)DataContext).Curves.Range}" />
-              <TextBlock Text="{Binding Name}" FontSize="10" Margin="4,1" IsHitTestVisible="False" Foreground="#EDE5D8" />
-            </Grid>
+              <TextBlock Text="{Binding Name}" Classes="stripName" IsHitTestVisible="False" />
+            </Panel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
-      <Border Classes="well viewport">
-        <curves:CurveView x:Name="Curves" Editor="{Binding Curves}" CursorTime="{Binding Hour}" />
-      </Border>
+      <curves:CurveView x:Name="Curves" Editor="{Binding Curves}" CursorTime="{Binding Hour}" ShowsHours="False" />
     </DockPanel>
   </Grid>
-  </DockPanel>
 </UserControl>
