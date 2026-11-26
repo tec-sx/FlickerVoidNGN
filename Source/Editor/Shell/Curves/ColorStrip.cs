@@ -153,19 +153,29 @@ public sealed class ColorStrip : Control
         }
     }
 
-    /// <summary>A mood color as its field's color picker shows it: sRGB channels from 0 to 1, clamped.</summary>
-    public static Color ToColor(Vector3 srgb)
+    /// <summary>A mood's linear color as its field's color picker shows it: encoded to sRGB, clamped.</summary>
+    public static Color ToColor(Vector3 linear)
     {
-        byte red = ToByte(srgb.X);
-        byte green = ToByte(srgb.Y);
-        byte blue = ToByte(srgb.Z);
+        byte red = ToSrgbByte(linear.X);
+        byte green = ToSrgbByte(linear.Y);
+        byte blue = ToSrgbByte(linear.Z);
         return Color.FromRgb(red, green, blue);
     }
 
-    private static byte ToByte(float channel)
+    private static byte ToSrgbByte(float linear)
     {
-        float clamped = Math.Clamp(channel, 0, 1);
-        return (byte)MathF.Round(clamped * 255);
+        float clamped = Math.Clamp(linear, 0, 1);
+        float srgb;
+        if (clamped <= 0.0031308f)
+        {
+            srgb = clamped * 12.92f;
+        }
+        else
+        {
+            srgb = (1.055f * MathF.Pow(clamped, 1 / 2.4f)) - 0.055f;
+        }
+
+        return (byte)MathF.Round(srgb * 255);
     }
 
     // The range's screen is the curve view's, so its times are mapped across this strip's own width.
