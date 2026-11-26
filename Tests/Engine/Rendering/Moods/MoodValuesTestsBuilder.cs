@@ -56,6 +56,8 @@ internal sealed class MoodValuesTestsBuilder
             ContactShadowLength = 0.1f,
             Bloom = 0.2f,
             BloomRadius = 0.4f,
+            Dirt = "Smudge.png",
+            DirtAmount = 0.3f,
             Exposure = 1.5f,
             Contrast = 1.2f,
             Saturation = 0.8f,
