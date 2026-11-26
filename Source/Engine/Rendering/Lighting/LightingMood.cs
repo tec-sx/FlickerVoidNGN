@@ -179,6 +179,10 @@ public sealed record LightingMood
     [Range(0, 1)]
     public float Bloom { get; set; }
 
+    /// <summary>How much of each smaller bloom level the upsample keeps: 0 leaves only the tight glow, 1 the widest.</summary>
+    [Range(0, 1)]
+    public float BloomRadius { get; set; } = 0.85f;
+
     /// <summary>Scales the light before grading.</summary>
     [Range(0, 8)]
     public float Exposure { get; set; } = 1;

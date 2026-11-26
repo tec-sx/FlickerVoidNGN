@@ -53,6 +53,7 @@ public sealed class MoodValuesTests
 
         lens.Should().Equal(
             "bloom",
+            "bloomRadius",
             "tonemapper",
             "whitePoint",
             "canvas",

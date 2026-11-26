@@ -55,6 +55,7 @@ public static class MoodValues
         new MoodNumber("ambientOcclusionRadius", MoodGroup.Sky, Environment, mood => mood.AmbientOcclusionRadius, (mood, value) => mood.AmbientOcclusionRadius = value),
         new MoodNumber("contactShadowLength", MoodGroup.Sun, Environment, mood => mood.ContactShadowLength, (mood, value) => mood.ContactShadowLength = value),
         new MoodNumber("bloom", MoodGroup.Bloom, Lens, mood => mood.Bloom, (mood, value) => mood.Bloom = value),
+        new MoodNumber("bloomRadius", MoodGroup.Bloom, Lens, mood => mood.BloomRadius, (mood, value) => mood.BloomRadius = value),
         new MoodNumber("exposure", MoodGroup.Grade, Environment, mood => mood.Exposure, (mood, value) => mood.Exposure = value),
         new MoodNumber("contrast", MoodGroup.Grade, Environment, mood => mood.Contrast, (mood, value) => mood.Contrast = value),
         new MoodNumber("saturation", MoodGroup.Grade, Environment, mood => mood.Saturation, (mood, value) => mood.Saturation = value),

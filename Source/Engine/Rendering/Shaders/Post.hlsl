@@ -26,9 +26,6 @@ struct PostConstants
 
 [[vk::push_constant]] ConstantBuffer<PostConstants> Post : register(b0, space0);
 
-// The bloom levels the upsampling summed, which averaging divides back out.
-static const float BloomLevels = 5;
-
 // Where the pixel lies on the flat canvas, in image uvs: the image CanvasImageHeight pixels high, slid by the camera's pan so
 // the canvas moves with the world.
 float2 CanvasUv(float2 pixel, float2 canvasSize)
@@ -55,7 +52,7 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
         uint height;
         scene.GetDimensions(width, height);
         float2 uv = position.xy / float2(width, height);
-        float3 bloom = Textures[Post.BloomTexture].SampleLevel(Samplers[Post.ClampSampler], uv, 0).rgb / BloomLevels;
+        float3 bloom = Textures[Post.BloomTexture].SampleLevel(Samplers[Post.ClampSampler], uv, 0).rgb;
         color = lerp(color, bloom, Post.Bloom);
     }
 
