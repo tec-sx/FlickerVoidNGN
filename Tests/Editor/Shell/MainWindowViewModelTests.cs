@@ -7,6 +7,12 @@ namespace FlickerVoid.Editor.Tests;
 
 public sealed class MainWindowViewModelTests : IDisposable
 {
+    private const string Dawn = "Dawn.fvenv";
+
+    private const string DawnEnvironment = """
+        { "numbers": { "exposure": { "keys": [ { "time": 0, "value": 0.2, "mode": "Linear" }, { "time": 12, "value": 1, "mode": "Linear" } ] } } }
+        """;
+
     private readonly MainWindowViewModelTestsBuilder _builder = new();
 
     public void Dispose() => _builder.Dispose();
@@ -191,6 +197,66 @@ public sealed class MainWindowViewModelTests : IDisposable
         _builder.ViewModel.UndoCommand.CanExecute(null).Should().BeTrue();
         _builder.ViewModel.UndoCommand.Execute(null);
         _builder.ViewModel.UnsavedPaths.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void OpensEnvironmentsInTheEnvironmentEditorAndDrawsThemAtItsHour()
+    {
+        Core.Environments.EnvironmentEditorViewModel? requested = null;
+        _builder.ViewModel.EnvironmentRequested += (_, editor) => requested = editor;
+        _builder.WriteFile(Dawn, DawnEnvironment);
+
+        _builder.OpenInBrowser(Dawn, AssetTypes.Environment);
+
+        requested.Should().NotBeNull();
+        _builder.ViewModel.Viewport.EnvironmentPath.Should().Be(Dawn);
+        requested!.Hour = 0;
+        _builder.ViewModel.Viewport.Hour.Should().Be(0);
+        _builder.ViewModel.Viewport.GetDrawnMood().Exposure.Should().BeApproximately(0.2f, 1e-4f);
+    }
+
+    [Fact]
+    public void HoldsEnvironmentEditsUnsavedUntilTheyAreSaved()
+    {
+        Core.Environments.EnvironmentEditorViewModel? requested = null;
+        _builder.ViewModel.EnvironmentRequested += (_, editor) => requested = editor;
+        _builder.WriteFile(Dawn, DawnEnvironment);
+        _builder.OpenInBrowser(Dawn, AssetTypes.Environment);
+        requested!.Hour = 18;
+
+        ((NumberFieldViewModel)requested.Find("exposure").Field).Value = 0.5;
+
+        _builder.ViewModel.UnsavedPaths.Should().Equal(Dawn);
+        _builder.ViewModel.Viewport.GetDrawnMood().Exposure.Should().BeApproximately(0.5f, 1e-4f, "the viewport draws the unsaved edit");
+        _builder.ViewModel.SaveAssets();
+        _builder.ReadFile(Dawn).Should().Contain("\"time\": 18");
+    }
+
+    [Fact]
+    public void UndoesAnEnvironmentEditInItsEditorKeepingItsHour()
+    {
+        Core.Environments.EnvironmentEditorViewModel? requested = null;
+        _builder.ViewModel.EnvironmentRequested += (_, editor) => requested = editor;
+        _builder.WriteFile(Dawn, DawnEnvironment);
+        _builder.OpenInBrowser(Dawn, AssetTypes.Environment);
+        requested!.Hour = 18;
+        ((NumberFieldViewModel)requested.Find("exposure").Field).Value = 0.5;
+
+        _builder.ViewModel.GetEnvironmentHistory(Dawn).Undo();
+
+        requested.Hour.Should().Be(18);
+        ((NumberFieldViewModel)requested.Find("exposure").Field).Value.Should().BeApproximately(0.6, 1e-4);
+    }
+
+    [Fact]
+    public void DrawsTheScenesOwnEnvironmentAgainWhenTheEditorCloses()
+    {
+        _builder.WriteFile(Dawn, DawnEnvironment);
+        _builder.OpenInBrowser(Dawn, AssetTypes.Environment);
+
+        _builder.ViewModel.CloseEnvironment(Dawn);
+
+        _builder.ViewModel.Viewport.EnvironmentPath.Should().BeNull();
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 
 using FlickerVoid.Engine.Flow.Graphs;
+using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Vehicles;
 using FlickerVoid.Engine.Vehicles.Serialization;
@@ -47,6 +48,18 @@ public static class AssetTypes
         New = new AssetNew("Mood", "New Mood", "mood", AssetNew.Json(null)) { Group = LookGroup },
     };
 
+    /// <summary>A place's light and air over the day, edited in the environment editor.</summary>
+    public static AssetType Environment { get; } = new("Environment", "Mood", "#D9B23A", LightingEnvironment.Extension)
+    {
+        New = new AssetNew("Environment", "New Environment", "environment", AssetNew.Json("\"numbers\": {},\n  \"colors\": {}")) { Group = LookGroup },
+    };
+
+    /// <summary>The glass the main camera draws with: bloom, tonemapper, canvas and depth fade.</summary>
+    public static AssetType Lens { get; } = new("Lens", "Camera", "#9FC7D8", CameraLens.Extension)
+    {
+        New = new AssetNew("Lens", "New Lens", "lens", AssetNew.Json(null)) { Group = LookGroup },
+    };
+
     public static AssetType Canvas { get; } = new("Canvas", "Canvas", "#E8DCC0", ".fvcanvas")
     {
         New = new AssetNew("Canvas", "New Canvas", "canvas", AssetNew.Json(null)) { Group = LookGroup },
@@ -66,7 +79,7 @@ public static class AssetTypes
     public static AssetType Code { get; } = new("Code", "Code", "#6FC2B0", ".cs");
 
     /// <summary>Every type a file can have, in the order the browser's filter and New menu list them.</summary>
-    public static IReadOnlyList<AssetType> Files { get; } = [Other, Scene, Vehicle, Model, Material, Texture, Mood, Canvas, Shader, Data, Table, Flow, Code];
+    public static IReadOnlyList<AssetType> Files { get; } = [Other, Scene, Vehicle, Model, Material, Texture, Mood, Environment, Lens, Canvas, Shader, Data, Table, Flow, Code];
 
     /// <summary>The type of the file at the path, by its extension; <see cref="Other"/> for none the editor knows.</summary>
     public static AssetType Find(string path)

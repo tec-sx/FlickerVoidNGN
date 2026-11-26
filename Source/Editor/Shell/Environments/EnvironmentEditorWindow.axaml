@@ -1,0 +1,77 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:environments="using:FlickerVoid.Editor.Core.Environments"
+        xmlns:shellenvironments="using:FlickerVoid.Editor.Environments"
+        xmlns:curves="using:FlickerVoid.Editor.Curves"
+        xmlns:corecurves="using:FlickerVoid.Editor.Core.Curves"
+        xmlns:inspector="using:FlickerVoid.Editor.Inspector"
+        x:Class="FlickerVoid.Editor.Environments.EnvironmentEditorWindow"
+        x:DataType="environments:EnvironmentEditorViewModel"
+        Title="{Binding Title, StringFormat='{}{0} - Environment'}"
+        Width="1280" Height="720">
+  <Grid ColumnDefinitions="300,4,*">
+    <!-- The values at the cursor's hour, by group: editing one writes a key there; ticking it shows its curve. -->
+    <Border Grid.Column="0" Classes="well">
+      <ScrollViewer>
+        <ItemsControl ItemsSource="{Binding Groups}" Margin="4,2">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="environments:EnvironmentGroupViewModel">
+              <StackPanel Margin="0,0,0,6">
+                <TextBlock Text="{Binding Name}" Classes="heading" />
+                <ItemsControl ItemsSource="{Binding Values}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="environments:EnvironmentValueViewModel">
+                      <Grid ColumnDefinitions="24,110,*" Margin="0,1" Background="Transparent">
+                        <Grid.ContextMenu>
+                          <ContextMenu>
+                            <MenuItem Header="Remove curve" Click="HandleRemoveCurve" IsEnabled="{Binding IsDrawn}" />
+                          </ContextMenu>
+                        </Grid.ContextMenu>
+                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" ToolTip.Tip="Show its curve" />
+                        <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   Classes.undrawn="{Binding !IsDrawn}"
+                                   ToolTip.Tip="Greyed when the environment draws no curve for it, so what lies under it shows.">
+                          <TextBlock.Styles>
+                            <Style Selector="TextBlock.undrawn">
+                              <Setter Property="Opacity" Value="0.5" />
+                            </Style>
+                          </TextBlock.Styles>
+                        </TextBlock>
+                        <ContentControl Grid.Column="2" Content="{Binding Field}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Border>
+    <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+    <DockPanel Grid.Column="2">
+      <!-- The hour, play and its speed. -->
+      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="8,4">
+        <TextBlock Text="{Binding HourText}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" MinWidth="56" />
+        <ToggleButton IsChecked="{Binding IsPlaying}" Content="Play" ToolTip.Tip="Play the day on" />
+        <TextBlock Text="Hours a second" VerticalAlignment="Center" />
+        <inspector:DragNumberBox Value="{Binding Speed}" Minimum="0" Maximum="24" Step="0.1" Width="80" />
+      </StackPanel>
+      <shellenvironments:HourRuler DockPanel.Dock="Top" Height="24" Range="{Binding Curves.Range}" Hour="{Binding Hour}" />
+      <!-- The selected colors, each a strip of its curve over the same hours. -->
+      <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding ColorTracks}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="corecurves:ColorTrack">
+            <Grid ColumnDefinitions="*" Height="26" Margin="0,1">
+              <curves:ColorStrip x:Name="Strip" Track="{Binding}" Range="{Binding $parent[Window].((environments:EnvironmentEditorViewModel)DataContext).Curves.Range}" />
+              <TextBlock Text="{Binding Name}" FontSize="10" Margin="4,1" IsHitTestVisible="False" Foreground="#E8E5DD" />
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <Border Classes="well viewport">
+        <curves:CurveView x:Name="Curves" Editor="{Binding Curves}" CursorTime="{Binding Hour}" />
+      </Border>
+    </DockPanel>
+  </Grid>
+</Window>

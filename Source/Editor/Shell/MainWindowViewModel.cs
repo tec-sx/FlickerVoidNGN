@@ -53,6 +53,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string? _sceneMood;
 
     private readonly HashSet<string> _openFlows = new(ContentManager.PathComparer);
+    private readonly Dictionary<string, Core.Environments.EnvironmentEditorViewModel> _openEnvironments = new(ContentManager.PathComparer);
     private Dictionary<AssetType, Action<AssetEntry>>? _openers;
 
     /// <summary>
@@ -101,6 +102,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     /// <summary>Raised to show a flow graph opened in the content browser in a graph editor window.</summary>
     public event Action<string, FlowGraphViewModel>? FlowRequested;
+
+    /// <summary>Asks the window to show an environment in its editor window, the one it has already when it has one.</summary>
+    public event Action<string, Core.Environments.EnvironmentEditorViewModel>? EnvironmentRequested;
 
     /// <summary>Raised to show a material in the material editor, by its path in the content folder.</summary>
     public event Action<string>? MaterialRequested;
@@ -431,6 +435,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         _mood = null;
+        Viewport.MoodPath = null;
         Viewport.Mood = new LightingMood();
         ContentFileFinder files = new(_content);
         ViewSettings = new ViewSettingsViewModel(Viewport.Mood, files.Find);
