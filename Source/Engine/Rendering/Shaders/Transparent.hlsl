@@ -87,8 +87,9 @@ float4 TransparentMain(VertexOutput input, bool front : SV_IsFrontFace) : SV_Tar
         sun *= SampleShadow(frame, frame.SunShadow, position, normal, 0, true);
     }
 
-    float3 diffuse = ambient + sun * Diffuse(material, dot(normal, toSun));
-    float3 specular = sun * Specular(material, normal, toSun, toCamera);
+    float3 sunLight = sun * frame.SunLight;
+    float3 diffuse = ambient + sunLight * Diffuse(material, dot(normal, toSun));
+    float3 specular = sunLight * Specular(material, normal, toSun, toCamera);
     uint cluster = FindCluster(frame, pixel, position);
     ByteAddressBuffer buffer = Buffers[frame.Buffer];
     uint2 range = buffer.Load<uint2>(frame.ClustersOffset + cluster * 8);

@@ -21,6 +21,12 @@ public sealed record TextureSettings
 
     public TextureCompression Compression { get; set; } = TextureCompression.Bc7;
 
+    /// <summary>
+    /// Keeps the image as a mask of numbers rather than colors, such as a painted sky: linear, 16 bits a channel as read (half
+    /// floats), one level, its other settings left out. A grey image fills only red, with alpha 1.
+    /// </summary>
+    public bool Mask { get; set; }
+
     /// <summary>The largest width or height the texture keeps; a larger image is halved until it fits. 0 keeps its size.</summary>
     [Range(0, 16384)]
     public int MaxSize { get; set; }

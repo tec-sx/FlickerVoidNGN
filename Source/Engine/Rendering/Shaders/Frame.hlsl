@@ -87,11 +87,13 @@ struct FrameData
     uint Reflection;
     uint ReflectionSampler;
     float ReflectionIntensity;
+    // The sun's light: its color times its intensity (LightingMood.SunColor, SunIntensity).
+    float3 SunLight;
     // The frame buffer's own bindless index, which LoadFrame was given.
     uint Buffer;
 };
 
-static const uint FrameDataSize = 528;
+static const uint FrameDataSize = 544;
 static const uint None = 0xFFFFFFFF;
 
 // PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
@@ -176,6 +178,7 @@ FrameData LoadFrame(uint index)
     frame.Reflection = buffer.Load<uint>(516);
     frame.ReflectionSampler = buffer.Load<uint>(520);
     frame.ReflectionIntensity = buffer.Load<float>(524);
+    frame.SunLight = buffer.Load<float3>(528);
     frame.Buffer = index;
     return frame;
 }

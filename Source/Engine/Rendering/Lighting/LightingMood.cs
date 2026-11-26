@@ -39,6 +39,78 @@ public sealed record LightingMood
     [Range(0, 30)]
     public float SunAngle { get; set; } = 1;
 
+    /// <summary>The color of the sun's light, linear.</summary>
+    public Vector3 SunColor { get; set; } = Vector3.One;
+
+    /// <summary>How strong the sun's light is, times its color; 1 lights as the sun always has.</summary>
+    [Range(0, 100)]
+    public float SunIntensity { get; set; } = 1;
+
+    /// <summary>The direction the moonlight travels, in world space, of any length; the sun's path turns it with the day.</summary>
+    public Vector3 MoonDirection { get; set; } = Vector3.Normalize(new Vector3(0.4f, 0.8f, 0.45f));
+
+    /// <summary>The color of the full moon's light, linear.</summary>
+    public Vector3 MoonColor { get; set; } = new(0.55f, 0.65f, 0.9f);
+
+    /// <summary>How strong the full moon's light is, times its color; a moon less than full lights less.</summary>
+    [Range(0, 100)]
+    public float MoonIntensity { get; set; } = 0.25f;
+
+    /// <summary>The sky's color overhead, as it looks on screen whatever the grade, linear.</summary>
+    public Vector3 SkyZenith { get; set; } = new(0.0394f, 0.0872f, 0.1332f);
+
+    /// <summary>The sky's color at the horizon, as it looks on screen, linear.</summary>
+    public Vector3 SkyHorizon { get; set; } = new(0.2578f, 0.2373f, 0.1643f);
+
+    /// <summary>The ground's color below the horizon, as it looks on screen, linear; it darkens farther down.</summary>
+    public Vector3 SkyGround { get; set; } = new(0.0203f, 0.0177f, 0.0112f);
+
+    /// <summary>How far above and below the horizon sky and ground blend, as the sine of the height; 0 is a hard line.</summary>
+    [Range(0, 1)]
+    public float HorizonSoftness { get; set; } = 0.02f;
+
+    /// <summary>The sun's disc's width across the sky, in degrees.</summary>
+    [Range(0, 30)]
+    public float SunDiscSize { get; set; } = 2;
+
+    /// <summary>How bright the sun's disc is, times the sun's color, as light, so it blooms.</summary>
+    [Range(0, 1000)]
+    public float SunDiscIntensity { get; set; } = 8;
+
+    /// <summary>How bright the glow round the sun is, times the sun's color, as light.</summary>
+    [Range(0, 100)]
+    public float SunGlow { get; set; } = 0.4f;
+
+    /// <summary>How far from the sun its glow reaches, in degrees.</summary>
+    [Range(0, 180)]
+    public float SunGlowSize { get; set; } = 25;
+
+    /// <summary>The moon's disc's width across the sky, in degrees.</summary>
+    [Range(0, 30)]
+    public float MoonDiscSize { get; set; } = 2.5f;
+
+    /// <summary>How bright the lit face of the moon is, times the moon's color, as light.</summary>
+    [Range(0, 1000)]
+    public float MoonDiscIntensity { get; set; } = 2;
+
+    /// <summary>How bright the corona round the moon is, times its color and its lit share, as light.</summary>
+    [Range(0, 100)]
+    public float MoonCorona { get; set; } = 0.15f;
+
+    /// <summary>The celestial pole the stars turn about, in world space; the sun's path points it north, as high as the latitude.</summary>
+    public Vector3 StarPole { get; set; } = Vector3.UnitY;
+
+    /// <summary>How bright the stars are, as light; they show only where the sky is dark.</summary>
+    [Range(0, 100)]
+    public float StarIntensity { get; set; } = 1;
+
+    /// <summary>How much the scene's painted sky mask shapes the sky, from the plain gradient (0) to the painted one (1).</summary>
+    [Range(0, 1)]
+    public float SkyMaskStrength { get; set; } = 1;
+
+    /// <summary>The color of the painted sky's band (the mask's green), as it looks on screen, linear.</summary>
+    public Vector3 SkyBandColor { get; set; } = new(0.45f, 0.4f, 0.36f);
+
     /// <summary>How much of the light crossing a world unit of fog it absorbs or scatters, at and below <see cref="FogHeight"/>; 0 clears the air.</summary>
     public float FogDensity { get; set; }
 
@@ -112,6 +184,13 @@ public sealed record LightingMood
     /// <summary>The canvas everything is painted on, a <c>.fvcanvas</c> file; none paints on nothing.</summary>
     [ContentFile(".fvcanvas")]
     public string? Canvas { get; set; }
+
+    /// <summary>
+    /// The field of view, in degrees from top to bottom, an orthographic camera sees the sky through, looking level along its
+    /// heading, so the sun, moon and stars stand at real directions and move as it turns.
+    /// </summary>
+    [Range(1, 170)]
+    public float SkyFieldOfView { get; set; } = 60;
 
     /// <summary>How far in front of the focus things start to darken.</summary>
     public float DepthNearStart { get; set; } = 1;

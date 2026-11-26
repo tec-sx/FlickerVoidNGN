@@ -2,6 +2,8 @@ using System.Numerics;
 
 using FlickerVoid.Engine.Rendering.Cameras;
 
+using FlickerVoid.Engine.Rendering.Sky;
+
 namespace FlickerVoid.Engine.Rendering.Extraction;
 
 /// <summary>What the renderer draws in one frame, copied out of the game world so passes never read it directly.</summary>
@@ -33,6 +35,9 @@ public sealed class RenderScene
     /// <summary>How many times the first camera's director has cut to a new view (<see cref="ActiveCamera.Cuts"/>), so effects that build on earlier frames start afresh when it changes.</summary>
     public uint Cuts { get; set; }
 
+    /// <summary>The painted sky the scene names, or null for the plain gradient.</summary>
+    public RenderSky? Sky { get; set; }
+
     public void Clear()
     {
         Cameras.Clear();
@@ -45,6 +50,7 @@ public sealed class RenderScene
         Transition = default;
         Focus = null;
         Cuts = 0;
+        Sky = null;
     }
 
     /// <summary>Replaces what this scene holds with everything <paramref name="other"/> holds, such as a dissolve drawing another renderer's scene.</summary>
@@ -61,5 +67,6 @@ public sealed class RenderScene
         Transition = other.Transition;
         Focus = other.Focus;
         Cuts = other.Cuts;
+        Sky = other.Sky;
     }
 }

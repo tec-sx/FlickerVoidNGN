@@ -75,8 +75,9 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     }
 
     float3 ambient = frame.Ambient * IndoorAmbient(frame, worldPosition) + SampleProbes(frame, worldPosition, normal, toCamera);
-    float3 diffuse = ambient * occlusion + sun * sunDiffuse;
-    float3 specular = sun * sunSpecular;
+    float3 sunLight = sun * frame.SunLight;
+    float3 diffuse = ambient * occlusion + sunLight * sunDiffuse;
+    float3 specular = sunLight * sunSpecular;
     ShadeClusterLights(frame, material, pixel, worldPosition, normal, toCamera, diffuse, specular);
     float sheen;
     float3 reflection = ReflectionAt(frame, material, normal, toCamera, ambient, occlusion, sheen);

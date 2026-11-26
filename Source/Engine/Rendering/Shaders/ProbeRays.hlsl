@@ -84,12 +84,12 @@ float3 SunOn(FrameData frame, Material material, float3 origin, float3 normal)
 {
     float3 toSun = -normalize(frame.SunDirection);
     float3 sun = (1 - frame.Ambient) * Diffuse(material, dot(normal, toSun));
-    if (all(sun <= 0))
+    if (all(sun <= 0) || all(frame.SunLight <= 0))
     {
         return 0;
     }
 
-    return sun * TraceVisibility(frame, origin, toSun, 1e6);
+    return sun * frame.SunLight * TraceVisibility(frame, origin, toSun, 1e6);
 }
 
 // The lamps' light on the surface; a lamp that casts shadows lights it where a ray toward it meets nothing.

@@ -1,3 +1,7 @@
+using System.Buffers.Binary;
+using System.IO.Compression;
+using System.Text;
+
 using FlickerVoid.Tools.Builder.Textures;
 using FlickerVoid.Engine.Graphics.Textures;
 
@@ -16,6 +20,15 @@ internal sealed class TextureImporterTestsBuilder : IDisposable
         byte[] tga = EncodeTga(width, height, rgba);
         string fullPath = Path.Combine(_files.SourceDirectory, path);
         File.WriteAllBytes(fullPath, tga);
+        return this;
+    }
+
+    /// <summary>Writes a 16-bit greyscale PNG, rows from the top.</summary>
+    public TextureImporterTestsBuilder WithGreyPng16(string path, int width, int height, ushort[] greys)
+    {
+        byte[] png = EncodeGreyPng16(width, height, greys);
+        string fullPath = Path.Combine(_files.SourceDirectory, path);
+        File.WriteAllBytes(fullPath, png);
         return this;
     }
 
@@ -64,5 +77,68 @@ internal sealed class TextureImporterTestsBuilder : IDisposable
         }
 
         return tga;
+    }
+
+    /// <summary>A 16-bit greyscale PNG: every row unfiltered, its samples big-endian.</summary>
+    private static byte[] EncodeGreyPng16(int width, int height, ushort[] greys)
+    {
+        using MemoryStream raw = new();
+        for (int y = 0; y < height; y++)
+        {
+            raw.WriteByte(0);
+            for (int x = 0; x < width; x++)
+            {
+                ushort grey = greys[(y * width) + x];
+                raw.WriteByte((byte)(grey >> 8));
+                raw.WriteByte((byte)grey);
+            }
+        }
+
+        using MemoryStream compressed = new();
+        using (ZLibStream zlib = new(compressed, CompressionLevel.Optimal, leaveOpen: true))
+        {
+            raw.Position = 0;
+            raw.CopyTo(zlib);
+        }
+
+        byte[] header = new byte[13];
+        BinaryPrimitives.WriteInt32BigEndian(header, width);
+        BinaryPrimitives.WriteInt32BigEndian(header.AsSpan(4), height);
+        header[8] = 16;
+        using MemoryStream png = new();
+        png.Write([0x89, (byte)'P', (byte)'N', (byte)'G', 0x0D, 0x0A, 0x1A, 0x0A]);
+        WriteChunk(png, "IHDR", header);
+        WriteChunk(png, "IDAT", compressed.ToArray());
+        WriteChunk(png, "IEND", []);
+        return png.ToArray();
+    }
+
+    private static void WriteChunk(Stream stream, string type, byte[] data)
+    {
+        byte[] length = new byte[4];
+        BinaryPrimitives.WriteInt32BigEndian(length, data.Length);
+        stream.Write(length);
+        byte[] typeAndData = [.. Encoding.ASCII.GetBytes(type), .. data];
+        stream.Write(typeAndData);
+        byte[] crc = new byte[4];
+        uint checksum = Crc32(typeAndData);
+        BinaryPrimitives.WriteUInt32BigEndian(crc, checksum);
+        stream.Write(crc);
+    }
+
+    private static uint Crc32(byte[] bytes)
+    {
+        uint crc = 0xFFFFFFFF;
+        foreach (byte value in bytes)
+        {
+            crc ^= value;
+            for (int bit = 0; bit < 8; bit++)
+            {
+                uint mask = (uint)-(int)(crc & 1);
+                crc = (crc >> 1) ^ (0xEDB88320 & mask);
+            }
+        }
+
+        return ~crc;
     }
 }
