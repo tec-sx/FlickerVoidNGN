@@ -5,10 +5,12 @@ using System.Text.Json.Serialization.Metadata;
 
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Assets.Data;
+using FlickerVoid.Editor.Assets.Environments;
 using FlickerVoid.Editor.Assets.Flows;
 using FlickerVoid.Editor.Assets.Moods;
 using FlickerVoid.Editor.Assets.Textures;
 using FlickerVoid.Editor.Core.Data;
+using FlickerVoid.Editor.Core.Environments;
 using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
@@ -27,6 +29,19 @@ public sealed partial class MainWindowViewModel
 
     /// <summary>Forgets a flow graph whose editor window closed, so undo there no longer opens it.</summary>
     public void CloseFlow(string path) => _openFlows.Remove(path);
+
+    /// <summary>The environment file's undo and redo steps, for its editor window.</summary>
+    public UndoHistory GetEnvironmentHistory(string path) => _content.GetHistory(path);
+
+    /// <summary>Forgets an environment whose editor window closed, and draws the scene's own environment again.</summary>
+    public void CloseEnvironment(string path)
+    {
+        _openEnvironments.Remove(path);
+        if (Viewport.EnvironmentPath is { } shown && ContentManager.PathComparer.Equals(shown, path))
+        {
+            Viewport.EnvironmentPath = null;
+        }
+    }
 
     /// <summary>A material editor over the scene's content, previewing on the GPU when there is one.</summary>
     public MaterialEditorViewModel CreateMaterialEditor()
@@ -87,6 +102,7 @@ public sealed partial class MainWindowViewModel
             [AssetTypes.Data] = asset => OpenData(asset.Path),
             [AssetTypes.Table] = asset => OpenTable(asset.Path),
             [AssetTypes.Flow] = asset => OpenFlow(asset.Path),
+            [AssetTypes.Environment] = asset => OpenEnvironment(asset.Path),
             [AssetTypes.Code] = OpenCode,
             [AssetTypes.Vehicle] = asset => OpenVehicle(asset.Path),
         };
@@ -181,6 +197,52 @@ public sealed partial class MainWindowViewModel
         FlowRequested?.Invoke(path, graph);
     }
 
+    /// <summary>
+    /// Edits the environment in its editor window, its edits held unsaved like a flow graph's, and draws the viewport with it at
+    /// the editor's hour; reopened after an undo, it keeps the hour it was at.
+    /// </summary>
+    private void OpenEnvironment(string path)
+    {
+        EnvironmentDocument document;
+        try
+        {
+            document = new EnvironmentDocument(_content, path);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or JsonException or IOException or UnauthorizedAccessException)
+        {
+            Viewport.Status = $"Can't open {path}: {exception.Message}";
+            return;
+        }
+
+        ContentFileFinder files = new(_content);
+        string title = Path.GetFileNameWithoutExtension(path);
+        EnvironmentEditorViewModel editor = new(title, document.Environment, document.Hold, files.Find);
+        if (_openEnvironments.TryGetValue(path, out EnvironmentEditorViewModel? open))
+        {
+            editor.Hour = open.Hour;
+            editor.Speed = open.Speed;
+            open.PropertyChanged -= HandleEnvironmentChanged;
+        }
+        else
+        {
+            editor.Hour = Viewport.Hour;
+        }
+
+        _openEnvironments[path] = editor;
+        editor.PropertyChanged += HandleEnvironmentChanged;
+        Viewport.EnvironmentPath = path;
+        Viewport.Hour = editor.Hour;
+        EnvironmentRequested?.Invoke(path, editor);
+    }
+
+    private void HandleEnvironmentChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(EnvironmentEditorViewModel.Hour) && sender is EnvironmentEditorViewModel editor)
+        {
+            Viewport.Hour = editor.Hour;
+        }
+    }
+
     /// <summary>Edits the table's rows in the Data tab, held unsaved like a data asset's.</summary>
     private void OpenTable(string path)
     {
@@ -233,6 +295,7 @@ public sealed partial class MainWindowViewModel
         ViewSettingsViewModel settings = new(_mood.Mood, files.Find);
         settings.Edited += _mood.Hold;
         Viewport.Mood = _mood.Mood;
+        Viewport.MoodPath = path;
         ViewSettings = settings;
         OnPropertyChanged(nameof(MoodHeading));
         Viewport.Status = $"Lighting the viewport with {path}.";
@@ -277,6 +340,14 @@ public sealed partial class MainWindowViewModel
             else
             {
                 OpenData(_dataPath);
+            }
+        }
+
+        foreach (string environment in _openEnvironments.Keys.ToList())
+        {
+            if (IsPath(environment, fullPath))
+            {
+                OpenEnvironment(environment);
             }
         }
 
