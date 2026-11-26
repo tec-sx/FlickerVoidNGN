@@ -326,7 +326,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 return null;
             }
 
-            return Viewport.GetDrawnMood();
+            return Viewport.GetLayeredMood();
         }
 
         bool scenesOwn = _mood.Path == _sceneMood && !_content.IsUnsaved(_mood.Path);
@@ -335,7 +335,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return null;
         }
 
-        return Viewport.GetDrawnMood();
+        return Viewport.GetLayeredMood();
     }
 
     private bool CanCompile() => _compiler is not null;

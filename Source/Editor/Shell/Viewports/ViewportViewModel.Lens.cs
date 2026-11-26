@@ -11,20 +11,48 @@ public sealed partial class ViewportViewModel
 {
     private readonly Dictionary<string, object?> _looks = [];
 
-    /// <summary>
-    /// The mood the viewport draws: its <see cref="Mood"/> with the lens the scene's main camera names laid over it (until the
-    /// mood editor reads moods as the values they name), and without the lens when it can't be read.
-    /// </summary>
+    /// <summary>The mood the viewport draws: the <see cref="GetLayeredMood"/>, without its canvas while <see cref="ShowCanvas"/> is off.</summary>
     public LightingMood GetDrawnMood()
     {
-        LightingMood drawn = Mood with { };
-        string? path = MainCamera.FindLens(Scene.Game.World);
-        if (Load(path, RenderingJsonContext.Default.CameraLens) is { } lens)
+        LightingMood drawn = GetLayeredMood();
+        if (!ShowCanvas)
         {
-            lens.Values.Apply(drawn);
+            drawn.Canvas = null;
         }
 
         return drawn;
+    }
+
+    /// <summary>
+    /// The mood layered as the game does: the lens the scene's main camera names, then the values its <see cref="Mood"/>
+    /// changes from the defaults; without the lens when it can't be read.
+    /// </summary>
+    public LightingMood GetLayeredMood()
+    {
+        LightingMood layered = new();
+        string? path = MainCamera.FindLens(Scene.Game.World);
+        if (Load(path, RenderingJsonContext.Default.CameraLens) is { } lens)
+        {
+            lens.Values.Apply(layered);
+        }
+
+        LayChangedValues(layered);
+        return layered;
+    }
+
+    /// <summary>Writes onto a mood the values of <see cref="Mood"/> that differ from the defaults, the ones its file names.</summary>
+    private void LayChangedValues(LightingMood drawn)
+    {
+        LightingMood defaults = new();
+        foreach (MoodValue value in MoodValues.All)
+        {
+            LightingMood probe = defaults with { };
+            value.Copy(Mood, probe);
+            if (probe != defaults)
+            {
+                value.Copy(Mood, drawn);
+            }
+        }
     }
 
     private MoodOverride? LoadMood(string path)
