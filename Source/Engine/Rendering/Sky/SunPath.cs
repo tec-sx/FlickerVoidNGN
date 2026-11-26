@@ -10,7 +10,11 @@ namespace FlickerVoid.Engine.Rendering.Sky;
 /// </summary>
 public readonly record struct SunPath(float Latitude, float North, float Declination)
 {
+    /// <summary>The days from one new moon to the next.</summary>
+    public const float MoonMonthDays = 29.5f;
+
     private const float DegreesPerHour = 15;
+    private const float DayHours = 24;
 
     /// <summary>The direction from the ground toward the sun at an hour of the day, noon at 12; below the horizon at night.</summary>
     public Vector3 TowardSun(double hour)
@@ -27,10 +31,23 @@ public readonly record struct SunPath(float Latitude, float North, float Declina
         return (eastAxis * east) + (Vector3.UnitY * up) + (northAxis * north);
     }
 
-    /// <summary>Writes the way the sun's light travels at the hour onto a mood.</summary>
-    public void Apply(double hour, LightingMood mood)
+    /// <summary>
+    /// The direction from the ground toward the moon on a day at an hour. It runs the sun's path behind the sun by its age (the
+    /// day over <see cref="MoonMonthDays"/>): beside the sun when new, opposite it when full, rising later each day.
+    /// </summary>
+    public Vector3 TowardMoon(int day, double hour)
+    {
+        double age = day / (double)MoonMonthDays;
+        age -= Math.Floor(age);
+        double behind = age * DayHours;
+        return TowardSun(hour - behind);
+    }
+
+    /// <summary>Writes the way the sun's and the moon's light travel on the day at the hour onto a mood.</summary>
+    public void Apply(int day, double hour, LightingMood mood)
     {
         mood.SunDirection = -TowardSun(hour);
+        mood.MoonDirection = -TowardMoon(day, hour);
     }
 
     private static float ToRadians(float degrees) => degrees * MathF.PI / 180;

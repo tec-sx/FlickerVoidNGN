@@ -46,6 +46,16 @@ public sealed record LightingMood
     [Range(0, 100)]
     public float SunIntensity { get; set; } = 1;
 
+    /// <summary>The direction the moonlight travels, in world space, of any length; the sun's path turns it with the day.</summary>
+    public Vector3 MoonDirection { get; set; } = Vector3.Normalize(new Vector3(0.4f, 0.8f, 0.45f));
+
+    /// <summary>The color of the full moon's light, linear.</summary>
+    public Vector3 MoonColor { get; set; } = new(0.55f, 0.65f, 0.9f);
+
+    /// <summary>How strong the full moon's light is, times its color; a moon less than full lights less.</summary>
+    [Range(0, 100)]
+    public float MoonIntensity { get; set; } = 0.25f;
+
     /// <summary>How much of the light crossing a world unit of fog it absorbs or scatters, at and below <see cref="FogHeight"/>; 0 clears the air.</summary>
     public float FogDensity { get; set; }
 

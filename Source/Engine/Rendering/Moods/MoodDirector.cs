@@ -4,7 +4,7 @@ using FlickerVoid.Engine.Rendering.Sky;
 namespace FlickerVoid.Engine.Rendering.Moods;
 
 /// <summary>
-/// Builds the mood on screen from layers, lowest first: the defaults, the environment at the hour of the day with the sun on its path, then the
+/// Builds the mood on screen from layers, lowest first: the defaults, the environment at the hour of the day with the sun and moon on their path, then the
 /// overrides of the lens, the scene, the story, the shot and the tools, each changing only the values it names. When a layer changes,
 /// the mood on screen blends to the new build over the change's seconds, still following the hour.
 /// </summary>
@@ -17,6 +17,7 @@ public sealed class MoodDirector
     private float _blendSeconds;
     private float _elapsed;
     private double _hour;
+    private int _day;
     private bool _changed = true;
 
     /// <summary>The mood to draw with now; it stays the same object while nothing changes, and is never changed once handed out.</summary>
@@ -69,19 +70,24 @@ public sealed class MoodDirector
         Change(blendSeconds);
     }
 
-    /// <summary>Builds the mood for an hour of the day, a frame of the seconds given after the last.</summary>
-    public void Update(double hour, float deltaSeconds)
+    /// <summary>Builds the mood for an hour of the first day, a frame of the seconds given after the last.</summary>
+    public void Update(double hour, float deltaSeconds) => Update(0, hour, deltaSeconds);
+
+    /// <summary>Builds the mood for a day (which moves the moon) and an hour of it, a frame of the seconds given after the last.</summary>
+    public void Update(int day, double hour, float deltaSeconds)
     {
         bool followsHour = Environment is not null || SunPath is not null;
-        bool hourMoved = followsHour && hour != _hour;
+        bool dayMoved = SunPath is not null && day != _day;
+        bool hourMoved = followsHour && (hour != _hour || dayMoved);
         if (!_changed && !IsBlending && !hourMoved)
         {
             return;
         }
 
         _hour = hour;
+        _day = day;
         _changed = false;
-        LightingMood target = Build(hour);
+        LightingMood target = Build(day, hour);
         if (IsBlending)
         {
             _elapsed += deltaSeconds;
@@ -119,11 +125,11 @@ public sealed class MoodDirector
         IsBlending = _blendSeconds > 0;
     }
 
-    private LightingMood Build(double hour)
+    private LightingMood Build(int day, double hour)
     {
         LightingMood mood = new();
         Environment?.Apply((float)hour, mood);
-        SunPath?.Apply(hour, mood);
+        SunPath?.Apply(day, hour, mood);
         foreach (MoodOverride? layer in _layers)
         {
             layer?.Apply(mood);
