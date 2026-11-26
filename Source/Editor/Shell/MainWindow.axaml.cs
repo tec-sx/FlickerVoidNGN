@@ -1,11 +1,14 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.VisualTree;
 
 using FlickerVoid.Editor.Assets.Materials;
 using FlickerVoid.Editor.Assets.Textures;
+using FlickerVoid.Editor.Controls;
+using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Environments;
 using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Core.Settings;
@@ -34,12 +37,24 @@ public sealed partial class MainWindow : Window
     /// <summary>The project the editor reopens on once this window has closed, chosen with Open Project.</summary>
     private string? _reopenProject;
 
+    /// <summary>Ctrl+K opens the command palette in the middle of the window.</summary>
+    private void HandlePaletteKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.K && e.KeyModifiers == KeyModifiers.Control && DataContext is MainWindowViewModel viewModel)
+        {
+            IReadOnlyList<MenuChoice> choices = viewModel.PaletteChoices;
+            SearchMenu.Show(this, choices, MenuGrouping.Separators, atPointer: false);
+            e.Handled = true;
+        }
+    }
+
     public MainWindow()
     {
         AvaloniaXamlLoader.Load(this);
         this.GetControl<SceneTreeView>("SceneTree").DeleteRequested += HandleOutlineDelete;
         this.GetControl<EntityTreeView>("EntityTree").DeleteRequested += HandleOutlineDelete;
         UndoShortcuts.Attach(this, FindHistory);
+        AddHandler(KeyDownEvent, HandlePaletteKeyDown, RoutingStrategies.Tunnel);
         AddHandler(GotFocusEvent, (_, _) => TrackSidePanelFocus(), RoutingStrategies.Bubble, handledEventsToo: true);
     }
 

@@ -31,14 +31,14 @@ public sealed partial class SearchMenu : UserControl
     private SearchMenuViewModel? Menu => DataContext as SearchMenuViewModel;
 
     /// <summary>Opens a menu of <paramref name="choices"/> at the pointer over <paramref name="anchor"/>, grouped as asked.</summary>
-    public static void Show(Control anchor, IReadOnlyList<MenuChoice> choices, MenuGrouping grouping)
+    public static void Show(Control anchor, IReadOnlyList<MenuChoice> choices, MenuGrouping grouping, bool atPointer = true)
     {
         SearchMenuViewModel menu = new(choices, grouping);
         SearchMenu view = new() { DataContext = menu };
-        Flyout flyout = new() { Content = view, Placement = PlacementMode.Pointer, FlyoutPresenterClasses = { "searchMenu" } };
+        Flyout flyout = new() { Content = view, Placement = atPointer ? PlacementMode.Pointer : PlacementMode.Center, FlyoutPresenterClasses = { "searchMenu" } };
         view._flyout = flyout;
         flyout.Opened += (_, _) => view._search.Focus();
-        flyout.ShowAt(anchor, showAtPointer: true);
+        flyout.ShowAt(anchor, showAtPointer: atPointer);
     }
 
     private void HandleKeyDown(object? sender, KeyEventArgs e)

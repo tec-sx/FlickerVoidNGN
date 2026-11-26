@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Persistence.Layout;
 
 namespace FlickerVoid.Editor;
@@ -98,6 +99,18 @@ public sealed partial class MainWindowViewModel
     public GridLength ContentRowHeight => IsContentOpen ? new GridLength(300) : new GridLength(0);
 
     partial void OnIsContentOpenChanged(bool value) => OnPropertyChanged(nameof(ContentRowHeight));
+
+    /// <summary>The commands of the command palette (Ctrl+K), each with its key.</summary>
+    public IReadOnlyList<MenuChoice> PaletteChoices =>
+    [
+        new("Play", Play, "Run", "Play", "F5"),
+        new("Compile", () => _ = Compile(), "Run", null, "Ctrl+Alt+F11"),
+        new("Save assets", SaveAssets, "File", null, "Ctrl+Shift+S"),
+        new("Undo", Undo, "Edit", null, "Ctrl+Z"),
+        new("Redo", Redo, "Edit", null, "Ctrl+Y"),
+        new("Open or close the content drawer", ToggleContent, "View", null, "Ctrl+Space"),
+        new("Swap the outliner and the context panel", SwapPanels, "View"),
+    ];
 
     /// <summary>Opens or closes the content drawer (Ctrl+Space).</summary>
     [RelayCommand]

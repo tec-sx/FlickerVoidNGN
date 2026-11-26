@@ -1,4 +1,5 @@
 using FlickerVoid.Editor.Assets;
+using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Persistence.Layout;
 using FlickerVoid.Editor.Viewports;
 
@@ -17,6 +18,20 @@ public sealed class MainWindowViewModelPanelsTests : IDisposable
     private ViewportViewModel Viewport => _builder.ViewModel.Viewport;
 
     public void Dispose() => _builder.Dispose();
+
+    [Fact]
+    public void TheCommandPaletteListsCommandsWithTheirKeysAndRunsThem()
+    {
+        IReadOnlyList<MenuChoice> choices = ViewModel.PaletteChoices;
+        MenuChoice content = choices.Single(choice => choice.Name == "Open or close the content drawer");
+
+        content.Run();
+
+        content.Gesture.Should().Be("Ctrl+Space");
+        ViewModel.IsContentOpen.Should().BeTrue();
+        choices.Select(choice => choice.Name).Should().Contain(["Play", "Compile", "Save assets", "Undo", "Redo", "Swap the outliner and the context panel"]);
+        choices.Should().OnlyContain(choice => choice.Group != null);
+    }
 
     [Fact]
     public void TheContentDrawerIsClosedUntilItIsToggled()
