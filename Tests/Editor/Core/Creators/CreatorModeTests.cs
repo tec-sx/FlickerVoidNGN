@@ -452,6 +452,22 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void CuttingAPocketIntoTheSelectedFaceEditsTheMeshOnceAndSelectsItsFloor()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfFace(2, default), additive: false);
+
+        bool cut = mode.CutMesh(0.1f, through: false);
+
+        cut.Should().BeTrue();
+        _builder.MeshEdits.Should().Equal("body");
+        mode.MeshSelection!.Faces.Should().ContainSingle();
+    }
+
+    [Fact]
     public void ExtrudingWithNoFaceSelectedDoesNothing()
     {
         using CreatorMode mode = _builder.EnterAlone();
