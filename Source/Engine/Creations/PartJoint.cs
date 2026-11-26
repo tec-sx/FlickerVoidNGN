@@ -21,4 +21,15 @@ public record struct PartJoint
     public float Max { get; init; }
 
     public float Speed { get; init; }
+
+    /// <summary>Where a door's joint stands open: the limit farther from rest, so a door hinged to open the other way has a negative one.</summary>
+    public readonly float GetOpenPosition()
+    {
+        if (MathF.Abs(Max) >= MathF.Abs(Min))
+        {
+            return Max;
+        }
+
+        return Min;
+    }
 }

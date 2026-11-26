@@ -83,3 +83,9 @@ Used in: `Source/Editor/Shell/LucideIcons.cs` (the Visual Studio logo of the edi
 https://github.com/NVIDIA/DLSS (v310.9.16)
 
 Used in: `Source/Native/Dlss` (the engine's DLSS library links the SDK's NGX static library, and NVIDIA's DLSS and Ray Reconstruction runtimes are copied beside programs). Nothing of the SDK is in this repository: the library's build scripts fetch it under the NVIDIA RTX SDKs license (the SDK's `LICENSE.txt`). A game that ships with DLSS must attribute it and show the NVIDIA marks on its splash screen, in its about box and in its credits (the license's exhibit, section 7.1 (b)).
+
+## Manifold
+
+https://github.com/elalish/manifold (v3.5.5)
+
+Used in: `Source/Native/Manifold` and `Source/Editor/Core/Meshes/Booleans` (the editor's mesh Booleans call its C binding). Nothing of it is in this repository: the build scripts fetch and build it. Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0), Copyright The Manifold Authors.
