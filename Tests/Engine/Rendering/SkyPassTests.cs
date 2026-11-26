@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 
 namespace FlickerVoid.Engine.Rendering.Tests;
@@ -39,6 +40,31 @@ public sealed class SkyPassTests : IDisposable
     }
 
     [Fact]
+    public void ShowsAnOrthographicViewTheSunThroughItsVirtualLens()
+    {
+        using SkyPassTestsBuilder turnedAway = new();
+        Vector3 ahead = Vector3.Normalize(new Vector3(0, -0.15f, 1));
+        _builder.LookingDownOrthographically().WithMood(mood => mood with { SunDirection = ahead });
+        turnedAway.LookingDownOrthographically().TurnedAround().WithMood(mood => mood with { SunDirection = ahead });
+
+        int facing = Brightest(_builder.Render());
+        int away = Brightest(turnedAway.Render());
+
+        facing.Should().BeGreaterThan(away + 150, "the sun ahead of the camera shows, and behind it does not");
+    }
+
+    [Fact]
+    public void KeepsTheHorizonMidwayUpAnOrthographicViewHoweverItTilts()
+    {
+        _builder.LookingDownOrthographically().WithMood(static mood => mood with { HorizonSoftness = 0 });
+
+        uint[] pixels = _builder.Render();
+
+        int step = Step(pixels);
+        step.Should().BeGreaterThan(60, "the virtual lens looks level, so sky meets ground in the middle");
+    }
+
+    [Fact]
     public void LetsThePaperShowThroughTheSkyLikeAThinWash()
     {
         using SkyPassTestsBuilder dark = new();
@@ -51,6 +77,22 @@ public sealed class SkyPassTests : IDisposable
         int light = SkyPassTestsBuilder.Brightness(onLight[(TopRow * Size) + Centre]);
         int darker = SkyPassTestsBuilder.Brightness(onDark[(TopRow * Size) + Centre]);
         light.Should().BeGreaterThan(darker + 60, "the sky is laid over the paper, not over it like a wall");
+    }
+
+    [Fact]
+    public void PaintsADarkSkyDarkOverPaperToo()
+    {
+        using SkyPassTestsBuilder night = new();
+        _builder.WithPaper(220);
+        night.WithPaper(220);
+        night.WithMood(mood => mood with { SkyZenith = mood.SkyZenith * 0.02f, SkyHorizon = mood.SkyHorizon * 0.02f, StarIntensity = 0 });
+
+        uint[] byDay = _builder.Render();
+        uint[] byNight = night.Render();
+
+        int day = SkyPassTestsBuilder.Brightness(byDay[(TopRow * Size) + Centre]);
+        int dark = SkyPassTestsBuilder.Brightness(byNight[(TopRow * Size) + Centre]);
+        dark.Should().BeLessThan(day / 3, "the wash is as dark as the sky's colours, however bright the paper");
     }
 
     [Theory]
@@ -75,6 +117,140 @@ public sealed class SkyPassTests : IDisposable
     }
 
     [Fact]
+    public void PaintsTheZenithHorizonAndGroundColorsTheMoodGives()
+    {
+        _builder.WithMood(static mood => mood with { SkyZenith = new Vector3(0.6f, 0.05f, 0.05f), SkyHorizon = new Vector3(0.3f, 0.3f, 0.3f), SkyGround = new Vector3(0.02f, 0.3f, 0.02f) });
+
+        uint[] pixels = _builder.Render();
+
+        (byte topRed, byte topGreen, _) = SkyPassTestsBuilder.Channels(pixels[(TopRow * Size) + Centre]);
+        (byte bottomRed, byte bottomGreen, _) = SkyPassTestsBuilder.Channels(pixels[(BottomRow * Size) + Centre]);
+        topRed.Should().BeGreaterThan((byte)(topGreen + 40), "the sky turns to the zenith's red overhead");
+        bottomGreen.Should().BeGreaterThan((byte)(bottomRed + 20), "the ground is the mood's green");
+    }
+
+    [Fact]
+    public void BlendsSkyAndGroundOverTheHorizonsSoftness()
+    {
+        using SkyPassTestsBuilder soft = new();
+        soft.WithMood(static mood => mood with { HorizonSoftness = 0.3f });
+
+        uint[] sharpPixels = _builder.Render();
+        uint[] softPixels = soft.Render();
+
+        int sharpStep = Step(sharpPixels);
+        int softStep = Step(softPixels);
+        softStep.Should().BeLessThan(sharpStep / 2, "a soft horizon has no hard line between sky and ground");
+    }
+
+    [Fact]
+    public void DrawsTheSunsDiscAsLightWhereTheSunIsInView()
+    {
+        using SkyPassTestsBuilder hidden = new();
+        Vector3 inView = Vector3.Normalize(new Vector3(0, -0.15f, 1));
+        _builder.WithMood(mood => mood with { SunDirection = inView });
+        hidden.WithMood(mood => mood with { SunDirection = inView, SunDiscIntensity = 0, SunGlow = 0 });
+
+        int withSun = Brightest(_builder.Render());
+        int withoutSun = Brightest(hidden.Render());
+
+        withSun.Should().BeGreaterThan(withoutSun + 150);
+    }
+
+    [Fact]
+    public void LightsTheMoonsFaceByWhereTheSunIs()
+    {
+        using SkyPassTestsBuilder newMoon = new();
+        Vector3 moon = Vector3.Normalize(new Vector3(0, -0.15f, 1));
+        _builder.WithMood(mood => mood with { SunDirection = Vector3.Normalize(new Vector3(0, 0.4f, -1)), MoonDirection = moon, SunDiscIntensity = 0, SunGlow = 0 });
+        newMoon.WithMood(mood => mood with { SunDirection = Vector3.Normalize(new Vector3(0, 0.05f, 1)), MoonDirection = moon, SunDiscIntensity = 0, SunGlow = 0 });
+
+        int full = Brightest(_builder.Render());
+        int dark = Brightest(newMoon.Render());
+
+        full.Should().BeGreaterThan(dark + 100, "a full moon is lit whole and a new one turns its dark side to us");
+    }
+
+    [Fact]
+    public void ShowsStarsInADarkSky()
+    {
+        using SkyPassTestsBuilder starless = new();
+        _builder.WithMood(static mood => NightSky(mood) with { StarIntensity = 4 });
+        starless.WithMood(static mood => NightSky(mood) with { StarIntensity = 0 });
+
+        int withStars = Brightest(_builder.Render());
+        int withoutStars = Brightest(starless.Render());
+
+        withStars.Should().BeGreaterThan(withoutStars + 60);
+    }
+
+    [Fact]
+    public void HidesTheStarsUnderABrightSky()
+    {
+        using SkyPassTestsBuilder starless = new();
+        _builder.WithMood(static mood => mood with { StarIntensity = 4, SunGlow = 0, SunDiscIntensity = 0, MoonDiscIntensity = 0, MoonCorona = 0 });
+        starless.WithMood(static mood => mood with { StarIntensity = 0, SunGlow = 0, SunDiscIntensity = 0, MoonDiscIntensity = 0, MoonCorona = 0 });
+
+        uint[] stars = _builder.Render();
+        uint[] none = starless.Render();
+
+        stars.Should().Equal(none, "the day's sky drowns them");
+    }
+
+    [Fact]
+    public void TurnsTheStarsWithTheSun()
+    {
+        using SkyPassTestsBuilder later = new();
+        _builder.WithMood(static mood => NightSky(mood) with { StarIntensity = 4, SunDirection = Vector3.Normalize(new Vector3(0.3f, 1, 0)) });
+        later.WithMood(static mood => NightSky(mood) with { StarIntensity = 4, SunDirection = Vector3.Normalize(new Vector3(-0.3f, 1, 0)) });
+
+        uint[] early = _builder.Render();
+        uint[] turned = later.Render();
+
+        early.Should().NotEqual(turned);
+    }
+
+    [Fact]
+    public void TakesThePositionInTheGradientFromAPaintedMask()
+    {
+        using SkyPassTestsBuilder plain = new();
+        Vector3 zenith = new(0.6f, 0.05f, 0.05f);
+        _builder.WithSkyMask(new Vector4(1, 0, 0, 1)).WithMood(mood => mood with { SkyZenith = zenith });
+        plain.WithMood(mood => mood with { SkyZenith = zenith });
+
+        uint[] painted = _builder.Render();
+        uint[] unpainted = plain.Render();
+
+        int row = (Centre - 2) * Size;
+        (byte paintedRed, byte paintedGreen, _) = SkyPassTestsBuilder.Channels(painted[row + Centre]);
+        (byte plainRed, byte plainGreen, _) = SkyPassTestsBuilder.Channels(unpainted[row + Centre]);
+        (paintedRed - paintedGreen).Should().BeGreaterThan(plainRed - plainGreen + 40, "the mask paints the zenith's red right down to the horizon");
+    }
+
+    [Fact]
+    public void BlendsBackToThePlainGradientAsTheMasksStrengthFalls()
+    {
+        using SkyPassTestsBuilder plain = new();
+        _builder.WithSkyMask(new Vector4(1, 1, 0, 1)).WithMood(static mood => mood with { SkyMaskStrength = 0, SkyBandColor = new Vector3(1, 0, 0) });
+
+        uint[] unpainted = plain.Render();
+        uint[] painted = _builder.Render();
+
+        painted.Should().Equal(unpainted);
+    }
+
+    [Fact]
+    public void LaysTheBandsColorWhereTheMasksGreenSays()
+    {
+        _builder.WithSkyMask(new Vector4(0.5f, 1, 0, 1)).WithMood(static mood => mood with { SkyBandColor = new Vector3(0.05f, 0.6f, 0.05f) });
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, _) = SkyPassTestsBuilder.Channels(pixels[(TopRow * Size) + Centre]);
+        green.Should().BeGreaterThan((byte)(red + 60));
+    }
+
+    [Fact]
     public void DrawsNothingWhileTheRendererHasNoSky()
     {
         _builder.Render();
@@ -83,5 +259,41 @@ public sealed class SkyPassTests : IDisposable
         uint[] pixels = _builder.Render();
 
         SkyPassTestsBuilder.Channels(pixels[Centre]).Should().Be(((byte)0, (byte)0, (byte)0));
+    }
+
+    /// <summary>A dark sky without the sun's and moon's light, the sun below the horizon.</summary>
+    private static LightingMood NightSky(LightingMood mood)
+    {
+        Vector3 dark = new(0.002f, 0.002f, 0.004f);
+        return mood with
+        {
+            SkyZenith = dark,
+            SkyHorizon = dark,
+            SkyGround = dark,
+            SunDirection = Vector3.UnitY,
+            SunGlow = 0,
+            SunDiscIntensity = 0,
+            MoonDiscIntensity = 0,
+            MoonCorona = 0,
+        };
+    }
+
+    private static int Brightest(uint[] pixels)
+    {
+        int brightest = 0;
+        foreach (uint pixel in pixels)
+        {
+            brightest = Math.Max(brightest, SkyPassTestsBuilder.Brightness(pixel));
+        }
+
+        return brightest;
+    }
+
+    /// <summary>The change in brightness across the horizon, between the rows just above and below the middle.</summary>
+    private static int Step(uint[] pixels)
+    {
+        int above = SkyPassTestsBuilder.Brightness(pixels[((Centre - 2) * Size) + Centre]);
+        int below = SkyPassTestsBuilder.Brightness(pixels[((Centre + 2) * Size) + Centre]);
+        return Math.Abs(above - below);
     }
 }

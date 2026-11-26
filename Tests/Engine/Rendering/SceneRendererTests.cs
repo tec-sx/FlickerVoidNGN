@@ -180,6 +180,36 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void LightsMeshesByTheSunsColorAndIntensity()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: -Vector3.UnitZ, ambient: 0);
+        _builder.WithMood(static mood => mood with { SunColor = new Vector3(0.5f, 1, 1) });
+        uint[] dimmed = _builder.Render();
+        _builder.WithMood(static mood => mood with { SunColor = Vector3.One, SunIntensity = 0 });
+        uint[] dark = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(dimmed[0]);
+        red.Should().BeInRange(100, 200, "the sun's red is halved, on the way to the screen's curve");
+        dark.Should().AllBeEquivalentTo(BlackPixel, "a sun of no intensity lights nothing");
+    }
+
+    [Fact]
+    public void LightsMeshesByTheMoonOnceTheSunHasSet()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: Vector3.Normalize(new Vector3(0, 1, 1)), ambient: 0);
+        _builder.WithMood(static mood => mood with { MoonDirection = Vector3.Normalize(new Vector3(0, -0.5f, -1)), MoonColor = Vector3.One, MoonIntensity = 1 });
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[0]);
+        red.Should().BeInRange(20, 250, "the moon, nearly full and up in front of the quad, lights it while the sun is down");
+    }
+
+    [Fact]
     public void LightsMeshesByThePointLightsInRange()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
@@ -722,6 +752,19 @@ public sealed class SceneRendererTests : IDisposable
         green.Should().Be(red);
         blue.Should().Be(red);
         tinted.Should().BeInRange(126, 129);
+    }
+
+    [Fact]
+    public void DrawsThinPaintOpaqueWithoutAPaper()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(1, 0, 0, 0.5f)));
+        _builder.WithScene(Camera, Quad);
+
+        uint[] pixels = _builder.Render();
+
+        byte alpha = (byte)(pixels[5] >> 24);
+        alpha.Should().Be(255, "paint is thin on its canvas, not see-through to what lies behind the image");
+        SceneRendererTestsBuilder.Channels(pixels[5]).Should().Be(((byte)255, (byte)0, (byte)0));
     }
 
     [Fact]

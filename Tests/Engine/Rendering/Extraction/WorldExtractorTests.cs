@@ -5,7 +5,9 @@ using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Rendering.Outlines;
+using FlickerVoid.Engine.Rendering.Sky;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Greyboxes;
 
@@ -26,6 +28,24 @@ public sealed class WorldExtractorTests : IDisposable
         scene.Cameras.Should().ContainSingle();
         scene.Cameras[0].Camera.OrthographicHeight.Should().Be(7);
         scene.Cameras[0].Transform.Position.Should().Be(position);
+    }
+
+    [Fact]
+    public void CopiesTheScenesSkyMaskWithItsNorth()
+    {
+        SceneEnvironment environment = new() { SkyMask = "Skies/Street.png", North = 30 };
+
+        RenderScene scene = _builder.WithEnvironment(environment).Extract();
+
+        scene.Sky.Should().Be(new RenderSky("Skies/Street.png", 30));
+    }
+
+    [Fact]
+    public void HasNoSkyMaskWhenTheSceneNamesNone()
+    {
+        RenderScene scene = _builder.WithEnvironment(new SceneEnvironment()).Extract();
+
+        scene.Sky.Should().BeNull();
     }
 
     [Fact]
