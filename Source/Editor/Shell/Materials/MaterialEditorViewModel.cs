@@ -10,6 +10,7 @@ using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Rendering.Materials;
+using FlickerVoid.Engine.Rendering.Serialization;
 using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Editor.Materials;
@@ -18,7 +19,7 @@ namespace FlickerVoid.Editor.Materials;
 /// The material editor window: a browser of the content folder's materials nested under the masters and materials they are
 /// instances of, the open material's parent and a row for each parameter the scene shader and its master declare (showing its
 /// parent's value until it overrides it), held unsaved as it changes until saved or discarded, and a preview of the material on
-/// a sphere or a cube.
+/// a sphere, a cube or a plane, by day, at night or indoors, its light turned by a drag.
 /// </summary>
 public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposable
 {
@@ -71,6 +72,10 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
     [ObservableProperty]
     public partial string? SelectedMaterial { get; set; }
 
+    /// <summary>What the master picked in the tree is: its shading model and its own parameters; empty unless a master is picked.</summary>
+    [ObservableProperty]
+    public partial string MasterSummary { get; set; } = "";
+
     /// <summary>The open material's parent, a master or material it is an instance of.</summary>
     [ObservableProperty]
     public partial FieldViewModel? Parent { get; set; }
@@ -81,15 +86,39 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
     /// <summary>The parameters' fields.</summary>
     public IEnumerable<FieldViewModel> Fields => Parameters.Select(static parameter => parameter.Field);
 
+    /// <summary>The shape the preview shows the material on.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsSphere))]
-    public partial bool IsCube { get; set; }
+    [NotifyPropertyChangedFor(nameof(IsSphere), nameof(IsCube), nameof(IsPlane))]
+    public partial PreviewShape Shape { get; set; }
 
     public bool IsSphere
     {
-        get => !IsCube;
-        set => IsCube = !value;
+        get => Shape == PreviewShape.Sphere;
+        set => PickShape(PreviewShape.Sphere, value);
     }
+
+    public bool IsCube
+    {
+        get => Shape == PreviewShape.Cube;
+        set => PickShape(PreviewShape.Cube, value);
+    }
+
+    public bool IsPlane
+    {
+        get => Shape == PreviewShape.Plane;
+        set => PickShape(PreviewShape.Plane, value);
+    }
+
+    /// <summary>How the preview is lit: by day, at night by a lamp, or indoors.</summary>
+    [ObservableProperty]
+    public partial PreviewMood Mood { get; set; }
+
+    /// <summary>The moods the preview can be lit in, for the window's picker.</summary>
+    public IReadOnlyList<PreviewMood> Moods { get; } = Enum.GetValues<PreviewMood>();
+
+    /// <summary>How far the preview's sun or lamp is turned about the shape, in radians.</summary>
+    [ObservableProperty]
+    public partial float LightYaw { get; set; }
 
     /// <summary>How far the preview shape is turned about its vertical axis, in radians.</summary>
     [ObservableProperty]
@@ -163,6 +192,13 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
         RenderPreview();
     }
 
+    /// <summary>Turns the preview's sun or lamp about the shape by a mouse drag in pixels.</summary>
+    public void DragLight(Vector2 pixels)
+    {
+        LightYaw += pixels.X * RadiansPerPixel;
+        RenderPreview();
+    }
+
     [RelayCommand(CanExecute = nameof(IsUnsaved))]
     private void Save()
     {
@@ -207,9 +243,15 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
             return;
         }
 
+        MasterSummary = "";
         if (value is null || value.IsMaster)
         {
             SelectedMaterial = null;
+            if (value is not null)
+            {
+                MasterSummary = DescribeMaster(value.Path);
+            }
+
             return;
         }
 
@@ -239,7 +281,23 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
         HandleUnsavedChanged();
     }
 
-    partial void OnIsCubeChanged(bool value) => RenderPreview();
+    partial void OnShapeChanged(PreviewShape value) => RenderPreview();
+
+    partial void OnMoodChanged(PreviewMood value) => RenderPreview();
+
+    /// <summary>Picks the shape when its toggle is turned on; turning the shown shape's toggle off keeps it.</summary>
+    private void PickShape(PreviewShape shape, bool picked)
+    {
+        if (picked)
+        {
+            Shape = shape;
+            return;
+        }
+
+        OnPropertyChanged(nameof(IsSphere));
+        OnPropertyChanged(nameof(IsCube));
+        OnPropertyChanged(nameof(IsPlane));
+    }
 
     private void HandleUnsavedChanged()
     {
@@ -283,6 +341,26 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
     {
         Materials = _browser.Find(SearchText);
         Tree = _browser.FindTree(SearchText);
+    }
+
+    private string DescribeMaster(string path)
+    {
+        try
+        {
+            MasterFile master = _content.Load(path, RenderingJsonContext.Default.MasterFile);
+            IEnumerable<string> names = master.Parameters.Select(static parameter => DisplayNames.FromIdentifier(parameter.Name));
+            string parameters = string.Join(", ", names);
+            if (parameters.Length == 0)
+            {
+                parameters = "none of its own";
+            }
+
+            return $"Master {path}: {master.ShadingModel} shading. Parameters: {parameters}. New instance makes a material of it.";
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or JsonException)
+        {
+            return $"Master {path} can't be read: {exception.Message}";
+        }
     }
 
     private static MaterialTreeNode? FindNode(IReadOnlyList<MaterialTreeNode> nodes, string path)
@@ -390,15 +468,10 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
             return;
         }
 
-        PreviewShape shape = PreviewShape.Sphere;
-        if (IsCube)
-        {
-            shape = PreviewShape.Cube;
-        }
-
+        PreviewView view = new(Shape, PreviewYaw, Mood, LightYaw);
         try
         {
-            PreviewPixels = _preview.Render(_document.Material, shape, PreviewYaw, PreviewSize);
+            PreviewPixels = _preview.Render(_document.Material, view, PreviewSize);
         }
         catch (InvalidDataException exception)
         {

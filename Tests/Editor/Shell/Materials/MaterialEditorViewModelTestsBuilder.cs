@@ -38,7 +38,7 @@ internal sealed class MaterialEditorViewModelTestsBuilder : IDisposable
     {
         Content = new UnsavedContent(new ContentManager(_files.Folder));
         _scene = new EditorScene(NullLoggerFactory.Instance, Content);
-        Preview.Render(Arg.Any<MaterialFile>(), Arg.Any<PreviewShape>(), Arg.Any<float>(), Arg.Any<int>()).Returns(new byte[4]);
+        Preview.Render(Arg.Any<MaterialFile>(), Arg.Any<PreviewView>(), Arg.Any<int>()).Returns(new byte[4]);
         return new MaterialEditorViewModel(Content, Preview);
     }
 

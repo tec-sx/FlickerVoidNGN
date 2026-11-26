@@ -144,8 +144,7 @@ public sealed class MaterialEditorViewModelTests : IDisposable
 
         _builder.Preview.Received().Render(
             Arg.Is<MaterialFile>(material => material.Parameters.ContainsKey("emissive")),
-            PreviewShape.Cube,
-            Arg.Any<float>(),
+            Arg.Is<PreviewView>(view => view.Shape == PreviewShape.Cube),
             MaterialEditorViewModel.PreviewSize);
         editor.PreviewPixels.Should().NotBeNull();
     }
@@ -263,5 +262,50 @@ public sealed class MaterialEditorViewModelTests : IDisposable
 
         editor.Parameters[^1].Label.Should().Be("Grime");
         editor.Tree.Should().ContainSingle().Which.Path.Should().Be("Masters/Surface.fvmaster");
+    }
+
+    [Fact]
+    public void PreviewsOnAPlaneInTheMoodPicked()
+    {
+        _builder.WithMaterial("Brick.fvmat", """{ "parameters": {} }""");
+        MaterialEditorViewModel editor = _builder.Build();
+        editor.SelectedMaterial = "Brick.fvmat";
+
+        editor.IsPlane = true;
+        editor.Mood = PreviewMood.Night;
+
+        editor.IsSphere.Should().BeFalse();
+        _builder.Preview.Received().Render(
+            Arg.Any<MaterialFile>(),
+            Arg.Is<PreviewView>(view => view.Shape == PreviewShape.Plane && view.Mood == PreviewMood.Night),
+            MaterialEditorViewModel.PreviewSize);
+    }
+
+    [Fact]
+    public void TurnsTheLightWhenDragged()
+    {
+        _builder.WithMaterial("Brick.fvmat", """{ "parameters": {} }""");
+        MaterialEditorViewModel editor = _builder.Build();
+        editor.SelectedMaterial = "Brick.fvmat";
+        float shape = editor.PreviewYaw;
+
+        editor.DragLight(new Vector2(50, 0));
+
+        editor.LightYaw.Should().NotBe(0);
+        editor.PreviewYaw.Should().Be(shape);
+        _builder.Preview.Received().Render(Arg.Any<MaterialFile>(), Arg.Is<PreviewView>(view => view.LightYaw != 0), MaterialEditorViewModel.PreviewSize);
+    }
+
+    [Fact]
+    public void DescribesTheMasterPicked()
+    {
+        _builder.WithMaterial("Masters/Surface.fvmaster", Master);
+        MaterialEditorViewModel editor = _builder.Build();
+
+        editor.SelectedNode = editor.Tree[0];
+
+        editor.MasterSummary.Should().Contain("Painted").And.Contain("Grime");
+        editor.SelectedMaterial.Should().BeNull();
+        editor.CreateInstanceCommand.CanExecute(null).Should().BeTrue();
     }
 }

@@ -41,12 +41,15 @@
     <!-- The preview: drag to turn the shape. -->
     <StackPanel Grid.Column="1" Margin="12" Spacing="8">
       <Border Width="320" Height="320" Background="#141414" CornerRadius="4" ClipToBounds="True">
-        <Image x:Name="Preview" Stretch="Uniform" Cursor="SizeWestEast" ToolTip.Tip="Drag to turn" />
+        <Image x:Name="Preview" Stretch="Uniform" Cursor="SizeWestEast" ToolTip.Tip="Drag to turn the shape; right-drag or Shift-drag to turn the light" />
       </Border>
       <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
         <ToggleButton Content="Sphere" IsChecked="{Binding IsSphere}" />
         <ToggleButton Content="Cube" IsChecked="{Binding IsCube}" />
+        <ToggleButton Content="Plane" IsChecked="{Binding IsPlane}" />
+        <ComboBox ItemsSource="{Binding Moods}" SelectedItem="{Binding Mood}" MinWidth="100" ToolTip.Tip="How the preview is lit" />
       </StackPanel>
+      <TextBlock Text="{Binding MasterSummary}" TextWrapping="Wrap" MaxWidth="320" />
       <TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxWidth="320" Foreground="#E0A040" />
     </StackPanel>
     <!-- The parent and the parameters the scene shader and the master declare, held unsaved as they change until saved or
