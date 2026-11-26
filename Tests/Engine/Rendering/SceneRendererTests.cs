@@ -644,6 +644,79 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void HazesWhatLiesBeyondItsStartIntoItsColour()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(static mood => mood with { HazeDensity = 100, HazeStart = 0, HazeMax = 0.5f, HazeFromSky = 0, HazeColor = new Vector3(0, 0, 1) });
+        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, 3));
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(126, 129, "the quad lies three units behind the focus, deep in the haze, which stops at its maximum");
+        green.Should().Be(0);
+        blue.Should().BeInRange(126, 129);
+        pixels[0].Should().Be(EmptyPixel, "nothing is painted there to haze");
+    }
+
+    [Fact]
+    public void LeavesWhatLiesBeforeTheHazesStartClear()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(static mood => mood with { HazeDensity = 100, HazeStart = 10, HazeMax = 1, HazeFromSky = 0, HazeColor = Vector3.Zero });
+        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, 3));
+
+        uint[] pixels = _builder.Render();
+
+        pixels[5].Should().Be(RedPixel, "the quad lies three units behind the focus, short of the haze's start");
+    }
+
+    [Fact]
+    public void ThinsTheHazeWithHeight()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(static mood => mood with { HazeDensity = 100, HazeStart = 0, HazeMax = 1, HazeFromSky = 0, HazeColor = Vector3.Zero, HazeHeight = -20, HazeHeightFalloff = 5 });
+        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, 3));
+
+        uint[] pixels = _builder.Render();
+
+        pixels[5].Should().Be(RedPixel, "the quad stands twenty units above the haze's height, where it has thinned away");
+    }
+
+    [Theory]
+    [InlineData(Tonemapper.None)]
+    [InlineData(Tonemapper.Uncharted2)]
+    [InlineData(Tonemapper.Aces)]
+    public void HazesIntoTheSkysHorizonColourAsTheScreenShowsIt(Tonemapper tonemapper)
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(mood => mood with
+        {
+            Exposure = 2,
+            Contrast = 1.2f,
+            Saturation = 0.8f,
+            Tonemapper = tonemapper,
+            HazeDensity = 100,
+            HazeStart = 0,
+            HazeMax = 1,
+            HazeFromSky = 1,
+            SkyHorizon = new Vector3(0.2f, 0.4f, 0.6f),
+        });
+        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, 3));
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeCloseTo(51, 2, "the haze takes the sky's horizon colour as it shows on screen, whatever the grade");
+        green.Should().BeCloseTo(102, 2);
+        blue.Should().BeCloseTo(153, 2);
+    }
+
+    [Fact]
     public void MeasuresTheDepthFadeFromTheCameraWithoutAFocus()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));

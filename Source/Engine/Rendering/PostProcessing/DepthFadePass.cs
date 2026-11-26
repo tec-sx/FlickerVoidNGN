@@ -7,7 +7,8 @@ namespace FlickerVoid.Engine.Rendering.PostProcessing;
 
 /// <summary>
 /// Lays the camera's depth fade (<see cref="RenderContext.DepthFade"/>) on the lit scene before the upscale and the grade: what
-/// stands nearer than the focus darkens and what lies farther melts into the far colour, as it shows on screen.
+/// stands nearer than the focus darkens and what lies farther melts into the far colour, as it shows on screen, and lays the
+/// mood's haze: what lies beyond its start melts into its colour.
 /// </summary>
 internal sealed class DepthFadePass : IRenderPass
 {
@@ -27,7 +28,7 @@ internal sealed class DepthFadePass : IRenderPass
 
     public void Execute(RenderContext context)
     {
-        if (!context.DepthFade.IsVisible)
+        if (!context.DepthFade.IsVisible && context.Mood.HazeDensity <= 0)
         {
             return;
         }
