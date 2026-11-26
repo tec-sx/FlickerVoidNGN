@@ -4,6 +4,7 @@ using System.Globalization;
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Media;
 
@@ -27,6 +28,16 @@ public sealed class CurveView : Control
     public static readonly StyledProperty<double> CursorTimeProperty =
         AvaloniaProperty.Register<CurveView, double>(nameof(CursorTime), double.NaN);
 
+    /// <summary>Whether the hours are written over the time lines; off under a ruler that writes them.</summary>
+    public static readonly StyledProperty<bool> ShowsHoursProperty =
+        AvaloniaProperty.Register<CurveView, bool>(nameof(ShowsHours), true);
+
+    public bool ShowsHours
+    {
+        get => GetValue(ShowsHoursProperty);
+        set => SetValue(ShowsHoursProperty, value);
+    }
+
     /// <summary>The colors tracks are drawn in, by their place among the editor's tracks.</summary>
     public static readonly IReadOnlyList<Color> TrackColors =
     [
@@ -44,14 +55,14 @@ public sealed class CurveView : Control
     /// <summary>How far the mouse may move, in pixels, for a right-click to open the modes rather than pan.</summary>
     private const double ClickSlop = 4;
 
-    private static readonly IBrush Background = new SolidColorBrush(Color.Parse("#17150F"));
-    private static readonly IPen MinorPen = new Pen(new SolidColorBrush(Color.Parse("#221F1D")), 1);
-    private static readonly IPen MajorPen = new Pen(new SolidColorBrush(Color.Parse("#2E2B26")), 1);
-    private static readonly IPen DayPen = new Pen(new SolidColorBrush(Color.Parse("#3E4B34")), 1);
-    private static readonly IBrush LabelBrush = new SolidColorBrush(Color.Parse("#9C9A88"));
-    private static readonly IBrush SelectedBrush = new SolidColorBrush(Color.Parse("#D8955A"));
-    private static readonly IBrush KeyBrush = new SolidColorBrush(Color.Parse("#E8E5DD"));
-    private static readonly IPen HandlePen = new Pen(new SolidColorBrush(Color.Parse("#B9BBA8")), 1);
+    private static readonly IBrush Background = new SolidColorBrush(Color.Parse("#0B0705"));
+    private static readonly IPen MinorPen = new Pen(new SolidColorBrush(Color.Parse("#1D1610")), 1);
+    private static readonly IPen MajorPen = new Pen(new SolidColorBrush(Color.Parse("#2A2119")), 1);
+    private static readonly IPen DayPen = new Pen(new SolidColorBrush(Color.Parse("#3A2F26")), 1);
+    private static readonly IBrush LabelBrush = new SolidColorBrush(Color.Parse("#8F8372"));
+    private static readonly IBrush SelectedBrush = new SolidColorBrush(Color.Parse("#F5A639"));
+    private static readonly IBrush KeyBrush = new SolidColorBrush(Color.Parse("#EDE5D8"));
+    private static readonly IPen HandlePen = new Pen(new SolidColorBrush(Color.Parse("#B6AB99")), 1);
     private static readonly IPen CursorPen = new Pen(new SolidColorBrush(Color.Parse("#D9B23A")), 2);
 
     private readonly List<CurveTrack> _watchedTracks = [];
@@ -62,7 +73,7 @@ public sealed class CurveView : Control
 
     static CurveView()
     {
-        AffectsRender<CurveView>(EditorProperty, CursorTimeProperty);
+        AffectsRender<CurveView>(EditorProperty, CursorTimeProperty, ShowsHoursProperty);
         FocusableProperty.OverrideDefaultValue<CurveView>(true);
     }
 
@@ -116,6 +127,22 @@ public sealed class CurveView : Control
     }
 
     public static Color GetTrackColor(int index) => TrackColors[index % TrackColors.Count];
+
+    /// <summary>The brush of a shown curve by its place among them, for the dot beside its value; faint for a value that shows none.</summary>
+    public static FuncValueConverter<int, IBrush> TrackBrush { get; } = new(GetTrackBrush);
+
+    private static IBrush GetTrackBrush(int index)
+    {
+        if (index < 0)
+        {
+            return NoTrackBrush;
+        }
+
+        Color color = GetTrackColor(index);
+        return new SolidColorBrush(color);
+    }
+
+    private static readonly IBrush NoTrackBrush = new SolidColorBrush(Color.Parse("#3A2F26"));
 
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
@@ -297,8 +324,11 @@ public sealed class CurveView : Control
             }
 
             context.DrawLine(pen, new Point(x, 0), new Point(x, Bounds.Height));
-            string label = FormatHour(time);
-            DrawLabel(context, label, new Point(x + 2, 1));
+            if (ShowsHours)
+            {
+                string label = FormatHour(time);
+                DrawLabel(context, label, new Point(x + 2, 1));
+            }
         }
     }
 

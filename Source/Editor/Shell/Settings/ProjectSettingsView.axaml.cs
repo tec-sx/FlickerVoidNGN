@@ -4,9 +4,9 @@ using Avalonia.Markup.Xaml;
 namespace FlickerVoid.Editor.Settings;
 
 /// <summary>Shows a <see cref="Core.Settings.ProjectSettingsViewModel"/>: the project's settings, by page.</summary>
-public sealed partial class ProjectSettingsWindow : Window
+public sealed partial class ProjectSettingsView : UserControl
 {
-    public ProjectSettingsWindow()
+    public ProjectSettingsView()
     {
         AvaloniaXamlLoader.Load(this);
     }

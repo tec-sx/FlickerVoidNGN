@@ -22,6 +22,27 @@ public sealed partial class ViewportViewModel
     [ObservableProperty]
     public partial float Hour { get; set; } = 12;
 
+    /// <summary>The hour as a clock says it (18:30), for the viewport's time button.</summary>
+    public string HourText
+    {
+        get
+        {
+            int minutes = (int)MathF.Round(Hour * MinutesInHour) % MinutesInDay;
+            if (minutes < 0)
+            {
+                minutes += MinutesInDay;
+            }
+
+            return $"{minutes / MinutesInHour:00}:{minutes % MinutesInHour:00}";
+        }
+    }
+
+    private const int MinutesInHour = 60;
+
+    private const int MinutesInDay = 24 * MinutesInHour;
+
+    partial void OnHourChanged(float value) => OnPropertyChanged(nameof(HourText));
+
     /// <summary>The environment file an editor has open, drawn in place of the scene's own; null draws the scene's.</summary>
     public string? EnvironmentPath { get; set; }
 

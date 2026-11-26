@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:textures="using:FlickerVoid.Editor.Assets.Textures"
+             x:Class="FlickerVoid.Editor.Textures.TextureEditorView"
+             x:DataType="textures:TextureEditorViewModel">
+  <Grid ColumnDefinitions="*,1,320">
+    <!-- The preview fills the working area: what the build makes of the image, or the canvas repeated by its tiling. -->
+    <Panel Grid.Column="0" Background="{DynamicResource EditorDeepBrush}">
+      <Image x:Name="Preview" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None" Margin="24" MaxWidth="768" MaxHeight="768" />
+      <Border Classes="viewportBar" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Padding="8,3">
+        <TextBlock Text="{Binding Summary}" Classes="muted small" />
+      </Border>
+      <Border Classes="toast" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="12"
+              IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxWidth="480" Foreground="{DynamicResource EditorBakeBrush}" />
+      </Border>
+    </Panel>
+    <Border Grid.Column="1" Background="{DynamicResource EditorLineBrush}" />
+    <!-- The settings, held unsaved as they change until saved or discarded. -->
+    <Border Grid.Column="2" Classes="well">
+      <DockPanel>
+        <Border DockPanel.Dock="Top" Classes="entityHeader">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding DiscardCommand}" ToolTip.Tip="Forget the unsaved edits."
+                    VerticalAlignment="Center">
+              <PathIcon Data="{x:Static shell:LucideIcons.Discard}" />
+            </Button>
+            <Border DockPanel.Dock="Left" Classes="iconTile">
+              <PathIcon Data="{x:Static shell:LucideIcons.Texture}" />
+            </Border>
+            <TextBlock Text="{Binding Heading}" Classes="title" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          </DockPanel>
+        </Border>
+        <ScrollViewer>
+          <Border Classes="sectionBody">
+            <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" />
+          </Border>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

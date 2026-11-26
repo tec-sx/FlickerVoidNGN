@@ -77,7 +77,12 @@ public sealed partial class SearchMenuViewModel : ObservableObject
     {
         string search = SearchText.Trim();
         List<MenuRow> rows = [];
-        if (search.Length > 0)
+        if (_grouping == MenuGrouping.Sections)
+        {
+            IEnumerable<MenuChoice> shown = search.Length > 0 ? _choices.Where(choice => choice.Matches(search)) : _choices.Where(choice => !choice.SearchOnly);
+            AddSections(rows, shown);
+        }
+        else if (search.Length > 0)
         {
             foreach (MenuChoice choice in _choices.Where(choice => choice.Matches(search)))
             {
@@ -90,7 +95,7 @@ public sealed partial class SearchMenuViewModel : ObservableObject
         }
         else if (_grouping == MenuGrouping.Separators)
         {
-            AddSections(rows);
+            AddSections(rows, _choices);
         }
         else
         {
@@ -101,9 +106,9 @@ public sealed partial class SearchMenuViewModel : ObservableObject
         Selected = rows.FirstOrDefault(row => row.IsSelectable);
     }
 
-    private void AddSections(List<MenuRow> rows)
+    private static void AddSections(List<MenuRow> rows, IEnumerable<MenuChoice> choices)
     {
-        foreach (IGrouping<string?, MenuChoice> group in _choices.GroupBy(choice => choice.Group))
+        foreach (IGrouping<string?, MenuChoice> group in choices.GroupBy(choice => choice.Group))
         {
             if (group.Key is not null)
             {
@@ -138,6 +143,6 @@ public sealed partial class SearchMenuViewModel : ObservableObject
 
     private static MenuRow ForChoice(MenuChoice choice, string? detail)
     {
-        return new MenuRow(MenuRowKind.Choice, choice.Name, choice.Icon, choice, detail);
+        return new MenuRow(MenuRowKind.Choice, choice.Name, choice.Icon, choice, detail ?? choice.Detail);
     }
 }

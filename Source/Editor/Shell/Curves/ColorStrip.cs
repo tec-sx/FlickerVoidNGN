@@ -28,9 +28,9 @@ public sealed class ColorStrip : Control
     private const double SampleStep = 2;
     private const double ReachPixels = 7;
 
-    private static readonly IBrush MarkerBrush = new SolidColorBrush(Color.Parse("#E8E5DD"));
-    private static readonly IBrush SelectedBrush = new SolidColorBrush(Color.Parse("#D8955A"));
-    private static readonly IPen MarkerPen = new Pen(new SolidColorBrush(Color.Parse("#17150F")), 1);
+    private static readonly IBrush MarkerBrush = new SolidColorBrush(Color.Parse("#EDE5D8"));
+    private static readonly IBrush SelectedBrush = new SolidColorBrush(Color.Parse("#F5A639"));
+    private static readonly IPen MarkerPen = new Pen(new SolidColorBrush(Color.Parse("#0B0705")), 1);
 
     private ColorTrack? _watchedTrack;
     private CurveRange? _watchedRange;
