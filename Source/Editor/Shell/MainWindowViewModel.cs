@@ -16,6 +16,7 @@ using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Core.Viewports;
+using FlickerVoid.Editor.Documents;
 using FlickerVoid.Editor.Persistence.Layout;
 using FlickerVoid.Editor.Persistence.Projects;
 using FlickerVoid.Editor.Projects;
@@ -176,6 +177,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     /// <summary>The content folder's files; opening a scene shows it, opening a material shows it in the material editor.</summary>
     public AssetBrowserViewModel Assets { get; }
+
+    /// <summary>The editors opened in place, as tabs over the viewport.</summary>
+    public DocumentTabs Documents { get; } = new();
 
     /// <summary>Runs the project's game on the open scene as it is now, without saving it.</summary>
     [RelayCommand(CanExecute = nameof(CanPlay))]

@@ -1,14 +1,9 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:textures="using:FlickerVoid.Editor.Assets.Textures"
-        xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
-        x:Class="FlickerVoid.Editor.Textures.TextureEditorWindow"
-        x:DataType="textures:TextureEditorViewModel"
-        Title="{Binding Heading, StringFormat='Texture Editor - {0}'}"
-        Width="900" Height="560">
-  <Window.KeyBindings>
-    <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
-  </Window.KeyBindings>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:textures="using:FlickerVoid.Editor.Assets.Textures"
+             xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
+             x:Class="FlickerVoid.Editor.Textures.TextureEditorView"
+             x:DataType="textures:TextureEditorViewModel">
   <Grid ColumnDefinitions="Auto,*">
     <!-- The preview: what the build makes of the image, or the canvas repeated by its tiling. -->
     <StackPanel Grid.Column="0" Margin="12" Spacing="8">
@@ -23,7 +18,6 @@
       <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="12,8">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-            <Button Content="Save" Classes="save" Command="{Binding SaveCommand}" ToolTip.Tip="Save the settings (Ctrl+S); the content build makes the texture again." />
             <Button Content="Discard" Classes="delete" Command="{Binding DiscardCommand}" ToolTip.Tip="Forget the unsaved edits." />
           </StackPanel>
           <TextBlock Text="{Binding Heading}" Classes="heading" Margin="0" VerticalAlignment="Center" />
@@ -43,4 +37,4 @@
       </DockPanel>
     </Border>
   </Grid>
-</Window>
+</UserControl>

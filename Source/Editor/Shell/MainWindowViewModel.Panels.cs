@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -105,12 +106,35 @@ public sealed partial class MainWindowViewModel
     [
         new("Play", Play, "Run", "Play", "F5"),
         new("Compile", () => _ = Compile(), "Run", null, "Ctrl+Alt+F11"),
+        new("Save", SaveShown, "File", null, "Ctrl+S"),
         new("Save assets", SaveAssets, "File", null, "Ctrl+Shift+S"),
         new("Undo", Undo, "Edit", null, "Ctrl+Z"),
         new("Redo", Redo, "Edit", null, "Ctrl+Y"),
         new("Open or close the content drawer", ToggleContent, "View", null, "Ctrl+Space"),
         new("Swap the outliner and the context panel", SwapPanels, "View"),
     ];
+
+    /// <summary>
+    /// Ctrl+S (rule R21, one way to save): saves the document shown in place of the viewport when it saves on its own, else the
+    /// scene, or in the creator the creation's file, and the assets for a document saved with them.
+    /// </summary>
+    [RelayCommand]
+    public void SaveShown()
+    {
+        if (Documents.Selected?.Save is { } save && save.CanExecute(null))
+        {
+            save.Execute(null);
+            return;
+        }
+
+        if (Documents.IsLevelShown)
+        {
+            Viewport.Save();
+            return;
+        }
+
+        SaveAssets();
+    }
 
     /// <summary>Opens or closes the content drawer (Ctrl+Space).</summary>
     [RelayCommand]

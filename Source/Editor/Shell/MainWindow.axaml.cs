@@ -13,6 +13,7 @@ using FlickerVoid.Editor.Core.Environments;
 using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Core.Settings;
 using FlickerVoid.Editor.Core.Undo;
+using FlickerVoid.Editor.Documents;
 using FlickerVoid.Editor.Environments;
 using FlickerVoid.Editor.Flows;
 using FlickerVoid.Editor.Inspector;
@@ -28,8 +29,6 @@ namespace FlickerVoid.Editor;
 /// <summary>The editor's main window: a toolbar, the scene view, the asset browser, the inspector and a status bar; opens the material editor.</summary>
 public sealed partial class MainWindow : Window
 {
-    private readonly Dictionary<string, FlowEditorWindow> _flows = new(StringComparer.OrdinalIgnoreCase);
-    private MaterialEditorWindow? _materials;
     private ProjectSettingsWindow? _projectSettings;
     private bool _closingDecided;
 
@@ -140,6 +139,15 @@ public sealed partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
+        if (DataContext is MainWindowViewModel main)
+        {
+            EditorDocument[] open = [.. main.Documents.Documents];
+            foreach (EditorDocument document in open)
+            {
+                main.Documents.Close(document);
+            }
+        }
+
         if (_reopenProject is null)
         {
             return;
@@ -209,61 +217,55 @@ public sealed partial class MainWindow : Window
         _projectSettings.Show(this);
     }
 
+    /// <summary>The material editor's tab: one editor lists every material.</summary>
+    private const string MaterialsKey = "Materials";
+
     private void HandleMaterialsClick(object? sender, RoutedEventArgs e)
     {
         ShowMaterial(null);
     }
 
-    /// <summary>Shows the material editor, opening it once, and selects the material when one is given.</summary>
+    /// <summary>Shows the material editor in its document tab, opening it once, and selects the material when one is given.</summary>
     private void ShowMaterial(string? path)
     {
-        if (_materials is null)
-        {
-            if (DataContext is not MainWindowViewModel main)
-            {
-                return;
-            }
-
-            MaterialEditorViewModel created = main.CreateMaterialEditor();
-            _materials = new MaterialEditorWindow { DataContext = created };
-            _materials.Closed += HandleMaterialsClosed;
-            _materials.Show(this);
-        }
-        else
-        {
-            _materials.Activate();
-        }
-
-        if (path is not null && _materials.DataContext is MaterialEditorViewModel editor)
-        {
-            editor.SelectedMaterial = path;
-        }
-    }
-
-    /// <summary>Shows the graph in its file's editor window, opening one unless the file has one already.</summary>
-    private void ShowFlow(string path, FlowGraphViewModel graph)
-    {
-        if (_flows.TryGetValue(path, out FlowEditorWindow? open))
-        {
-            open.DataContext = graph;
-            open.Activate();
-            return;
-        }
-
         if (DataContext is not MainWindowViewModel main)
         {
             return;
         }
 
-        FlowEditorWindow window = new() { DataContext = graph, History = main.GetFlowHistory(path) };
-        window.AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
-        window.Closed += (_, _) =>
+        EditorDocument? open = main.Documents.Find(MaterialsKey);
+        if (open is null)
         {
-            _flows.Remove(path);
-            main.CloseFlow(path);
-        };
-        _flows.Add(path, window);
-        window.Show(this);
+            MaterialEditorViewModel created = main.CreateMaterialEditor();
+            MaterialEditorView view = new() { DataContext = created };
+            open = new EditorDocument(MaterialsKey, "Materials", view, created.Dispose, created.SaveCommand);
+        }
+
+        main.Documents.Show(open);
+        if (path is not null && open.Content is MaterialEditorView { DataContext: MaterialEditorViewModel editor })
+        {
+            editor.SelectedMaterial = path;
+        }
+    }
+
+    /// <summary>Shows the graph in its file's document tab, opening one unless the file has one already.</summary>
+    private void ShowFlow(string path, FlowGraphViewModel graph)
+    {
+        if (DataContext is not MainWindowViewModel main)
+        {
+            return;
+        }
+
+        if (main.Documents.Find(path) is { Content: FlowEditorView open } document)
+        {
+            open.DataContext = graph;
+            main.Documents.Show(document);
+            return;
+        }
+
+        FlowEditorView view = new() { DataContext = graph, History = main.GetFlowHistory(path) };
+        EditorDocument created = new(path, graph.Title, view, () => main.CloseFlow(path));
+        main.Documents.Show(created);
     }
 
     /// <summary>Shows the environment in the Day dock under the viewport, undone through its file's history.</summary>
@@ -278,13 +280,25 @@ public sealed partial class MainWindow : Window
         dock.History = main.GetEnvironmentHistory(path);
     }
 
+    /// <summary>Shows the texture's settings in its file's document tab.</summary>
     private void ShowTexture(TextureEditorViewModel editor)
     {
-        TextureEditorWindow window = new() { DataContext = editor };
-        window.AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
-        UndoShortcuts.Attach(window, () => editor.History);
-        window.Closed += (_, _) => editor.Dispose();
-        window.Show(this);
+        if (DataContext is not MainWindowViewModel main)
+        {
+            return;
+        }
+
+        if (main.Documents.Find(editor.Path) is { } open)
+        {
+            editor.Dispose();
+            main.Documents.Show(open);
+            return;
+        }
+
+        TextureEditorView view = new() { DataContext = editor };
+        UndoShortcuts.Attach(view, () => editor.History);
+        EditorDocument created = new(editor.Path, editor.Heading, view, editor.Dispose, editor.SaveCommand);
+        main.Documents.Show(created);
     }
 
     /// <summary>An asset field's open button, here or in a window this one opened: shows the file in the asset browser and opens it.</summary>
@@ -296,10 +310,5 @@ public sealed partial class MainWindow : Window
         }
 
         e.Handled = true;
-    }
-
-    private void HandleMaterialsClosed(object? sender, EventArgs e)
-    {
-        _materials = null;
     }
 }

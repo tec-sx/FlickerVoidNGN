@@ -1,4 +1,7 @@
+using CommunityToolkit.Mvvm.Input;
+
 using FlickerVoid.Editor.Assets;
+using FlickerVoid.Editor.Documents;
 using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Persistence.Layout;
 using FlickerVoid.Editor.Viewports;
@@ -31,6 +34,19 @@ public sealed class MainWindowViewModelPanelsTests : IDisposable
         ViewModel.IsContentOpen.Should().BeTrue();
         choices.Select(choice => choice.Name).Should().Contain(["Play", "Compile", "Save assets", "Undo", "Redo", "Swap the outliner and the context panel"]);
         choices.Should().OnlyContain(choice => choice.Group != null);
+    }
+
+    [Fact]
+    public void SaveSavesTheDocumentShownInPlaceOfTheViewport()
+    {
+        int saved = 0;
+        RelayCommand save = new(() => saved++);
+        EditorDocument texture = new("Textures/Brick.png", "Brick.png", new object(), () => { }, save);
+        ViewModel.Documents.Show(texture);
+
+        ViewModel.SaveShownCommand.Execute(null);
+
+        saved.Should().Be(1);
     }
 
     [Fact]

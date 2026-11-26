@@ -10,6 +10,7 @@
         xmlns:controls="using:FlickerVoid.Editor.Controls"
         xmlns:vehicles="using:FlickerVoid.Editor.Vehicles"
         xmlns:environments="using:FlickerVoid.Editor.Environments"
+        xmlns:documents="using:FlickerVoid.Editor.Documents"
         x:Class="FlickerVoid.Editor.MainWindow"
         x:DataType="shell:MainWindowViewModel"
         xmlns:chrome="using:Avalonia.Controls.Chrome"
@@ -17,7 +18,7 @@
         Width="1280" Height="720"
         ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="30">
   <Window.KeyBindings>
-    <KeyBinding Gesture="Ctrl+S" Command="{Binding Viewport.SaveCommand}" />
+    <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveShownCommand}" />
     <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveAssetsCommand}" />
     <KeyBinding Gesture="Ctrl+Space" Command="{Binding ToggleContentCommand}" />
     <KeyBinding Gesture="F5" Command="{Binding PlayCommand}" />
@@ -37,7 +38,7 @@
           <Button Classes="icon" Click="HandleOpenProjectClick" ToolTip.Tip="Open another project; the editor reopens on it.">
             <PathIcon Data="{x:Static shell:MaterialIcons.FolderOpen}" />
           </Button>
-          <Button Classes="icon save" Command="{Binding Viewport.SaveCommand}" ToolTip.Tip="Save the scene, or in the creator the creation's file (Ctrl+S).">
+          <Button Classes="icon save" Command="{Binding SaveShownCommand}" ToolTip.Tip="Save what is shown: the scene, the creation's file in the creator, or the open document (Ctrl+S).">
             <PathIcon Data="{x:Static shell:MaterialIcons.Save}" />
           </Button>
           <Button Classes="icon save" Command="{Binding SaveAssetsCommand}" ToolTip.Tip="Save the edited materials and moods (Ctrl+Shift+S).">
@@ -110,7 +111,36 @@
           <RowDefinition Height="Auto" />
           <RowDefinition Height="{Binding ContentRowHeight}" MinHeight="0" />
         </Grid.RowDefinitions>
-        <Border Classes="well viewport">
+        <!-- The document tabs (rule R6): the level, then every editor opened in place, shown only once one is open. -->
+        <DockPanel>
+        <Border DockPanel.Dock="Top" Height="26" Background="{DynamicResource EditorFrameBrush}" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,0,0,1"
+                IsVisible="{Binding Documents.HasDocuments}">
+          <StackPanel Orientation="Horizontal">
+            <Button Classes="viewportIcon" Classes.shown="{Binding Documents.IsLevelShown}" Content="Level" Command="{Binding Documents.ShowLevelCommand}" Padding="10,0"
+                    ToolTip.Tip="Show the level's viewport; the open editors stay in their tabs.">
+              <Button.Styles>
+                <Style Selector="Button.shown">
+                  <Setter Property="Foreground" Value="{DynamicResource EditorAccentBrush}" />
+                </Style>
+              </Button.Styles>
+            </Button>
+            <TabStrip ItemsSource="{Binding Documents.Documents}" SelectedItem="{Binding Documents.Selected}">
+              <TabStrip.ItemTemplate>
+                <DataTemplate DataType="documents:EditorDocument">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                    <Button Classes="viewportIcon" Content="x" Padding="4,0" VerticalAlignment="Center"
+                            Command="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).Documents.CloseCommand}" CommandParameter="{Binding}"
+                            ToolTip.Tip="Close the tab; unsaved edits stay held until the assets are saved." />
+                  </StackPanel>
+                </DataTemplate>
+              </TabStrip.ItemTemplate>
+            </TabStrip>
+          </StackPanel>
+        </Border>
+        <Panel>
+        <ContentControl Content="{Binding Documents.Selected.Content}" IsVisible="{Binding !Documents.IsLevelShown}" />
+        <Border Classes="well viewport" IsVisible="{Binding Documents.IsLevelShown}">
         <Panel>
           <viewports:ViewportControl DataContext="{Binding Viewport}"
                                      controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
@@ -128,6 +158,8 @@
           </Border>
         </Panel>
         </Border>
+        </Panel>
+        </DockPanel>
         <!-- The Day dock: an opened environment's day, edited under the viewport it lights. -->
         <environments:EnvironmentEditorView x:Name="DayDock" Grid.Row="1" DataContext="{Binding DayDock}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).IsDayDockOpen}" />
         <assets:AssetBrowserView Grid.Row="2" DataContext="{Binding Assets}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).IsContentOpen}" />

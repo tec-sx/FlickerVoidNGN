@@ -1,16 +1,14 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:flows="using:FlickerVoid.Editor.Core.Flows"
-        xmlns:shellflows="using:FlickerVoid.Editor.Flows"
-        xmlns:data="using:FlickerVoid.Editor.Data"
-        x:Class="FlickerVoid.Editor.Flows.FlowEditorWindow"
-        x:DataType="flows:FlowGraphViewModel"
-        Title="{Binding Title, StringFormat='{}{0} - Flow'}"
-        Width="1280" Height="760">
-  <Window.KeyBindings>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:flows="using:FlickerVoid.Editor.Core.Flows"
+             xmlns:shellflows="using:FlickerVoid.Editor.Flows"
+             xmlns:data="using:FlickerVoid.Editor.Data"
+             x:Class="FlickerVoid.Editor.Flows.FlowEditorView"
+             x:DataType="flows:FlowGraphViewModel">
+  <UserControl.KeyBindings>
     <KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedCommand}" />
-  </Window.KeyBindings>
-  <Grid ColumnDefinitions="*,4,300">
+  </UserControl.KeyBindings>
+  <Grid ColumnDefinitions="*,1,300">
     <!-- The endless canvas: drag with the right or middle button to pan, the wheel zooms, F frames the selected node (or all),
          Shift+A adds a node, right-click offers what can be done there, drag a node to move it, drag from a pin to wire it, or
          onto empty space to add a node wired to it. -->
@@ -115,4 +113,4 @@
     </ScrollViewer>
     </Border>
   </Grid>
-</Window>
+</UserControl>
