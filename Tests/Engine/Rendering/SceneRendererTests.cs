@@ -912,6 +912,46 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void DarkensThePaintsEdgesWithAVignette()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        uint[] plain = _builder.Render();
+
+        _builder.WithMood(static mood => mood with { VignetteIntensity = 1, VignetteRadius = 0.2f, VignetteSoftness = 0.5f });
+        uint[] vignetted = _builder.Render();
+
+        (byte corner, _, _) = SceneRendererTestsBuilder.Channels(vignetted[0]);
+        (byte inside, _, _) = SceneRendererTestsBuilder.Channels(vignetted[5]);
+        plain[0].Should().Be(RedPixel);
+        corner.Should().BeLessThan(inside, "the vignette darkens the corner more than near the middle");
+        corner.Should().BeLessThan(255);
+    }
+
+    [Fact]
+    public void TintsTheVignetteWithItsColour()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+
+        _builder.WithMood(static mood => mood with { VignetteIntensity = 1, VignetteRadius = 0, VignetteSoftness = 0.01f, VignetteColor = new Vector3(0, 0, 1) });
+        (byte red, _, byte blue) = SceneRendererTestsBuilder.Channels(_builder.Render()[0]);
+
+        blue.Should().BeGreaterThan(red, "the corner takes the vignette's blue");
+    }
+
+    [Fact]
+    public void LeavesWhatWasNotPaintedWithoutAVignette()
+    {
+        _builder.WithScene(Camera);
+        _builder.WithMood(static mood => mood with { VignetteIntensity = 1, VignetteRadius = 0, VignetteSoftness = 0.01f });
+
+        uint[] pixels = _builder.Render();
+
+        pixels[0].Should().Be(EmptyPixel);
+    }
+
+    [Fact]
     public void GradesTheImage()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));

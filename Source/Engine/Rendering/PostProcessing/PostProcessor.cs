@@ -66,18 +66,24 @@ internal sealed class PostProcessor : IDisposable
         PostConstants constants = new(
             Grading.From(mood),
             mood.Bloom,
-            dirt is null ? 0 : mood.DirtAmount,
             canvas.File.Intensity,
             lit.BindlessIndex,
             bloom,
-            dirt?.BindlessIndex ?? GpuLight.None,
             canvasIndex,
             clamp.BindlessIndex,
             wrap.BindlessIndex,
             canvas.View.ImageHeight,
             canvas.File.Tint,
             canvas.View.PanRight,
-            canvas.View.PanUp);
+            canvas.View.PanUp,
+            mood.VignetteIntensity,
+            mood.VignetteRadius,
+            mood.VignetteSoftness,
+            mood.VignetteRoundness,
+            dirt is null ? 0 : mood.DirtAmount,
+            dirt?.BindlessIndex ?? GpuLight.None,
+            0,
+            mood.VignetteColor);
         commands.PushConstants(constants);
         commands.Draw(3);
         commands.EndRendering();

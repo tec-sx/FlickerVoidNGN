@@ -191,6 +191,26 @@ public sealed record LightingMood
     [Range(0, 1)]
     public float DirtAmount { get; set; } = 1;
 
+    /// <summary>How much the vignette takes the paint's edges, from 0 (none) to 1 (all of its colour).</summary>
+    [Range(0, 1)]
+    public float VignetteIntensity { get; set; }
+
+    /// <summary>How far from the middle the vignette starts, as a share of the distance to the corner.</summary>
+    [Range(0, 2)]
+    public float VignetteRadius { get; set; } = 0.7f;
+
+    /// <summary>How far past its radius the vignette takes to reach its full strength.</summary>
+    [Range(0.01, 2)]
+    public float VignetteSoftness { get; set; } = 0.5f;
+
+    /// <summary>0 follows the screen's shape, 1 is a circle.</summary>
+    [Range(0, 1)]
+    public float VignetteRoundness { get; set; } = 1;
+
+    /// <summary>What the vignette fades the paint toward, in linear light.</summary>
+    [Color]
+    public Vector3 VignetteColor { get; set; } = Vector3.Zero;
+
     /// <summary>Scales the light before grading.</summary>
     [Range(0, 8)]
     public float Exposure { get; set; } = 1;
