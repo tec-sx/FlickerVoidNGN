@@ -79,6 +79,22 @@ public sealed class SkyPassTests : IDisposable
         light.Should().BeGreaterThan(darker + 60, "the sky is laid over the paper, not over it like a wall");
     }
 
+    [Fact]
+    public void PaintsADarkSkyDarkOverPaperToo()
+    {
+        using SkyPassTestsBuilder night = new();
+        _builder.WithPaper(220);
+        night.WithPaper(220);
+        night.WithMood(mood => mood with { SkyZenith = mood.SkyZenith * 0.02f, SkyHorizon = mood.SkyHorizon * 0.02f });
+
+        uint[] byDay = _builder.Render();
+        uint[] byNight = night.Render();
+
+        int day = SkyPassTestsBuilder.Brightness(byDay[(TopRow * Size) + Centre]);
+        int dark = SkyPassTestsBuilder.Brightness(byNight[(TopRow * Size) + Centre]);
+        dark.Should().BeLessThan(day / 3, "the wash is as dark as the sky's colours, however bright the paper");
+    }
+
     [Theory]
     [InlineData(Tonemapper.Uncharted2)]
     [InlineData(Tonemapper.Aces)]
