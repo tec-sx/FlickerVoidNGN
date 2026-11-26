@@ -10,6 +10,7 @@
 static const uint ShadingPainted = 0;
 static const uint ShadingMetal = 1;
 static const uint ShadingGlow = 2;
+static const uint ShadingSkin = 3;
 
 // The parameters Scene.fvshader declares, in its order, then the master's shading model and the values it reads.
 struct Material
@@ -61,14 +62,32 @@ Material LoadMaterial(uint index)
     return material;
 }
 
-// The share of light a surface takes at the cosine between its normal and the light: wrapped round past the terminator,
-// then pulled toward a hard step as the ramp softness falls (1 is plain wrapped diffuse light).
-float Diffuse(Material material, float cosine)
+// The share of light a surface takes at the cosine between its normal and the light, wrapped round past the terminator by the
+// wrap, then pulled toward a hard step as the ramp softness falls (1 is plain wrapped diffuse light).
+float WrappedDiffuse(Material material, float wrap, float cosine)
 {
-    float wrapped = saturate((cosine + material.Wrap) / (1 + material.Wrap));
+    float wrapped = saturate((cosine + wrap) / (1 + wrap));
     float halfWidth = max(0.5 * material.RampSoftness, 0.001);
     float stepped = smoothstep(0.5 - halfWidth, 0.5 + halfWidth, wrapped);
     return lerp(stepped, wrapped, material.RampSoftness);
+}
+
+// The share of each color of light a surface takes at the cosine between its normal and the light. Skin wraps each color further
+// by how far it scatters under the surface (its scatter color times its width), so light bleeds red round the terminator, a cheap
+// subsurface scattering (Green 2004, "Real-Time Approximations to Subsurface Scattering", GPU Gems, chapter 16).
+float3 Diffuse(Material material, float cosine)
+{
+    if (material.ShadingModel == ShadingSkin)
+    {
+        float3 wraps = material.Wrap + saturate(material.ModelValues.rgb) * material.ModelValues.a;
+        float red = WrappedDiffuse(material, wraps.r, cosine);
+        float green = WrappedDiffuse(material, wraps.g, cosine);
+        float blue = WrappedDiffuse(material, wraps.b, cosine);
+        return float3(red, green, blue);
+    }
+
+    float diffuse = WrappedDiffuse(material, material.Wrap, cosine);
+    return diffuse;
 }
 
 // The light leaving a surface of the color lit by the diffuse and specular light, by its master's shading model: paint, metal

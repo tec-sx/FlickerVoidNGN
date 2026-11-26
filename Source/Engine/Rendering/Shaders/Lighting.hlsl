@@ -356,7 +356,7 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     }
 
     float3 toSun = -normalize(frame.SunDirection);
-    float sunDiffuse = Diffuse(material, dot(normal, toSun));
+    float3 sunDiffuse = Diffuse(material, dot(normal, toSun));
     float sunSpecular = Specular(material, normal, toSun, toCamera);
     float sun = 1 - frame.Ambient;
     if (frame.RayShadows != None)
@@ -366,7 +366,7 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     else
     {
         sun *= screenShadows.g;
-        if (sun > 0 && sunDiffuse + sunSpecular > 0 && frame.SunShadow != None)
+        if (sun > 0 && (any(sunDiffuse > 0) || sunSpecular > 0) && frame.SunShadow != None)
         {
             sun *= SampleShadow(frame, frame.SunShadow, worldPosition, normal, 0, true);
         }

@@ -46,6 +46,20 @@ public sealed class EngineMastersTests : IDisposable
     }
 
     [Fact]
+    public void LightsSkinPastTheTerminatorAsLightScattersUnderIt()
+    {
+        Vector3 grazing = Vector3.Normalize(new Vector3(-1, 0, 0.05f));
+        _builder.WithLight(sunDirection: grazing, ambient: 0);
+        _builder.WithFile("Painted.fvmat", """{ "parent": "Engine/Rendering/Masters/Painted.fvmaster" }""");
+        _builder.WithFile("Skin.fvmat", """{ "parent": "Engine/Rendering/Masters/Skin.fvmaster", "parameters": { "scatter": [1, 0.3, 0.1], "scatterWidth": 1 } }""");
+
+        (byte painted, byte skin) = RenderSideBySide("Painted.fvmat", "Skin.fvmat");
+
+        painted.Should().BeLessThan(10, "the sun is behind the paint's terminator");
+        skin.Should().BeGreaterThan(25, "red light scatters round the terminator of skin");
+    }
+
+    [Fact]
     public void DrawsTheBackOfATwoSidedMastersCards()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
@@ -89,7 +103,8 @@ public sealed class EngineMastersTests : IDisposable
 
         files.Should().Contain(file => file.EndsWith("Drywall.fvmat", StringComparison.Ordinal))
             .And.Contain(file => file.EndsWith("Brick.fvmat", StringComparison.Ordinal))
-            .And.Contain(file => file.EndsWith("Rubber.fvmat", StringComparison.Ordinal));
+            .And.Contain(file => file.EndsWith("Rubber.fvmat", StringComparison.Ordinal))
+            .And.Contain(file => file.EndsWith("Skin.fvmat", StringComparison.Ordinal));
         foreach (string file in files)
         {
             MaterialFile material = ReadFile(file, RenderingJsonContext.Default.MaterialFile);

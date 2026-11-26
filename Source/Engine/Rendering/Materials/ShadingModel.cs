@@ -14,4 +14,7 @@ public enum ShadingModel
 
     /// <summary>Paint that shines by itself, such as a neon tube or a screen: its color times <c>glow</c>, plus the light it takes scaled by <c>lit</c>.</summary>
     Glow,
+
+    /// <summary>Skin, wax or leaves: light wraps further round the terminator in the <c>scatter</c> color, by <c>scatterWidth</c>, as it scatters under the surface.</summary>
+    Skin,
 }

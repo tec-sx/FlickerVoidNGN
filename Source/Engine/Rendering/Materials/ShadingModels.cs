@@ -15,6 +15,8 @@ public static class ShadingModels
                 return ["metalness"];
             case ShadingModel.Glow:
                 return ["glow", "lit"];
+            case ShadingModel.Skin:
+                return ["scatter", "scatterWidth"];
             default:
                 return [];
         }
