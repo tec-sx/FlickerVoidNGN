@@ -97,6 +97,7 @@ public sealed class SceneRenderer : IDisposable
         Pipeline.Add(new GeometryPass(device, shaders));
         Pipeline.Add(new ShadowRayPass(device, shaders));
         Pipeline.Add(new ScreenShadowPass(device, shaders));
+        Pipeline.Add(new FogVolumePass(device, shaders));
         Pipeline.Add(new LightingPass(device, shaders));
         Pipeline.Add(new SkyPass(device, shaders, MaxFramesInFlight));
         Pipeline.Add(new DepthFadePass(device, shaders));
