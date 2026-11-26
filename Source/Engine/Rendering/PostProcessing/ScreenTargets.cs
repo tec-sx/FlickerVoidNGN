@@ -45,9 +45,6 @@ internal sealed class ScreenTargets : IDisposable
     /// <summary>The lit scene at the output's size, which post-processing reads: the upscaled one, else the scene's own.</summary>
     public ITexture Lit => Upscaled ?? Hdr;
 
-    /// <summary>The light each drawn surface takes, which the canvas under thin paint is lit by; white where nothing was drawn.</summary>
-    public ITexture CanvasLight { get; private set; } = null!;
-
     /// <summary>Ambient occlusion in red and contact shadows in green.</summary>
     public ITexture ScreenShadows { get; private set; } = null!;
 
@@ -79,8 +76,6 @@ internal sealed class ScreenTargets : IDisposable
         GBuffer = new GBuffer(_device, width, height);
         TextureDescription screenShadows = new(width, height, PixelFormat.Rgba8UNorm, readWrite) { Name = "Screen shadows" };
         ScreenShadows = _device.CreateTexture(screenShadows);
-        TextureDescription canvasLight = new(width, height, HdrFormat, readWrite) { Name = "Canvas light" };
-        CanvasLight = _device.CreateTexture(canvasLight);
         if (upscaled)
         {
             TextureDescription upscaledDescription = new(outputWidth, outputHeight, HdrFormat, readWrite | TextureUsage.CopyDestination) { Name = "Upscaled HDR" };
@@ -110,7 +105,6 @@ internal sealed class ScreenTargets : IDisposable
         Upscaled?.Dispose();
         Upscaled = null;
         ScreenShadows?.Dispose();
-        CanvasLight?.Dispose();
         GBuffer?.Dispose();
         Depth?.Dispose();
         Hdr?.Dispose();

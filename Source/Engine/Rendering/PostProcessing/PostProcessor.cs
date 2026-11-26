@@ -42,7 +42,6 @@ internal sealed class PostProcessor : IDisposable
     {
         ITexture lit = targets.Lit;
         commands.Barrier(lit, ResourceState.ShaderRead);
-        commands.Barrier(targets.CanvasLight, ResourceState.ShaderRead);
         uint bloom = GpuLight.None;
         if (mood.Bloom > 0)
         {
@@ -76,9 +75,7 @@ internal sealed class PostProcessor : IDisposable
             canvas.View.ImageHeight,
             canvas.File.Tint,
             canvas.View.PanRight,
-            canvas.View.PanUp,
-            targets.CanvasLight.BindlessIndex,
-            mood.CanvasShading);
+            canvas.View.PanUp);
         commands.PushConstants(constants);
         commands.Draw(3);
         commands.EndRendering();
