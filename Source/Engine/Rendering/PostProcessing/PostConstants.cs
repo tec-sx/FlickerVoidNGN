@@ -8,15 +8,15 @@ namespace FlickerVoid.Engine.Rendering.PostProcessing;
 internal readonly record struct PostConstants(
     Grading Grade,
     float Bloom,
-    float DirtAmount,
     float CanvasIntensity,
     uint Scene,
     uint BloomTexture,
-    uint Dirt,
     uint Canvas,
     uint ClampSampler,
     uint WrapSampler,
     float CanvasImageHeight,
     Vector3 CanvasTint,
     float CanvasPanRight,
-    float CanvasPanUp);
+    float CanvasPanUp,
+    float DirtAmount,
+    uint Dirt);

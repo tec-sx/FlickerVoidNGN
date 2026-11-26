@@ -12,11 +12,9 @@ struct PostConstants
 {
     Grading Grade;
     float Bloom;
-    float DirtAmount;
     float CanvasIntensity;
     uint Scene;
     uint BloomTexture;
-    uint Dirt;
     uint Canvas;
     uint ClampSampler;
     uint WrapSampler;
@@ -24,6 +22,8 @@ struct PostConstants
     float3 CanvasTint;
     float CanvasPanRight;
     float CanvasPanUp;
+    float DirtAmount;
+    uint Dirt;
 };
 
 [[vk::push_constant]] ConstantBuffer<PostConstants> Post : register(b0, space0);
