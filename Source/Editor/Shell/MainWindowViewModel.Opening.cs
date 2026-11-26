@@ -233,6 +233,7 @@ public sealed partial class MainWindowViewModel
         ViewSettingsViewModel settings = new(_mood.Mood, files.Find);
         settings.Edited += _mood.Hold;
         Viewport.Mood = _mood.Mood;
+        Viewport.MoodPath = path;
         ViewSettings = settings;
         OnPropertyChanged(nameof(MoodHeading));
         Viewport.Status = $"Lighting the viewport with {path}.";

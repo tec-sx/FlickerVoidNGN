@@ -431,6 +431,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         _mood = null;
+        Viewport.MoodPath = null;
         Viewport.Mood = new LightingMood();
         ContentFileFinder files = new(_content);
         ViewSettings = new ViewSettingsViewModel(Viewport.Mood, files.Find);

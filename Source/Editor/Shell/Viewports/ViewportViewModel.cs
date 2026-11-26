@@ -63,6 +63,7 @@ public sealed partial class ViewportViewModel : ObservableObject
         Mode = SceneMode;
         Selection.Changed += HandleSelectionChanged;
         scene.Content.Changed += HandleContentChanged;
+        scene.Opened += HandleSceneOpened;
     }
 
     public EditorScene Scene { get; }
@@ -470,7 +471,8 @@ public sealed partial class ViewportViewModel : ObservableObject
         {
             GraphicsDeviceOptions options = new() { Validation = Validation };
             using VulkanGraphicsDevice device = new(options, Scene.Game.LoggerFactory);
-            IReadOnlyList<string> baked = SceneProbes.Bake(device, Scene, Mood);
+            LightingMood drawn = GetDrawnMood();
+            IReadOnlyList<string> baked = SceneProbes.Bake(device, Scene, drawn);
             if (baked.Count == 0)
             {
                 Status = "No irradiance volumes to bake.";
