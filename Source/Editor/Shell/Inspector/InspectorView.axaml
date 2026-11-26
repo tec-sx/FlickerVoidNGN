@@ -14,6 +14,24 @@
       <local:AssetPickerView Grid.Column="1" DataContext="{Binding Template}" />
     </Grid>
     <controls:SearchBox DockPanel.Dock="Top" Margin="3,0,3,2" Text="{Binding FilterText}" ToolTip.Tip="Show only the components that have the text in their name or in a field's name." />
+    <!-- The category rail: the modules the components come from, shown only when there is more than one. -->
+    <DockPanel DockPanel.Dock="Top" Margin="3,0,3,2" IsVisible="{Binding HasCategories}">
+      <Button DockPanel.Dock="Left" Content="All" Classes="viewportIcon" Padding="7,1" Margin="0,0,3,3" VerticalAlignment="Top"
+              Command="{Binding ShowAllCategoriesCommand}" ToolTip.Tip="Show the components of every module." />
+      <ListBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" Classes="filters"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled" ToolTip.Tip="Show only the components of one module.">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel />
+          </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <TextBlock Text="{Binding}" Classes="small" VerticalAlignment="Center" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
     <Button DockPanel.Dock="Bottom" Content="Add Component" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2"
             IsEnabled="{Binding !!AddChoices.Count}" Click="OnAddComponentClick" />
     <Border Classes="well">

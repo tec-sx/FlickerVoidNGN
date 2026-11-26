@@ -54,7 +54,7 @@ public static class ComponentChoices
     }
 
     /// <summary>The module from the namespace: Rendering for <c>FlickerVoid.Engine.Rendering.Lighting</c>, Gameplay for <c>Bleeders.Gameplay.Doors</c>.</summary>
-    private static string GetModule(Type type)
+    internal static string GetModule(Type type)
     {
         string[] parts = (type.Namespace ?? "").Split('.');
         if (parts.Length >= 3 && parts[0] == "FlickerVoid" && parts[1] == "Engine")

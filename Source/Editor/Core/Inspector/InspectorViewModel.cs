@@ -44,20 +44,50 @@ public sealed partial class InspectorViewModel : ObservableObject
     [ObservableProperty]
     public partial IReadOnlyList<ComponentViewModel> Components { get; set; } = [];
 
-    /// <summary>The registered components the selected entity doesn't have yet.</summary>
     /// <summary>Text the components are filtered by: a component stays when its name or one of its fields' labels contains it.</summary>
     [ObservableProperty]
     public partial string FilterText { get; set; } = "";
 
-    /// <summary>The components that match <see cref="FilterText"/>.</summary>
+    /// <summary>The modules the components come from, in order: the category rail beside them.</summary>
+    public IReadOnlyList<string> Categories => [.. Components.Select(component => component.Category).Distinct().Order(StringComparer.Ordinal)];
+
+    /// <summary>Whether the rail shows: only when the components come from more than one module.</summary>
+    public bool HasCategories => Categories.Count > 1;
+
+    /// <summary>The category the rail shows, or null for all of them.</summary>
+    [ObservableProperty]
+    public partial string? SelectedCategory { get; set; }
+
+    /// <summary>The components of <see cref="SelectedCategory"/> that match <see cref="FilterText"/>.</summary>
     public IReadOnlyList<ComponentViewModel> VisibleComponents => [.. Components.Where(MatchesFilter)];
 
     partial void OnFilterTextChanged(string value) => OnPropertyChanged(nameof(VisibleComponents));
 
-    partial void OnComponentsChanged(IReadOnlyList<ComponentViewModel> value) => OnPropertyChanged(nameof(VisibleComponents));
+    partial void OnSelectedCategoryChanged(string? value) => OnPropertyChanged(nameof(VisibleComponents));
+
+    /// <summary>The rail's All: shows every category again.</summary>
+    [RelayCommand]
+    public void ShowAllCategories() => SelectedCategory = null;
+
+    partial void OnComponentsChanged(IReadOnlyList<ComponentViewModel> value)
+    {
+        if (SelectedCategory is { } category && !Categories.Contains(category))
+        {
+            SelectedCategory = null;
+        }
+
+        OnPropertyChanged(nameof(Categories));
+        OnPropertyChanged(nameof(HasCategories));
+        OnPropertyChanged(nameof(VisibleComponents));
+    }
 
     private bool MatchesFilter(ComponentViewModel component)
     {
+        if (SelectedCategory is { } category && component.Category != category)
+        {
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(FilterText))
         {
             return true;
@@ -71,6 +101,7 @@ public sealed partial class InspectorViewModel : ObservableObject
         return component.Fields.Any(field => field.Label.Contains(FilterText, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>The registered components the selected entity doesn't have yet.</summary>
     [ObservableProperty]
     public partial IReadOnlyList<SceneComponent> AddableComponents { get; set; } = [];
 

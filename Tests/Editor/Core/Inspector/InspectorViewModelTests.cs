@@ -74,6 +74,22 @@ public sealed class InspectorViewModelTests : IDisposable
     }
 
     [Fact]
+    public void TheCategoryRailShowsOneModulesComponentsAndResetsForAnotherEntity()
+    {
+        _builder.Select("Lamp", new Transform(), new PointLight());
+
+        string[] categories = [.. _builder.ViewModel.Categories];
+        _builder.ViewModel.SelectedCategory = "Rendering";
+        string[] rendering = [.. _builder.ViewModel.VisibleComponents.Select(component => component.Title)];
+        _builder.Select(new Transform());
+
+        categories.Should().Equal("Rendering", "Runtime");
+        rendering.Should().Equal("Point Light");
+        _builder.ViewModel.SelectedCategory.Should().BeNull();
+        _builder.ViewModel.HasCategories.Should().BeFalse();
+    }
+
+    [Fact]
     public void AddsAndRemovesComponents()
     {
         Entity lamp = _builder.Select("Lamp", new Transform(), new PointLight());

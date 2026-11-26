@@ -13,6 +13,7 @@ public sealed class ComponentViewModel
     public ComponentViewModel(EditorScene scene, Entity entity, SceneComponent component, FindContentFiles files)
     {
         Title = DisplayNames.FromIdentifier(component.TypeInfo.Type.Name);
+        Category = ComponentChoices.GetModule(component.TypeInfo.Type);
         List<FieldViewModel> fields = [];
         foreach (JsonPropertyInfo info in component.TypeInfo.Properties)
         {
@@ -36,6 +37,9 @@ public sealed class ComponentViewModel
     public bool CanRemove => Component.Name != "transform";
 
     public string Title { get; }
+
+    /// <summary>The module it comes from (Rendering, Physics, Gameplay), its place on the inspector's category rail.</summary>
+    public string Category { get; }
 
     public IReadOnlyList<FieldViewModel> Fields { get; }
 
