@@ -371,6 +371,24 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void BevelingTheSelectedEdgeEditsTheMeshOnceAndSelectsTheStrip()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Edge);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfEdge(FlickerVoid.Engine.Runtime.Solids.SolidEdge.Of(0, 1)), additive: false);
+        int faces = _builder.FindMesh("body")!.Faces.Count;
+
+        bool beveled = mode.BevelMesh(0.1f, 2, round: true);
+
+        beveled.Should().BeTrue();
+        _builder.MeshEdits.Should().Equal("body");
+        _builder.FindMesh("body")!.Faces.Should().HaveCount(faces + 2);
+        mode.MeshSelection!.Faces.Should().HaveCount(2);
+    }
+
+    [Fact]
     public void ExtrudingWithNoFaceSelectedDoesNothing()
     {
         using CreatorMode mode = _builder.EnterAlone();

@@ -238,13 +238,19 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// Extrudes the selected faces by a distance along their normal as one undo step, leaving the pushed faces selected in face mode;
     /// false when no face is selected or all are.
     /// </summary>
-    public bool ExtrudeMesh(float distance) => ReplaceMesh((solid, faces) => MeshExtrude.Faces(solid, faces, distance));
+    public bool ExtrudeMesh(float distance) => ReplaceMesh((solid, selected) => MeshExtrude.Faces(solid, selected.Faces, distance));
 
     /// <summary>
     /// Insets the selected faces by a thickness as one undo step, leaving the inner faces selected in face mode; false when no face
     /// is selected or all are.
     /// </summary>
-    public bool InsetMesh(float thickness) => ReplaceMesh((solid, faces) => MeshInset.Faces(solid, faces, thickness));
+    public bool InsetMesh(float thickness) => ReplaceMesh((solid, selected) => MeshInset.Faces(solid, selected.Faces, thickness));
+
+    /// <summary>
+    /// Bevels the selected edges (Ctrl+B) as one undo step: each becomes a strip of the width on each face, in rows, flat or
+    /// <paramref name="round"/>; the strips stay selected. False when no edge is selected or a point of one can't take it.
+    /// </summary>
+    public bool BevelMesh(float width, int rows, bool round) => ReplaceMesh((solid, selected) => MeshBevel.Edges(solid, selected.Edges, width, rows, round));
 
     /// <summary>
     /// Cuts loops across the ring of quads through the edge of the face under the mouse nearest it (Ctrl+R), as one undo step,
@@ -269,14 +275,14 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         return ReplaceMesh((current, _) => MeshLoopCut.Cut(current, found.Edge, cuts, slide));
     }
 
-    private bool ReplaceMesh(Func<SolidMesh, IReadOnlySet<int>, MeshResult?> tool)
+    private bool ReplaceMesh(Func<SolidMesh, MeshSelection, MeshResult?> tool)
     {
         if (MeshSelection is not { } selection || MeshPart is not { } id || _applyMesh is null || _findMesh?.Invoke(id) is not { } solid)
         {
             return false;
         }
 
-        MeshResult? result = tool(solid, selection.Faces);
+        MeshResult? result = tool(solid, selection);
         if (result is null)
         {
             return false;
