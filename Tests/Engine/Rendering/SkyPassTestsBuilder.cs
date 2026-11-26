@@ -9,6 +9,7 @@ using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
@@ -47,7 +48,7 @@ internal sealed class SkyPassTestsBuilder : IDisposable
         Directory.CreateDirectory(_contentFolder);
     }
 
-    public Camera Camera { get; set; } = new();
+    public Camera Camera { get; set; } = new() { Projection = CameraProjection.Perspective };
 
     public Transform CameraTransform { get; set; } = new() { Position = new Vector3(0, 1, 5) };
 
@@ -57,6 +58,14 @@ internal sealed class SkyPassTestsBuilder : IDisposable
         Camera = new Camera { Projection = CameraProjection.Orthographic };
         Quaternion tilt = Quaternion.CreateFromAxisAngle(Vector3.UnitX, -0.5f);
         CameraTransform = new Transform { Position = new Vector3(0, 5, 10), Rotation = tilt };
+        return this;
+    }
+
+    /// <summary>Turns the camera half round about the vertical, to look the other way.</summary>
+    public SkyPassTestsBuilder TurnedAround()
+    {
+        Quaternion turn = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI);
+        CameraTransform = CameraTransform with { Rotation = turn * CameraTransform.Rotation };
         return this;
     }
 
@@ -74,6 +83,33 @@ internal sealed class SkyPassTestsBuilder : IDisposable
 
         File.WriteAllText(Path.Combine(_contentFolder, "Paper.fvcanvas"), """{ "image": "Paper.tga" }""");
         _paper = "Paper.fvcanvas";
+        return this;
+    }
+
+    /// <summary>
+    /// Paints the scene's sky with a mask of one value in each channel everywhere (the main gradient's position, the band, the
+    /// sun's glow held back, the stars), named by a scene environment.
+    /// </summary>
+    public SkyPassTestsBuilder WithSkyMask(Vector4 channels)
+    {
+        Half[] texels = new Half[4 * 4 * 4];
+        for (int texel = 0; texel < 16; texel++)
+        {
+            texels[texel * 4] = (Half)channels.X;
+            texels[(texel * 4) + 1] = (Half)channels.Y;
+            texels[(texel * 4) + 2] = (Half)channels.Z;
+            texels[(texel * 4) + 3] = (Half)channels.W;
+        }
+
+        byte[] data = MemoryMarshal.AsBytes(texels.AsSpan()).ToArray();
+        DdsImage image = new(4, 4, PixelFormat.Rgba16Float, 1, data);
+        string fullPath = Path.Combine(_contentFolder, "Sky.dds");
+        using (FileStream stream = File.Create(fullPath))
+        {
+            image.Write(stream);
+        }
+
+        _game.World.Create(new SceneEnvironment { SkyMask = "Sky.png" });
         return this;
     }
 

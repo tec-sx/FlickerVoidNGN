@@ -204,6 +204,13 @@ public sealed partial class TextureEditorViewModel : ObservableObject, IDisposab
         TextureSettings settings = (TextureSettings)_settings;
         TextureEdits edited = source.Apply(settings);
         string compression = settings.Compression == TextureCompression.Bc7 ? "BC7" : "uncompressed";
+        if (settings.Mask)
+        {
+            Summary = $"{source.Width} × {source.Height}, 16-bit mask";
+            PreviewPixels = Fit(source);
+            return;
+        }
+
         Summary = $"{edited.Width} × {edited.Height}, {compression}";
         PreviewPixels = Fit(edited);
     }
