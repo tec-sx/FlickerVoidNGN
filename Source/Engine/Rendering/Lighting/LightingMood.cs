@@ -211,6 +211,22 @@ public sealed record LightingMood
     [Color]
     public Vector3 VignetteColor { get; set; } = Vector3.Zero;
 
+    /// <summary>The lens's flare glass, a <c>.fvflare</c> file; none draws no flare.</summary>
+    [ContentFile(".fvflare")]
+    public string? Flare { get; set; }
+
+    /// <summary>How strongly the flare adds to the image.</summary>
+    [Range(0, 4)]
+    public float FlareIntensity { get; set; } = 1;
+
+    /// <summary>The light, before the grade, below which nothing flares.</summary>
+    [Range(0, 50)]
+    public float FlareThreshold { get; set; } = 2;
+
+    /// <summary>How far above the threshold a light takes to flare fully, so the flare comes on softly.</summary>
+    [Range(0, 50)]
+    public float FlareThresholdRange { get; set; } = 4;
+
     /// <summary>Scales the light before grading.</summary>
     [Range(0, 8)]
     public float Exposure { get; set; } = 1;

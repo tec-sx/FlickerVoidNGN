@@ -3,6 +3,7 @@ using System.Numerics;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Rendering.Pipeline;
@@ -949,6 +950,59 @@ public sealed class SceneRendererTests : IDisposable
         uint[] pixels = _builder.Render();
 
         pixels[0].Should().Be(EmptyPixel);
+    }
+
+    [Fact]
+    public void MirrorsABrightLightThroughTheMiddleAsAFlareGhost()
+    {
+        _builder.WithFile("Lens.fvflare", """{ "ghosts": [ { "scale": -1, "color": [1, 1, 1] } ], "chromaShift": 0 }""");
+        uint[] plain = RenderBrightCorner(static mood => mood);
+
+        uint[] flared = RenderBrightCorner(static mood => mood with { Flare = "Lens.fvflare", FlareThreshold = 1, FlareThresholdRange = 1 });
+
+        long before = SumRed(plain, 40, 60);
+        long after = SumRed(flared, 40, 60);
+        after.Should().BeGreaterThan(before, "the ghost mirrors the top-left light into the bottom-right");
+    }
+
+    [Fact]
+    public void FlaresNothingBelowTheThreshold()
+    {
+        _builder.WithFile("Lens.fvflare", """{ "ghosts": [ { "scale": -1, "color": [1, 1, 1] } ] }""");
+        uint[] plain = RenderBrightCorner(static mood => mood);
+
+        uint[] flared = RenderBrightCorner(static mood => mood with { Flare = "Lens.fvflare", FlareThreshold = 1000, FlareThresholdRange = 1 });
+
+        flared.Should().Equal(plain, "no light is bright enough to flare");
+    }
+
+    /// <summary>A small bright quad near the top-left corner of a 64 by 64 view, lit by a strong lamp, drawn with the mood given.</summary>
+    private uint[] RenderBrightCorner(Func<LightingMood, LightingMood> mood)
+    {
+        const string spot = """{ "name": "Spot", "components": { "transform": { "position": [-0.6, 0.6, 0] }, "meshRenderer": { "mesh": "Quad.glb" } } }""";
+        const string lamp = """{ "name": "Lamp", "components": { "transform": { "position": [-0.6, 0.6, 0.3] }, "pointLight": { "intensity": 60, "range": 1 } } }""";
+        _builder.WithTargetSize(64);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.1f).WithBaseColor(new Vector4(1, 1, 1, 1)));
+        _builder.WithScene(Camera, spot, lamp);
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+        _builder.WithMood(mood);
+        return _builder.Render();
+    }
+
+    /// <summary>The red of the square of pixels from <paramref name="from"/> to <paramref name="to"/> on both axes of a 64 by 64 image.</summary>
+    private static long SumRed(uint[] pixels, int from, int to)
+    {
+        long sum = 0;
+        for (int y = from; y < to; y++)
+        {
+            for (int x = from; x < to; x++)
+            {
+                (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[(y * 64) + x]);
+                sum += red;
+            }
+        }
+
+        return sum;
     }
 
     [Fact]

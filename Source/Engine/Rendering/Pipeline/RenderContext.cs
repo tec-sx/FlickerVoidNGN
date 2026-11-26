@@ -175,6 +175,9 @@ public sealed class RenderContext
     /// <summary>The mood's lens dirt, found as the passes prepare, or null for a clean lens.</summary>
     internal ITexture? Dirt { get; set; }
 
+    /// <summary>The lens's flare glass, found as the passes prepare, or null for no flare.</summary>
+    internal FlareFile? Flare { get; set; }
+
     /// <summary>Empties what the last frame's passes worked out.</summary>
     internal void Reset()
     {
