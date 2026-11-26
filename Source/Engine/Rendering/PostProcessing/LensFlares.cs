@@ -16,20 +16,48 @@ namespace FlickerVoid.Engine.Rendering.PostProcessing;
 internal sealed class LensFlares : IDisposable
 {
     private const string Shader = "Flare";
+    private const string GlareShader = "Glare";
     private const int GroupSize = 8;
+
+    /// <summary>The most bright points that shine a star; the rest are left out.</summary>
+    private const int MaxGlarePoints = 1024;
+
+    private const int GlareStreaks = 3;
+    private const int GlarePointsSize = 16 + (MaxGlarePoints * 32);
 
     private readonly IPipeline _threshold;
     private readonly IPipeline _blur;
     private readonly IPipeline _ghosts;
     private readonly IPipeline _finish;
+    private readonly IPipeline _findGlare;
+    private readonly IPipeline _drawGlare;
+    private readonly IBuffer _glarePoints;
+    private readonly IBuffer _zero;
     private readonly FrameBufferRing _ghostData;
+    private GlareConstants _glare;
 
     public LensFlares(IGraphicsDevice device, ShaderLibrary shaders, int framesInFlight)
     {
-        _threshold = Create(device, shaders, "ThresholdMain", "Flare threshold");
-        _blur = Create(device, shaders, "BlurMain", "Flare blur");
-        _ghosts = Create(device, shaders, "GhostsMain", "Flare ghosts");
-        _finish = Create(device, shaders, "FinishMain", "Flare finish");
+        _threshold = Create(device, shaders, Shader, "ThresholdMain", "Flare threshold");
+        _blur = Create(device, shaders, Shader, "BlurMain", "Flare blur");
+        _ghosts = Create(device, shaders, Shader, "GhostsMain", "Flare ghosts");
+        _finish = Create(device, shaders, Shader, "FinishMain", "Flare finish");
+        _findGlare = Create(device, shaders, GlareShader, "FindMain", "Glare find");
+        GraphicsPipelineDescription draw = new()
+        {
+            VertexShader = shaders.Load(GlareShader, "VertexMain"),
+            PixelShader = shaders.Load(GlareShader, "PixelMain"),
+            ColorFormats = [ScreenTargets.HdrFormat],
+            CullMode = CullMode.None,
+            Blend = BlendMode.Additive,
+            Name = "Glare",
+        };
+        _drawGlare = device.CreateGraphicsPipeline(draw);
+        BufferDescription points = new(GlarePointsSize, BufferUsage.ShaderRead | BufferUsage.ShaderWrite | BufferUsage.CopyDestination, MemoryLocation.Gpu) { Name = "Glare points" };
+        _glarePoints = device.CreateBuffer(points);
+        BufferDescription zero = new(sizeof(uint), BufferUsage.CopySource, MemoryLocation.Upload) { Name = "Glare zero" };
+        _zero = device.CreateBuffer(zero);
+        _zero.Write(new byte[sizeof(uint)]);
         _ghostData = new FrameBufferRing(device, framesInFlight);
     }
 
@@ -69,23 +97,85 @@ internal sealed class LensFlares : IDisposable
             file.HaloChroma,
             (float)targets.Flare.Description.Width / targets.Flare.Description.Height);
         Dispatch(commands, _threshold, halfScene, targets.FlarePing, settings);
+        if (file.GlareIntensity > 0)
+        {
+            FindGlare(commands, targets, file, mood);
+        }
+
         Dispatch(commands, _blur, targets.FlarePing, targets.FlarePong, settings);
         Dispatch(commands, _ghosts, targets.FlarePong, targets.FlarePing, settings);
         Dispatch(commands, _finish, targets.FlarePing, targets.Flare, settings);
+        if (file.GlareIntensity > 0)
+        {
+            DrawGlare(commands, targets);
+        }
     }
 
     public void Dispose()
     {
         _ghostData.Dispose();
+        _zero.Dispose();
+        _glarePoints.Dispose();
+        _drawGlare.Dispose();
+        _findGlare.Dispose();
         _finish.Dispose();
         _ghosts.Dispose();
         _blur.Dispose();
         _threshold.Dispose();
     }
 
-    private static IPipeline Create(IGraphicsDevice device, ShaderLibrary shaders, string entryPoint, string name)
+    private void FindGlare(ICommandList commands, ScreenTargets targets, FlareFile file, LightingMood mood)
     {
-        ComputePipelineDescription description = new() { ComputeShader = shaders.Load(Shader, entryPoint), Name = name };
+        commands.Barrier(_glarePoints, ResourceState.CopyDestination);
+        commands.CopyBuffer(_zero, 0, _glarePoints, 0, sizeof(uint));
+        commands.Barrier(_glarePoints, ResourceState.ShaderWrite);
+        commands.SetPipeline(_findGlare);
+        GlareConstants constants = Glare(targets, file, mood);
+        commands.PushConstants(constants);
+        int blocksX = (targets.FlarePing.Description.Width + 1) / 2;
+        int blocksY = (targets.FlarePing.Description.Height + 1) / 2;
+        commands.Dispatch((blocksX + GroupSize - 1) / GroupSize, (blocksY + GroupSize - 1) / GroupSize);
+        commands.Barrier(_glarePoints, ResourceState.ShaderRead);
+        _glare = constants;
+    }
+
+    private void DrawGlare(ICommandList commands, ScreenTargets targets)
+    {
+        ITexture flare = targets.Flare;
+        commands.Barrier(flare, ResourceState.RenderTarget);
+        ColorTarget color = new(flare, LoadAction.Load);
+        commands.BeginRendering([color]);
+        int width = flare.Description.Width;
+        int height = flare.Description.Height;
+        commands.SetViewport(new Viewport(0, 0, width, height));
+        commands.SetScissor(0, 0, width, height);
+        commands.SetPipeline(_drawGlare);
+        commands.PushConstants(_glare);
+        commands.Draw(6, MaxGlarePoints * GlareStreaks);
+        commands.EndRendering();
+        commands.Barrier(flare, ResourceState.ShaderRead);
+    }
+
+    private GlareConstants Glare(ScreenTargets targets, FlareFile file, LightingMood mood)
+    {
+        ITexture source = targets.FlarePing;
+        float aspect = (float)source.Description.Width / source.Description.Height;
+        return new GlareConstants(
+            source.BindlessIndex,
+            _glarePoints.BindlessIndex,
+            (uint)source.Description.Width,
+            (uint)source.Description.Height,
+            file.GlareThreshold,
+            file.GlareIntensity * mood.FlareIntensity,
+            file.GlareLength,
+            file.GlareWidth,
+            file.GlareAngle,
+            aspect);
+    }
+
+    private static IPipeline Create(IGraphicsDevice device, ShaderLibrary shaders, string shader, string entryPoint, string name)
+    {
+        ComputePipelineDescription description = new() { ComputeShader = shaders.Load(shader, entryPoint), Name = name };
         return device.CreateComputePipeline(description);
     }
 

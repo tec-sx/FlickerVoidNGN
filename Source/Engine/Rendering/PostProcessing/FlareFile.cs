@@ -65,4 +65,24 @@ public sealed record FlareFile
     /// <summary>The flare's colour at the screen's edge, blended from the middle's.</summary>
     [Color]
     public Vector3 EdgeColor { get; set; } = Vector3.One;
+
+    /// <summary>How strongly bright points shine a star of three streaks, as in Arkham Knight; 0 draws none.</summary>
+    [Range(0, 4)]
+    public float GlareIntensity { get; set; }
+
+    /// <summary>How bright a point must be, past the flare's threshold, to shine a star.</summary>
+    [Range(0, 50)]
+    public float GlareThreshold { get; set; } = 1;
+
+    /// <summary>How far each streak reaches from its point, in screen heights.</summary>
+    [Range(0.001, 1)]
+    public float GlareLength { get; set; } = 0.1f;
+
+    /// <summary>How wide a streak is, in screen heights.</summary>
+    [Range(0.0005, 0.1)]
+    public float GlareWidth { get; set; } = 0.004f;
+
+    /// <summary>The angle of the first streak, in degrees from level; the others follow 60 degrees apart.</summary>
+    [Range(0, 180)]
+    public float GlareAngle { get; set; }
 }

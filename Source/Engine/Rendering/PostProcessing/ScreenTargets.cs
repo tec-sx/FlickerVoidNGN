@@ -113,7 +113,7 @@ internal sealed class ScreenTargets : IDisposable
         TextureDescription flare = new(flareWidth, flareHeight, HdrFormat, readWrite) { Name = "Flare ping" };
         FlarePing = _device.CreateTexture(flare);
         FlarePong = _device.CreateTexture(flare with { Name = "Flare pong" });
-        Flare = _device.CreateTexture(flare with { Name = "Flare" });
+        Flare = _device.CreateTexture(flare with { Name = "Flare", Usage = readWrite | TextureUsage.RenderTarget });
         return true;
     }
 
