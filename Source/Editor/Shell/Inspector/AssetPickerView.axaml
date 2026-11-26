@@ -15,12 +15,12 @@
         <PathIcon Width="12" Height="12" Data="{Binding Current, Converter={x:Static assets:AssetTypeLooks.PathIcon}}"
                   Foreground="{Binding Current, Converter={x:Static assets:AssetTypeLooks.PathBrush}}" />
         <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-        <PathIcon Grid.Column="2" Width="10" Height="10" Data="{x:Static shell:MaterialIcons.Expand}" Opacity="0.7" />
+        <PathIcon Grid.Column="2" Width="10" Height="10" Data="{x:Static shell:LucideIcons.Expand}" Opacity="0.7" />
       </Grid>
     </ToggleButton>
     <Button Grid.Column="1" Classes="icon" ToolTip.Tip="Show in the asset browser and open" Click="HandleOpenClick"
             IsEnabled="{Binding Current, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-      <PathIcon Data="{x:Static shell:MaterialIcons.Open}" />
+      <PathIcon Data="{x:Static shell:LucideIcons.Open}" />
     </Button>
     <Popup IsOpen="{Binding IsOpen}" PlacementTarget="{Binding #Current}" Placement="BottomEdgeAlignedLeft"
            IsLightDismissEnabled="True" Opened="HandlePopupOpened">

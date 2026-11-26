@@ -40,8 +40,15 @@ public sealed partial class SceneTreeViewModel : ObservableObject
     [ObservableProperty]
     public partial bool RevealAllNested { get; set; }
 
+    /// <summary>The outline: folders and entities, or, while <see cref="SearchText"/> holds text, the entities it finds in one flat list.</summary>
     [ObservableProperty]
     public partial IReadOnlyList<SceneTreeItem> Items { get; private set; } = [];
+
+    /// <summary>Text the outline searches entity names for; empty shows the whole tree.</summary>
+    [ObservableProperty]
+    public partial string SearchText { get; set; } = "";
+
+    partial void OnSearchTextChanged(string value) => Rebuild();
 
     /// <summary>The items whose entities are selected, and the folders chosen to select them.</summary>
     [ObservableProperty]
@@ -330,10 +337,39 @@ public sealed partial class SceneTreeViewModel : ObservableObject
             _emptyFolders.RemoveWhere(empty => folder == empty || folder.StartsWith(empty + Separator, StringComparison.Ordinal));
         }
 
-        HashSet<string> folders = [.. GetFolderPaths()];
-        Items = BuildLevel("", folders, entities, world);
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            HashSet<string> folders = [.. GetFolderPaths()];
+            Items = BuildLevel("", folders, entities, world);
+        }
+        else
+        {
+            Items = BuildFound(entities, world);
+        }
+
         ShowHidden();
         ShowSelection();
+    }
+
+    /// <summary>Every entity whose name holds the searched text, nested ones too, in the file's order and without folders.</summary>
+    private List<SceneTreeItem> BuildFound(IReadOnlyList<Entity> entities, World world)
+    {
+        string searched = SearchText.Trim();
+        List<SceneTreeItem> items = [];
+        foreach (Entity entity in entities)
+        {
+            string name = NameOf(world, entity);
+            if (!name.Contains(searched, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string icon = SceneIcons.For(world, entity, _scene.Game.Spawner.Components);
+            SceneTreeItem item = new(name, FolderOf(world, entity), icon, entity, []) { HideToggled = ToggleHidden };
+            items.Add(item);
+        }
+
+        return items;
     }
 
     private List<SceneTreeItem> BuildLevel(string parent, HashSet<string> folders, IReadOnlyList<Entity> entities, World world)

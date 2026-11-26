@@ -54,11 +54,29 @@ Used in: `Source/Editor/Icons/*.png`, the Rounded filled glyphs `lightbulb`, `hi
 
 Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0), Copyright Google LLC.
 
+## Lucide
+
+https://lucide.dev (v1.81.0)
+
+Used in: `Source/Editor/Shell/LucideIcons.cs` (the editor's icons, their paths copied by `icons.py` from `lucide-static`). Lucide is licensed under the [ISC License](https://github.com/lucide-icons/lucide/blob/main/LICENSE), Copyright Lucide Contributors; the icons it took from Feather are MIT, Copyright Cole Bemis.
+
+## Avalonia
+
+https://github.com/AvaloniaUI/Avalonia (12.1.6)
+
+Used in: `Source/Editor/Shell/Themes/EditorTheme.axaml` (the window decorations' control theme, adapted from the Fluent theme's so no title is drawn over the top bar). Avalonia is licensed under the [MIT License](https://github.com/AvaloniaUI/Avalonia/blob/master/licence.md), Copyright The Avalonia Project.
+
+## Inter
+
+https://rsms.me/inter (through the `Avalonia.Fonts.Inter` package, MIT)
+
+Used in: the editor's text (`Source/Editor/Shell/Program.cs`, `WithInterFont`). Inter is licensed under the [SIL Open Font License 1.1](https://openfontlicense.org), Copyright the Inter Project Authors.
+
 ## Simple Icons
 
 https://simpleicons.org (v9.21.0)
 
-Used in: `Source/Editor/Shell/MaterialIcons.cs` (the Visual Studio logo of the editor's Open in Visual Studio button). Simple Icons are released under CC0 1.0 Universal; the logo is a trademark of Microsoft, used only to name the program the button opens.
+Used in: `Source/Editor/Shell/LucideIcons.cs` (the Visual Studio logo of the editor's Open in Visual Studio button). Simple Icons are released under CC0 1.0 Universal; the logo is a trademark of Microsoft, used only to name the program the button opens.
 
 ## NVIDIA DLSS SDK
 

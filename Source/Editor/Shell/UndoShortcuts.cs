@@ -8,12 +8,12 @@ using FlickerVoid.Editor.Inspector;
 namespace FlickerVoid.Editor;
 
 /// <summary>
-/// Gives a window undo and redo over the history of the document it shows: Ctrl+Z undoes, Ctrl+Y and Ctrl+Shift+Z redo, and a
+/// Gives a window or a docked editor undo and redo over the history of the document it shows: Ctrl+Z undoes, Ctrl+Y and Ctrl+Shift+Z redo, and a
 /// number box dragged in it is recorded as one step.
 /// </summary>
 public static class UndoShortcuts
 {
-    public static void Attach(Window window, Func<UndoHistory?> findHistory)
+    public static void Attach(Control window, Func<UndoHistory?> findHistory)
     {
         UndoHistory? dragged = null;
         window.AddHandler(InputElement.KeyDownEvent, (_, e) => HandleKeyDown(e, findHistory), RoutingStrategies.Bubble);

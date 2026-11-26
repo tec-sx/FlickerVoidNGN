@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
+             xmlns:materials="using:FlickerVoid.Editor.Materials"
+             x:Class="FlickerVoid.Editor.Materials.MaterialEditorView"
+             x:DataType="materials:MaterialEditorViewModel">
+  <Grid ColumnDefinitions="240,*,1,320">
+    <!-- The browser: every material in the content folder, narrowed by the search text. -->
+    <Border Grid.Column="0" Classes="well" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource EditorLineBrush}">
+      <DockPanel>
+        <Border DockPanel.Dock="Top" Classes="searchRow">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CreateMaterialCommand}" ToolTip.Tip="New material">
+              <PathIcon Data="{x:Static shell:LucideIcons.Add}" />
+            </Button>
+            <controls:SearchBox Classes="row" Text="{Binding SearchText}" PlaceholderText="Search materials" />
+          </DockPanel>
+        </Border>
+        <ListBox ItemsSource="{Binding Materials}" SelectedItem="{Binding SelectedMaterial}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Classes="small muted" Data="{x:Static shell:LucideIcons.Materials}" />
+                <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+    <!-- The preview fills the working area: drag to turn the shape, picked on the pill over it. -->
+    <Panel Grid.Column="1" Background="{DynamicResource EditorDeepBrush}">
+      <Image x:Name="Preview" Stretch="Uniform" Cursor="SizeWestEast" ToolTip.Tip="Drag to turn" MaxWidth="640" MaxHeight="640" />
+      <Border Classes="viewportBar" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12">
+        <StackPanel Orientation="Horizontal">
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsSphere}" ToolTip.Tip="Preview on a sphere">
+            <PathIcon Data="{x:Static shell:LucideIcons.Sphere}" />
+          </ToggleButton>
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsCube}" ToolTip.Tip="Preview on a cube">
+            <PathIcon Data="{x:Static shell:LucideIcons.Cube}" />
+          </ToggleButton>
+        </StackPanel>
+      </Border>
+      <Border Classes="toast" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="12"
+              IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxWidth="480" Foreground="{DynamicResource EditorBakeBrush}" />
+      </Border>
+    </Panel>
+    <Border Grid.Column="2" Background="{DynamicResource EditorLineBrush}" />
+    <!-- The parameters the scene shader declares, held unsaved as they change until saved or discarded. -->
+    <Border Grid.Column="3" Classes="well">
+      <DockPanel>
+        <Border DockPanel.Dock="Top" Classes="entityHeader">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding DiscardCommand}" ToolTip.Tip="Forget the unsaved edits."
+                    VerticalAlignment="Center">
+              <PathIcon Data="{x:Static shell:LucideIcons.Discard}" />
+            </Button>
+            <Border DockPanel.Dock="Left" Classes="iconTile">
+              <PathIcon Data="{x:Static shell:LucideIcons.Materials}" />
+            </Border>
+            <TextBlock Text="{Binding Heading}" Classes="title" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          </DockPanel>
+        </Border>
+        <ScrollViewer>
+          <Border Classes="sectionBody">
+            <ItemsControl ItemsSource="{Binding Parameters}" ItemTemplate="{StaticResource FieldRow}" />
+          </Border>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

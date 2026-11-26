@@ -60,7 +60,12 @@ public sealed partial class EnvironmentEditorViewModel : ObservableObject
         }
 
         Groups = groups;
+        SelectedGroup = groups.FirstOrDefault();
     }
+
+    /// <summary>The group whose values the dock lists: one of the tabs Sun, Sky, Fog and Grade.</summary>
+    [ObservableProperty]
+    public partial EnvironmentGroupViewModel? SelectedGroup { get; set; }
 
     public string Title { get; }
 
@@ -237,6 +242,18 @@ public sealed partial class EnvironmentEditorViewModel : ObservableObject
         else
         {
             ShowNumber(value);
+        }
+
+        NumberTracks();
+    }
+
+    /// <summary>Tells every value which of the shown curves is its own.</summary>
+    private void NumberTracks()
+    {
+        foreach (EnvironmentValueViewModel value in _values.Values)
+        {
+            CurveTrack? track = FindTrack(value.Name);
+            value.TrackIndex = track is null ? EnvironmentValueViewModel.NoTrack : Curves.Tracks.IndexOf(track);
         }
     }
 
