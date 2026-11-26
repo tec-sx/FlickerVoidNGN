@@ -27,6 +27,28 @@ public sealed class AssetCatalogTests : IDisposable
         assets.Should().ContainSingle().Which.Type.Name.Should().Be(type);
     }
 
+    [Theory]
+    [InlineData("Paper.png", true)]
+    [InlineData("Brick.jpg", true)]
+    [InlineData("Wall.reb", false)]
+    [InlineData("Rooms/Room.fvscene", false)]
+    public void AnImageTheBrowserCanDrawIsItsTilesThumbnail(string path, bool drawn)
+    {
+        AssetCatalog catalog = _builder.WithFile(path).Build();
+
+        AssetEntry entry = catalog.Find("", recursive: true, type: null, text: "").Single();
+
+        if (drawn)
+        {
+            string full = catalog.GetFullPath(path);
+            entry.Thumbnail.Should().Be(full);
+        }
+        else
+        {
+            entry.Thumbnail.Should().BeNull();
+        }
+    }
+
     [Fact]
     public void ListsAnImagesSettingsAsPartOfTheImage()
     {

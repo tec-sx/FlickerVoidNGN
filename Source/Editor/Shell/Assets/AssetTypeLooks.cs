@@ -20,6 +20,25 @@ public static class AssetTypeLooks
 
     public static FuncValueConverter<string?, IBrush> PathBrush { get; } = new(static path => GetBrush(AssetTypes.Find(path ?? "")));
 
+    /// <summary>Whether a tile is a folder's, drawn with a dashed frame.</summary>
+    public static FuncValueConverter<AssetType?, bool> IsFolder { get; } = new(static type => type == AssetTypes.Folder);
+
+    public static FuncValueConverter<AssetType?, bool> IsFile { get; } = new(static type => type != AssetTypes.Folder);
+
+    /// <summary>A brush of a colour written as <c>#RRGGBB</c>, such as a filter chip's; transparent for none.</summary>
+    public static FuncValueConverter<string?, IBrush> HexBrush { get; } = new(GetHexBrush);
+
+    private static IBrush GetHexBrush(string? hex)
+    {
+        if (hex is null)
+        {
+            return Brushes.Transparent;
+        }
+
+        Color color = Color.Parse(hex);
+        return new SolidColorBrush(color);
+    }
+
     private static AssetType GetFolderType(AssetFolder? folder)
     {
         if (folder?.Path == AssetCatalog.CodePrefix)
@@ -32,8 +51,8 @@ public static class AssetTypeLooks
 
     private static Geometry GetIcon(AssetType? type)
     {
-        Geometry? icon = MaterialIcons.Find(type?.Icon);
-        return icon ?? MaterialIcons.File;
+        Geometry? icon = LucideIcons.Find(type?.Icon);
+        return icon ?? LucideIcons.File;
     }
 
     private static IBrush GetBrush(AssetType? type)

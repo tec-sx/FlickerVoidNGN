@@ -13,6 +13,7 @@
 
 #include "Frame.hlsl"
 #include "Grade.hlsl"
+#include "Haze.hlsl"
 
 struct SkyConstants
 {
@@ -294,7 +295,7 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
         screen = Wash(gradient);
     }
 
-    float3 light = Ungrade(Sky.Grade, screen);
+    float3 light = lerp(Ungrade(Sky.Grade, screen), Ungrade(Sky.Grade, frame.HazeColor), SkyHazeAmount(frame, elevation));
     float3 next = ViewRay(frame, sky, pixel + float2(0, 1));
     float pixelRadians = acos(clamp(dot(direction, next), -1, 1));
     float3 stars = StarLight(sky, direction, pixelRadians, gradient) * saturate(mask.a);

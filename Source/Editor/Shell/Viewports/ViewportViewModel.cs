@@ -174,8 +174,12 @@ public sealed partial class ViewportViewModel : ObservableObject
             OnPropertyChanged(nameof(IsMoveMode));
             OnPropertyChanged(nameof(IsRotateMode));
             OnPropertyChanged(nameof(IsScaleMode));
+            OnPropertyChanged(nameof(ShowsMoveSnap));
         }
     }
+
+    /// <summary>Whether the toolbar shows the grid snap: always, but while turning or scaling, which show their own steps.</summary>
+    public bool ShowsMoveSnap => !IsRotateMode && !IsScaleMode;
 
     public bool IsSelectMode
     {

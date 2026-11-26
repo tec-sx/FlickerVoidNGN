@@ -17,7 +17,7 @@ namespace FlickerVoid.Editor.Flows;
 /// The flow graph editor: the canvas of nodes and wires, and the selected node's values beside it. Shift+A opens the Add menu at
 /// the mouse, a right-click the options for what is under it, and a wire dropped on empty space the Add menu for a node wired to it.
 /// </summary>
-public partial class FlowEditorWindow : Window
+public partial class FlowEditorView : UserControl
 {
     private FlowNodeViewModel? _dragged;
     private Point _dragStart;
@@ -31,7 +31,7 @@ public partial class FlowEditorWindow : Window
     /// <summary>How far the mouse may move, in pixels, for a right-click to open the options menu rather than pan.</summary>
     private const double ClickSlop = 4;
 
-    public FlowEditorWindow()
+    public FlowEditorView()
     {
         InitializeComponent();
         Surface.AddHandler(PointerPressedEvent, HandleCanvasPressed, RoutingStrategies.Tunnel);
@@ -39,7 +39,7 @@ public partial class FlowEditorWindow : Window
         Surface.PointerReleased += HandleCanvasReleased;
         Surface.PointerWheelChanged += HandleWheel;
         AddHandler(KeyDownEvent, HandleKeyDown, RoutingStrategies.Tunnel);
-        Opened += HandleOpened;
+        AttachedToVisualTree += HandleOpened;
         UndoShortcuts.Attach(this, () => History);
     }
 
