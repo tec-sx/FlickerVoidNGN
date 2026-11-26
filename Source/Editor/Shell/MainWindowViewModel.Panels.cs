@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -88,6 +89,19 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(ContextRow));
         OnPropertyChanged(nameof(OutlinerRow));
     }
+
+    /// <summary>Whether the content drawer is open; closed, the viewport takes its height.</summary>
+    [ObservableProperty]
+    public partial bool IsContentOpen { get; set; }
+
+    /// <summary>The height of the content drawer's row: nothing while it is closed.</summary>
+    public GridLength ContentRowHeight => IsContentOpen ? new GridLength(300) : new GridLength(0);
+
+    partial void OnIsContentOpenChanged(bool value) => OnPropertyChanged(nameof(ContentRowHeight));
+
+    /// <summary>Opens or closes the content drawer (Ctrl+Space).</summary>
+    [RelayCommand]
+    public void ToggleContent() => IsContentOpen = !IsContentOpen;
 
     /// <summary>Closes the data asset or table open in the Data tab; its unsaved edits stay held.</summary>
     [RelayCommand]

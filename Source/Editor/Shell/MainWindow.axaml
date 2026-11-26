@@ -18,6 +18,7 @@
   <Window.KeyBindings>
     <KeyBinding Gesture="Ctrl+S" Command="{Binding Viewport.SaveCommand}" />
     <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveAssetsCommand}" />
+    <KeyBinding Gesture="Ctrl+Space" Command="{Binding ToggleContentCommand}" />
     <KeyBinding Gesture="F5" Command="{Binding PlayCommand}" />
     <KeyBinding Gesture="Ctrl+Alt+F11" Command="{Binding CompileCommand}" />
     <KeyBinding Gesture="Ctrl+D" Command="{Binding Viewport.DuplicateSelectedCommand}" />
@@ -92,6 +93,8 @@
     </Border>
     <Border DockPanel.Dock="Bottom" Classes="statusbar">
       <DockPanel>
+        <ToggleButton DockPanel.Dock="Left" Classes="viewportIcon" IsChecked="{Binding IsContentOpen}" Content="Content  Ctrl Space" Margin="0,0,8,0" Padding="6,0"
+                      ToolTip.Tip="Open or close the content drawer (Ctrl+Space): the files of the project." />
         <TextBlock DockPanel.Dock="Right" Text="{Binding Viewport.SelectionText}" Margin="12,0,0,0" />
         <TextBlock Text="{Binding Viewport.Status}" TextTrimming="CharacterEllipsis"
                    ToolTip.Tip="Shift+A over the viewport adds an entity at the camera's pivot. Alt+left drag orbits, Alt+middle drag pans, Alt+right drag or the wheel zooms; hold the right button to look round and fly with WASD, Q and E." />
@@ -100,7 +103,11 @@
     <!-- The viewport over the content browser, and the side column beside them: the context panel over the outliner, or under it
          once swapped. Every splitter resizes. -->
     <Grid ColumnDefinitions="*,1,320">
-      <Grid RowDefinitions="*,1,160">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*" />
+          <RowDefinition Height="{Binding ContentRowHeight}" MinHeight="0" />
+        </Grid.RowDefinitions>
         <Border Classes="well viewport">
         <Panel>
           <viewports:ViewportControl DataContext="{Binding Viewport}"
@@ -119,8 +126,7 @@
           </Border>
         </Panel>
         </Border>
-        <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
-        <assets:AssetBrowserView Grid.Row="2" DataContext="{Binding Assets}" />
+        <assets:AssetBrowserView Grid.Row="1" DataContext="{Binding Assets}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).IsContentOpen}" />
       </Grid>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
       <Grid Grid.Column="2" RowDefinitions="*,1,*" Classes="sidePanel">

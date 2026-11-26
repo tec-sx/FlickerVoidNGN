@@ -1,6 +1,6 @@
 # The editor
 
-- The look (owner, 2026-11-26, `Docs/Design/EditorUi.md`): palette A, Ember, in `Shell/Themes/EditorTheme.axaml` (warm browns, one amber accent), panels meeting along 1 px lines, a 320 px side column; `EditorThemeTests` check contrast, warmth and that views use no colour the theme does not declare. Still to come from the redesign: the content drawer, the Day dock, the command palette, the inspector's category rail, and the editors opening in place.
+- The look (owner, 2026-11-26, `Docs/Design/EditorUi.md`): palette A, Ember, in `Shell/Themes/EditorTheme.axaml` (warm browns, one amber accent), panels meeting along 1 px lines, a 320 px side column; `EditorThemeTests` check contrast, warmth and that views use no colour the theme does not declare. The content browser is a drawer: closed it gives its 300 px to the viewport; Ctrl+Space or the Content button in the status bar opens it (`MainWindowViewModel.IsContentOpen`; it starts closed and is not yet remembered between runs, has no thumbnails or category chips). Still to come from the redesign: the Day dock, the command palette, the inspector's category rail, and the editors opening in place.
 
 > UI work follows the rules in `Docs/Design/EditorUi.md` (R1 to R24).
 

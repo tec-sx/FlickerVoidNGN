@@ -19,6 +19,24 @@ public sealed class MainWindowViewModelPanelsTests : IDisposable
     public void Dispose() => _builder.Dispose();
 
     [Fact]
+    public void TheContentDrawerIsClosedUntilItIsToggled()
+    {
+        bool closed = ViewModel.IsContentOpen;
+        double closedHeight = ViewModel.ContentRowHeight.Value;
+
+        ViewModel.ToggleContentCommand.Execute(null);
+        bool opened = ViewModel.IsContentOpen;
+        double openHeight = ViewModel.ContentRowHeight.Value;
+        ViewModel.ToggleContentCommand.Execute(null);
+
+        closed.Should().BeFalse();
+        closedHeight.Should().Be(0);
+        opened.Should().BeTrue();
+        openHeight.Should().BeGreaterThan(0);
+        ViewModel.IsContentOpen.Should().BeFalse();
+    }
+
+    [Fact]
     public void TheContextPanelIsEmptyWithNothingSelectedOrOpen()
     {
         ViewModel.HasContext.Should().BeFalse();
