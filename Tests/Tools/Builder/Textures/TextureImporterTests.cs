@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 using BCnEncoder.Decoder;
 using BCnEncoder.Shared;
 
@@ -45,6 +47,26 @@ public sealed class TextureImporterTests : IDisposable
         top[0].b.Should().BeInRange(0, 5);
         top[7].r.Should().BeInRange(0, 5);
         top[7].b.Should().BeInRange(250, 255);
+    }
+
+    [Fact]
+    public void KeepsAMasksSixteenBitGreysLinearInRed()
+    {
+        ushort[] greys = [0, 1000, 32768, 65535];
+        _files.WithGreyPng16("Sky.png", 4, 1, greys);
+        _files.WithSource("Sky.png.fvtexture", """{ "mask": true }""");
+
+        DdsImage image = BuildOne("Sky.dds");
+
+        image.Format.Should().Be(PixelFormat.Rgba16Float);
+        image.MipLevels.Should().Be(1);
+        System.Half[] texels = MemoryMarshal.Cast<byte, System.Half>(image.Data).ToArray();
+        ((float)texels[4]).Should().BeApproximately(1000 / 65535f, 2e-5f, "a 16-bit step between greys survives");
+        ((float)texels[8]).Should().BeApproximately(0.5f, 1e-3f, "a mask is not turned from sRGB");
+        ((float)texels[12]).Should().Be(1);
+        ((float)texels[13]).Should().Be(0, "a grey mask fills only red");
+        ((float)texels[14]).Should().Be(0);
+        ((float)texels[15]).Should().Be(1);
     }
 
     [Fact]
@@ -139,12 +161,12 @@ public sealed class TextureImporterTests : IDisposable
         return rgba;
     }
 
-    private DdsImage BuildOne()
+    private DdsImage BuildOne(string output = "Paint.dds")
     {
         AssetBuilder builder = _files.Build();
         BuildReport report = _files.BuildAll(builder);
         report.Failed.Should().BeEmpty();
-        return _files.ReadOutput("Paint.dds");
+        return _files.ReadOutput(output);
     }
 
     private static ColorRgba32[] Decode(DdsImage image)

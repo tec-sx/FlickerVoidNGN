@@ -5,7 +5,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 
 namespace FlickerVoid.Engine.Rendering.Sky;
 
-/// <summary>The sky's colors, sun, moon and stars for the sky shader; mirrors SkyData in Sky.hlsl, 128 bytes.</summary>
+/// <summary>The sky's colors, sun, moon and stars for the sky shader; mirrors SkyData in Sky.hlsl, 144 bytes.</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal readonly record struct GpuSky(
     Vector3 Zenith,
@@ -27,9 +27,12 @@ internal readonly record struct GpuSky(
     float StarIntensity,
     float SkyTanHalfView,
     Vector3 StarPole,
-    float Padding1)
+    float MaskStrength,
+    Vector3 BandColor,
+    float NorthRadians)
 {
-    public static GpuSky From(LightingMood mood)
+    /// <summary>The sky of a mood, painted by a mask whose north lies that many degrees round, or plain.</summary>
+    public static GpuSky From(LightingMood mood, float north)
     {
         Vector3 towardSun = -Normalized(mood.SunDirection);
         Vector3 towardMoon = -Normalized(mood.MoonDirection);
@@ -55,7 +58,9 @@ internal readonly record struct GpuSky(
             mood.StarIntensity,
             MathF.Tan(ToRadians(mood.SkyFieldOfView / 2)),
             Normalized(mood.StarPole),
-            0);
+            mood.SkyMaskStrength,
+            mood.SkyBandColor,
+            ToRadians(north));
     }
 
     private static float ToRadians(float degrees) => degrees * MathF.PI / 180;

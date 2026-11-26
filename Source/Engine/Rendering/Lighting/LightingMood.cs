@@ -104,6 +104,13 @@ public sealed record LightingMood
     [Range(0, 100)]
     public float StarIntensity { get; set; } = 1;
 
+    /// <summary>How much the scene's painted sky mask shapes the sky, from the plain gradient (0) to the painted one (1).</summary>
+    [Range(0, 1)]
+    public float SkyMaskStrength { get; set; } = 1;
+
+    /// <summary>The color of the painted sky's band (the mask's green), as it looks on screen, linear.</summary>
+    public Vector3 SkyBandColor { get; set; } = new(0.45f, 0.4f, 0.36f);
+
     /// <summary>How much of the light crossing a world unit of fog it absorbs or scatters, at and below <see cref="FogHeight"/>; 0 clears the air.</summary>
     public float FogDensity { get; set; }
 
