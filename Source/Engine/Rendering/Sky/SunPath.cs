@@ -16,6 +16,18 @@ public readonly record struct SunPath(float Latitude, float North, float Declina
     private const float DegreesPerHour = 15;
     private const float DayHours = 24;
 
+    /// <summary>The celestial pole the sky turns about: north, as high over the horizon as the latitude (south below the equator).</summary>
+    public Vector3 Pole
+    {
+        get
+        {
+            float latitude = ToRadians(Latitude);
+            float turn = ToRadians(North);
+            Vector3 northAxis = new(MathF.Sin(turn), 0, -MathF.Cos(turn));
+            return (northAxis * MathF.Cos(latitude)) + (Vector3.UnitY * MathF.Sin(latitude));
+        }
+    }
+
     /// <summary>The direction from the ground toward the sun at an hour of the day, noon at 12; below the horizon at night.</summary>
     public Vector3 TowardSun(double hour)
     {
@@ -43,11 +55,12 @@ public readonly record struct SunPath(float Latitude, float North, float Declina
         return TowardSun(hour - behind);
     }
 
-    /// <summary>Writes the way the sun's and the moon's light travel on the day at the hour onto a mood.</summary>
+    /// <summary>Writes the way the sun's and the moon's light travel on the day at the hour, and the stars' pole, onto a mood.</summary>
     public void Apply(int day, double hour, LightingMood mood)
     {
         mood.SunDirection = -TowardSun(hour);
         mood.MoonDirection = -TowardMoon(day, hour);
+        mood.StarPole = Pole;
     }
 
     private static float ToRadians(float degrees) => degrees * MathF.PI / 180;

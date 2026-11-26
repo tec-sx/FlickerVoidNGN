@@ -138,4 +138,26 @@ public sealed class SunPathTests
         mood.MoonDirection.Y.Should().BeApproximately(-toMoon.Y, Precision);
         mood.MoonDirection.Z.Should().BeApproximately(-toMoon.Z, Precision);
     }
+
+    [Fact]
+    public void PointsThePoleNorthAsHighAsTheLatitude()
+    {
+        SunPath path = _builder.AtLatitude(45).Build();
+
+        Vector3 pole = path.Pole;
+
+        pole.Y.Should().BeApproximately(MathF.Sqrt(0.5f), Precision);
+        pole.Z.Should().BeApproximately(-MathF.Sqrt(0.5f), Precision, "north is -Z");
+    }
+
+    [Fact]
+    public void WritesThePoleTheStarsTurnAbout()
+    {
+        SunPath path = _builder.AtLatitude(30).FacingNorth(90).Build();
+        LightingMood mood = new();
+
+        path.Apply(0, 0, mood);
+
+        mood.StarPole.Should().Be(path.Pole);
+    }
 }
