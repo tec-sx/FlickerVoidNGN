@@ -18,8 +18,8 @@ public sealed class FlowGrid : Control
     private const double Spacing = 20;
     private const int MajorEvery = 8;
 
-    private static readonly Pen MinorPen = new(new SolidColorBrush(Color.Parse("#221F1D")), 1);
-    private static readonly Pen MajorPen = new(new SolidColorBrush(Color.Parse("#2C2926")), 1);
+    private static readonly Pen MinorPen = new(new SolidColorBrush(Color.Parse("#1D1610")), 1);
+    private static readonly Pen MajorPen = new(new SolidColorBrush(Color.Parse("#2A2119")), 1);
 
     private FlowCanvasView? _watched;
 

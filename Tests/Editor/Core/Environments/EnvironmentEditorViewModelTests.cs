@@ -20,7 +20,7 @@ public sealed class EnvironmentEditorViewModelTests
         editor.Groups.Select(group => group.Name).Should().Equal("Sun", "Sky", "Fog", "Grade");
         IEnumerable<string> names = editor.Groups.SelectMany(group => group.Values).Select(value => value.Name);
         names.Should().Contain(["exposure", "fogColor", "sunAngle", "tint"]);
-        names.Should().NotContain(["bloom", "sunDirection", "depthFarColor"], "the lens's values and the sun's path are not the environment's to draw");
+        names.Should().NotContain(["bloom", "sunDirection", "depthNearBurn"], "the lens's values and the sun's path are not the environment's to draw");
     }
 
     [Fact]
@@ -121,6 +121,29 @@ public sealed class EnvironmentEditorViewModelTests
 
         editor.Curves.Tracks.Should().BeEmpty();
         editor.Curves.Active.Should().BeNull();
+    }
+
+    [Fact]
+    public void EachValueKnowsWhichShownCurveIsItsOwn()
+    {
+        EnvironmentEditorViewModel editor = _builder.Build();
+
+        editor.Find("exposure").IsSelected = true;
+        editor.Find("contrast").IsSelected = true;
+        int second = editor.Find("contrast").TrackIndex;
+        editor.Find("exposure").IsSelected = false;
+
+        second.Should().Be(1);
+        editor.Find("contrast").TrackIndex.Should().Be(0);
+        editor.Find("exposure").TrackIndex.Should().Be(EnvironmentValueViewModel.NoTrack);
+    }
+
+    [Fact]
+    public void StartsOnTheFirstGroupsTab()
+    {
+        EnvironmentEditorViewModel editor = _builder.Build();
+
+        editor.SelectedGroup.Should().BeSameAs(editor.Groups[0]);
     }
 
     [Fact]

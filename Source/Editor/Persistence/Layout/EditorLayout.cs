@@ -10,6 +10,15 @@ namespace FlickerVoid.Editor.Persistence.Layout;
 /// </summary>
 public sealed class EditorLayout
 {
+    public const double DefaultContentHeight = 318;
+
+    public const double DefaultDayDockHeight = 300;
+
+    public const double DefaultSideWidth = 320;
+
+    /// <summary>The least a remembered panel size can be, so a panel never comes back too small to grab.</summary>
+    public const double MinimumSize = 120;
+
     private readonly string _file;
     private readonly EditorLayoutFile _layout;
 
@@ -26,6 +35,50 @@ public sealed class EditorLayout
         set
         {
             _layout.PanelsSwapped = value;
+            Save();
+        }
+    }
+
+    /// <summary>Whether the content drawer is open; saved as it changes.</summary>
+    public bool ContentOpen
+    {
+        get => _layout.ContentOpen;
+        set
+        {
+            _layout.ContentOpen = value;
+            Save();
+        }
+    }
+
+    /// <summary>The content drawer's height, never under <see cref="MinimumSize"/>; saved as it changes.</summary>
+    public double ContentHeight
+    {
+        get => Math.Max(_layout.ContentHeight, MinimumSize);
+        set
+        {
+            _layout.ContentHeight = value;
+            Save();
+        }
+    }
+
+    /// <summary>The Day dock's height, never under <see cref="MinimumSize"/>; saved as it changes.</summary>
+    public double DayDockHeight
+    {
+        get => Math.Max(_layout.DayDockHeight, MinimumSize);
+        set
+        {
+            _layout.DayDockHeight = value;
+            Save();
+        }
+    }
+
+    /// <summary>The side column's width, never under <see cref="MinimumSize"/>; saved as it changes.</summary>
+    public double SideWidth
+    {
+        get => Math.Max(_layout.SideWidth, MinimumSize);
+        set
+        {
+            _layout.SideWidth = value;
             Save();
         }
     }

@@ -67,4 +67,24 @@ public sealed class SearchMenuViewModelTests
         closed.Should().BeTrue();
         _builder.Ran.Should().Equal("Scene");
     }
+
+    [Fact]
+    public void SectionsKeepTheirHeadingsWhileSearchingAndShowSearchOnlyChoicesOnlyThen()
+    {
+        MenuChoice[] choices =
+        [
+            new("Play", () => { }, "Commands"),
+            new("Bake probes", () => { }, "Commands"),
+            new("Plank.fvmat", () => { }, "Content", Detail: "Materials", SearchOnly: true),
+        ];
+        SearchMenuViewModel menu = new(choices, MenuGrouping.Sections);
+        string[] unsearched = [.. menu.Rows.Select(row => $"{row.Kind}:{row.Text}")];
+
+        menu.SearchText = "pl";
+
+        unsearched.Should().Equal("Heading:Commands", "Choice:Play", "Choice:Bake probes");
+        menu.Rows.Select(row => $"{row.Kind}:{row.Text}").Should().Equal("Heading:Commands", "Choice:Play", "Heading:Content", "Choice:Plank.fvmat");
+        menu.Rows[3].Detail.Should().Be("Materials");
+        menu.Selected!.Text.Should().Be("Play");
+    }
 }

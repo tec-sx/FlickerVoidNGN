@@ -2,7 +2,7 @@ namespace FlickerVoid.Editor.Assets;
 
 /// <summary>
 /// A kind of content file as the editor knows it: the name its filter shows, the extensions that mark it, its icon (a
-/// <c>MaterialIcons</c> name) and colour in the browser, and what New writes of it, if anything. <see cref="AssetTypes"/> lists them.
+/// <c>LucideIcons</c> name) and colour in the browser, and what New writes of it, if anything. <see cref="AssetTypes"/> lists them.
 /// </summary>
 public sealed class AssetType(string name, string icon, string color, params string[] extensions)
 {

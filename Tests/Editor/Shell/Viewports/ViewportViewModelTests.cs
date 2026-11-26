@@ -222,6 +222,30 @@ public sealed class ViewportViewModelTests : IDisposable
     }
 
     [Fact]
+    public void SaysTheHourAsAClockDoes()
+    {
+        _builder.ViewModel.Hour = 18.5f;
+        string evening = _builder.ViewModel.HourText;
+        _builder.ViewModel.Hour = 0;
+
+        evening.Should().Be("18:30");
+        _builder.ViewModel.HourText.Should().Be("00:00");
+    }
+
+    [Fact]
+    public void ShowsTheSnapOfTheToolInHand()
+    {
+        bool moving = _builder.ViewModel.ShowsMoveSnap;
+        _builder.ViewModel.IsRotateMode = true;
+        bool turning = _builder.ViewModel.ShowsMoveSnap;
+        _builder.ViewModel.IsSelectMode = true;
+
+        moving.Should().BeTrue();
+        turning.Should().BeFalse();
+        _builder.ViewModel.ShowsMoveSnap.Should().BeTrue();
+    }
+
+    [Fact]
     public void DrawsTheScenesEnvironmentAtTheViewportsHour()
     {
         _builder.WithFile("Street.fvenv", Environment);

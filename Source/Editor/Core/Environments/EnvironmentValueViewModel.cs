@@ -32,5 +32,11 @@ public sealed partial class EnvironmentValueViewModel(MoodValue value, FieldView
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
 
+    /// <summary>Which of the shown curves is its own, counted from 0, so its dot takes the curve's colour; -1 while it shows none.</summary>
+    [ObservableProperty]
+    public partial int TrackIndex { get; set; } = NoTrack;
+
+    public const int NoTrack = -1;
+
     partial void OnIsSelectedChanged(bool value) => selected(this);
 }

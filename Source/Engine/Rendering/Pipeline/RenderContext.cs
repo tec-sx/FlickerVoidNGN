@@ -1,6 +1,7 @@
 using System.Numerics;
 
 using FlickerVoid.Engine.Graphics.AccelerationStructures;
+using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
@@ -90,6 +91,12 @@ public sealed class RenderContext
     /// geometry pass; each instance's id is its draw's number. Shaders find it in the frame data too. Null without ray tracing.
     /// </summary>
     public IAccelerationStructure? AccelerationStructure { get; internal set; }
+
+    /// <summary>
+    /// The lit fog's volume, integrated front to back, while the mood has fog (FogVolumePass), as a buffer the lighting pass reads
+    /// through the frame data; null without fog.
+    /// </summary>
+    public IBuffer? FogVolume { get; internal set; }
 
     /// <summary>The depth fade laid on the lit scene (DepthFadePass).</summary>
     public DepthFade DepthFade { get; internal set; }
@@ -181,5 +188,6 @@ public sealed class RenderContext
         RayOcclusion = null;
         ProbeSource = null;
         AccelerationStructure = null;
+        FogVolume = null;
     }
 }

@@ -13,14 +13,14 @@ using FlickerVoid.Editor.Assets.Materials;
 namespace FlickerVoid.Editor.Materials;
 
 /// <summary>Shows a <see cref="MaterialEditorViewModel"/>: copies its preview pixels into a bitmap and turns the preview by drags.</summary>
-public sealed partial class MaterialEditorWindow : Window
+public sealed partial class MaterialEditorView : UserControl
 {
     private readonly Image _preview;
     private MaterialEditorViewModel? _viewModel;
     private Point? _lastPointer;
     private bool _turningLight;
 
-    public MaterialEditorWindow()
+    public MaterialEditorView()
     {
         AvaloniaXamlLoader.Load(this);
         _preview = this.FindControl<Image>("Preview")!;
@@ -45,12 +45,6 @@ public sealed partial class MaterialEditorWindow : Window
         }
 
         ShowPreview();
-    }
-
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        _viewModel?.Dispose();
     }
 
     private void HandleViewModelChanged(object? sender, PropertyChangedEventArgs e)

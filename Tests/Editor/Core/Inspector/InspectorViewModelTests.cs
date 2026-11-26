@@ -58,6 +58,89 @@ public sealed class InspectorViewModelTests : IDisposable
     }
 
     [Fact]
+    public void FilteringShowsOnlyTheComponentsWhoseNameOrFieldsMatch()
+    {
+        _builder.Select("Lamp", new Transform(), new PointLight());
+
+        _builder.ViewModel.FilterText = "intens";
+        string[] byField = [.. _builder.ViewModel.VisibleComponents.Select(component => component.Title)];
+        _builder.ViewModel.FilterText = "transf";
+        string[] byName = [.. _builder.ViewModel.VisibleComponents.Select(component => component.Title)];
+        _builder.ViewModel.FilterText = "";
+
+        byField.Should().Equal("Point Light");
+        byName.Should().Equal("Transform");
+        _builder.ViewModel.VisibleComponents.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void TheCategoryRailShowsOneModulesComponentsAndResetsForAnotherEntity()
+    {
+        _builder.Select("Lamp", new Transform(), new PointLight());
+
+        string[] categories = [.. _builder.ViewModel.Categories];
+        _builder.ViewModel.SelectedCategory = "Rendering";
+        string[] rendering = [.. _builder.ViewModel.VisibleComponents.Select(component => component.Title)];
+        _builder.Select(new Transform());
+
+        categories.Should().Equal("Rendering", "Runtime");
+        rendering.Should().Equal("Point Light");
+        _builder.ViewModel.SelectedCategory.Should().BeNull();
+        _builder.ViewModel.HasCategories.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TheHeaderShowsTheEntitysIconAndWhereItIs()
+    {
+        _builder.OpenScene("""
+            { "entities": [
+              { "name": "Inn", "folder": "Street", "components": { "transform": {} } },
+              { "name": "Lamp", "parent": "Inn", "components": { "transform": {}, "pointLight": {} } } ] }
+            """);
+        Entity lamp = _builder.Scene.Find("Lamp")!.Value;
+
+        _builder.Scene.Selection.Select(lamp);
+
+        _builder.ViewModel.Icon.Should().Be("PointLight");
+        _builder.ViewModel.Place.Should().Be("Street / Inn");
+        _builder.ViewModel.HasSelection.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ComponentsCarryTheirIconAndTheRailsModulesTheirs()
+    {
+        _builder.Select("Lamp", new Transform(), new PointLight());
+
+        _builder.Component("Transform").Icon.Should().Be("Transform");
+        _builder.Component("Point Light").Icon.Should().Be("PointLight");
+        ComponentChoices.GetModuleIcon("Rendering").Should().Be("Look");
+        ComponentChoices.GetModuleIcon("Unknown").Should().Be("Entity");
+    }
+
+    [Fact]
+    public void AFoldedComponentSaysItsFirstValuesOnOneLine()
+    {
+        _builder.Select("Lamp", new Transform(), new PointLight { Intensity = 2, Range = 7.5f });
+
+        _builder.Component("Point Light").Summary.Should().Be("intensity 2, range 7.5");
+        _builder.Component("Transform").Summary.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FoldingAComponentIsRememberedForTheNextEntity()
+    {
+        _builder.Select("Lamp", new Transform(), new PointLight());
+        bool open = _builder.Component("Point Light").IsExpanded;
+
+        _builder.Component("Point Light").IsExpanded = false;
+        _builder.Select("Torch", new Transform(), new PointLight());
+
+        open.Should().BeTrue("the first three components start open");
+        _builder.Component("Point Light").IsExpanded.Should().BeFalse();
+        _builder.Component("Transform").IsExpanded.Should().BeTrue();
+    }
+
+    [Fact]
     public void AddsAndRemovesComponents()
     {
         Entity lamp = _builder.Select("Lamp", new Transform(), new PointLight());
