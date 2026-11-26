@@ -90,24 +90,34 @@ float3 Diffuse(Material material, float cosine)
     return diffuse;
 }
 
+// How much of the world a glossy surface that is not metal reflects toward the view, more toward its edges (Schlick's Fresnel
+// factor from a dielectric's head-on reflectance), scaled by its highlight's strength and glossiness.
+float Sheen(Material material, float facing)
+{
+    float fresnel = 0.04 + 0.96 * pow(1 - saturate(facing), 5);
+    return fresnel * saturate(material.Specular) * material.Glossiness;
+}
+
 // The light leaving a surface of the color lit by the diffuse and specular light, by its master's shading model: paint, metal
-// under paint (less diffuse light, the highlight and a reflection of the light about it in its own color), or paint that glows.
-float3 ShadeSurface(Material material, float3 albedo, float3 diffuse, float3 specular, float3 ambient)
+// under paint (less diffuse light, the highlight and its reflection of the world in its own color), or paint that glows. The
+// reflection is the world in the mirror direction (or the ambient light where the frame reflects no world), and the sheen how
+// much of it paint reflects.
+float3 ShadeSurface(Material material, float3 albedo, float3 diffuse, float3 specular, float3 reflection, float sheen)
 {
     if (material.ShadingModel == ShadingMetal)
     {
         float metalness = saturate(material.ModelValues.x);
         float3 highlight = lerp(1, albedo, metalness);
-        float3 reflection = albedo * ambient * metalness * saturate(material.Specular);
-        return albedo * diffuse * (1 - metalness) + specular * highlight + reflection;
+        float3 mirrored = albedo * reflection * metalness * saturate(material.Specular);
+        return albedo * diffuse * (1 - metalness) + specular * highlight + mirrored + reflection * sheen * (1 - metalness);
     }
 
     if (material.ShadingModel == ShadingGlow)
     {
         float glow = material.ModelValues.x;
         float lit = material.ModelValues.y;
-        return albedo * (diffuse * lit + glow) + specular;
+        return albedo * (diffuse * lit + glow) + specular + reflection * sheen;
     }
 
-    return albedo * diffuse + specular;
+    return albedo * diffuse + specular + reflection * sheen;
 }

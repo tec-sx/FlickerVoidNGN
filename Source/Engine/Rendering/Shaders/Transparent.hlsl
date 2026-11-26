@@ -106,6 +106,11 @@ float4 TransparentMain(VertexOutput input, bool front : SV_IsFrontFace) : SV_Tar
     float fresnel = GlassReflectance + (1 - GlassReflectance) * pow(1 - facing, 5);
     float3 reflected = reflect(-toCamera, normal);
     float3 reflection = frame.Ambient * IndoorAmbient(frame, position) + SampleProbes(frame, position, reflected, toCamera);
+    if (frame.Reflection != None)
+    {
+        reflection = SampleReflection(frame, reflected, material.Glossiness);
+    }
+
     float paint = saturate(surface.Albedo.a);
     float3 glassLight = reflection * fresnel + specular;
     float3 paintLight = surface.Albedo.rgb * diffuse + specular;

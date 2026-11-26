@@ -67,6 +67,16 @@ public sealed record LightingMood
     public float AmbientOcclusionRadius { get; set; } = 0.5f;
 
     /// <summary>
+    /// The world glossy surfaces reflect, an image of all around in the equirectangular layout (as panoramas and HDRIs are laid
+    /// out, its middle row the horizon); none reflects the ambient light and the probes alone.
+    /// </summary>
+    [ContentFile(".png", ".jpg", ".jpeg", ".tga", ".bmp")]
+    public string? Reflection { get; set; }
+
+    /// <summary>How bright the reflected world is.</summary>
+    public float ReflectionIntensity { get; set; } = 1;
+
+    /// <summary>
     /// How far toward the sun contact shadows look for small blockers the shadow map misses; 0 turns them off. Traced sun shadows
     /// need none.
     /// </summary>

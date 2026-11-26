@@ -310,3 +310,34 @@ float2 BlurScreenShadows(FrameData frame, float2 pixel)
     return float2(occlusion / 9, contact);
 }
 
+
+// The world (FrameData.Reflection) seen in the direction, blurrier the less glossy the surface, through the image's mips; an
+// equirectangular image's columns turn about the up axis and its rows run from straight up to straight down.
+float3 SampleReflection(FrameData frame, float3 direction, float glossiness)
+{
+    Texture2D image = Textures[frame.Reflection];
+    uint width;
+    uint height;
+    uint mips;
+    image.GetDimensions(0, width, height, mips);
+    float turn = atan2(direction.x, -direction.z) / (2 * 3.14159265) + 0.5;
+    float down = acos(clamp(direction.y, -1, 1)) / 3.14159265;
+    float mip = (1 - saturate(glossiness)) * (mips - 1);
+    float3 seen = image.SampleLevel(Samplers[frame.ReflectionSampler], float2(turn, down), mip).rgb;
+    return seen * frame.ReflectionIntensity;
+}
+
+// What a surface reflects: the world in the mirror direction, dimmed by the occlusion, where the frame reflects one, else the
+// ambient light; and how much of it paint reflects there (none without a world, as before reflections).
+float3 ReflectionAt(FrameData frame, Material material, float3 normal, float3 toCamera, float3 ambient, float occlusion, out float sheen)
+{
+    sheen = 0;
+    if (frame.Reflection == None)
+    {
+        return ambient;
+    }
+
+    float3 mirror = reflect(-toCamera, normal);
+    sheen = Sheen(material, dot(normal, toCamera));
+    return SampleReflection(frame, mirror, material.Glossiness) * occlusion;
+}

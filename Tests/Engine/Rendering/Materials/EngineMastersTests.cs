@@ -33,6 +33,25 @@ public sealed class EngineMastersTests : IDisposable
     }
 
     [Fact]
+    public void ReflectsTheMoodsWorldInMetal()
+    {
+        uint[] green = Enumerable.Repeat(SceneRendererTestsBuilder.Rgba(0, 255, 0, 255), 8 * 4).ToArray();
+        _builder.WithTexture("World.png", 8, 4, green, mips: true);
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+        _builder.WithMood(static mood => mood with { Reflection = "World.png" });
+        _builder.WithFile("Chrome.fvmat", """{ "parent": "Engine/Rendering/Masters/Metal.fvmaster", "parameters": { "tint": [1, 1, 1], "specular": 1, "glossiness": 1, "metalness": 1 } }""");
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f));
+        _builder.WithBuiltContent("Engine/Rendering/Masters");
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Chrome.fvmat"] } } }""");
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte greenValue, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        greenValue.Should().BeGreaterThan(150, "white metal mirrors the green world all around");
+        red.Should().BeLessThan(20);
+    }
+
+    [Fact]
     public void LightsGlowingPaintWithoutLight()
     {
         _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);

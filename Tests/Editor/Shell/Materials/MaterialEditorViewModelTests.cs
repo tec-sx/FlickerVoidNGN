@@ -145,7 +145,7 @@ public sealed class MaterialEditorViewModelTests : IDisposable
         _builder.Preview.Received().Render(
             Arg.Is<MaterialFile>(material => material.Parameters.ContainsKey("emissive")),
             Arg.Is<PreviewView>(view => view.Shape == PreviewShape.Cube),
-            MaterialEditorViewModel.PreviewSize);
+            MaterialEditorViewModel.DefaultPreviewSize);
         editor.PreviewPixels.Should().NotBeNull();
     }
 
@@ -278,7 +278,7 @@ public sealed class MaterialEditorViewModelTests : IDisposable
         _builder.Preview.Received().Render(
             Arg.Any<MaterialFile>(),
             Arg.Is<PreviewView>(view => view.Shape == PreviewShape.Plane && view.Mood == PreviewMood.Night),
-            MaterialEditorViewModel.PreviewSize);
+            MaterialEditorViewModel.DefaultPreviewSize);
     }
 
     [Fact]
@@ -293,7 +293,24 @@ public sealed class MaterialEditorViewModelTests : IDisposable
 
         editor.LightYaw.Should().NotBe(0);
         editor.PreviewYaw.Should().Be(shape);
-        _builder.Preview.Received().Render(Arg.Any<MaterialFile>(), Arg.Is<PreviewView>(view => view.LightYaw != 0), MaterialEditorViewModel.PreviewSize);
+        _builder.Preview.Received().Render(Arg.Any<MaterialFile>(), Arg.Is<PreviewView>(view => view.LightYaw != 0), MaterialEditorViewModel.DefaultPreviewSize);
+    }
+
+    [Fact]
+    public void RendersThePreviewAtTheSizeItIsGivenWithinItsLimits()
+    {
+        _builder.WithMaterial("Brick.fvmat", """{ "parameters": {} }""");
+        MaterialEditorViewModel editor = _builder.Build();
+        editor.SelectedMaterial = "Brick.fvmat";
+
+        editor.ResizePreview(500);
+        editor.ResizePreview(5000);
+        editor.ResizePreview(20);
+
+        _builder.Preview.Received().Render(Arg.Any<MaterialFile>(), Arg.Any<PreviewView>(), 480);
+        _builder.Preview.Received().Render(Arg.Any<MaterialFile>(), Arg.Any<PreviewView>(), MaterialEditorViewModel.MaximumPreviewSize);
+        _builder.Preview.Received().Render(Arg.Any<MaterialFile>(), Arg.Any<PreviewView>(), MaterialEditorViewModel.MinimumPreviewSize);
+        editor.PreviewSize.Should().Be(MaterialEditorViewModel.MinimumPreviewSize);
     }
 
     [Fact]

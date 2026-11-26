@@ -23,7 +23,12 @@ namespace FlickerVoid.Editor.Materials;
 /// </summary>
 public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposable
 {
-    public const int PreviewSize = 256;
+    public const int DefaultPreviewSize = 256;
+    public const int MinimumPreviewSize = 128;
+    public const int MaximumPreviewSize = 1024;
+
+    // Preview sizes are rounded to it, so dragging the window's edges renders again only now and then.
+    private const int PreviewSizeStep = 32;
 
     private const string NewMaterialName = "New Material";
     private const string InstanceSuffix = " Instance";
@@ -123,6 +128,9 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
     /// <summary>How far the preview shape is turned about its vertical axis, in radians.</summary>
     [ObservableProperty]
     public partial float PreviewYaw { get; set; } = 0.6f;
+
+    /// <summary>How many pixels wide and high the preview is rendered, which follows the space the window gives it.</summary>
+    public int PreviewSize { get; private set; } = DefaultPreviewSize;
 
     /// <summary>The preview as Rgba8 pixels, <see cref="PreviewSize"/> square, or null with nothing to show.</summary>
     [ObservableProperty]
@@ -457,6 +465,23 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
         }
 
         Parameters = rows;
+        RenderPreview();
+    }
+
+    /// <summary>
+    /// Renders the preview at the size of the space shown for it, rounded down to a step and held within the preview's limits;
+    /// a size that rounds to the one shown renders nothing again.
+    /// </summary>
+    public void ResizePreview(int pixels)
+    {
+        int stepped = pixels / PreviewSizeStep * PreviewSizeStep;
+        int size = Math.Clamp(stepped, MinimumPreviewSize, MaximumPreviewSize);
+        if (size == PreviewSize)
+        {
+            return;
+        }
+
+        PreviewSize = size;
         RenderPreview();
     }
 

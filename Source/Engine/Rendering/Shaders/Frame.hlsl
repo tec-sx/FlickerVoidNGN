@@ -82,11 +82,16 @@ struct FrameData
     uint AccelerationStructure;
     // The lit scene before glass was drawn over it (TransparentPass), which glass bends and blurs.
     uint Behind;
+    // The world glossy surfaces reflect (LightingMood.Reflection), an equirectangular image with its mips, else None; the sampler
+    // it is read with and how bright it is.
+    uint Reflection;
+    uint ReflectionSampler;
+    float ReflectionIntensity;
     // The frame buffer's own bindless index, which LoadFrame was given.
     uint Buffer;
 };
 
-static const uint FrameDataSize = 516;
+static const uint FrameDataSize = 528;
 static const uint None = 0xFFFFFFFF;
 
 // PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
@@ -168,6 +173,9 @@ FrameData LoadFrame(uint index)
     frame.GBufferMotion = buffer.Load<uint>(504);
     frame.AccelerationStructure = buffer.Load<uint>(508);
     frame.Behind = buffer.Load<uint>(512);
+    frame.Reflection = buffer.Load<uint>(516);
+    frame.ReflectionSampler = buffer.Load<uint>(520);
+    frame.ReflectionIntensity = buffer.Load<float>(524);
     frame.Buffer = index;
     return frame;
 }

@@ -16,7 +16,7 @@
   <Window.KeyBindings>
     <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
   </Window.KeyBindings>
-  <Grid ColumnDefinitions="260,Auto,*">
+  <Grid ColumnDefinitions="260,Auto,380,Auto,*">
     <!-- The browser: every material in the content folder under the master or material it is an instance of, narrowed by the search text. -->
     <Border Grid.Column="0" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
       <DockPanel Margin="8">
@@ -38,23 +38,25 @@
         </TreeView>
       </DockPanel>
     </Border>
-    <!-- The preview: drag to turn the shape. -->
-    <StackPanel Grid.Column="1" Margin="12" Spacing="8">
-      <Border Width="320" Height="320" Background="#141414" CornerRadius="4" ClipToBounds="True">
-        <Image x:Name="Preview" Stretch="Uniform" Cursor="SizeWestEast" ToolTip.Tip="Drag to turn the shape; right-drag or Shift-drag to turn the light" />
-      </Border>
-      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+    <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns" Background="Transparent" />
+    <!-- The preview: drag to turn the shape; the splitters on either side and the window's height size it. -->
+    <DockPanel Grid.Column="2" Margin="8">
+      <TextBlock DockPanel.Dock="Bottom" Text="{Binding Status}" TextWrapping="Wrap" Foreground="#E0A040" />
+      <TextBlock DockPanel.Dock="Bottom" Text="{Binding MasterSummary}" TextWrapping="Wrap" Margin="0,4" />
+      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,8,0,0">
         <ToggleButton Content="Sphere" IsChecked="{Binding IsSphere}" />
         <ToggleButton Content="Cube" IsChecked="{Binding IsCube}" />
         <ToggleButton Content="Plane" IsChecked="{Binding IsPlane}" />
-        <ComboBox ItemsSource="{Binding Moods}" SelectedItem="{Binding Mood}" MinWidth="100" ToolTip.Tip="How the preview is lit" />
+        <ComboBox ItemsSource="{Binding Moods}" SelectedItem="{Binding Mood}" MinWidth="100" ToolTip.Tip="How the preview is lit and what it reflects" />
       </StackPanel>
-      <TextBlock Text="{Binding MasterSummary}" TextWrapping="Wrap" MaxWidth="320" />
-      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxWidth="320" Foreground="#E0A040" />
-    </StackPanel>
+      <Border x:Name="PreviewArea" Background="#141414" CornerRadius="4" ClipToBounds="True">
+        <Image x:Name="Preview" Stretch="Uniform" Cursor="SizeWestEast" ToolTip.Tip="Drag to turn the shape; right-drag or Shift-drag to turn the light" />
+      </Border>
+    </DockPanel>
+    <GridSplitter Grid.Column="3" Width="4" ResizeDirection="Columns" Background="Transparent" />
     <!-- The parent and the parameters the scene shader and the master declare, held unsaved as they change until saved or
          discarded. A ticked parameter is the material's own; an unticked one shows its parent's value or the default, greyed. -->
-    <Border Grid.Column="2" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+    <Border Grid.Column="4" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
       <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="12,8">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">

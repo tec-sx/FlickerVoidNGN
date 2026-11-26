@@ -46,6 +46,14 @@ Used in: `Samples/SceneViewer/Content/Fox.glb`, unchanged.
 - Rigging and animation by tomkranis on Sketchfab, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode).
 - glTF conversion by AsoboStudio and scurest, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode).
 
+## Poly Haven HDRIs
+
+https://polyhaven.com (`quarry_01`, `moonless_golf` and `venice_sunset`, the 1k HDRIs as mirrored in three.js's examples)
+
+Used in: `Source/Engine/Rendering/Shaders/Reflections/*.jpg` (Quarry, Moonless Golf, Venice Sunset), tonemapped to 1024 by 512 JPEGs, which moods name as the world glossy surfaces reflect (`LightingMood.Reflection`).
+
+Released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/legalcode) (public domain).
+
 ## Material Symbols (Google Material Design Icons)
 
 https://github.com/google/material-design-icons
