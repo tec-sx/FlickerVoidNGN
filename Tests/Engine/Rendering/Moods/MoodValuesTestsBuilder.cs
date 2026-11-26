@@ -52,6 +52,7 @@ internal sealed class MoodValuesTestsBuilder
             Tonemapper = Tonemapper.Aces,
             WhitePoint = 8,
             Canvas = "Paper.fvcanvas",
+            SkyFieldOfView = 40,
             DepthNearStart = 0.5f,
             DepthNearEnd = 3,
             DepthNearAmount = 0.4f,

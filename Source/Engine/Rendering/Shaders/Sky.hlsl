@@ -1,7 +1,7 @@
 // The sky: fills what the scene left empty in the lit scene, before the depth fade, the upscale and the grade. Its gradient is
 // the mood's: the ground below the horizon (darkening farther down), the horizon's colour and the zenith's overhead, blended
-// across the horizon over its softness. A perspective view shades by where each pixel's view ray points; an orthographic one,
-// whose rays all point the same way, by height on the near plane. The gradient's colours are meant for the screen, so they are
+// across the horizon over its softness, by where each pixel's view ray points. An orthographic view, whose rays all point the
+// same way, sees the sky through a virtual lens: the lens's sky field of view, looking level along the camera's heading. The gradient's colours are meant for the screen, so they are
 // turned back through the mood's grade (Grade.hlsl), and it is thin paint (coverage 1, no thickness): over a canvas Post.hlsl
 // lets the canvas's weave through it, so it is painted at the canvas's average brightness times the gradient over the horizon's,
 // a wash the paper shows through. Over it, as light that the grade, bloom and flares take as they take the scene's, the sun's
@@ -46,7 +46,7 @@ struct SkyData
     float MoonCorona;
     float MoonDiscRadians;
     float StarIntensity;
-    float Padding0;
+    float SkyTanHalfView;
     float3 StarPole;
     float Padding1;
 };
@@ -77,27 +77,40 @@ float3 WorldAtNdc(FrameData frame, float2 ndc, float depth)
     return world.xyz / world.w;
 }
 
-// The direction a perspective pixel looks along.
-float3 ViewRay(FrameData frame, float2 pixel)
+// The direction an orthographic pixel sees the sky along: through a virtual lens of the sky's field of view, looking level
+// along the camera's heading (or, looking straight down, toward the top of the screen).
+float3 VirtualRay(FrameData frame, SkyData sky, float2 pixel)
 {
-    float3 nearPoint = WorldAtPixel(frame, pixel, 0);
-    float3 farPoint = WorldAtPixel(frame, pixel, 1);
-    return normalize(farPoint - nearPoint);
+    float3 centre = WorldAtNdc(frame, float2(0, 0), 0);
+    float3 forward = WorldAtNdc(frame, float2(0, 0), 1) - centre;
+    float3 screenUp = WorldAtNdc(frame, float2(0, 1), 0) - centre;
+    float3 heading = float3(forward.x, 0, forward.z);
+    if (dot(heading, heading) < 1e-6 * dot(forward, forward))
+    {
+        heading = float3(screenUp.x, 0, screenUp.z);
+    }
+
+    heading = normalize(heading);
+    float3 up = float3(0, 1, 0);
+    float3 right = cross(heading, up);
+    float2 uv = pixel / frame.TargetSize;
+    float2 ndc = float2(uv.x * 2 - 1, 1 - uv.y * 2);
+    float aspect = frame.TargetSize.x / frame.TargetSize.y;
+    float3 ray = heading + right * (ndc.x * sky.SkyTanHalfView * aspect) + up * (ndc.y * sky.SkyTanHalfView);
+    return normalize(ray);
 }
 
-// From -1 straight down to 1 straight up, 0 at the horizon.
-float Elevation(FrameData frame, float2 pixel)
+// The direction a pixel sees the sky along: its own view ray in a perspective view, else the virtual lens's.
+float3 ViewRay(FrameData frame, SkyData sky, float2 pixel)
 {
     if (Sky.Orthographic > 0.5)
     {
-        float3 nearPoint = WorldAtPixel(frame, pixel, 0);
-        float3 top = WorldAtNdc(frame, float2(0, 1), 0);
-        float3 bottom = WorldAtNdc(frame, float2(0, -1), 0);
-        float3 centre = WorldAtNdc(frame, float2(0, 0), 0);
-        return (nearPoint.y - centre.y) / max(length(top - bottom), 0.0001);
+        return VirtualRay(frame, sky, pixel);
     }
 
-    return ViewRay(frame, pixel).y;
+    float3 nearPoint = WorldAtPixel(frame, pixel, 0);
+    float3 farPoint = WorldAtPixel(frame, pixel, 1);
+    return normalize(farPoint - nearPoint);
 }
 
 // How much of the sky, rather than the ground, shows at an elevation.
@@ -235,7 +248,8 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
 
     SkyData sky = LoadSky();
     float2 pixel = float2(id.xy) + 0.5;
-    float elevation = Elevation(frame, pixel);
+    float3 direction = ViewRay(frame, sky, pixel);
+    float elevation = direction.y;
     float3 screen = Gradient(sky, elevation);
     if (Sky.Canvas != None)
     {
@@ -243,14 +257,10 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     }
 
     float3 light = Ungrade(Sky.Grade, screen);
-    if (Sky.Orthographic < 0.5)
-    {
-        float3 direction = ViewRay(frame, pixel);
-        float3 next = ViewRay(frame, pixel + float2(0, 1));
-        float pixelRadians = acos(clamp(dot(direction, next), -1, 1));
-        float3 bodies = SunLight(sky, direction) + MoonLight(sky, direction) + StarLight(sky, direction, pixelRadians, screen);
-        light += bodies * SkyShare(sky, elevation);
-    }
+    float3 next = ViewRay(frame, sky, pixel + float2(0, 1));
+    float pixelRadians = acos(clamp(dot(direction, next), -1, 1));
+    float3 bodies = SunLight(sky, direction) + MoonLight(sky, direction) + StarLight(sky, direction, pixelRadians, screen);
+    light += bodies * SkyShare(sky, elevation);
 
     RWTextures[Sky.Output][id.xy] = float4(light, 1);
 }

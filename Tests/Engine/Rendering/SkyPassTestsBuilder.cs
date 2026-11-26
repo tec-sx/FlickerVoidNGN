@@ -60,6 +60,14 @@ internal sealed class SkyPassTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Turns the camera half round about the vertical, to look the other way.</summary>
+    public SkyPassTestsBuilder TurnedAround()
+    {
+        Quaternion turn = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI);
+        CameraTransform = CameraTransform with { Rotation = turn * CameraTransform.Rotation };
+        return this;
+    }
+
     /// <summary>Lays a paper of one grey under the scene, as a mood with paper does.</summary>
     public SkyPassTestsBuilder WithPaper(byte grey)
     {
