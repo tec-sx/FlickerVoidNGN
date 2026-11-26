@@ -9,8 +9,9 @@ using FlickerVoid.Engine.Runtime.Content;
 namespace FlickerVoid.Engine.Rendering.Materials;
 
 /// <summary>
-/// Packs each material file the first time it is drawn into a GPU buffer of the scene shader's parameters, and keeps it until
-/// the file or a texture it names changes on disk; mesh parts without a material share one buffer of the shader's defaults.
+/// Packs each material file the first time it is drawn, flattened with its parents, into a GPU buffer of the scene shader's
+/// parameters, and keeps it until the file, a parent or a texture it names changes on disk; mesh parts without a material share
+/// one buffer of the shader's defaults.
 /// </summary>
 internal sealed class MaterialLibrary : IDisposable
 {
@@ -21,7 +22,7 @@ internal sealed class MaterialLibrary : IDisposable
     private readonly IContentManager _content;
     private readonly IReadOnlyList<ShaderParameter> _parameters;
     private readonly Dictionary<string, GpuMaterial> _materials = new(ContentManager.PathComparer);
-    private readonly Dictionary<string, List<string>> _textureUsers = new(ContentManager.PathComparer);
+    private readonly Dictionary<string, List<string>> _users = new(ContentManager.PathComparer);
 
     public MaterialLibrary(IGraphicsDevice device, IContentManager content, IReadOnlyList<ShaderParameter> parameters)
     {
@@ -50,13 +51,18 @@ internal sealed class MaterialLibrary : IDisposable
             return loaded;
         }
 
-        MaterialFile material = _content.Load(path, RenderingJsonContext.Default.MaterialFile);
+        MaterialFile instance = _content.Load(path, RenderingJsonContext.Default.MaterialFile);
+        MaterialFile material = MaterialChain.Flatten(instance, parentPath =>
+        {
+            AddUser(parentPath, fullPath);
+            return _content.Load(parentPath, RenderingJsonContext.Default.MaterialFile);
+        });
         byte[] packed = MaterialLayout.Pack(_parameters, material, texturePath =>
         {
             string builtPath = TextureLibrary.GetBuiltPath(texturePath);
             string reliefPath = TextureLibrary.GetReliefPath(texturePath);
-            AddTextureUser(builtPath, fullPath);
-            AddTextureUser(reliefPath, fullPath);
+            AddUser(builtPath, fullPath);
+            AddUser(reliefPath, fullPath);
             ITexture image = textures.Get(texturePath);
             ITexture? relief = textures.GetRelief(texturePath);
             uint reliefIndex = relief?.BindlessIndex ?? MaterialLayout.NoTexture;
@@ -104,23 +110,25 @@ internal sealed class MaterialLibrary : IDisposable
         return _device.CreateBuffer(description, packed);
     }
 
-    private void AddTextureUser(string texturePath, string materialFullPath)
+    /// <summary>Notes that the material is packed from the file (a texture or a parent), so it is packed again when the file changes.</summary>
+    private void AddUser(string usedPath, string materialFullPath)
     {
-        string textureFullPath = _content.GetFullPath(texturePath);
-        if (!_textureUsers.TryGetValue(textureFullPath, out List<string>? users))
+        string usedFullPath = _content.GetFullPath(usedPath);
+        if (!_users.TryGetValue(usedFullPath, out List<string>? users))
         {
             users = [];
-            _textureUsers.Add(textureFullPath, users);
+            _users.Add(usedFullPath, users);
         }
 
         users.Add(materialFullPath);
     }
 
-    // A changed texture loads again under a new index, so the materials naming it are packed again too.
+    // A changed texture loads again under a new index and a changed parent hands down new values, so the materials using them
+    // (an instance uses every parent up its chain) are packed again too.
     // The device releases the old buffers once the GPU is done with them.
     private void HandleChanged(string fullPath)
     {
-        if (_textureUsers.Remove(fullPath, out List<string>? users))
+        if (_users.Remove(fullPath, out List<string>? users))
         {
             foreach (string user in users)
             {
