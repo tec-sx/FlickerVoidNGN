@@ -267,6 +267,12 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     public bool InsetMesh(float thickness) => ReplaceMesh((solid, selected) => MeshInset.Faces(solid, GetFaces(solid, selected), thickness));
 
     /// <summary>
+    /// Cuts the selected faces into the solid (C) as one undo step: a pocket to a depth, or through it. The floor of a pocket stays
+    /// selected. False when no face is selected, or a through cut can't be made (no Manifold library, nothing left).
+    /// </summary>
+    public bool CutMesh(float depth, bool through) => ReplaceMesh((solid, selected) => MeshCut.Faces(solid, GetFaces(solid, selected), depth, through));
+
+    /// <summary>
     /// Bevels the selected edges (Ctrl+B) as one undo step: each becomes a strip of the width on each face, in rows, flat or
     /// <paramref name="round"/>; the strips stay selected. False when no edge is selected or a point of one can't take it.
     /// </summary>
