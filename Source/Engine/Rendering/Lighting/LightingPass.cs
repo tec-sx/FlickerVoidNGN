@@ -40,11 +40,13 @@ internal sealed class LightingPass : IRenderPass
         ScreenTargets targets = context.Targets;
         commands.Barrier(targets.Depth, ResourceState.ShaderRead);
         commands.Barrier(targets.Hdr, ResourceState.ShaderWrite);
+        commands.Barrier(targets.CanvasLight, ResourceState.ShaderWrite);
         commands.SetPipeline(_pipeline);
-        LightingConstants constants = new(context.FrameBuffer, targets.Hdr.BindlessIndex);
+        LightingConstants constants = new(context.FrameBuffer, targets.Hdr.BindlessIndex, targets.CanvasLight.BindlessIndex);
         commands.PushConstants(constants);
         commands.Dispatch((context.RenderWidth + GroupSize - 1) / GroupSize, (context.RenderHeight + GroupSize - 1) / GroupSize);
         commands.Barrier(targets.Hdr, ResourceState.ShaderRead);
+        commands.Barrier(targets.CanvasLight, ResourceState.ShaderRead);
     }
 
     public void Dispose()

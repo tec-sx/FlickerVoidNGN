@@ -5,7 +5,8 @@
 // scale the ambient light inside them, and the world outside the cutaway's box is muted. ScreenShadows.hlsl gives each pixel
 // its ambient occlusion and contact shadow, unless the frame traces rays: then ShadowRays.hlsl traces the occlusion, and traced
 // sun shadows have no need of a contact shadow. Alpha is the paint's coverage, more where its impasto stands thick, for the
-// canvas; where nothing was drawn the target is left transparent, for the sky or a stage's background.
+// canvas; where nothing was drawn the target is left transparent, for the sky or a stage's background. The light each surface
+// takes goes to a target of its own, white where nothing was drawn, so the canvas under thin paint is lit as the paint is.
 
 #include "Frame.hlsl"
 #include "GBuffer.hlsl"
@@ -17,6 +18,7 @@ struct LightingConstants
 {
     uint Frame;
     uint Output;
+    uint CanvasLight;
 };
 
 [[vk::push_constant]] ConstantBuffer<LightingConstants> Pass : register(b0, space0);
@@ -334,9 +336,11 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     RWTexture2D<float4> output = RWTextures[Pass.Output];
     int3 texel = int3(id.xy, 0);
     float depth = Textures[frame.Depth].Load(texel).r;
+    RWTexture2D<float4> canvasLight = RWTextures[Pass.CanvasLight];
     if (depth >= 1)
     {
         output[id.xy] = 0;
+        canvasLight[id.xy] = 1;
         return;
     }
 
@@ -384,6 +388,7 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     float3 specular = sun * sunSpecular;
     ShadeClusterLights(frame, material, pixel, worldPosition, normal, toCamera, diffuse, specular);
     float3 color = albedo.rgb * diffuse + specular;
+    canvasLight[id.xy] = float4(diffuse, 1);
 
     // Painted touches: a tint where little light falls, a rim toward the silhouette, and the material's own glow.
     float lit = saturate(max(diffuse.r, max(diffuse.g, diffuse.b)));
