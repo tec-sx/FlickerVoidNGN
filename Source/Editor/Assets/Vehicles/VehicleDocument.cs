@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 using FlickerVoid.Engine.Vehicles.Serialization;
 
@@ -24,5 +25,21 @@ public sealed class VehicleDocument(UnsavedContent content, string path)
     {
         Vehicle.SetWheelCount(count);
         Hold();
+    }
+
+    /// <summary>Gives the part with the id a new solid, such as one a mesh tool made; throws for an id the vehicle lacks.</summary>
+    public void SetMesh(string id, SolidMesh mesh)
+    {
+        foreach ((string partId, VehiclePart part) in Vehicle.GetParts())
+        {
+            if (partId == id)
+            {
+                part.Mesh = mesh;
+                Hold();
+                return;
+            }
+        }
+
+        throw new ArgumentException($"The vehicle has no part {id}.", nameof(id));
     }
 }

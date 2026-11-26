@@ -10,8 +10,8 @@ namespace FlickerVoid.Editor.Core.Meshes;
 /// </summary>
 public sealed class MeshSelection
 {
-    private readonly SolidMesh _solid;
-    private readonly SolidTopology _topology;
+    private SolidMesh _solid;
+    private SolidTopology _topology;
     private readonly HashSet<int> _points = [];
     private readonly HashSet<SolidEdge> _edges = [];
     private readonly HashSet<int> _faces = [];
@@ -30,6 +30,30 @@ public sealed class MeshSelection
     public IReadOnlySet<SolidEdge> Edges => _edges;
 
     public IReadOnlySet<int> Faces => _faces;
+
+    /// <summary>
+    /// Moves the selection to another copy of the solid, such as one with its points moved, when it has the same faces; returns
+    /// false, leaving the selection as it is, for a solid with others.
+    /// </summary>
+    public bool TryFollow(SolidMesh solid)
+    {
+        if (solid.Points.Count != _solid.Points.Count || solid.Faces.Count != _solid.Faces.Count)
+        {
+            return false;
+        }
+
+        for (int face = 0; face < solid.Faces.Count; face++)
+        {
+            if (!solid.Faces[face].SequenceEqual(_solid.Faces[face]))
+            {
+                return false;
+            }
+        }
+
+        _solid = solid;
+        _topology = new SolidTopology(solid);
+        return true;
+    }
 
     /// <summary>Makes clicks select this kind of element, keeping what follows from the selection so far.</summary>
     public void SetElement(MeshElement element)

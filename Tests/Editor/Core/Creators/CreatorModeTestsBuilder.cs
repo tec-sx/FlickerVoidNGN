@@ -61,13 +61,13 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
     public CreatorMode EnterInPlace(string name)
     {
         Entity placed = Find(name);
-        return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save, FindMesh);
+        return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save, FindMesh, ApplyMesh);
     }
 
     public CreatorMode EnterAlone()
     {
         Vehicle vehicle = new() { File = File };
-        return CreatorMode.Alone(Scene, Camera, vehicle, FileHistory, Save, FindMesh);
+        return CreatorMode.Alone(Scene, Camera, vehicle, FileHistory, Save, FindMesh, ApplyMesh);
     }
 
     /// <summary>Writes the car file again with the wheel count, as the creator's panel would.</summary>
@@ -101,6 +101,26 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
         }
 
         return null;
+    }
+
+    /// <summary>The mesh edits the creator reports, one per call.</summary>
+    public List<string> MeshEdits { get; } = [];
+
+    /// <summary>Puts the mesh in the car's part and writes the file, as the creator's panel would.</summary>
+    public void ApplyMesh(string id, SolidMesh mesh)
+    {
+        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        {
+            if (partId == id)
+            {
+                part.Mesh = mesh;
+            }
+        }
+
+        MeshEdits.Add(id);
+        string json = Serialize(_car);
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+        Scene.Content.Write(File, bytes);
     }
 
     public Vector2 PixelOf(Vector3 point) => Camera.Project(point, Width, Height);

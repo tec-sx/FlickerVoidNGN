@@ -49,6 +49,9 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
         return null;
     }
 
+    /// <summary>Gives the part a new solid, held in the file as one undo step.</summary>
+    public void SetMesh(string id, SolidMesh mesh) => _document.SetMesh(id, mesh);
+
     partial void OnTypeChanged(VehicleType value)
     {
         if (!_showing && value != _document.Vehicle.Type)

@@ -1,5 +1,6 @@
 using FlickerVoid.Editor.Assets.Vehicles;
 using FlickerVoid.Editor.Core.Undo;
+using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Assets.Tests.Vehicles;
@@ -51,6 +52,30 @@ public sealed class VehicleDocumentTests : IDisposable
         history.Undo();
         _builder.Load().Wheels.Should().HaveCount(4);
         _builder.Content.IsUnsaved(VehicleDocumentTestsBuilder.Van).Should().BeFalse("undoing every edit gives back the file on disk");
+    }
+
+    [Fact]
+    public void ANewSolidForAPartIsOneUndoStepThatPlacedCopiesSee()
+    {
+        VehicleDocument document = _builder.Build();
+        UndoHistory history = _builder.Content.GetHistory(VehicleDocumentTestsBuilder.Van);
+        SolidMesh taller = SolidMesh.Box(new System.Numerics.Vector3(1, 3, 1));
+
+        document.SetMesh("body", taller);
+
+        _builder.Load().Body.Mesh.Points.Max(point => point.Y).Should().Be(3);
+        history.Undo();
+        _builder.Load().Body.Mesh.Points.Max(point => point.Y).Should().NotBe(3);
+    }
+
+    [Fact]
+    public void ASolidForAPartTheVehicleLacksIsRefused()
+    {
+        VehicleDocument document = _builder.Build();
+
+        Action set = () => document.SetMesh("roof", SolidMesh.Box(System.Numerics.Vector3.One));
+
+        set.Should().Throw<ArgumentException>();
     }
 
     [Fact]
