@@ -13,19 +13,19 @@ using FlickerVoid.Editor.Assets.Materials;
 namespace FlickerVoid.Editor.Materials;
 
 /// <summary>Shows a <see cref="MaterialEditorViewModel"/>: copies its preview pixels into a bitmap and turns the preview by drags.</summary>
-public sealed partial class MaterialEditorWindow : Window
+public sealed partial class MaterialEditorView : UserControl
 {
     private readonly Image _preview;
-    private readonly Border _previewArea;
+    private readonly Panel _previewArea;
     private MaterialEditorViewModel? _viewModel;
     private Point? _lastPointer;
     private bool _turningLight;
 
-    public MaterialEditorWindow()
+    public MaterialEditorView()
     {
         AvaloniaXamlLoader.Load(this);
         _preview = this.FindControl<Image>("Preview")!;
-        _previewArea = this.FindControl<Border>("PreviewArea")!;
+        _previewArea = this.FindControl<Panel>("PreviewArea")!;
         _previewArea.SizeChanged += HandlePreviewAreaResized;
         _preview.PointerPressed += HandlePreviewPressed;
         _preview.PointerMoved += HandlePreviewMoved;
@@ -48,18 +48,12 @@ public sealed partial class MaterialEditorWindow : Window
             Size area = _previewArea.Bounds.Size;
             if (area.Width > 0)
             {
-                double side = Math.Min(area.Width, area.Height) * RenderScaling;
+                double side = Math.Min(area.Width, area.Height) * Scaling;
                 _viewModel.ResizePreview((int)side);
             }
         }
 
         ShowPreview();
-    }
-
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        _viewModel?.Dispose();
     }
 
     private void HandleViewModelChanged(object? sender, PropertyChangedEventArgs e)
@@ -96,12 +90,14 @@ public sealed partial class MaterialEditorWindow : Window
         _preview.Source = bitmap;
     }
 
-    /// <summary>Renders the preview at the size of its area, in device pixels, so it stays sharp as the window or the splitters change it.</summary>
+    /// <summary>Renders the preview at the size of its area, in device pixels, so it stays sharp as the window changes it.</summary>
     private void HandlePreviewAreaResized(object? sender, SizeChangedEventArgs e)
     {
-        double side = Math.Min(e.NewSize.Width, e.NewSize.Height) * RenderScaling;
+        double side = Math.Min(e.NewSize.Width, e.NewSize.Height) * Scaling;
         _viewModel?.ResizePreview((int)side);
     }
+
+    private double Scaling => TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
 
     private void HandlePreviewPressed(object? sender, PointerPressedEventArgs e)
     {

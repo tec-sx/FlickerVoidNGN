@@ -26,10 +26,10 @@ public sealed class HourRuler : Control
     private const float Day = 24;
     private const float Snap = 0.25f;
 
-    private static readonly IBrush Background = new SolidColorBrush(Color.Parse("#1F1D16"));
-    private static readonly IBrush NightBrush = new SolidColorBrush(Color.Parse("#17150F"));
-    private static readonly IPen TickPen = new Pen(new SolidColorBrush(Color.Parse("#6E6C5C")), 1);
-    private static readonly IBrush LabelBrush = new SolidColorBrush(Color.Parse("#B9BBA8"));
+    private static readonly IBrush Background = new SolidColorBrush(Color.Parse("#1D1610"));
+    private static readonly IBrush NightBrush = new SolidColorBrush(Color.Parse("#0B0705"));
+    private static readonly IPen TickPen = new Pen(new SolidColorBrush(Color.Parse("#6B6052")), 1);
+    private static readonly IBrush LabelBrush = new SolidColorBrush(Color.Parse("#B6AB99"));
     private static readonly IPen CursorPen = new Pen(new SolidColorBrush(Color.Parse("#D9B23A")), 2);
     private static readonly IBrush CursorBrush = new SolidColorBrush(Color.Parse("#D9B23A"));
 

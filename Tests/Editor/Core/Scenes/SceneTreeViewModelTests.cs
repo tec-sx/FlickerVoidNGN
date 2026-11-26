@@ -45,6 +45,31 @@ public sealed class SceneTreeViewModelTests : IDisposable
     }
 
     [Fact]
+    public void SearchingListsTheEntitiesFoundWithoutFoldersAndClearingBringsTheTreeBack()
+    {
+        SceneTreeViewModel tree = new(_builder.Scene);
+        _builder.WithScene("Room.fvscene", Room).Open("Room.fvscene");
+
+        tree.SearchText = "p";
+        string[] found = [.. tree.Items.Select(item => item.Name)];
+        tree.SearchText = "";
+
+        found.Should().Equal("Lamp", "Spot");
+        tree.Items.Select(item => item.Name).Should().Equal("Lights", "Camera", "Box");
+    }
+
+    [Fact]
+    public void AFolderSaysHowManyItemsItHolds()
+    {
+        SceneTreeViewModel tree = new(_builder.Scene);
+        _builder.WithScene("Room.fvscene", Room).Open("Room.fvscene");
+
+        tree.Items[0].Count.Should().Be(2);
+        tree.Items[0].HasCount.Should().BeTrue();
+        tree.Items[1].HasCount.Should().BeFalse();
+    }
+
+    [Fact]
     public void ChoosingAFolderSelectsEverythingInIt()
     {
         SceneTreeViewModel tree = new(_builder.Scene);

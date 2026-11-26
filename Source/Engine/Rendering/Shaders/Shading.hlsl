@@ -17,8 +17,6 @@ struct Shadow
     float TexelConstant;
 };
 
-static const uint FogSteps = 16;
-
 static const uint ShadowSize = 96;
 
 static const float AtlasSize = 4096;
@@ -234,20 +232,6 @@ float3 FogLight(FrameData frame, float2 pixel, float3 position, float3 towardCam
     return light;
 }
 
-// A small per-pixel offset that spreads the march's banding into fine noise: interleaved gradient noise, which holds still, or
-// white noise drawn afresh each frame while an upscaler denoises the frame.
-float PixelNoise(FrameData frame, float2 pixel)
-{
-    if (frame.NoiseFrame != None)
-    {
-        uint2 texel = uint2(pixel);
-        uint hash = Hash(texel.x + Hash(texel.y + Hash(frame.NoiseFrame)));
-        return HashToUnit(hash);
-    }
-
-    return frac(52.9829189 * frac(dot(pixel, float2(0.06711056, 0.00583715))));
-}
-
 // Fog density at a point: full at and below the fog height, thinning exponentially above it.
 float FogDensityAt(FrameData frame, float3 position)
 {
@@ -255,39 +239,95 @@ float FogDensityAt(FrameData frame, float3 position)
     return frame.FogDensity * exp(-above * frame.FogHeightFalloff);
 }
 
-// Marches from the near plane to the surface in even steps, integrating each step exactly for light and density that hold
-// still across it. Returns the light the fog scatters toward the camera and the share of the surface's light it lets through.
-float4 MarchFog(FrameData frame, float2 pixel, float3 surface)
+// The fog volume: a grid of froxels, FogGrid.x by FogGrid.y across the render target and FogGrid.z slices deep along the view, from
+// the near plane to the fog's range, each holding a float4 (FogVolumePass.cs).
+static const uint3 FogGrid = uint3(160, 90, 64);
+
+// The view depth at the boundary of a slice (0 is the near plane, FogGrid.z the range): logarithmic in a perspective view, even in
+// an orthographic one.
+float FogSliceDepth(FrameData frame, float slice)
 {
-    float3 forward = frame.DepthAxis.xyz;
-    float3 direction = forward;
+    float near = max(frame.NearPlane, 1e-3);
+    float range = max(frame.FogRange, near * 1.01);
+    float along = slice / FogGrid.z;
     if (frame.LogarithmicSlices != 0)
     {
-        direction = normalize(surface - frame.CameraPosition);
+        return near * pow(range / near, along);
     }
 
-    float depth = dot(float4(surface, 1), frame.DepthAxis);
-    float rayLength = max(depth - frame.NearPlane, 0) / dot(direction, forward);
-    float stepLength = rayLength / FogSteps;
-    float jitter = PixelNoise(frame, pixel);
-    float3 scattered = 0;
-    float transmittance = 1;
-    for (uint index = 0; index < FogSteps; index++)
+    return lerp(near, range, along);
+}
+
+// The slice boundary a view depth lies at, the inverse of FogSliceDepth, clamped to the volume.
+float FogSliceAt(FrameData frame, float depth)
+{
+    float near = max(frame.NearPlane, 1e-3);
+    float range = max(frame.FogRange, near * 1.01);
+    float along;
+    if (frame.LogarithmicSlices != 0)
     {
-        float travelled = (index + jitter) * stepLength;
-        float3 position = surface - direction * (rayLength - travelled);
-        float stepTransmittance = exp(-FogDensityAt(frame, position) * stepLength);
-        if (stepTransmittance >= 1)
-        {
-            continue;
-        }
-
-        float3 light = FogLight(frame, pixel, position, -direction);
-        scattered += transmittance * light * (1 - stepTransmittance);
-        transmittance *= stepTransmittance;
+        along = log(max(depth, near) / near) / log(range / near);
+    }
+    else
+    {
+        along = (depth - near) / (range - near);
     }
 
-    return float4(scattered * frame.FogColor, transmittance);
+    return saturate(along) * FogGrid.z;
+}
+
+// The world position at a view depth along a pixel's ray, and the direction of the ray.
+float3 FogPosition(FrameData frame, float2 pixel, float depth, out float3 direction)
+{
+    float3 nearPoint = WorldAtPixel(frame, pixel, 0);
+    float3 farPoint = WorldAtPixel(frame, pixel, 1);
+    direction = normalize(farPoint - nearPoint);
+    float nearDepth = dot(float4(nearPoint, 1), frame.DepthAxis);
+    float along = (depth - nearDepth) / dot(direction, frame.DepthAxis.xyz);
+    return nearPoint + direction * along;
+}
+
+float4 LoadFogCell(ByteAddressBuffer volume, int3 cell)
+{
+    int3 clamped = clamp(cell, 0, int3(FogGrid) - 1);
+    uint index = (clamped.z * FogGrid.y + clamped.y) * FogGrid.x + clamped.x;
+    return volume.Load<float4>(index * 16);
+}
+
+// The volume at a place given in froxel coordinates, a froxel's centre at its index, trilinear.
+float4 SampleFogCells(ByteAddressBuffer volume, float3 place)
+{
+    float3 base = floor(place);
+    float3 fraction = place - base;
+    int3 cell = int3(base);
+    float4 near0 = lerp(LoadFogCell(volume, cell), LoadFogCell(volume, cell + int3(1, 0, 0)), fraction.x);
+    float4 near1 = lerp(LoadFogCell(volume, cell + int3(0, 1, 0)), LoadFogCell(volume, cell + int3(1, 1, 0)), fraction.x);
+    float4 far0 = lerp(LoadFogCell(volume, cell + int3(0, 0, 1)), LoadFogCell(volume, cell + int3(1, 0, 1)), fraction.x);
+    float4 far1 = lerp(LoadFogCell(volume, cell + int3(0, 1, 1)), LoadFogCell(volume, cell + int3(1, 1, 1)), fraction.x);
+    return lerp(lerp(near0, near1, fraction.y), lerp(far0, far1, fraction.y), fraction.z);
+}
+
+// The integrated volume at a boundary between slices (0 the near plane), where the pixel falls across the grid.
+float4 FogBoundary(ByteAddressBuffer volume, float2 across, uint boundary)
+{
+    if (boundary == 0)
+    {
+        return float4(0, 0, 0, 1);
+    }
+
+    return SampleFogCells(volume, float3(across, min(boundary, FogGrid.z) - 1));
+}
+
+// The fog in front of a surface: the light it scatters toward the camera and the share of the surface's light it lets through.
+float4 SampleFog(FrameData frame, float2 pixel, float depth)
+{
+    ByteAddressBuffer volume = Buffers[frame.FogVolume];
+    float slice = FogSliceAt(frame, depth);
+    float2 across = pixel / frame.TargetSize * float2(FogGrid.xy) - 0.5;
+    uint lower = (uint)floor(slice);
+    float4 before = FogBoundary(volume, across, lower);
+    float4 after = FogBoundary(volume, across, lower + 1);
+    return lerp(before, after, slice - lower);
 }
 
 // The pixel's ambient occlusion averaged over the 3x3 pixels round it, which smooths out the noise that turns its

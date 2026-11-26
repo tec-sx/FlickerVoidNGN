@@ -116,9 +116,10 @@ float4 TransparentMain(VertexOutput input, bool front : SV_IsFrontFace) : SV_Tar
     float3 glassLight = reflection * fresnel + specular;
     float3 paintLight = surface.Albedo.rgb * diffuse + specular;
     float3 own = lerp(glassLight, paintLight, paint) + material.Emissive * material.EmissiveIntensity;
-    if (frame.FogDensity > 0)
+    if (frame.FogVolume != None)
     {
-        float4 fog = MarchFog(frame, pixel, position);
+        float depthAlong = dot(float4(position, 1), frame.DepthAxis);
+        float4 fog = SampleFog(frame, pixel, depthAlong);
         own = own * fog.a + fog.rgb * paint;
     }
 

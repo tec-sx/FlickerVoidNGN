@@ -52,7 +52,7 @@ struct FrameData
     float NearStart;
     float NearEnd;
     float NearAmount;
-    float3 FarColor;
+    float NearBurn;
     float FarStart;
     float FarEnd;
     float FarAmount;
@@ -80,6 +80,22 @@ struct FrameData
     // The scene's top-level acceleration structure while the frame traces rays, else 0, an empty one; the table of them
     // (t0, space5) exists only on devices with ray queries.
     uint AccelerationStructure;
+    float3 SunLight;
+    // The frame buffer's own bindless index, which LoadFrame was given.
+    uint Buffer;
+    // The haze (Haze.hlsl): its colour as it looks on screen, its density, its start behind the focus, its most, and its height
+    // and the falloff above it.
+    float3 HazeColor;
+    float HazeDensity;
+    float HazeStart;
+    float HazeMax;
+    float HazeHeight;
+    float HazeHeightFalloff;
+    // The depth axis of the frame before, which reprojects the fog volume's history.
+    float4 PreviousDepthAxis;
+    // How far the fog is lit along the view, and the integrated fog volume's bindless index (Lighting.hlsl), None without fog.
+    float FogRange;
+    uint FogVolume;
     // The lit scene before glass was drawn over it (TransparentPass), which glass bends and blurs.
     uint Behind;
     // The world glossy surfaces reflect (LightingMood.Reflection), an equirectangular image with its mips, else None; the sampler
@@ -87,13 +103,9 @@ struct FrameData
     uint Reflection;
     uint ReflectionSampler;
     float ReflectionIntensity;
-    // The sun's light: its color times its intensity (LightingMood.SunColor, SunIntensity).
-    float3 SunLight;
-    // The frame buffer's own bindless index, which LoadFrame was given.
-    uint Buffer;
 };
 
-static const uint FrameDataSize = 544;
+static const uint FrameDataSize = 608;
 static const uint None = 0xFFFFFFFF;
 
 // PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
@@ -152,7 +164,7 @@ FrameData LoadFrame(uint index)
     frame.NearStart = buffer.Load<float>(324);
     frame.NearEnd = buffer.Load<float>(328);
     frame.NearAmount = buffer.Load<float>(332);
-    frame.FarColor = buffer.Load<float3>(336);
+    frame.NearBurn = buffer.Load<float>(336);
     frame.FarStart = buffer.Load<float>(348);
     frame.FarEnd = buffer.Load<float>(352);
     frame.FarAmount = buffer.Load<float>(356);
@@ -174,11 +186,20 @@ FrameData LoadFrame(uint index)
     frame.GBufferObjectDepth = buffer.Load<uint>(500);
     frame.GBufferMotion = buffer.Load<uint>(504);
     frame.AccelerationStructure = buffer.Load<uint>(508);
-    frame.Behind = buffer.Load<uint>(512);
-    frame.Reflection = buffer.Load<uint>(516);
-    frame.ReflectionSampler = buffer.Load<uint>(520);
-    frame.ReflectionIntensity = buffer.Load<float>(524);
-    frame.SunLight = buffer.Load<float3>(528);
+    frame.SunLight = buffer.Load<float3>(512);
+    frame.HazeColor = buffer.Load<float3>(528);
+    frame.HazeDensity = buffer.Load<float>(540);
+    frame.HazeStart = buffer.Load<float>(544);
+    frame.HazeMax = buffer.Load<float>(548);
+    frame.HazeHeight = buffer.Load<float>(552);
+    frame.HazeHeightFalloff = buffer.Load<float>(556);
+    frame.PreviousDepthAxis = buffer.Load<float4>(560);
+    frame.FogRange = buffer.Load<float>(576);
+    frame.FogVolume = buffer.Load<uint>(580);
+    frame.Behind = buffer.Load<uint>(592);
+    frame.Reflection = buffer.Load<uint>(596);
+    frame.ReflectionSampler = buffer.Load<uint>(600);
+    frame.ReflectionIntensity = buffer.Load<float>(604);
     frame.Buffer = index;
     return frame;
 }

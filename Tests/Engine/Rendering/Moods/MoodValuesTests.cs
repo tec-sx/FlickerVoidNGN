@@ -60,10 +60,10 @@ public sealed class MoodValuesTests
             "depthNearStart",
             "depthNearEnd",
             "depthNearAmount",
+            "depthNearBurn",
             "depthFarStart",
             "depthFarEnd",
-            "depthFarAmount",
-            "depthFarColor");
+            "depthFarAmount");
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public sealed class MoodValuesTests
 
         DepthFade fade = mood.ToDepthFade();
 
-        DepthFade expected = new(mood.DepthNearStart, mood.DepthNearEnd, mood.DepthNearAmount, mood.DepthFarStart, mood.DepthFarEnd, mood.DepthFarAmount, mood.DepthFarColor);
+        DepthFade expected = new(mood.DepthNearStart, mood.DepthNearEnd, mood.DepthNearAmount, mood.DepthNearBurn, mood.DepthFarStart, mood.DepthFarEnd, mood.DepthFarAmount);
         fade.Should().Be(expected);
     }
 
@@ -94,6 +94,7 @@ public sealed class MoodValuesTests
         LightingMood plain = mood.WithoutPost();
 
         plain.DepthNearAmount.Should().Be(0);
+        plain.DepthNearBurn.Should().Be(0);
         plain.DepthFarAmount.Should().Be(0);
     }
 
