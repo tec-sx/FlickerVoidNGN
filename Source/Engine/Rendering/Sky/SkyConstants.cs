@@ -15,4 +15,5 @@ internal readonly record struct SkyConstants(
     uint Output,
     uint WrapSampler,
     float Orthographic,
-    uint Data);
+    uint Data,
+    uint Mask);

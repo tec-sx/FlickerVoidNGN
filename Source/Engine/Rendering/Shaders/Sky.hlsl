@@ -1,7 +1,9 @@
 // The sky: fills what the scene left empty in the lit scene, before the depth fade, the upscale and the grade. Its gradient is
 // the mood's: the ground below the horizon (darkening farther down), the horizon's colour and the zenith's overhead, blended
 // across the horizon over its softness, by where each pixel's view ray points. An orthographic view, whose rays all point the
-// same way, sees the sky through a virtual lens: the lens's sky field of view, looking level along the camera's heading. The gradient's colours are meant for the screen, so they are
+// same way, sees the sky through a virtual lens: the lens's sky field of view, looking level along the camera's heading. A
+// scene's painted mask, wrapped once round the sky, gives the position in the gradient in place of the plain elevation, a band
+// in its own colour, where the sun's glow is held back and where stars show, blended in by the mask's strength. The gradient's colours are meant for the screen, so they are
 // turned back through the mood's grade (Grade.hlsl), and it is the thinnest paint (SkyCoverage): over a canvas Post.hlsl
 // lets the canvas's threads through it whole, and it is painted at the gradient times the canvas's average brightness,
 // a wash the paper shows through, as dark as the sky is. Over it, as light that the grade, bloom and flares take as they take the scene's, the sun's
@@ -22,6 +24,7 @@ struct SkyConstants
     uint WrapSampler;
     float Orthographic;
     uint Data;
+    uint Mask;
 };
 
 [[vk::push_constant]] ConstantBuffer<SkyConstants> Sky : register(b0, space0);
@@ -48,7 +51,9 @@ struct SkyData
     float StarIntensity;
     float SkyTanHalfView;
     float3 StarPole;
-    float Padding1;
+    float MaskStrength;
+    float3 BandColor;
+    float NorthRadians;
 };
 
 // How much darker the ground is straight down than at the horizon.
@@ -113,6 +118,34 @@ float3 ViewRay(FrameData frame, SkyData sky, float2 pixel)
     return normalize(farPoint - nearPoint);
 }
 
+// The painted mask's channels along a direction (position in the gradient, band, glow held back, stars), or the plain sky's
+// when the scene paints none: around by compass from north at both edges, up from the horizon at the bottom to the zenith at
+// the top, held at the horizon's row below it.
+float4 SampleMask(SkyData sky, float3 direction, float elevation)
+{
+    float plain = smoothstep(0, 0.6, max(elevation, 0));
+    if (Sky.Mask == None)
+    {
+        return float4(plain, 0, 0, 1);
+    }
+
+    float3 north = float3(sin(sky.NorthRadians), 0, -cos(sky.NorthRadians));
+    float3 east = float3(cos(sky.NorthRadians), 0, sin(sky.NorthRadians));
+    float around = atan2(dot(direction, east), dot(direction, north)) / (2 * 3.14159265);
+    around -= floor(around);
+    Texture2D mask = Textures[Sky.Mask];
+    uint width;
+    uint height;
+    uint levels;
+    mask.GetDimensions(0, width, height, levels);
+    float up = asin(clamp(elevation, 0, 1)) / (0.5 * 3.14159265);
+    float halfTexel = 0.5 / height;
+    float v = clamp(1 - up, halfTexel, 1 - halfTexel);
+    float4 painted = mask.SampleLevel(Samplers[Sky.WrapSampler], float2(around, v), 0);
+    float4 unpainted = float4(plain, 0, 0, 1);
+    return lerp(unpainted, painted, sky.MaskStrength);
+}
+
 // How much of the sky, rather than the ground, shows at an elevation.
 float SkyShare(SkyData sky, float elevation)
 {
@@ -120,10 +153,11 @@ float SkyShare(SkyData sky, float elevation)
     return smoothstep(-softness, softness, elevation);
 }
 
-// The gradient's colour on the screen, linear.
-float3 Gradient(SkyData sky, float elevation)
+// The gradient's colour on the screen, linear, at a position in it and with a share of the band laid over the sky.
+float3 Gradient(SkyData sky, float elevation, float4 mask)
 {
-    float3 above = lerp(sky.Horizon, sky.Zenith, smoothstep(0, 0.6, max(elevation, 0)));
+    float3 above = lerp(sky.Horizon, sky.Zenith, saturate(mask.r));
+    above = lerp(above, sky.BandColor, saturate(mask.g));
     float3 below = lerp(sky.Ground, sky.Ground * GroundFalloff, smoothstep(0, 0.4, max(-elevation, 0)));
     return lerp(below, above, SkyShare(sky, elevation));
 }
@@ -152,14 +186,14 @@ float Disc(float cosine, float discCosine)
     return 1 - smoothstep(radius * (1 - DiscRim), radius, angle);
 }
 
-// The sun's disc and glow, as light.
-float3 SunLight(SkyData sky, float3 direction)
+// The sun's disc and glow, as light; the mask's blue holds the glow back.
+float3 SunLight(SkyData sky, float3 direction, float heldBack)
 {
     float cosine = dot(direction, sky.TowardSun);
     float disc = Disc(cosine, sky.SunDiscCosine) * sky.SunDiscIntensity;
     float angle = acos(clamp(cosine, -1, 1));
     float reach = saturate(1 - angle / max(sky.SunGlowRadians, 1e-4));
-    float glow = sky.SunGlow * reach * reach;
+    float glow = sky.SunGlow * reach * reach * (1 - saturate(heldBack));
     return sky.SunColor * (disc + glow);
 }
 
@@ -252,7 +286,8 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     float2 pixel = float2(id.xy) + 0.5;
     float3 direction = ViewRay(frame, sky, pixel);
     float elevation = direction.y;
-    float3 gradient = Gradient(sky, elevation);
+    float4 mask = SampleMask(sky, direction, elevation);
+    float3 gradient = Gradient(sky, elevation, mask);
     float3 screen = gradient;
     if (Sky.Canvas != None)
     {
@@ -262,7 +297,8 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     float3 light = Ungrade(Sky.Grade, screen);
     float3 next = ViewRay(frame, sky, pixel + float2(0, 1));
     float pixelRadians = acos(clamp(dot(direction, next), -1, 1));
-    float3 bodies = SunLight(sky, direction) + MoonLight(sky, direction) + StarLight(sky, direction, pixelRadians, gradient);
+    float3 stars = StarLight(sky, direction, pixelRadians, gradient) * saturate(mask.a);
+    float3 bodies = SunLight(sky, direction, mask.b) + MoonLight(sky, direction) + stars;
     light += bodies * SkyShare(sky, elevation);
 
     RWTextures[Sky.Output][id.xy] = float4(light, SkyCoverage);

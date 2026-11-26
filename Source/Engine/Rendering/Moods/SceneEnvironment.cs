@@ -36,6 +36,14 @@ public struct SceneEnvironment
     [Range(-23.44, 23.44)]
     public float Declination { get; set; }
 
+    /// <summary>
+    /// The painted sky: a 4:1 panorama, north at both edges and east a quarter across, the horizon at the bottom and the zenith at
+    /// the top, imported as a mask. Red is the position in the gradient (black the horizon's colour, white the zenith's), green
+    /// the band's share, blue how much of the sun's glow it holds back, alpha where stars show. None paints the plain gradient.
+    /// </summary>
+    [ContentFile(".png", ".tga")]
+    public string? SkyMask { get; set; }
+
     /// <summary>The way the sun crosses the scene's sky.</summary>
     public readonly SunPath GetSunPath() => new(Latitude, North, Declination);
 

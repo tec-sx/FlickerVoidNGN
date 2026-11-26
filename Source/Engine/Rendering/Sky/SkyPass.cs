@@ -59,12 +59,21 @@ public sealed class SkyPass : IRenderPass
             orthographic = 1;
         }
 
-        GpuSky sky = GpuSky.From(context.Mood);
+        uint mask = GpuLight.None;
+        float north = 0;
+        if (context.Scene.Sky is { } painted)
+        {
+            ITexture maskTexture = context.Textures.Get(painted.Mask);
+            mask = maskTexture.BindlessIndex;
+            north = painted.North;
+        }
+
+        GpuSky sky = GpuSky.From(context.Mood, north);
         _data.Advance();
         IBuffer data = _data.Get(Marshal.SizeOf<GpuSky>());
         data.Write(MemoryMarshal.AsBytes(new ReadOnlySpan<GpuSky>(in sky)));
         Grading grade = Grading.From(context.Mood);
-        SkyConstants constants = new(grade, context.Canvas.File.Tint, canvas, context.FrameBuffer, targets.Hdr.BindlessIndex, context.Sampler.BindlessIndex, orthographic, data.BindlessIndex);
+        SkyConstants constants = new(grade, context.Canvas.File.Tint, canvas, context.FrameBuffer, targets.Hdr.BindlessIndex, context.Sampler.BindlessIndex, orthographic, data.BindlessIndex, mask);
         commands.PushConstants(constants);
         commands.Dispatch((targets.Width + GroupSize - 1) / GroupSize, (targets.Height + GroupSize - 1) / GroupSize);
         commands.Barrier(targets.Hdr, ResourceState.ShaderRead);

@@ -211,6 +211,46 @@ public sealed class SkyPassTests : IDisposable
     }
 
     [Fact]
+    public void TakesThePositionInTheGradientFromAPaintedMask()
+    {
+        using SkyPassTestsBuilder plain = new();
+        Vector3 zenith = new(0.6f, 0.05f, 0.05f);
+        _builder.WithSkyMask(new Vector4(1, 0, 0, 1)).WithMood(mood => mood with { SkyZenith = zenith });
+        plain.WithMood(mood => mood with { SkyZenith = zenith });
+
+        uint[] painted = _builder.Render();
+        uint[] unpainted = plain.Render();
+
+        int row = (Centre - 2) * Size;
+        (byte paintedRed, byte paintedGreen, _) = SkyPassTestsBuilder.Channels(painted[row + Centre]);
+        (byte plainRed, byte plainGreen, _) = SkyPassTestsBuilder.Channels(unpainted[row + Centre]);
+        (paintedRed - paintedGreen).Should().BeGreaterThan(plainRed - plainGreen + 40, "the mask paints the zenith's red right down to the horizon");
+    }
+
+    [Fact]
+    public void BlendsBackToThePlainGradientAsTheMasksStrengthFalls()
+    {
+        using SkyPassTestsBuilder plain = new();
+        _builder.WithSkyMask(new Vector4(1, 1, 0, 1)).WithMood(static mood => mood with { SkyMaskStrength = 0, SkyBandColor = new Vector3(1, 0, 0) });
+
+        uint[] unpainted = plain.Render();
+        uint[] painted = _builder.Render();
+
+        painted.Should().Equal(unpainted);
+    }
+
+    [Fact]
+    public void LaysTheBandsColorWhereTheMasksGreenSays()
+    {
+        _builder.WithSkyMask(new Vector4(0.5f, 1, 0, 1)).WithMood(static mood => mood with { SkyBandColor = new Vector3(0.05f, 0.6f, 0.05f) });
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, _) = SkyPassTestsBuilder.Channels(pixels[(TopRow * Size) + Centre]);
+        green.Should().BeGreaterThan((byte)(red + 60));
+    }
+
+    [Fact]
     public void DrawsNothingWhileTheRendererHasNoSky()
     {
         _builder.Render();
