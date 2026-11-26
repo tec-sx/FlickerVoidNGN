@@ -6,10 +6,12 @@ using Arch.Core;
 
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Creators;
+using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Tests.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Creations;
+using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 using FlickerVoid.Engine.Vehicles.Serialization;
 
@@ -34,10 +36,11 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
         """;
 
     private readonly EditorSceneTestsBuilder _scene = new();
+    private VehicleFile _car = VehicleFile.Create(VehicleType.Car);
 
     public CreatorModeTestsBuilder()
     {
-        string json = Serialize(VehicleFile.Create(VehicleType.Car));
+        string json = Serialize(_car);
         _scene.WithFile(File, json).WithScene("Street.fvscene", Street).Open("Street.fvscene");
         Camera.LookAt(Vector3.Zero, yaw: 0.6f, pitch: -0.4f, distance: 8);
     }
@@ -59,13 +62,13 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
     public CreatorMode EnterInPlace(string name)
     {
         Entity placed = Find(name);
-        return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save);
+        return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save, FindMesh, ApplyMesh, IsMirrored, SetMirror, HangDoor);
     }
 
     public CreatorMode EnterAlone()
     {
         Vehicle vehicle = new() { File = File };
-        return CreatorMode.Alone(Scene, Camera, vehicle, FileHistory, Save);
+        return CreatorMode.Alone(Scene, Camera, vehicle, FileHistory, Save, FindMesh, ApplyMesh, IsMirrored, SetMirror, HangDoor);
     }
 
     /// <summary>Writes the car file again with the wheel count, as the creator's panel would.</summary>
@@ -74,6 +77,93 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
         VehicleFile car = VehicleFile.Create(VehicleType.Car);
         car.SetWheelCount(count);
         string json = Serialize(car);
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+        Scene.Content.Write(File, bytes);
+    }
+
+    /// <summary>Writes a new car file with new meshes, as saving the file again does.</summary>
+    public void ReplaceCar()
+    {
+        _car = VehicleFile.Create(VehicleType.Car);
+        string json = Serialize(_car);
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+        Scene.Content.Write(File, bytes);
+    }
+
+    /// <summary>The mesh of the car's part, as the creator's panel would give it.</summary>
+    public SolidMesh? FindMesh(string id)
+    {
+        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        {
+            if (partId == id)
+            {
+                return part.Mesh;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>The mesh edits the creator reports, one per call.</summary>
+    public List<string> MeshEdits { get; } = [];
+
+    /// <summary>Puts the mesh in the car's part and writes the file, as the creator's panel would.</summary>
+    public void ApplyMesh(string id, SolidMesh mesh)
+    {
+        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        {
+            if (partId == id)
+            {
+                part.Mesh = mesh;
+            }
+        }
+
+        MeshEdits.Add(id);
+        string json = Serialize(_car);
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+        Scene.Content.Write(File, bytes);
+    }
+
+    /// <summary>Hangs the door in the car's part and writes the file, as the creator's panel would.</summary>
+    public string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options)
+    {
+        string? id = DoorTool.Hang(_car, partId, face, hinge, options);
+        if (id is not null)
+        {
+            string json = Serialize(_car);
+            byte[] bytes = Encoding.UTF8.GetBytes(json);
+            Scene.Content.Write(File, bytes);
+        }
+
+        return id;
+    }
+
+    /// <summary>Whether the car's part has its mirror switch on.</summary>
+    public bool IsMirrored(string id)
+    {
+        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        {
+            if (partId == id)
+            {
+                return part.Mirror;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Sets the car's part's mirror switch and writes the file, as the creator's panel would.</summary>
+    public void SetMirror(string id, bool on)
+    {
+        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        {
+            if (partId == id)
+            {
+                part.Mirror = on;
+            }
+        }
+
+        string json = Serialize(_car);
         byte[] bytes = Encoding.UTF8.GetBytes(json);
         Scene.Content.Write(File, bytes);
     }

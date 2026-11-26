@@ -1,5 +1,6 @@
 // Bloom as in Call of Duty's 2014 talk: each level halves the one above with a 13-tap filter (DownMain), then from the
-// smallest up each level adds a tent-filtered copy of the level below it (UpMain).
+// smallest up each level blends a tent-filtered copy of the level below it into itself by the radius (UpMain, as in Froyok's
+// bloom): 0 keeps only the tight glow, 1 the widest.
 
 Texture2D Textures[] : register(t0, space1);
 SamplerState Samplers[] : register(s0, space3);
@@ -12,6 +13,7 @@ struct BloomConstants
     uint Source;
     uint Destination;
     uint Sampler;
+    float Radius;
 };
 
 [[vk::push_constant]] ConstantBuffer<BloomConstants> Pass : register(b0, space0);
@@ -62,5 +64,5 @@ void UpMain(uint3 id : SV_DispatchThreadID)
     color += (Fetch(uv + t * float2(-1, 0)) + Fetch(uv + t * float2(1, 0)) + Fetch(uv + t * float2(0, -1)) + Fetch(uv + t * float2(0, 1))) * 2;
     color += Fetch(uv + t * float2(-1, -1)) + Fetch(uv + t * float2(1, -1)) + Fetch(uv + t * float2(-1, 1)) + Fetch(uv + t * float2(1, 1));
     float4 current = RWTextures[Pass.Destination][id.xy];
-    RWTextures[Pass.Destination][id.xy] = float4(current.rgb + color / 16, 1);
+    RWTextures[Pass.Destination][id.xy] = float4(lerp(current.rgb, color / 16, Pass.Radius), 1);
 }

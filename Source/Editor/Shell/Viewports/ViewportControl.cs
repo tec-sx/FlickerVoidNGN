@@ -134,7 +134,7 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
             }
             else
             {
-                viewModel?.PointerPressed(pixel, size.Width, size.Height);
+                viewModel?.PointerPressed(pixel, size.Width, size.Height, e.KeyModifiers.HasFlag(KeyModifiers.Shift), e.KeyModifiers.HasFlag(KeyModifiers.Control));
             }
         }
 
@@ -206,7 +206,7 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         if (ViewportKeys.From(e.Key) is { } key)
         {
             _keys.Add(key);
-            ViewModel?.KeyPressed(key, _buttons);
+            ViewModel?.KeyPressed(key, _buttons, e.KeyModifiers.HasFlag(KeyModifiers.Control));
         }
 
         // Alt alone would otherwise move focus to the window's access keys; Ctrl shortcuts (undo, save) go on to the window.

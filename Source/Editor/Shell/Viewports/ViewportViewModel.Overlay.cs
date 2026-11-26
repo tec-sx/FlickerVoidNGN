@@ -32,9 +32,13 @@ public sealed partial class ViewportViewModel
         {
             if (creator.FindSelectedPart() is { } part && world.TryGet(part, out Transform placed))
             {
-                DrawSelection(overlay, world, part, placed);
+                if (creator.MeshSelection is null)
+                {
+                    DrawSelection(overlay, world, part, placed);
+                }
             }
 
+            creator.DrawMesh(overlay);
             return;
         }
 
