@@ -233,6 +233,41 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void TheMouseOverAnElementOfTheEnteredMeshHoversItAndLeavingTheMeshClearsIt()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        Vector2 top = _builder.PixelOf(new Vector3(0, 1.65f, 0));
+
+        mode.PointerMoved(top, Width, Height);
+        FlickerVoid.Editor.Core.Meshes.MeshHit? hovered = mode.Hover;
+        mode.LeaveMesh();
+
+        hovered.Should().NotBeNull();
+        mode.Hover.Should().BeNull();
+    }
+
+    [Fact]
+    public void TheMeshIsDrawnOnlyWhileItIsEntered()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        FlickerVoid.Editor.Core.Overlays.OverlayBuilder outside = new();
+        outside.Begin(_builder.Camera, Height);
+        FlickerVoid.Editor.Core.Overlays.OverlayBuilder inside = new();
+        inside.Begin(_builder.Camera, Height);
+
+        mode.DrawMesh(outside);
+        mode.EnterMesh();
+        mode.DrawMesh(inside);
+
+        outside.Vertices.Length.Should().Be(0);
+        inside.Vertices.Length.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
     public void LeavingTheMeshDropsTheSelectionAndClicksSelectPartsAgain()
     {
         using CreatorMode mode = _builder.EnterAlone();

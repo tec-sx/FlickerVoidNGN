@@ -4,6 +4,7 @@ using Arch.Core;
 
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Meshes;
+using FlickerVoid.Editor.Core.Overlays;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Core.Viewports;
@@ -189,6 +190,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         MeshSelection = null;
         MeshPart = null;
         _meshSolid = null;
+        Hover = null;
         MeshModeChanged?.Invoke();
     }
 
@@ -221,8 +223,46 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         selection.Select(hit, additive);
     }
 
+    /// <summary>The point, edge or face of the entered mesh under the mouse, or null.</summary>
+    public MeshHit? Hover { get; private set; }
+
     public void PointerMoved(Vector2 pixel, int width, int height)
     {
+        Hover = FindMeshHit(pixel, width, height);
+    }
+
+    /// <summary>Adds the entered mesh, its selection and the hover to the overlay; nothing outside the mesh.</summary>
+    public void DrawMesh(OverlayBuilder overlay)
+    {
+        if (MeshSelection is not { } selection || MeshPart is not { } id || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return;
+        }
+
+        if (FindSelectedPart() is not { } part)
+        {
+            return;
+        }
+
+        Matrix4x4 toWorld = _scene.Game.World.Get<Transform>(part).ToMatrix();
+        MeshOverlay.Draw(overlay, _camera, solid, toWorld, selection, Hover);
+    }
+
+    private MeshHit? FindMeshHit(Vector2 pixel, int width, int height)
+    {
+        if (MeshSelection is not { } selection || MeshPart is not { } id || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return null;
+        }
+
+        if (FindSelectedPart() is not { } part)
+        {
+            return null;
+        }
+
+        Matrix4x4 toWorld = _scene.Game.World.Get<Transform>(part).ToMatrix();
+        MeshPicker picker = new(solid, toWorld, _camera, width, height);
+        return picker.Pick(selection.Element, pixel);
     }
 
     public void PointerReleased()
