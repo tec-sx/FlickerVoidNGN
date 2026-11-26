@@ -6,9 +6,11 @@ using Avalonia.VisualTree;
 
 using FlickerVoid.Editor.Assets.Materials;
 using FlickerVoid.Editor.Assets.Textures;
+using FlickerVoid.Editor.Core.Environments;
 using FlickerVoid.Editor.Core.Flows;
 using FlickerVoid.Editor.Core.Settings;
 using FlickerVoid.Editor.Core.Undo;
+using FlickerVoid.Editor.Environments;
 using FlickerVoid.Editor.Flows;
 using FlickerVoid.Editor.Inspector;
 using FlickerVoid.Editor.Materials;
@@ -24,6 +26,7 @@ namespace FlickerVoid.Editor;
 public sealed partial class MainWindow : Window
 {
     private readonly Dictionary<string, FlowEditorWindow> _flows = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, EnvironmentEditorWindow> _environments = new(StringComparer.OrdinalIgnoreCase);
     private MaterialEditorWindow? _materials;
     private ProjectSettingsWindow? _projectSettings;
     private bool _closingDecided;
@@ -110,6 +113,7 @@ public sealed partial class MainWindow : Window
         {
             main.MaterialRequested += ShowMaterial;
             main.FlowRequested += ShowFlow;
+            main.EnvironmentRequested += ShowEnvironment;
             main.TextureRequested += ShowTexture;
             AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
             main.AskUnsaved = AskUnsaved;
@@ -243,6 +247,33 @@ public sealed partial class MainWindow : Window
             main.CloseFlow(path);
         };
         _flows.Add(path, window);
+        window.Show(this);
+    }
+
+    /// <summary>Shows the environment in its file's editor window, opening one unless the file has one already.</summary>
+    private void ShowEnvironment(string path, EnvironmentEditorViewModel editor)
+    {
+        if (_environments.TryGetValue(path, out EnvironmentEditorWindow? open))
+        {
+            open.DataContext = editor;
+            editor.Curves.Fit();
+            open.Activate();
+            return;
+        }
+
+        if (DataContext is not MainWindowViewModel main)
+        {
+            return;
+        }
+
+        EnvironmentEditorWindow window = new() { DataContext = editor, History = main.GetEnvironmentHistory(path) };
+        window.AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
+        window.Closed += (_, _) =>
+        {
+            _environments.Remove(path);
+            main.CloseEnvironment(path);
+        };
+        _environments.Add(path, window);
         window.Show(this);
     }
 

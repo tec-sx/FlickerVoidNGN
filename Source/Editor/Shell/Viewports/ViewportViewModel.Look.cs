@@ -21,6 +21,9 @@ public sealed partial class ViewportViewModel
     [ObservableProperty]
     public partial float Hour { get; set; } = 12;
 
+    /// <summary>The environment file an editor has open, drawn in place of the scene's own; null draws the scene's.</summary>
+    public string? EnvironmentPath { get; set; }
+
     /// <summary>The mood file the View tab edits, whose values the viewport lays over the environment and lens; null for none.</summary>
     public string? MoodPath { get; set; }
 
@@ -37,7 +40,7 @@ public sealed partial class ViewportViewModel
     }
 
     /// <summary>
-    /// The mood built as the game builds it: the defaults, the scene's environment at <see cref="Hour"/>, the lens the main
+    /// The mood built as the game builds it: the defaults, the environment an editor has open or else the scene's, at <see cref="Hour"/>, the lens the main
     /// camera names, then the values the mood file names, or, when no mood file is open, the values the View tab's
     /// <see cref="Mood"/> changes from the defaults. A file that can't be read is left out.
     /// </summary>
@@ -45,7 +48,7 @@ public sealed partial class ViewportViewModel
     {
         World world = Scene.Game.World;
         LightingMood layered = new();
-        string? environmentPath = SceneEnvironment.Find(world);
+        string? environmentPath = EnvironmentPath ?? SceneEnvironment.Find(world);
         if (Load(environmentPath, RenderingJsonContext.Default.LightingEnvironment) is { } environment)
         {
             environment.Apply(Hour, layered);
