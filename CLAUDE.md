@@ -30,6 +30,7 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 
 Each module's behaviour, API and decisions are in `Docs/Modules`; read the one you work on first, and keep it in step with the code in the same pull request.
 
+- `Design/EditorUi.md`: the 24 rules every editor UI follows (R1 to R24); read and follow them for any editor UI work, and check a UI pull request against them.
 - `Editor.md`: the editor's projects, MVVM, viewport, outliner, inspector, undo, unsaved content, asset browser and the material, texture and flow editors.
 - `Rendering.md`: extraction, the pass pipeline, culling, the sky, outlines and outline requests, indoors, cutaways and doorways.
 - `Content.md`: the builder and its importers, textures, canvases, models and shaders, hot reload, schemas and the content check.
@@ -61,6 +62,7 @@ Each module's behaviour, API and decisions are in `Docs/Modules`; read the one y
 - Entities are Arch-first (owner, 2026-11-20): components are plain data structs, behaviour lives in systems, one per feature. Systems add lifecycle hooks for their components to `EntityLifecycle` (`Game.Lifecycle`: attach runs in the editor and the game, for looks from data; activate only while playing; deactivate and detach in reverse), and talk through events, plain structs sent to and handled on `Game.Events` (`EventBus`, dispatched after each group of systems). No string-addressed messages except across worlds or for deferred calls.
 - Data-driven, composition over inheritance, SOLID/KISS/YAGNI, open/closed.
 - Interface what is worth interfacing: services and the dependencies tests substitute (`IFactDatabase`).
+- Editor UI (owner, 2026-11-26): follow `Docs/Design/EditorUi.md` always: maximum working area, 1 px hairlines, warm theme colours only, frequent actions as viewport overlay buttons, categories instead of long lists, editors open in place, one way to save.
 - Don't nest calls: store a call's result in a variable before passing it to another call. Only simple getters and properties may be passed inline.
 - Don't chain ternaries; use `if`/`else` or a `switch`.
 - Minimal comments: a one-sentence `<summary>` on a type; on a member only when its name or logic is unclear.

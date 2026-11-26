@@ -7,6 +7,7 @@ using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
+using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Greyboxes;
@@ -58,6 +59,12 @@ internal sealed class WorldExtractorTestsBuilder : IDisposable
     public WorldExtractorTestsBuilder WithDoorway(Doorway doorway, Transform transform)
     {
         _world.Create(doorway, transform);
+        return this;
+    }
+
+    public WorldExtractorTestsBuilder WithEnvironment(SceneEnvironment environment)
+    {
+        _world.Create(environment);
         return this;
     }
 

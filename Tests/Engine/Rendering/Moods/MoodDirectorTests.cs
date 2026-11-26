@@ -1,5 +1,8 @@
+using System.Numerics;
+
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Moods;
+using FlickerVoid.Engine.Rendering.Sky;
 
 namespace FlickerVoid.Engine.Rendering.Tests.Moods;
 
@@ -43,6 +46,44 @@ public sealed class MoodDirectorTests
         midnight.Exposure.Should().BeApproximately(0.4f, Precision);
         director.Current.Exposure.Should().BeApproximately(0.8f, Precision);
         director.Current.Should().NotBeSameAs(midnight, "a mood handed out is never changed afterwards");
+    }
+
+    [Fact]
+    public void TurnsTheSunAlongItsPathAsTheHourMoves()
+    {
+        SunPath path = new(45, 0, 0);
+        MoodDirector director = _builder.WithSunPath(path).BuildStarted();
+
+        director.Update(9, 0.1f);
+
+        Vector3 toSun = path.TowardSun(9);
+        director.Current.SunDirection.X.Should().BeApproximately(-toSun.X, Precision);
+        director.Current.SunDirection.Y.Should().BeApproximately(-toSun.Y, Precision);
+    }
+
+    [Fact]
+    public void MovesTheMoonWithTheDay()
+    {
+        SunPath path = new(45, 0, 0);
+        MoodDirector director = _builder.WithSunPath(path).BuildStarted();
+
+        director.Update(15, 1, 0.1f);
+
+        Vector3 toMoon = path.TowardMoon(15, 1);
+        director.Current.MoonDirection.Y.Should().BeApproximately(-toMoon.Y, Precision);
+    }
+
+    [Fact]
+    public void LetsAMoodThatNamesTheSunsDirectionHoldIt()
+    {
+        MoodDirector director = _builder
+            .WithSunPath(new SunPath(45, 0, 0))
+            .WithLayer(MoodLayer.Scene, """{ "sunDirection": [0, -1, 0] }""")
+            .BuildStarted();
+
+        director.Update(9, 0.1f);
+
+        director.Current.SunDirection.Should().Be(new Vector3(0, -1, 0));
     }
 
     [Fact]

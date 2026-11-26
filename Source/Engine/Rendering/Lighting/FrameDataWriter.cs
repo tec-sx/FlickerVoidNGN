@@ -119,7 +119,9 @@ internal sealed class FrameDataWriter : IDisposable
         Vector2 previousJitter = _previousJitter;
         _previousViewProjection = view.ViewProjection;
         _previousJitter = context.Jitter;
-        Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
+        DirectionalLight directional = DirectionalLight.Of(mood);
+        Vector3 sunDirection = Vector3.Normalize(directional.Direction);
+        Vector3 sunLight = directional.Light;
         GBuffer gBuffer = context.GBuffer;
         uint accelerationStructure = BindlessIndex.None;
         if (context.AccelerationStructure is { } scene)
@@ -209,7 +211,9 @@ internal sealed class FrameDataWriter : IDisposable
             gBuffer.Material.BindlessIndex,
             gBuffer.ObjectDepth.BindlessIndex,
             gBuffer.Motion.BindlessIndex,
-            accelerationStructure);
+            accelerationStructure,
+            sunLight,
+            0);
 
         IBuffer frame = _frames.Get(size);
         ReadOnlySpan<FrameData> header = new(in data);

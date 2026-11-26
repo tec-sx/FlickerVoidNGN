@@ -94,7 +94,13 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
         coverage = 1;
     }
 
-    // Coverage: 0 where nothing was drawn and there is no canvas, so a stage's image shows over the interface; light added
-    // there (bloom) stays additive.
+    // Coverage: 0 where nothing was drawn and there is no canvas, so a stage's image shows over the interface, and light added
+    // there (bloom) stays additive; whatever was painted is whole, however thin, as thin paint shows its canvas and not what
+    // lies behind the image.
+    if (sceneColor.a > 0)
+    {
+        coverage = 1;
+    }
+
     return float4(color, coverage);
 }
