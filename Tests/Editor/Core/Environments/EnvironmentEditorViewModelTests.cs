@@ -20,7 +20,7 @@ public sealed class EnvironmentEditorViewModelTests
         editor.Groups.Select(group => group.Name).Should().Equal("Sun", "Sky", "Fog", "Grade");
         IEnumerable<string> names = editor.Groups.SelectMany(group => group.Values).Select(value => value.Name);
         names.Should().Contain(["exposure", "fogColor", "sunAngle", "tint"]);
-        names.Should().NotContain(["bloom", "sunDirection", "depthFarColor"], "the lens's values and the sun's path are not the environment's to draw");
+        names.Should().NotContain(["bloom", "sunDirection", "depthNearBurn"], "the lens's values and the sun's path are not the environment's to draw");
     }
 
     [Fact]
