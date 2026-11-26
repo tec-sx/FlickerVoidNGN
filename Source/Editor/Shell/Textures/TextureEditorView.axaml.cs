@@ -12,12 +12,12 @@ using FlickerVoid.Editor.Assets.Textures;
 namespace FlickerVoid.Editor.Textures;
 
 /// <summary>Shows a <see cref="TextureEditorViewModel"/>, copying its preview pixels into a bitmap.</summary>
-public sealed partial class TextureEditorWindow : Window
+public sealed partial class TextureEditorView : UserControl
 {
     private readonly Image _preview;
     private TextureEditorViewModel? _viewModel;
 
-    public TextureEditorWindow()
+    public TextureEditorView()
     {
         AvaloniaXamlLoader.Load(this);
         _preview = this.FindControl<Image>("Preview")!;

@@ -11,8 +11,8 @@ namespace FlickerVoid.Editor.Inspector;
 
 /// <summary>
 /// A number box edited by dragging sideways across it (Shift for fine steps, Ctrl for coarse ones) or, after a click, by typing;
-/// a click or right-click selects the whole value, so Ctrl+C or the context menu copies it. An optional coloured bar on its left
-/// names the axis it edits.
+/// a click or right-click selects the whole value, so Ctrl+C or the context menu copies it. An optional coloured letter on its left
+/// names the axis it edits, and a number with a range is filled up to where its value sits in it.
 /// </summary>
 public sealed class DragNumberBox : TextBox
 {
@@ -29,6 +29,8 @@ public sealed class DragNumberBox : TextBox
 
     public static readonly StyledProperty<IBrush?> AxisBrushProperty = AvaloniaProperty.Register<DragNumberBox, IBrush?>(nameof(AxisBrush));
 
+    public static readonly StyledProperty<string?> AxisProperty = AvaloniaProperty.Register<DragNumberBox, string?>(nameof(Axis));
+
     /// <summary>Raised when a drag starts changing the value, so the window can record the drag as one undo step.</summary>
     public static readonly RoutedEvent<RoutedEventArgs> DragStartedEvent =
         RoutedEvent.Register<DragNumberBox, RoutedEventArgs>("DragStarted", RoutingStrategies.Bubble);
@@ -40,7 +42,11 @@ public sealed class DragNumberBox : TextBox
     private const double FineFactor = 0.1;
     private const double CoarseFactor = 10;
 
-    private readonly Border _axisBar = new() { Width = 3, Margin = new Thickness(0, 0, 2, 0) };
+    private const string TrackBrushKey = "EditorDeepBrush";
+    private const string FillBrushKey = "EditorNumberFillBrush";
+    private const string EdgeBrushKey = "EditorAccentLineBrush";
+
+    private readonly TextBlock _axisLetter = new() { Classes = { "axis" }, IsVisible = false };
     private Point? _pressedAt;
     private double _pressedValue;
     private bool _dragging;
@@ -51,8 +57,7 @@ public sealed class DragNumberBox : TextBox
     public DragNumberBox()
     {
         Classes.Add("drag");
-        InnerLeftContent = _axisBar;
-        _axisBar.IsVisible = false;
+        InnerLeftContent = _axisLetter;
         ShowValue();
     }
 
@@ -87,7 +92,26 @@ public sealed class DragNumberBox : TextBox
         set => SetValue(AxisBrushProperty, value);
     }
 
+    /// <summary>The letter of the axis it edits (X, Y, Z), drawn in <see cref="AxisBrush"/> before the number.</summary>
+    public string? Axis
+    {
+        get => GetValue(AxisProperty);
+        set => SetValue(AxisProperty, value);
+    }
+
     protected override Type StyleKeyOverride => typeof(TextBox);
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        ShowFill();
+    }
+
+    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    {
+        base.OnSizeChanged(e);
+        ShowFill();
+    }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -95,11 +119,20 @@ public sealed class DragNumberBox : TextBox
         if (change.Property == ValueProperty)
         {
             ShowValue();
+            ShowFill();
         }
         else if (change.Property == AxisBrushProperty)
         {
-            _axisBar.Background = AxisBrush;
-            _axisBar.IsVisible = AxisBrush is not null;
+            _axisLetter.Foreground = AxisBrush;
+        }
+        else if (change.Property == AxisProperty)
+        {
+            _axisLetter.Text = Axis;
+            _axisLetter.IsVisible = !string.IsNullOrEmpty(Axis);
+        }
+        else if (change.Property == MinimumProperty || change.Property == MaximumProperty)
+        {
+            ShowFill();
         }
     }
 
@@ -207,6 +240,52 @@ public sealed class DragNumberBox : TextBox
         base.OnPointerCaptureLost(e);
         _pressedAt = null;
         EndDrag();
+    }
+
+    /// <summary>
+    /// Fills the box up to where the value sits between a finite minimum and maximum, with a 1 px edge: the background is one
+    /// brush with hard stops, as the text box's template has no layer of its own behind the text.
+    /// </summary>
+    private void ShowFill()
+    {
+        double width = Bounds.Width;
+        bool ranged = double.IsFinite(Minimum) && double.IsFinite(Maximum) && Maximum > Minimum;
+        if (!ranged || width <= 0)
+        {
+            return;
+        }
+
+        if (!TryFindColor(TrackBrushKey, out Color track) || !TryFindColor(FillBrushKey, out Color fill) || !TryFindColor(EdgeBrushKey, out Color edge))
+        {
+            return;
+        }
+
+        double share = Math.Clamp((Value - Minimum) / (Maximum - Minimum), 0, 1);
+        double edgeEnd = Math.Min(share + (1 / width), 1);
+        LinearGradientBrush brush = new()
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+        };
+        brush.GradientStops.Add(new GradientStop(fill, 0));
+        brush.GradientStops.Add(new GradientStop(fill, share));
+        brush.GradientStops.Add(new GradientStop(edge, share));
+        brush.GradientStops.Add(new GradientStop(edge, edgeEnd));
+        brush.GradientStops.Add(new GradientStop(track, edgeEnd));
+        brush.GradientStops.Add(new GradientStop(track, 1));
+        Background = brush;
+    }
+
+    private bool TryFindColor(string key, out Color color)
+    {
+        if (this.TryFindResource(key, out object? found) && found is ISolidColorBrush brush)
+        {
+            color = brush.Color;
+            return true;
+        }
+
+        color = default;
+        return false;
     }
 
     private void EndDrag()

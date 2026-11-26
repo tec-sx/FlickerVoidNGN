@@ -6,18 +6,82 @@
              xmlns:controls="using:FlickerVoid.Editor.Controls"
              x:Class="FlickerVoid.Editor.Assets.AssetBrowserView"
              x:DataType="assets:AssetBrowserViewModel">
-  <!-- The folder tree under its search box, a narrow column of kind filters, and the tiles; everything else is in the context
-       menus (right-click) and the New menu (Shift+A). -->
-  <Grid ColumnDefinitions="170,2,Auto,*" controls:EditorMenus.AddChoices="{Binding NewChoices}">
-    <DockPanel>
-      <controls:SearchBox DockPanel.Dock="Top" Margin="3" Text="{Binding SearchText}"
-                          ToolTip.Tip="Search every file below the selected folder." />
-      <Border Classes="well">
+  <!-- The content drawer: a header with the breadcrumb, the search, the category chips and New, Import and Close; under it the
+       folder tree and the tiles. Everything else is in the context menus (right-click) and the New menu (Shift+A). -->
+  <DockPanel controls:EditorMenus.AddChoices="{Binding NewChoices}" Background="{DynamicResource EditorPanelBrush}">
+    <Border DockPanel.Dock="Top" Classes="drawerHeader">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="10,0,12,0">
+          <PathIcon Classes="muted" Data="{x:Static shell:LucideIcons.Folder}" Margin="0,0,7,0" />
+          <TextBlock Text="{Binding FolderTrail}" Classes="muted" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding FolderName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+        </StackPanel>
+        <controls:SearchBox DockPanel.Dock="Left" Width="220" Text="{Binding SearchText}" PlaceholderText="{Binding SearchHint}" VerticalAlignment="Center"
+                            ToolTip.Tip="Search every file below the selected folder." />
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,6,0">
+          <Button Classes="quiet" Click="HandleNewClick" ToolTip.Tip="New: a folder or a file of a kind, in the selected folder (Shift+A).">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Data="{x:Static shell:LucideIcons.Add}" />
+              <TextBlock Text="New" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="quiet" Click="HandleImportClick" ToolTip.Tip="Import files into the selected folder.">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Data="{x:Static shell:LucideIcons.Import}" />
+              <TextBlock Text="Import" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Border Classes="vsep" />
+          <Button Classes="icon" Command="{Binding RefreshCommand}" ToolTip.Tip="Read the folders again.">
+            <PathIcon Data="{x:Static shell:LucideIcons.Refresh}" />
+          </Button>
+          <Button Classes="icon" Command="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).ToggleContentCommand}"
+                  ToolTip.Tip="Close the drawer (Ctrl+Space).">
+            <PathIcon Data="{x:Static shell:LucideIcons.Close}" />
+          </Button>
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" VerticalAlignment="Center" Margin="8,0" MaxWidth="420"
+                   Foreground="{StaticResource EditorDeleteBrush}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Status}" />
+        <ListBox Margin="10,0,0,0" ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Classes="filters" VerticalAlignment="Center"
+                 ToolTip.Tip="Show one kind of file, from every folder below the selected one.">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate DataType="assets:AssetFilter">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <Border Width="7" Height="7" CornerRadius="2" VerticalAlignment="Center" IsVisible="{Binding !IsAll}"
+                        Background="{Binding Color, Converter={x:Static assets:AssetTypeLooks.HexBrush}}" />
+                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+      <!-- Asks for a new flow node class's name and code folder; Enter creates it, Escape cancels. -->
+      <Border DockPanel.Dock="Top" Padding="10,5" BorderBrush="{StaticResource EditorLineBrush}" BorderThickness="0,0,0,1"
+              IsVisible="{Binding Prompt, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <StackPanel x:DataType="flows:FlowNodePrompt" DataContext="{Binding Prompt}" Orientation="Horizontal" Spacing="6"
+                    KeyDown="HandlePromptKeyDown">
+          <PathIcon Data="{x:Static shell:LucideIcons.Code}" Foreground="{StaticResource EditorCodeBrush}" />
+          <TextBlock Text="New Flow Node" VerticalAlignment="Center" FontWeight="SemiBold" />
+          <TextBox x:Name="PromptName" Width="180" Text="{Binding Name}" PlaceholderText="Name, such as Open Gate" />
+          <TextBlock Text="in" VerticalAlignment="Center" Classes="muted" />
+          <ComboBox MinWidth="220" ItemsSource="{Binding Folders}" SelectedItem="{Binding Folder}"
+                    ToolTip.Tip="The code folder the class goes in; its namespace follows the folder." />
+          <Button Classes="primary" Content="Create" Click="HandlePromptCreateClick" />
+          <Button Content="Cancel" Click="HandlePromptCancelClick" />
+        </StackPanel>
+      </Border>
+    <Grid ColumnDefinitions="200,1,*">
       <TreeView x:Name="FolderTree" ItemsSource="{Binding Folders}" SelectedItem="{Binding SelectedFolder}" DragDrop.AllowDrop="True">
         <TreeView.ItemTemplate>
           <TreeDataTemplate DataType="assets:AssetFolder" ItemsSource="{Binding Children}">
-            <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent">
-              <PathIcon Width="14" Height="14" Data="{Binding Converter={x:Static assets:AssetTypeLooks.FolderIcon}}"
+            <StackPanel Orientation="Horizontal" Spacing="6" Background="Transparent">
+              <PathIcon Data="{Binding Converter={x:Static assets:AssetTypeLooks.FolderIcon}}"
                         Foreground="{Binding Converter={x:Static assets:AssetTypeLooks.FolderBrush}}" />
               <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
             </StackPanel>
@@ -27,145 +91,99 @@
           <ContextMenu>
             <MenuItem Header="New" ItemsSource="{Binding NewChoices, Converter={x:Static controls:MenuConverters.Separators}}"
                       ItemContainerTheme="{StaticResource ChoiceMenuItem}" InputGesture="Shift+A">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Add}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Add}" /></MenuItem.Icon>
             </MenuItem>
             <Separator />
             <MenuItem Header="Import..." Click="HandleImportClick">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Import}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Import}" /></MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="Rename Folder" Click="HandleRenameFolderClick" InputGesture="F2">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Rename}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Rename}" /></MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="Delete Folder" Click="HandleDeleteFolderClick" InputGesture="Delete">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Delete}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></MenuItem.Icon>
             </MenuItem>
             <Separator />
             <MenuItem Header="Refresh" Command="{Binding RefreshCommand}">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Refresh}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Refresh}" /></MenuItem.Icon>
             </MenuItem>
           </ContextMenu>
         </TreeView.ContextMenu>
       </TreeView>
-      </Border>
-    </DockPanel>
-    <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-    <Border Grid.Column="2" Classes="well">
-    <ListBox ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Classes="filters"
-             ToolTip.Tip="Show one kind of file, from every folder below the selected one.">
-      <ListBox.ItemTemplate>
-        <DataTemplate DataType="assets:AssetFilter">
-          <StackPanel Orientation="Horizontal" Spacing="5">
-            <Panel Width="12" Height="12">
-              <PathIcon Width="12" Height="12" Data="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Icon}}"
-                        Foreground="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}"
-                        IsVisible="{Binding Type, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            </Panel>
-            <TextBlock Text="{Binding Label}" Classes="small" VerticalAlignment="Center" />
-          </StackPanel>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
-    </Border>
-    <DockPanel Grid.Column="3">
-      <DockPanel DockPanel.Dock="Top" Margin="6,2" Height="18">
-        <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" VerticalAlignment="Center" Margin="6,0"
-                   Foreground="{StaticResource EditorDeleteBrush}" TextTrimming="CharacterEllipsis" />
-        <TextBlock Text="{Binding SelectedFolder.Path}" VerticalAlignment="Center" Opacity="0.6" TextTrimming="CharacterEllipsis" />
-      </DockPanel>
-      <!-- Asks for a new flow node class's name and code folder; Enter creates it, Escape cancels. -->
-      <Border DockPanel.Dock="Top" Margin="6,2" Padding="8" CornerRadius="5" BorderBrush="{StaticResource EditorLineBrush}" BorderThickness="1"
-              IsVisible="{Binding Prompt, Converter={x:Static ObjectConverters.IsNotNull}}">
-        <StackPanel x:DataType="flows:FlowNodePrompt" DataContext="{Binding Prompt}" Orientation="Horizontal" Spacing="6"
-                    KeyDown="HandlePromptKeyDown">
-          <PathIcon Width="14" Height="14" Data="{x:Static shell:MaterialIcons.Code}" Foreground="#B48EC9" />
-          <TextBlock Text="New Flow Node" VerticalAlignment="Center" FontWeight="SemiBold" />
-          <TextBox x:Name="PromptName" Width="180" Text="{Binding Name}" PlaceholderText="Name, such as Open Gate" />
-          <TextBlock Text="in" VerticalAlignment="Center" Opacity="0.6" />
-          <ComboBox MinWidth="220" ItemsSource="{Binding Folders}" SelectedItem="{Binding Folder}"
-                    ToolTip.Tip="The code folder the class goes in; its namespace follows the folder." />
-          <Button Content="Create" Click="HandlePromptCreateClick" />
-          <Button Content="Cancel" Click="HandlePromptCancelClick" />
-        </StackPanel>
-      </Border>
-      <Border Classes="well">
-      <ListBox x:Name="AssetList" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedAsset}" DragDrop.AllowDrop="True"
-               DoubleTapped="HandleDoubleTapped" KeyDown="HandleKeyDown" Background="Transparent"
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+      <ListBox x:Name="AssetList" Grid.Column="2" Classes="tiles" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedAsset}" DragDrop.AllowDrop="True"
+               DoubleTapped="HandleDoubleTapped" KeyDown="HandleKeyDown" Background="Transparent" Padding="10,10,2,2"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
         <ListBox.ItemsPanel>
           <ItemsPanelTemplate>
             <WrapPanel />
           </ItemsPanelTemplate>
         </ListBox.ItemsPanel>
-        <ListBox.Styles>
-          <Style Selector="ListBoxItem">
-            <Setter Property="Padding" Value="2" />
-            <Setter Property="Margin" Value="1" />
-          </Style>
-          <Style Selector="Button.expand">
-            <Setter Property="Padding" Value="1" />
-            <Setter Property="MinWidth" Value="0" />
-            <Setter Property="MinHeight" Value="0" />
-            <Setter Property="Background" Value="Transparent" />
-          </Style>
-        </ListBox.Styles>
         <ListBox.ItemTemplate>
-          <!-- A file of a group (a file with the files named after it) is framed; its owner's arrow lists the owned files after it. -->
+          <!-- A tile: the thumbnail (the picture of an image, else the kind's icon) over the kind's colour, the name and the kind.
+               A file with files named after it has an arrow that lists them after it, each marked as owned. -->
           <DataTemplate DataType="assets:AssetEntry">
-            <Panel>
-              <Border BorderThickness="1" CornerRadius="4" IsHitTestVisible="False" IsVisible="{Binding IsGrouped}"
-                      BorderBrush="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}" />
-              <StackPanel Width="76" Spacing="2" ToolTip.Tip="{Binding Path}">
-                <PathIcon Width="40" Height="40" Margin="0,4,0,0" Data="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Icon}}"
-                          Foreground="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}" />
-                <Border Height="2" Margin="6,0" Background="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}" />
-                <TextBlock Text="{Binding Label}" TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
-                           FontSize="{StaticResource EditorSmallFontSize}" />
-              </StackPanel>
-              <Button Classes="expand" HorizontalAlignment="Right" VerticalAlignment="Top" Click="HandleExpandClick"
-                      IsVisible="{Binding !!Owned.Count}" ToolTip.Tip="Show or hide the files named after it.">
+            <StackPanel Width="104" ToolTip.Tip="{Binding Path}">
+              <Border Classes="thumb" Classes.folder="{Binding Type, Converter={x:Static assets:AssetTypeLooks.IsFolder}}">
                 <Panel>
-                  <PathIcon Width="12" Height="12" Data="{x:Static shell:MaterialIcons.Next}" IsVisible="{Binding !IsExpanded}" />
-                  <PathIcon Width="12" Height="12" Data="{x:Static shell:MaterialIcons.Back}" IsVisible="{Binding IsExpanded}" />
+                  <Rectangle Classes="folderFrame" IsVisible="{Binding Type, Converter={x:Static assets:AssetTypeLooks.IsFolder}}" />
+                  <PathIcon Classes="tileIcon thin" Data="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Icon}}"
+                            Foreground="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}"
+                            IsVisible="{Binding Thumbnail, Converter={x:Static ObjectConverters.IsNull}}" />
+                  <Image Stretch="UniformToFill" Source="{Binding Thumbnail, Converter={x:Static assets:AssetThumbnails.Image}}"
+                         IsVisible="{Binding Thumbnail, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  <Border Height="3" VerticalAlignment="Bottom" Background="{Binding Type, Converter={x:Static assets:AssetTypeLooks.Brush}}"
+                          IsVisible="{Binding Type, Converter={x:Static assets:AssetTypeLooks.IsFile}}" />
+                  <Button Classes="icon small" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="2" Click="HandleExpandClick"
+                          IsVisible="{Binding !!Owned.Count}" ToolTip.Tip="Show or hide the files named after it.">
+                    <Panel>
+                      <PathIcon Data="{x:Static shell:LucideIcons.Next}" IsVisible="{Binding !IsExpanded}" />
+                      <PathIcon Data="{x:Static shell:LucideIcons.Back}" IsVisible="{Binding IsExpanded}" />
+                    </Panel>
+                  </Button>
+                  <PathIcon Classes="small faint" Data="{x:Static shell:LucideIcons.Nested}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4"
+                            IsVisible="{Binding Owner, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Named after the file before it." />
                 </Panel>
-              </Button>
-            </Panel>
+              </Border>
+              <TextBlock Text="{Binding Label}" Margin="0,5,0,0" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding Type.Name}" Classes="tileKind" />
+            </StackPanel>
           </DataTemplate>
         </ListBox.ItemTemplate>
         <ListBox.ContextMenu>
           <ContextMenu>
             <MenuItem Header="Open" Command="{Binding OpenCommand}" CommandParameter="{Binding SelectedAsset}" InputGesture="Enter">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Open}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Open}" /></MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="Reimport" Command="{Binding ReimportCommand}" IsEnabled="{Binding CanReimport}">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Reimport}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Reimport}" /></MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="Rename" Click="HandleRenameClick" InputGesture="F2">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Rename}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Rename}" /></MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="Duplicate" Command="{Binding DuplicateCommand}" InputGesture="Ctrl+D">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Duplicate}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Duplicate}" /></MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="Delete" Click="HandleDeleteClick" InputGesture="Delete">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Delete}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></MenuItem.Icon>
             </MenuItem>
             <Separator />
             <MenuItem Header="New" ItemsSource="{Binding NewChoices, Converter={x:Static controls:MenuConverters.Submenus}}"
                       ItemContainerTheme="{StaticResource ChoiceMenuItem}" InputGesture="Shift+A">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Add}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Add}" /></MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="Import..." Click="HandleImportClick">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Import}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Import}" /></MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="Up" Command="{Binding UpCommand}" InputGesture="Back">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Up}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Up}" /></MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="Refresh" Command="{Binding RefreshCommand}">
-              <MenuItem.Icon><PathIcon Data="{x:Static shell:MaterialIcons.Refresh}" /></MenuItem.Icon>
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Refresh}" /></MenuItem.Icon>
             </MenuItem>
           </ContextMenu>
         </ListBox.ContextMenu>
       </ListBox>
-      </Border>
-    </DockPanel>
-  </Grid>
+    </Grid>
+  </DockPanel>
 </UserControl>

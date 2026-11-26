@@ -31,15 +31,38 @@ public sealed partial class SearchMenu : UserControl
     private SearchMenuViewModel? Menu => DataContext as SearchMenuViewModel;
 
     /// <summary>Opens a menu of <paramref name="choices"/> at the pointer over <paramref name="anchor"/>, grouped as asked.</summary>
-    public static void Show(Control anchor, IReadOnlyList<MenuChoice> choices, MenuGrouping grouping)
+    public static void Show(Control anchor, IReadOnlyList<MenuChoice> choices, MenuGrouping grouping, bool atPointer = true)
     {
         SearchMenuViewModel menu = new(choices, grouping);
         SearchMenu view = new() { DataContext = menu };
-        Flyout flyout = new() { Content = view, Placement = PlacementMode.Pointer, FlyoutPresenterClasses = { "searchMenu" } };
+        Flyout flyout = new() { Content = view, Placement = atPointer ? PlacementMode.Pointer : PlacementMode.Center, FlyoutPresenterClasses = { "searchMenu" } };
         view._flyout = flyout;
         flyout.Opened += (_, _) => view._search.Focus();
-        flyout.ShowAt(anchor, showAtPointer: true);
+        flyout.ShowAt(anchor, showAtPointer: atPointer);
     }
+
+    /// <summary>Opens the command palette under the top of <paramref name="window"/>: the choices under their groups' headings.</summary>
+    public static void ShowPalette(Control window, IReadOnlyList<MenuChoice> choices)
+    {
+        SearchMenuViewModel menu = new(choices, MenuGrouping.Sections);
+        SearchMenu view = new() { DataContext = menu, Classes = { "palette" } };
+        view._search.PlaceholderText = "Search or run a command";
+        Flyout flyout = new()
+        {
+            Content = view,
+            Placement = PlacementMode.AnchorAndGravity,
+            PlacementAnchor = Avalonia.Controls.Primitives.PopupPositioning.PopupAnchor.Top,
+            PlacementGravity = Avalonia.Controls.Primitives.PopupPositioning.PopupGravity.Bottom,
+            VerticalOffset = PaletteTop,
+            FlyoutPresenterClasses = { "searchMenu" },
+        };
+        view._flyout = flyout;
+        flyout.Opened += (_, _) => view._search.Focus();
+        flyout.ShowAt(window);
+    }
+
+    /// <summary>How far under the window's top the palette opens.</summary>
+    private const double PaletteTop = 72;
 
     private void HandleKeyDown(object? sender, KeyEventArgs e)
     {

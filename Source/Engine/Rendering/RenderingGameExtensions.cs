@@ -20,7 +20,7 @@ namespace FlickerVoid.Engine.Rendering;
 /// <summary>Adds rendering to a game.</summary>
 public static class RenderingGameExtensions
 {
-    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume", "sceneMood", "sceneEnvironment", "outline", "mainCamera", "indoorVolume", "uncut" and "doorway" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, the <see cref="MeshSources"/> service, the <see cref="SceneRendererSetup"/> service (which gives renderers those sources), the <see cref="RenderingSettings"/> service with its console variables, and the mood, environment, lens, material, canvas and texture settings file kinds with their schemas.</summary>
+    /// <summary>Lets scene files add "camera", "meshRenderer", "meshAnimator", "pointLight", "spotLight", "irradianceVolume", "sceneMood", "sceneEnvironment", "outline", "mainCamera", "indoorVolume", "uncut" and "doorway" components, which a <see cref="SceneRenderer"/> draws, a <see cref="MeshAnimationSystem"/> to the frame systems, the <see cref="MeshSources"/> service, the <see cref="SceneRendererSetup"/> service (which gives renderers those sources), the <see cref="RenderingSettings"/> service with its console variables, and the mood, environment, lens, material, canvas, flare and texture settings file kinds with their schemas.</summary>
     public static void AddRendering(this Game game)
     {
         game.Spawner.Register("camera", RenderingJsonContext.Default.Camera);
@@ -41,6 +41,7 @@ public static class RenderingGameExtensions
         game.Schemas.AddFile("lens", CameraLens.Extension, static () => RenderingJsonContext.Default.CameraLens, CameraLens.CreateSchema);
         game.Schemas.AddFile("material", MaterialFile.Extension, static () => RenderingJsonContext.Default.MaterialFile);
         game.Schemas.AddFile("canvas", CanvasFile.Extension, static () => RenderingJsonContext.Default.CanvasFile);
+        game.Schemas.AddFile("flare", FlareFile.Extension, static () => RenderingJsonContext.Default.FlareFile);
         game.Schemas.AddFile("texture", TextureSettings.Extension, static () => RenderingJsonContext.Default.TextureSettings);
         MeshSources meshes = new();
         game.Services.AddService(meshes);

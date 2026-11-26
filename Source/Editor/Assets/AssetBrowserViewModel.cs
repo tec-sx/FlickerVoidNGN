@@ -50,14 +50,8 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
             _catalogs.Add(_code);
         }
 
-        List<AssetFilter> filters = [new AssetFilter("All", null)];
-        foreach (AssetType type in AssetTypes.Files)
-        {
-            filters.Add(new AssetFilter(type.Name, type));
-        }
-
-        Filters = filters;
-        SelectedFilter = filters[0];
+        Filters = AssetTypes.Filters;
+        SelectedFilter = Filters[0];
         Refresh();
     }
 
@@ -121,6 +115,28 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     [ObservableProperty]
     public partial AssetFilter SelectedFilter { get; set; }
 
+    /// <summary>The breadcrumb's start: the folders above the selected one, each followed by a slash (Content / Art / ).</summary>
+    public string FolderTrail
+    {
+        get
+        {
+            if (SelectedFolder is null || Folders.Count == 0)
+            {
+                return "";
+            }
+
+            List<string> names = [];
+            CollectTrail(Folders, SelectedFolder, names);
+            return string.Concat(names.Select(static name => $"{name} / "));
+        }
+    }
+
+    /// <summary>The breadcrumb's end: the selected folder's name.</summary>
+    public string FolderName => SelectedFolder?.Name ?? "";
+
+    /// <summary>What the search box says it searches.</summary>
+    public string SearchHint => $"Search in {FolderName}";
+
     [ObservableProperty]
     public partial string SearchText { get; set; } = "";
 
@@ -158,6 +174,19 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
 
         Folders = roots;
         SelectFolder(selected ?? roots[0].Path);
+    }
+
+    /// <summary>Every file of every catalog, for searches outside the browser (the command palette).</summary>
+    public IReadOnlyList<AssetEntry> FindFiles()
+    {
+        List<AssetEntry> files = [];
+        foreach (AssetCatalog catalog in _catalogs)
+        {
+            IReadOnlyList<AssetEntry> found = catalog.Find("", recursive: true, type: null, "");
+            files.AddRange(found.Where(entry => entry.Type != AssetTypes.Folder));
+        }
+
+        return files;
     }
 
     [RelayCommand]
@@ -566,11 +595,39 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         Prompt = null;
     }
 
-    partial void OnSelectedFolderChanged(AssetFolder? value) => FindAssets();
+    partial void OnSelectedFolderChanged(AssetFolder? value)
+    {
+        OnPropertyChanged(nameof(FolderTrail));
+        OnPropertyChanged(nameof(FolderName));
+        OnPropertyChanged(nameof(SearchHint));
+        FindAssets();
+    }
 
     partial void OnSelectedFilterChanged(AssetFilter value) => FindAssets();
 
     partial void OnSearchTextChanged(string value) => FindAssets();
+
+    /// <summary>Fills <paramref name="names"/> with the folders from a root down to the one above <paramref name="wanted"/>.</summary>
+    private static bool CollectTrail(IReadOnlyList<AssetFolder> folders, AssetFolder wanted, List<string> names)
+    {
+        foreach (AssetFolder folder in folders)
+        {
+            if (folder == wanted)
+            {
+                return true;
+            }
+
+            names.Add(folder.Name);
+            if (CollectTrail(folder.Children, wanted, names))
+            {
+                return true;
+            }
+
+            names.RemoveAt(names.Count - 1);
+        }
+
+        return false;
+    }
 
     private void FindAssets()
     {
@@ -580,11 +637,11 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
         }
 
         string folder = SelectedFolder?.Path ?? Folders[0].Path;
-        AssetType? type = SelectedFilter?.Type;
+        IReadOnlyList<AssetType> types = SelectedFilter?.Types ?? [];
         string text = SearchText ?? "";
-        bool recursive = type is not null || text.Length > 0;
+        bool recursive = types.Count > 0 || text.Length > 0;
         AssetCatalog catalog = FindCatalog(folder);
-        Assets = catalog.Find(folder, recursive, type, text);
+        Assets = catalog.Find(folder, recursive, types, text);
         List<AssetEntry> items = [];
         if (!recursive && SelectedFolder is not null)
         {

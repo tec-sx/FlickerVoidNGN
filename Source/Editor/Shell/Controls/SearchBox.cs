@@ -16,9 +16,9 @@ public sealed class SearchBox : TextBox
     {
         Classes.Add("search");
         PlaceholderText = "Search";
-        PathIcon glass = new() { Data = MaterialIcons.Search, Classes = { "searchGlass" } };
+        PathIcon glass = new() { Data = LucideIcons.Search, Classes = { "searchGlass" } };
         InnerLeftContent = glass;
-        PathIcon cross = new() { Data = MaterialIcons.Close };
+        PathIcon cross = new() { Data = LucideIcons.Close };
         _clear = new Button { Content = cross, Classes = { "icon", "small", "searchClear" }, IsVisible = false, Focusable = false };
         _clear.Click += HandleClearClick;
         InnerRightContent = _clear;
