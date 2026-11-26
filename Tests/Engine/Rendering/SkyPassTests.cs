@@ -40,6 +40,31 @@ public sealed class SkyPassTests : IDisposable
     }
 
     [Fact]
+    public void ShowsAnOrthographicViewTheSunThroughItsVirtualLens()
+    {
+        using SkyPassTestsBuilder turnedAway = new();
+        Vector3 ahead = Vector3.Normalize(new Vector3(0, -0.15f, 1));
+        _builder.LookingDownOrthographically().WithMood(mood => mood with { SunDirection = ahead });
+        turnedAway.LookingDownOrthographically().TurnedAround().WithMood(mood => mood with { SunDirection = ahead });
+
+        int facing = Brightest(_builder.Render());
+        int away = Brightest(turnedAway.Render());
+
+        facing.Should().BeGreaterThan(away + 150, "the sun ahead of the camera shows, and behind it does not");
+    }
+
+    [Fact]
+    public void KeepsTheHorizonMidwayUpAnOrthographicViewHoweverItTilts()
+    {
+        _builder.LookingDownOrthographically().WithMood(static mood => mood with { HorizonSoftness = 0 });
+
+        uint[] pixels = _builder.Render();
+
+        int step = Step(pixels);
+        step.Should().BeGreaterThan(60, "the virtual lens looks level, so sky meets ground in the middle");
+    }
+
+    [Fact]
     public void LetsThePaperShowThroughTheSkyLikeAThinWash()
     {
         using SkyPassTestsBuilder dark = new();

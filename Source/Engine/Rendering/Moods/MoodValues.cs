@@ -52,6 +52,7 @@ public static class MoodValues
         new MoodChoice<Tonemapper>("tonemapper", MoodGroup.Tonemapper, Lens, mood => mood.Tonemapper, (mood, value) => mood.Tonemapper = value),
         new MoodNumber("whitePoint", MoodGroup.Tonemapper, Lens, mood => mood.WhitePoint, (mood, value) => mood.WhitePoint = value),
         new MoodChoice<string?>("canvas", MoodGroup.Canvas, Lens, mood => mood.Canvas, (mood, value) => mood.Canvas = value),
+        new MoodNumber("skyFieldOfView", MoodGroup.Sky, Lens, mood => mood.SkyFieldOfView, (mood, value) => mood.SkyFieldOfView = value),
         new MoodNumber("depthNearStart", MoodGroup.Depth, Lens, mood => mood.DepthNearStart, (mood, value) => mood.DepthNearStart = value),
         new MoodNumber("depthNearEnd", MoodGroup.Depth, Lens, mood => mood.DepthNearEnd, (mood, value) => mood.DepthNearEnd = value),
         new MoodNumber("depthNearAmount", MoodGroup.Depth, Lens, mood => mood.DepthNearAmount, (mood, value) => mood.DepthNearAmount = value),

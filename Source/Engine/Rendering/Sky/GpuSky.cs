@@ -25,7 +25,7 @@ internal readonly record struct GpuSky(
     float MoonCorona,
     float MoonDiscRadians,
     float StarIntensity,
-    float Padding0,
+    float SkyTanHalfView,
     Vector3 StarPole,
     float Padding1)
 {
@@ -53,7 +53,7 @@ internal readonly record struct GpuSky(
             mood.MoonCorona,
             moonRadius,
             mood.StarIntensity,
-            0,
+            MathF.Tan(ToRadians(mood.SkyFieldOfView / 2)),
             Normalized(mood.StarPole),
             0);
     }

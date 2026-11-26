@@ -168,6 +168,13 @@ public sealed record LightingMood
     [ContentFile(".fvcanvas")]
     public string? Canvas { get; set; }
 
+    /// <summary>
+    /// The field of view, in degrees from top to bottom, an orthographic camera sees the sky through, looking level along its
+    /// heading, so the sun, moon and stars stand at real directions and move as it turns.
+    /// </summary>
+    [Range(1, 170)]
+    public float SkyFieldOfView { get; set; } = 60;
+
     /// <summary>How far in front of the focus things start to darken.</summary>
     public float DepthNearStart { get; set; } = 1;
 
