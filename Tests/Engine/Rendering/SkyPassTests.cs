@@ -80,6 +80,22 @@ public sealed class SkyPassTests : IDisposable
     }
 
     [Fact]
+    public void HazesTheHorizonButNotTheHeights()
+    {
+        using SkyPassTestsBuilder hazed = new();
+        hazed.WithMood(static mood => mood with { HazeDensity = 1, HazeMax = 1, HazeFromSky = 0, HazeColor = new Vector3(1, 0, 0), StarIntensity = 0 });
+
+        uint[] plain = _builder.Render();
+        uint[] pixels = hazed.Render();
+
+        (byte red, byte green, byte blue) = SkyPassTestsBuilder.Channels(pixels[(Centre * Size) + Centre]);
+        red.Should().BeGreaterThan(200, "the haze's colour fills the sky at the horizon");
+        green.Should().BeLessThan(40);
+        blue.Should().BeLessThan(40);
+        pixels[(TopRow * Size) + Centre].Should().Be(plain[(TopRow * Size) + Centre], "the sky overhead is above the haze");
+    }
+
+    [Fact]
     public void PaintsADarkSkyDarkOverPaperToo()
     {
         using SkyPassTestsBuilder night = new();
