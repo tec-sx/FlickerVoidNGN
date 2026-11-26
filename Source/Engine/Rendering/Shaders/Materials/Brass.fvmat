@@ -1,0 +1,10 @@
+// Polished brass: warm yellow highlight and reflection.
+{
+  "parent": "Engine/Rendering/Masters/Metal.fvmaster",
+  "parameters": {
+    "tint": [0.78, 0.6, 0.3],
+    "specular": 1.4,
+    "glossiness": 0.75,
+    "metalness": 1
+  }
+}

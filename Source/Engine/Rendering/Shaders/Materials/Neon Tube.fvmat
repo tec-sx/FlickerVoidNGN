@@ -1,0 +1,9 @@
+// A neon tube: bright pink glow that blooms.
+{
+  "parent": "Engine/Rendering/Masters/Glow.fvmaster",
+  "parameters": {
+    "tint": [1, 0.25, 0.6],
+    "glow": 8,
+    "lit": 0.05
+  }
+}

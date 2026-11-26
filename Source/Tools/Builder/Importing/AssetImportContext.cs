@@ -21,7 +21,7 @@ public sealed class AssetImportContext
 
     public string SourceFullPath { get; }
 
-    /// <summary>Paths under the source folder of the files the import read besides its source.</summary>
+    /// <summary>Paths under the source folder of the files the import read besides its source, and full paths of those outside it.</summary>
     public IReadOnlyCollection<string> Dependencies => _dependencies;
 
     /// <summary>Paths under the output folder of the files the import wrote.</summary>
@@ -34,7 +34,14 @@ public sealed class AssetImportContext
         _dependencies.Add(path);
     }
 
-    /// <summary>Whether the file is in the source folder, where dependencies are recorded.</summary>
+    /// <summary>Records a file outside the source folder that the import reads, such as an engine shader a game's master includes.</summary>
+    public void AddEngineDependency(string fullPath)
+    {
+        string path = Path.GetFullPath(fullPath);
+        _dependencies.Add(path);
+    }
+
+    /// <summary>Whether the file is in the source folder.</summary>
     public bool IsSource(string fullPath)
     {
         string relativePath = Path.GetRelativePath(_sourceDirectory, fullPath);

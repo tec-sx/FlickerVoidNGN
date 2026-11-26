@@ -77,6 +77,13 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     float alpha = HighlightAlpha(material);
     float3 toCamera = ToCamera(frame, worldPosition);
     float3 specular = EnvBRDFApprox2(saturate(material.Specular), alpha, dot(normal, toCamera));
+    if (material.ShadingModel == ShadingMetal)
+    {
+        float metalness = saturate(material.ModelValues.x);
+        specular *= lerp(1, albedo, metalness);
+        albedo *= 1 - metalness;
+    }
+
     albedo = MuteOutside(frame, albedo, worldPosition);
     specular = MuteOutside(frame, specular, worldPosition);
     if ((surface.Flags & FlagGreyed) != 0)

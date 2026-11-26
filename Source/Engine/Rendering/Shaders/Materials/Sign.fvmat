@@ -1,0 +1,8 @@
+// A lit sign: its painting glows, a little of the light about it shows.
+{
+  "parent": "Engine/Rendering/Masters/Glow.fvmaster",
+  "parameters": {
+    "glow": 3,
+    "lit": 0.3
+  }
+}

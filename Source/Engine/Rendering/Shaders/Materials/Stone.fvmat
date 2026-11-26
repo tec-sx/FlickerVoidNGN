@@ -1,0 +1,15 @@
+// Weathered stone: cool grey, moss keeping to the tops.
+{
+  "parent": "Engine/Rendering/Masters/Surface.fvmaster",
+  "parameters": {
+    "tint": [0.55, 0.55, 0.52],
+    "rampSoftness": 0.5,
+    "specular": 0.15,
+    "glossiness": 0.25,
+    "variation": 0.5,
+    "variationScale": 0.5,
+    "layerTint": [0.3, 0.38, 0.2],
+    "layerAmount": 0.5,
+    "layerFacingUp": 0.9
+  }
+}

@@ -1,0 +1,14 @@
+{
+  // Paint over metal: steel, brass, chrome, painted and rusted metal. The more metal, the less diffuse light it takes and the
+  // more its highlight and its reflection of the light about it take the paint's color; rust lies over it as a painted layer.
+  "shadingModel": "Metal",
+  "parameters": [
+    { "name": "metalness", "type": "float", "default": 1, "minimum": 0, "maximum": 1 },
+    { "name": "rust", "type": "texture", "default": null },
+    { "name": "rustTint", "type": "color", "default": [0.45, 0.2, 0.08] },
+    { "name": "rustScale", "type": "float", "default": 1, "minimum": 0.1, "maximum": 16 },
+    { "name": "rustAmount", "type": "float", "default": 0, "minimum": 0, "maximum": 1 },
+    { "name": "variation", "type": "float", "default": 0, "minimum": 0, "maximum": 1 },
+    { "name": "variationScale", "type": "float", "default": 1, "minimum": 0.05, "maximum": 10 }
+  ]
+}

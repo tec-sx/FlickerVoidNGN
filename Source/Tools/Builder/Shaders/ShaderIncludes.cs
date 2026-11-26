@@ -9,8 +9,7 @@ public static partial class ShaderIncludes
 {
     /// <summary>
     /// Records the file and, through its quoted includes, every file it reads, looked up in its own folder and then in
-    /// <paramref name="includeDirectories"/>; a missing one is left to the compiler, and one outside the source folder (the
-    /// engine's, for a game's master) is not recorded.
+    /// <paramref name="includeDirectories"/>, such as the engine's for a game's master; a missing one is left to the compiler.
     /// </summary>
     public static void Record(AssetImportContext context, string fullPath, IReadOnlyList<string>? includeDirectories = null)
     {
@@ -27,6 +26,10 @@ public static partial class ShaderIncludes
         if (context.IsSource(fullPath))
         {
             context.AddDependency(fullPath);
+        }
+        else
+        {
+            context.AddEngineDependency(fullPath);
         }
 
         string folder = Path.GetDirectoryName(fullPath)!;

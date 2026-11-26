@@ -1,0 +1,11 @@
+// Painted steel: the paint mostly, metal at its highlight.
+{
+  "parent": "Engine/Rendering/Masters/Metal.fvmaster",
+  "parameters": {
+    "tint": [0.25, 0.38, 0.45],
+    "specular": 0.6,
+    "glossiness": 0.5,
+    "metalness": 0.3,
+    "variation": 0.2
+  }
+}

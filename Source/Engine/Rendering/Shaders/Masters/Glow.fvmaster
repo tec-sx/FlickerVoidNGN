@@ -1,0 +1,9 @@
+{
+  // Paint that shines by itself: neon tubes, signs, screens, bulbs. Its color times its glow, plus the light it takes scaled by
+  // lit; bloom and flares take what is bright.
+  "shadingModel": "Glow",
+  "parameters": [
+    { "name": "glow", "type": "float", "default": 4, "minimum": 0, "maximum": 32 },
+    { "name": "lit", "type": "float", "default": 0.2, "minimum": 0, "maximum": 1 }
+  ]
+}

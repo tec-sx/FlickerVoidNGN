@@ -1,0 +1,10 @@
+// Black rubber: very dark, a broad dull highlight.
+{
+  "parent": "Engine/Rendering/Masters/Surface.fvmaster",
+  "parameters": {
+    "tint": [0.08, 0.08, 0.08],
+    "rampSoftness": 0.9,
+    "specular": 0.25,
+    "glossiness": 0.2
+  }
+}

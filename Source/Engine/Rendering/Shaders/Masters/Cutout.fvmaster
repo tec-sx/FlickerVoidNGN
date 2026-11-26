@@ -1,0 +1,7 @@
+{
+  // Cards with holes seen from both sides: leaves, fences, grass, cloth banners. Their instances set the scene shader's cutoff,
+  // below which the painting's coverage is a hole; the back of a card is lit as it faces the camera.
+  "shadingModel": "Painted",
+  "twoSided": true,
+  "parameters": []
+}

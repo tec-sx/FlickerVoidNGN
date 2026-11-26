@@ -1,0 +1,9 @@
+// A wire or wooden fence card.
+{
+  "parent": "Engine/Rendering/Masters/Cutout.fvmaster",
+  "parameters": {
+    "cutoff": 0.5,
+    "specular": 0.3,
+    "glossiness": 0.4
+  }
+}

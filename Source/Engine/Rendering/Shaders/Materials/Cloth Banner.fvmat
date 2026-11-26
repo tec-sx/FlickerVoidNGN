@@ -1,0 +1,9 @@
+// A torn cloth banner seen from both sides.
+{
+  "parent": "Engine/Rendering/Masters/Cutout.fvmaster",
+  "parameters": {
+    "cutoff": 0.3,
+    "rampSoftness": 1,
+    "wrap": 0.4
+  }
+}

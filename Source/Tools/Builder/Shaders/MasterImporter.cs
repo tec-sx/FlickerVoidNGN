@@ -18,7 +18,7 @@ public sealed class MasterImporter(IShaderCompiler compiler, string engineShader
 {
     public string Name => "Master";
 
-    public int Version => 1;
+    public int Version => 2;
 
     public IReadOnlyList<string> Extensions { get; } = [MasterFile.Extension];
 
@@ -47,7 +47,11 @@ public sealed class MasterImporter(IShaderCompiler compiler, string engineShader
 
         string[] includeDirectories = [engineShaders];
         ShaderIncludes.Record(context, hlslPath, includeDirectories);
-        int offset = GetSceneParametersSize();
+        string sceneSurface = Path.Combine(engineShaders, "SceneSurface.hlsl");
+        string geometry = Path.Combine(engineShaders, "Geometry.hlsl");
+        ShaderIncludes.Record(context, sceneSurface, includeDirectories);
+        ShaderIncludes.Record(context, geometry, includeDirectories);
+        int offset = GetSceneParametersSize(context);
         string hlslFile = Path.GetFileName(hlslPath);
         string code = MasterCode.Generate(hlslFile, master.Parameters, offset);
         // Named beside the master's HLSL, so its quoted includes are found there first.
@@ -65,14 +69,15 @@ public sealed class MasterImporter(IShaderCompiler compiler, string engineShader
         File.WriteAllBytes(copyPath, json);
     }
 
-    /// <summary>Where a master's parameters start in a material's buffer: after the scene shader's.</summary>
-    private int GetSceneParametersSize()
+    /// <summary>Where a master's parameters start in a material's buffer: after the scene shader's and the shading model's.</summary>
+    private int GetSceneParametersSize(AssetImportContext context)
     {
         string scenePath = Path.Combine(engineShaders, "Scene.fvshader");
+        context.AddEngineDependency(scenePath);
         string json = File.ReadAllText(scenePath);
         ShaderAssetData scene = JsonSerializer.Deserialize(json, BuilderJsonContext.Default.ShaderAssetData)
             ?? throw new InvalidDataException($"{scenePath} is empty.");
         List<ShaderParameter> parameters = scene.Parameters ?? [];
-        return MaterialLayout.Size(parameters);
+        return MaterialLayout.MasterOffset(parameters);
     }
 }

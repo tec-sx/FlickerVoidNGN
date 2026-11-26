@@ -1,0 +1,10 @@
+// A card of leaves: holes where the painting is thin, light wrapping through.
+{
+  "parent": "Engine/Rendering/Masters/Cutout.fvmaster",
+  "parameters": {
+    "cutoff": 0.5,
+    "rampSoftness": 1,
+    "wrap": 0.5,
+    "tint": [0.45, 0.6, 0.3]
+  }
+}

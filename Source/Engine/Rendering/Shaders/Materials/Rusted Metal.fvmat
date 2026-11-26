@@ -1,0 +1,13 @@
+// Steel gone to rust in patches.
+{
+  "parent": "Engine/Rendering/Masters/Metal.fvmaster",
+  "parameters": {
+    "tint": [0.5, 0.5, 0.52],
+    "specular": 0.6,
+    "glossiness": 0.4,
+    "metalness": 0.8,
+    "rustAmount": 0.6,
+    "variation": 0.3,
+    "variationScale": 0.3
+  }
+}

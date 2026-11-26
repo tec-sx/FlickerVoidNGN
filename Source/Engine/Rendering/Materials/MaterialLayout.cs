@@ -13,10 +13,75 @@ public static class MaterialLayout
     /// <summary>The index of an unset texture, the shaders' <c>None</c>.</summary>
     public const uint NoTexture = uint.MaxValue;
 
-    /// <summary>How many bytes the parameters take packed: where a master's own parameters start after the scene shader's.</summary>
+    /// <summary>
+    /// The bytes after the scene shader's parameters that hold the material's shading model (a uint) and the four values it
+    /// reads (<see cref="ShadingModels"/>), which the lighting pass loads beside the scene shader's; a master's own follow them.
+    /// </summary>
+    public const int ModelSize = 5 * sizeof(float);
+
+    /// <summary>How many bytes the parameters take packed.</summary>
     public static int Size(IReadOnlyList<ShaderParameter> parameters)
     {
         return parameters.Sum(static parameter => parameter.Components) * sizeof(float);
+    }
+
+    /// <summary>Where a master's own parameters start in a material's buffer: after the scene shader's and the shading model's.</summary>
+    public static int MasterOffset(IReadOnlyList<ShaderParameter> scene)
+    {
+        return Size(scene) + ModelSize;
+    }
+
+    /// <summary>
+    /// Packs a material for the renderer: the scene shader's parameters, its master's shading model and the values the model reads,
+    /// then the master's own parameters; without a master, the painted model and no more. Every name the material sets must be
+    /// declared by one or the other.
+    /// </summary>
+    public static byte[] PackInstance(IReadOnlyList<ShaderParameter> scene, MasterFile? master, MaterialFile? material, Func<string, MaterialTexture>? loadTexture = null)
+    {
+        List<ShaderParameter> masterParameters = master?.Parameters ?? [];
+        if (material is not null)
+        {
+            IReadOnlyList<ShaderParameter> all = [.. scene, .. masterParameters];
+            CheckNames(all, material);
+        }
+
+        List<float> values = [];
+        AddValues(values, scene, material, loadTexture);
+        ShadingModel model = master?.ShadingModel ?? ShadingModel.Painted;
+        values.Add(BitConverter.UInt32BitsToSingle((uint)model));
+        List<float> modelValues = [];
+        foreach (string name in ShadingModels.GetValues(model))
+        {
+            ShaderParameter? declared = masterParameters.FirstOrDefault(parameter => parameter.Name == name);
+            if (declared is null || declared.Type == ShaderParameterType.Texture)
+            {
+                modelValues.Add(0);
+                continue;
+            }
+
+            JsonElement value = declared.Default;
+            if (material is not null && material.Parameters.TryGetValue(name, out JsonElement set))
+            {
+                value = set;
+            }
+
+            AddValue(modelValues, declared, value);
+        }
+
+        for (int index = 0; index < 4; index++)
+        {
+            float value = 0;
+            if (index < modelValues.Count)
+            {
+                value = modelValues[index];
+            }
+
+            values.Add(value);
+        }
+
+        AddValues(values, masterParameters, material, loadTexture);
+        Span<float> floats = CollectionsMarshal.AsSpan(values);
+        return MemoryMarshal.AsBytes(floats).ToArray();
     }
 
     /// <summary>Packs the values; <paramref name="loadTexture"/> loads a texture by its content path and gives its indices.</summary>
@@ -28,6 +93,13 @@ public static class MaterialLayout
         }
 
         List<float> values = [];
+        AddValues(values, parameters, material, loadTexture);
+        Span<float> floats = CollectionsMarshal.AsSpan(values);
+        return MemoryMarshal.AsBytes(floats).ToArray();
+    }
+
+    private static void AddValues(List<float> values, IReadOnlyList<ShaderParameter> parameters, MaterialFile? material, Func<string, MaterialTexture>? loadTexture)
+    {
         foreach (ShaderParameter parameter in parameters)
         {
             JsonElement value = parameter.Default;
@@ -46,9 +118,6 @@ public static class MaterialLayout
 
             AddValue(values, parameter, value);
         }
-
-        Span<float> floats = CollectionsMarshal.AsSpan(values);
-        return MemoryMarshal.AsBytes(floats).ToArray();
     }
 
     private static void CheckNames(IReadOnlyList<ShaderParameter> parameters, MaterialFile material)

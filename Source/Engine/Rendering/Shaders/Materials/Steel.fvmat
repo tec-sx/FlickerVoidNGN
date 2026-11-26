@@ -1,0 +1,10 @@
+// Bare steel: cool grey, a sharp highlight.
+{
+  "parent": "Engine/Rendering/Masters/Metal.fvmaster",
+  "parameters": {
+    "tint": [0.62, 0.63, 0.66],
+    "specular": 1.2,
+    "glossiness": 0.7,
+    "metalness": 1
+  }
+}

@@ -20,6 +20,11 @@ internal sealed class MaterialLayoutTestsBuilder
 
     public IReadOnlyList<ShaderParameter> Parameters { get; } = JsonSerializer.Deserialize(Declared, RenderingJsonContext.Default.ShaderParameters)!.Parameters;
 
+    public static MasterFile Master(string json)
+    {
+        return JsonSerializer.Deserialize(json, RenderingJsonContext.Default.MasterFile)!;
+    }
+
     public static MaterialFile Material(string json)
     {
         return JsonSerializer.Deserialize(json, RenderingJsonContext.Default.MaterialFile)!;

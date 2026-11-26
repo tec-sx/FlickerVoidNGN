@@ -21,6 +21,9 @@ public sealed record MasterFile
 
     public ShadingModel ShadingModel { get; init; }
 
+    /// <summary>Whether both sides of its surfaces are drawn, the back's normal turned toward the camera, as cards of leaves need.</summary>
+    public bool TwoSided { get; init; }
+
     public List<ShaderParameter> Parameters { get; set; } = [];
 
     /// <summary>The content path of a master's compiled geometry pass.</summary>

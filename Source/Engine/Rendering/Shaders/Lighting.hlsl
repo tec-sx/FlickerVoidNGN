@@ -514,7 +514,7 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     float keep = NearShadow(frame, objectDepth);
     float3 diffuse = ambient * occlusion + direct * keep;
     specular *= keep;
-    float3 color = albedo.rgb * diffuse + specular;
+    float3 color = ShadeSurface(material, albedo.rgb, diffuse, specular, ambient);
 
     // Painted touches: a tint where little light falls, a rim toward the silhouette, and the material's own glow.
     float lit = saturate(max(diffuse.r, max(diffuse.g, diffuse.b)));

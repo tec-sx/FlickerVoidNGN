@@ -1,0 +1,9 @@
+// A bare bulb: warm, very bright.
+{
+  "parent": "Engine/Rendering/Masters/Glow.fvmaster",
+  "parameters": {
+    "tint": [1, 0.8, 0.55],
+    "glow": 16,
+    "lit": 0
+  }
+}

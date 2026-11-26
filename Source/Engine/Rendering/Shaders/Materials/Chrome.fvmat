@@ -1,0 +1,10 @@
+// Chrome: almost no paint of its own, a tight bright highlight.
+{
+  "parent": "Engine/Rendering/Masters/Metal.fvmaster",
+  "parameters": {
+    "tint": [0.9, 0.9, 0.92],
+    "specular": 2,
+    "glossiness": 0.95,
+    "metalness": 1
+  }
+}

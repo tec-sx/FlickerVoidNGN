@@ -1,0 +1,20 @@
+{
+  // Painted opaque surfaces: walls, floors, wood, rubber, cloth. A second painted layer (grime, damp, dust, moss) lies over the
+  // painting, by a mask, by height above the ground or on what faces up, and a tint varies by place so repeats don't show.
+  "shadingModel": "Painted",
+  "parameters": [
+    // A painting or image laid over the surface; its alpha is where it lies. None lays the layer's tint alone.
+    { "name": "layer", "type": "texture", "default": null },
+    { "name": "layerTint", "type": "color", "default": [0.35, 0.32, 0.28] },
+    { "name": "layerScale", "type": "float", "default": 1, "minimum": 0.1, "maximum": 16 },
+    // How much of the layer lies over the surface: 0 none, 1 all of it where its mask is whole.
+    { "name": "layerAmount", "type": "float", "default": 0, "minimum": 0, "maximum": 1 },
+    // Above this height (world units, from the ground at 0) the layer fades out, as damp rising up a wall; 0 lays it at every height.
+    { "name": "layerHeight", "type": "float", "default": 0, "minimum": 0, "maximum": 10 },
+    // How much the layer keeps to what faces up, as dust or moss: 0 everywhere, 1 only on tops.
+    { "name": "layerFacingUp", "type": "float", "default": 0, "minimum": 0, "maximum": 1 },
+    // How much the tint strays from place to place, and how large the patches are in world units.
+    { "name": "variation", "type": "float", "default": 0, "minimum": 0, "maximum": 1 },
+    { "name": "variationScale", "type": "float", "default": 1, "minimum": 0.05, "maximum": 10 }
+  ]
+}

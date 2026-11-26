@@ -1,0 +1,10 @@
+// Hard plastic: clean color and a small bright highlight.
+{
+  "parent": "Engine/Rendering/Masters/Surface.fvmaster",
+  "parameters": {
+    "tint": [0.8, 0.8, 0.8],
+    "rampSoftness": 0.6,
+    "specular": 0.8,
+    "glossiness": 0.7
+  }
+}
