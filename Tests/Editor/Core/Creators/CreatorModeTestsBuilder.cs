@@ -61,13 +61,13 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
     public CreatorMode EnterInPlace(string name)
     {
         Entity placed = Find(name);
-        return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save, FindMesh, ApplyMesh);
+        return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save, FindMesh, ApplyMesh, IsMirrored, SetMirror);
     }
 
     public CreatorMode EnterAlone()
     {
         Vehicle vehicle = new() { File = File };
-        return CreatorMode.Alone(Scene, Camera, vehicle, FileHistory, Save, FindMesh, ApplyMesh);
+        return CreatorMode.Alone(Scene, Camera, vehicle, FileHistory, Save, FindMesh, ApplyMesh, IsMirrored, SetMirror);
     }
 
     /// <summary>Writes the car file again with the wheel count, as the creator's panel would.</summary>
@@ -118,6 +118,36 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
         }
 
         MeshEdits.Add(id);
+        string json = Serialize(_car);
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+        Scene.Content.Write(File, bytes);
+    }
+
+    /// <summary>Whether the car's part has its mirror switch on.</summary>
+    public bool IsMirrored(string id)
+    {
+        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        {
+            if (partId == id)
+            {
+                return part.Mirror;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Sets the car's part's mirror switch and writes the file, as the creator's panel would.</summary>
+    public void SetMirror(string id, bool on)
+    {
+        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        {
+            if (partId == id)
+            {
+                part.Mirror = on;
+            }
+        }
+
         string json = Serialize(_car);
         byte[] bytes = Encoding.UTF8.GetBytes(json);
         Scene.Content.Write(File, bytes);

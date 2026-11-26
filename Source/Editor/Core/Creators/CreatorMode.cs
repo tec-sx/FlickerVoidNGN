@@ -35,16 +35,20 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     private readonly Func<bool> _save;
     private readonly Func<string, SolidMesh?>? _findMesh;
     private readonly Action<string, SolidMesh>? _applyMesh;
+    private readonly Func<string, bool>? _isMirrored;
+    private readonly Action<string, bool>? _setMirror;
     private SolidMesh? _meshSolid;
     private readonly List<Entity> _marked = [];
 
-    private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh, Action<string, SolidMesh>? applyMesh)
+    private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh, Action<string, SolidMesh>? applyMesh, Func<string, bool>? isMirrored, Action<string, bool>? setMirror)
     {
         _scene = scene;
         _camera = camera;
         _save = save;
         _findMesh = findMesh;
         _applyMesh = applyMesh;
+        _isMirrored = isMirrored;
+        _setMirror = setMirror;
         Root = root;
         Placement = placement;
         History = history;
@@ -85,22 +89,22 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// Makes the creation placed in the level, greying the rest of it. <paramref name="findMesh"/> gives the mesh of a part by its id,
     /// for entering the mesh.
     /// </summary>
-    public static CreatorMode InPlace(EditorScene scene, EditorCamera camera, Entity placed, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null)
+    public static CreatorMode InPlace(EditorScene scene, EditorCamera camera, Entity placed, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null, Func<string, bool>? isMirrored = null, Action<string, bool>? setMirror = null)
     {
-        return new CreatorMode(scene, camera, placed, CreatorPlacement.InPlace, history, save, findMesh, applyMesh);
+        return new CreatorMode(scene, camera, placed, CreatorPlacement.InPlace, history, save, findMesh, applyMesh, isMirrored, setMirror);
     }
 
     /// <summary>
     /// Makes a creation alone: places a temporary entity with <paramref name="creation"/>, the component that names its file, at the
     /// origin, outside the scene, and sets the level aside.
     /// </summary>
-    public static CreatorMode Alone<T>(EditorScene scene, EditorCamera camera, T creation, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null)
+    public static CreatorMode Alone<T>(EditorScene scene, EditorCamera camera, T creation, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null, Func<string, bool>? isMirrored = null, Action<string, bool>? setMirror = null)
         where T : struct
     {
         World world = scene.Game.World;
         Entity copy = world.Create(new Transform(), creation);
         scene.Game.Lifecycle.Start(world, copy);
-        return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh, applyMesh);
+        return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh, applyMesh, isMirrored, setMirror);
     }
 
     public bool Save() => _save();
@@ -225,6 +229,22 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         selection.Select(hit, additive);
     }
 
+    /// <summary>Whether the entered part's mirror switch is on: its edits are made on both sides of its centre line.</summary>
+    public bool Mirror => MeshPart is { } id && _isMirrored?.Invoke(id) == true;
+
+    /// <summary>Turns the entered part's mirror switch on or off, kept in its file as one undo step; false outside the mesh.</summary>
+    public bool SetMirror(bool on)
+    {
+        if (MeshSelection is null || MeshPart is not { } id || _setMirror is null)
+        {
+            return false;
+        }
+
+        _setMirror(id, on);
+        MeshModeChanged?.Invoke();
+        return true;
+    }
+
     /// <summary>Moves the selected points by an offset in the part's own space, as one undo step; false when none is selected.</summary>
     public bool MoveMesh(Vector3 offset) => EditMesh(solid => MeshEdit.Move(solid, MeshSelection!.Points, offset));
 
@@ -238,19 +258,19 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// Extrudes the selected faces by a distance along their normal as one undo step, leaving the pushed faces selected in face mode;
     /// false when no face is selected or all are.
     /// </summary>
-    public bool ExtrudeMesh(float distance) => ReplaceMesh((solid, selected) => MeshExtrude.Faces(solid, selected.Faces, distance));
+    public bool ExtrudeMesh(float distance) => ReplaceMesh((solid, selected) => MeshExtrude.Faces(solid, GetFaces(solid, selected), distance));
 
     /// <summary>
     /// Insets the selected faces by a thickness as one undo step, leaving the inner faces selected in face mode; false when no face
     /// is selected or all are.
     /// </summary>
-    public bool InsetMesh(float thickness) => ReplaceMesh((solid, selected) => MeshInset.Faces(solid, selected.Faces, thickness));
+    public bool InsetMesh(float thickness) => ReplaceMesh((solid, selected) => MeshInset.Faces(solid, GetFaces(solid, selected), thickness));
 
     /// <summary>
     /// Bevels the selected edges (Ctrl+B) as one undo step: each becomes a strip of the width on each face, in rows, flat or
     /// <paramref name="round"/>; the strips stay selected. False when no edge is selected or a point of one can't take it.
     /// </summary>
-    public bool BevelMesh(float width, int rows, bool round) => ReplaceMesh((solid, selected) => MeshBevel.Edges(solid, selected.Edges, width, rows, round));
+    public bool BevelMesh(float width, int rows, bool round) => ReplaceMesh((solid, selected) => MeshBevel.Edges(solid, GetEdges(solid, selected), width, rows, round));
 
     /// <summary>
     /// Cuts loops across the ring of quads through the edge of the face under the mouse nearest it (Ctrl+R), as one undo step,
@@ -272,7 +292,68 @@ public sealed class CreatorMode : IViewportMode, IDisposable
             return false;
         }
 
-        return ReplaceMesh((current, _) => MeshLoopCut.Cut(current, found.Edge, cuts, slide));
+        return ReplaceMesh((current, _) => CutLoops(current, found.Edge, cuts, slide));
+    }
+
+    private IReadOnlySet<int> GetFaces(SolidMesh solid, MeshSelection selected)
+    {
+        if (Mirror)
+        {
+            return MeshMirror.ExpandFaces(solid, selected.Faces);
+        }
+
+        return selected.Faces;
+    }
+
+    private IReadOnlySet<SolidEdge> GetEdges(SolidMesh solid, MeshSelection selected)
+    {
+        if (Mirror)
+        {
+            return MeshMirror.ExpandEdges(solid, selected.Edges);
+        }
+
+        return selected.Edges;
+    }
+
+    // With the mirror on, the ring across the centre line from the edge's is cut the same, unless it is the same ring.
+    private MeshResult? CutLoops(SolidMesh solid, SolidEdge edge, int cuts, float slide)
+    {
+        MeshResult? first = MeshLoopCut.Cut(solid, edge, cuts, slide);
+        if (first is null || !Mirror)
+        {
+            return first;
+        }
+
+        int[] twins = MeshMirror.FindTwins(solid);
+        if (twins[edge.A] < 0 || twins[edge.B] < 0)
+        {
+            return first;
+        }
+
+        SolidEdge twin = SolidEdge.Of(twins[edge.A], twins[edge.B]);
+        SolidTopology topology = new(first.Solid);
+        if (twin == edge || !topology.Edges.Contains(twin) || new SolidTopology(solid).GetEdgeRing(edge).Contains(twin))
+        {
+            return first;
+        }
+
+        MeshResult? second = null;
+        foreach (float candidate in new[] { slide, -slide })
+        {
+            MeshResult? tried = MeshLoopCut.Cut(first.Solid, twin, cuts, candidate);
+            if (tried is not null && MeshMirror.FindTwins(tried.Solid).All(point => point >= 0))
+            {
+                second = tried;
+                break;
+            }
+        }
+
+        if (second is null)
+        {
+            return first;
+        }
+
+        return second with { Edges = [.. first.Edges, .. second.Edges] };
     }
 
     private bool ReplaceMesh(Func<SolidMesh, MeshSelection, MeshResult?> tool)
@@ -318,6 +399,11 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         }
 
         SolidMesh edited = edit(solid);
+        if (Mirror)
+        {
+            edited = MeshMirror.Follow(solid, edited, selection.Points);
+        }
+
         _meshSolid = edited;
         selection.TryFollow(edited);
         _applyMesh(id, edited);

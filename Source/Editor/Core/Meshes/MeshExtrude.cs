@@ -41,7 +41,7 @@ public static class MeshExtrude
 
         List<Vector3> points = [.. solid.Points];
         Dictionary<int, int> copies = [];
-        Vector3 push = GetNormal(solid, faces) * distance;
+        Dictionary<int, Vector3> pushes = GetPushes(solid, faces, owner, distance);
         List<int[]> result = [];
         List<int[]> walls = [];
         List<int> moved = [];
@@ -57,7 +57,7 @@ public static class MeshExtrude
             int[] pushed = new int[corners.Count];
             for (int corner = 0; corner < corners.Count; corner++)
             {
-                pushed[corner] = GetCopy(solid, points, copies, push, corners[corner]);
+                pushed[corner] = GetCopy(solid, points, copies, pushes[face], corners[corner]);
             }
 
             moved.Add(result.Count);
@@ -89,6 +89,42 @@ public static class MeshExtrude
         points.Add(solid.Points[point] + push);
         copies[point] = copy;
         return copy;
+    }
+
+    // Each run of selected faces that touch along edges is pushed along its own average normal.
+    private static Dictionary<int, Vector3> GetPushes(SolidMesh solid, IReadOnlySet<int> faces, Dictionary<(int, int), int> owner, float distance)
+    {
+        Dictionary<int, Vector3> pushes = [];
+        foreach (int start in faces)
+        {
+            if (pushes.ContainsKey(start))
+            {
+                continue;
+            }
+
+            List<int> region = [start];
+            HashSet<int> seen = [start];
+            for (int index = 0; index < region.Count; index++)
+            {
+                IReadOnlyList<int> corners = solid.Faces[region[index]];
+                for (int corner = 0; corner < corners.Count; corner++)
+                {
+                    int across = owner[(corners[(corner + 1) % corners.Count], corners[corner])];
+                    if (faces.Contains(across) && seen.Add(across))
+                    {
+                        region.Add(across);
+                    }
+                }
+            }
+
+            Vector3 push = GetNormal(solid, seen) * distance;
+            foreach (int face in region)
+            {
+                pushes[face] = push;
+            }
+        }
+
+        return pushes;
     }
 
     private static Vector3 GetNormal(SolidMesh solid, IReadOnlySet<int> faces)

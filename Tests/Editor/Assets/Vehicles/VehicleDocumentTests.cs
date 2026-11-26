@@ -69,6 +69,21 @@ public sealed class VehicleDocumentTests : IDisposable
     }
 
     [Fact]
+    public void TheMirrorSwitchIsOneUndoStepHeldInTheFile()
+    {
+        VehicleDocument document = _builder.Build();
+        UndoHistory history = _builder.Content.GetHistory(VehicleDocumentTestsBuilder.Van);
+
+        document.SetMirror("body", true);
+
+        _builder.Load().Body.Mirror.Should().BeTrue();
+        history.Undo();
+        _builder.Load().Body.Mirror.Should().BeFalse();
+        Action unknown = () => document.SetMirror("roof", true);
+        unknown.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
     public void ASolidForAPartTheVehicleLacksIsRefused()
     {
         VehicleDocument document = _builder.Build();

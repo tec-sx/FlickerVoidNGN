@@ -62,4 +62,13 @@ public sealed class MeshExtrudeTests
         result.Should().NotBeNull();
         new SolidTopology(result!.Solid).Edges.Should().HaveCount(result.Solid.Points.Count + result.Solid.Faces.Count - 2);
     }
+
+    [Fact]
+    public void SeparateRegionsArePushedAlongTheirOwnNormals()
+    {
+        MeshResult? result = MeshExtrude.Faces(_box, new HashSet<int> { 0, 1 }, 0.5f);
+
+        result!.Solid.Points.Min(point => point.X).Should().BeApproximately(-1, 1e-5f);
+        result.Solid.Points.Max(point => point.X).Should().BeApproximately(1, 1e-5f);
+    }
 }

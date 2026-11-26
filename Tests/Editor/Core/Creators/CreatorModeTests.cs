@@ -389,6 +389,69 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void TheMirrorSwitchIsKeptInTheFileAndNeedsTheMeshEntered()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+
+        bool outside = mode.SetMirror(true);
+        mode.EnterMesh();
+        bool inside = mode.SetMirror(true);
+
+        outside.Should().BeFalse();
+        inside.Should().BeTrue();
+        mode.Mirror.Should().BeTrue();
+        _builder.IsMirrored("body").Should().BeTrue();
+    }
+
+    [Fact]
+    public void WithTheMirrorOnMovingAPointMovesItsTwinTheOtherWay()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.SetMirror(true);
+        mode.MeshSelection!.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfPoint(1), additive: false);
+
+        mode.MoveMesh(new Vector3(0.2f, 0, 0));
+
+        FlickerVoid.Engine.Runtime.Solids.SolidMesh body = _builder.FindMesh("body")!;
+        body.Points[0].X.Should().BeApproximately(-body.Points[1].X, 1e-4f);
+    }
+
+    [Fact]
+    public void WithTheMirrorOnExtrudingASideFaceExtrudesTheOtherSideToo()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.SetMirror(true);
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfFace(0, default), additive: false);
+        int points = _builder.FindMesh("body")!.Points.Count;
+
+        mode.ExtrudeMesh(0.3f);
+
+        _builder.FindMesh("body")!.Points.Should().HaveCount(points + 8);
+        mode.MeshSelection!.Faces.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void WithTheMirrorOnALoopCutLeavesTheSolidSymmetric()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.SetMirror(true);
+        Vector2 side = _builder.PixelOf(new Vector3(0.9f, 1, 0));
+
+        bool cut = mode.LoopCutMesh(side, Width, Height, 1, 0.3f);
+
+        cut.Should().BeTrue();
+        FlickerVoid.Editor.Core.Meshes.MeshMirror.FindTwins(_builder.FindMesh("body")!).Should().NotContain(-1);
+    }
+
+    [Fact]
     public void ExtrudingWithNoFaceSelectedDoesNothing()
     {
         using CreatorMode mode = _builder.EnterAlone();

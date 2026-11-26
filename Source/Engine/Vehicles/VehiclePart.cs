@@ -17,6 +17,13 @@ public sealed class VehiclePart
 
     public required SolidMesh Mesh { get; set; }
 
+    /// <summary>
+    /// Whether the creator edits the mesh the same on both sides of the part's centre line (its X = 0 plane); the switch is kept
+    /// here so the file opens with it as it was left.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Mirror { get; set; }
+
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PartJoint? Joint { get; set; }
 
