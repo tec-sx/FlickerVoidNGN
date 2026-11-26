@@ -39,6 +39,13 @@ public sealed record LightingMood
     [Range(0, 30)]
     public float SunAngle { get; set; } = 1;
 
+    /// <summary>The color of the sun's light, linear.</summary>
+    public Vector3 SunColor { get; set; } = Vector3.One;
+
+    /// <summary>How strong the sun's light is, times its color; 1 lights as the sun always has.</summary>
+    [Range(0, 100)]
+    public float SunIntensity { get; set; } = 1;
+
     /// <summary>How much of the light crossing a world unit of fog it absorbs or scatters, at and below <see cref="FogHeight"/>; 0 clears the air.</summary>
     public float FogDensity { get; set; }
 

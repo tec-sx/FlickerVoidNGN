@@ -18,6 +18,8 @@ internal sealed class MoodValuesTestsBuilder
             Ambient = 0.6f,
             SunShadowDistance = 12,
             SunAngle = 3,
+            SunColor = new Vector3(1, 0.8f, 0.6f),
+            SunIntensity = 2,
             FogDensity = 0.2f,
             FogColor = new Vector3(0.9f, 0.8f, 0.7f),
             FogAnisotropy = -0.2f,
