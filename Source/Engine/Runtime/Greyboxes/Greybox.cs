@@ -20,6 +20,10 @@ public struct Greybox
     /// <summary>Whether others collide with it: while playing, physics gives it a static box of its size.</summary>
     public bool Solid { get; set; } = true;
 
+    /// <summary>The material the box is drawn in, such as glass or neon; none draws it grey. A swap model keeps its own.</summary>
+    [ContentFile(".fvmat")]
+    public string? Material { get; set; }
+
     /// <summary>Models that may stand in the box's place, drawn at the entity's transform.</summary>
     [ContentFile(".glb", ".gltf")]
     public string[]? Swaps { get; set; }

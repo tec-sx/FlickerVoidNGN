@@ -73,9 +73,16 @@ public sealed class WorldExtractor : IRenderExtractor
         {
             Matrix4x4 meshWorld = transform.ToMatrix();
             Outline? outline = FindOutline(world, entity);
-            string mesh = greybox.GetShownSwap() ?? GreyboxMesh.GetName(greybox.Size);
+            string? swap = greybox.GetShownSwap();
+            string mesh = swap ?? GreyboxMesh.GetName(greybox.Size);
+            string[]? materials = null;
+            if (swap is null && greybox.Material is { } material)
+            {
+                materials = [material];
+            }
+
             MeshFlags flags = GetFlags(world, entity);
-            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, mesh, null, null, outline, flags));
+            scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, mesh, null, materials, outline, flags));
         });
         world.Query(in Doorways, (Entity entity, ref Doorway doorway, ref Transform transform) =>
         {

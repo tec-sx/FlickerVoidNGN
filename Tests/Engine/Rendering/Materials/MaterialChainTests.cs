@@ -143,6 +143,16 @@ public sealed class MaterialChainTests : IDisposable
     }
 
     [Fact]
+    public void IsCheckedWithTheEnginesImagesNamedByTheirSources()
+    {
+        _builder.With("Shiny.fvmat", """{ "parameters": { "texture": "Engine/Rendering/Reflections/Quarry.jpg" } }""");
+
+        IReadOnlyList<ContentProblem> problems = _builder.Check();
+
+        problems.Should().BeEmpty("the build leaves the engine's images as .dds files, which content names by their sources");
+    }
+
+    [Fact]
     public void IsCheckedForAnEngineMasterThatIsNotBuilt()
     {
         _builder.With("Wall.fvmat", """{ "parent": "Engine/Rendering/Masters/Missing.fvmaster" }""");
