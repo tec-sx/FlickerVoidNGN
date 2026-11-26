@@ -44,14 +44,14 @@ public sealed class CurveView : Control
     /// <summary>How far the mouse may move, in pixels, for a right-click to open the modes rather than pan.</summary>
     private const double ClickSlop = 4;
 
-    private static readonly IBrush Background = new SolidColorBrush(Color.Parse("#17150F"));
-    private static readonly IPen MinorPen = new Pen(new SolidColorBrush(Color.Parse("#221F1D")), 1);
-    private static readonly IPen MajorPen = new Pen(new SolidColorBrush(Color.Parse("#2E2B26")), 1);
-    private static readonly IPen DayPen = new Pen(new SolidColorBrush(Color.Parse("#3E4B34")), 1);
-    private static readonly IBrush LabelBrush = new SolidColorBrush(Color.Parse("#9C9A88"));
-    private static readonly IBrush SelectedBrush = new SolidColorBrush(Color.Parse("#D8955A"));
-    private static readonly IBrush KeyBrush = new SolidColorBrush(Color.Parse("#E8E5DD"));
-    private static readonly IPen HandlePen = new Pen(new SolidColorBrush(Color.Parse("#B9BBA8")), 1);
+    private static readonly IBrush Background = new SolidColorBrush(Color.Parse("#0B0705"));
+    private static readonly IPen MinorPen = new Pen(new SolidColorBrush(Color.Parse("#1D1610")), 1);
+    private static readonly IPen MajorPen = new Pen(new SolidColorBrush(Color.Parse("#2A2119")), 1);
+    private static readonly IPen DayPen = new Pen(new SolidColorBrush(Color.Parse("#3A2F26")), 1);
+    private static readonly IBrush LabelBrush = new SolidColorBrush(Color.Parse("#8F8372"));
+    private static readonly IBrush SelectedBrush = new SolidColorBrush(Color.Parse("#F5A639"));
+    private static readonly IBrush KeyBrush = new SolidColorBrush(Color.Parse("#EDE5D8"));
+    private static readonly IPen HandlePen = new Pen(new SolidColorBrush(Color.Parse("#B6AB99")), 1);
     private static readonly IPen CursorPen = new Pen(new SolidColorBrush(Color.Parse("#D9B23A")), 2);
 
     private readonly List<CurveTrack> _watchedTracks = [];

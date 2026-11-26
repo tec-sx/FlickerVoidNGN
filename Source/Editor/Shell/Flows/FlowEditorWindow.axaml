@@ -39,12 +39,12 @@
           </ItemsControl.ItemContainerTheme>
           <ItemsControl.ItemTemplate>
             <DataTemplate DataType="flows:FlowNodeViewModel">
-              <Border Width="180" Height="{Binding Height}" CornerRadius="4" Background="#2B2926"
+              <Border Width="180" Height="{Binding Height}" CornerRadius="4" Background="#2A2119"
                       BorderThickness="1" Classes="node" Classes.selected="{Binding IsSelected}"
                       BoxShadow="0 6 18 2 #E0000000">
                 <Border.Styles>
                   <Style Selector="Border.node">
-                    <Setter Property="BorderBrush" Value="#45413B" />
+                    <Setter Property="BorderBrush" Value="#3A2F26" />
                   </Style>
                   <Style Selector="Border.node.selected">
                     <Setter Property="BorderBrush" Value="#E0AC2C" />
@@ -52,13 +52,13 @@
                   <Style Selector="Ellipse.pin">
                     <Setter Property="Width" Value="12" />
                     <Setter Property="Height" Value="12" />
-                    <Setter Property="Stroke" Value="#1A1918" />
+                    <Setter Property="Stroke" Value="#17110C" />
                     <Setter Property="StrokeThickness" Value="1" />
                   </Style>
                   <Style Selector="Panel.pinTarget:pointerover Ellipse.pin">
                     <Setter Property="Width" Value="14" />
                     <Setter Property="Height" Value="14" />
-                    <Setter Property="Stroke" Value="#F2E6C8" />
+                    <Setter Property="Stroke" Value="#EDE5D8" />
                   </Style>
                 </Border.Styles>
                 <StackPanel>
@@ -74,7 +74,7 @@
                           <StackPanel Orientation="Horizontal" Height="22" Spacing="0" Margin="-11,0,0,0" Background="Transparent">
                             <Panel Classes="pinTarget" Width="22" Height="22" Background="Transparent" Cursor="Hand"
                                    ToolTip.Tip="Drag to wire, or onto empty space to add a node; right-click for options">
-                              <Ellipse Classes="pin" Fill="#C8C2B0" />
+                              <Ellipse Classes="pin" Fill="#B6AB99" />
                             </Panel>
                             <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center" />
                           </StackPanel>

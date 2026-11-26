@@ -16,7 +16,7 @@
         <Image x:Name="Preview" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None" />
       </Border>
       <TextBlock Text="{Binding Summary}" HorizontalAlignment="Center" />
-      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxWidth="384" Foreground="#E0A040" />
+      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxWidth="384" Foreground="#E0AC2C" />
     </StackPanel>
     <!-- The settings, held unsaved as they change until saved or discarded. -->
     <Border Grid.Column="1" Classes="well" Margin="0,12,12,12">

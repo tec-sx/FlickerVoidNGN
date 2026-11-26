@@ -1,4 +1,4 @@
-<!-- The editor's one theme: Fluent recoloured with a warm dark palette (deep browns and greens, never grey or black), compact
+<!-- The editor's one theme: Fluent recoloured with a warm dark palette (lamp-lit browns with one amber accent, never grey; palette A, Ember), compact
      sizes (smaller fonts, square corners, tight padding) and the shared classes of the shell's bars, icon buttons, headings and
      viewport overlay, so the viewport gets as much of the window as it can. Views use these classes and resources instead of
      their own colours and sizes. -->
@@ -9,29 +9,29 @@
   <FluentTheme>
     <FluentTheme.Palettes>
       <ColorPaletteResources x:Key="Dark"
-                             RegionColor="#2A3723" Accent="#D8955A" ErrorText="#E0664A"
-                             AltHigh="#17150F" AltLow="#17150F" AltMedium="#17150F" AltMediumHigh="#17150F" AltMediumLow="#17150F"
-                             BaseHigh="#E8E5DD" BaseLow="#3A372B" BaseMedium="#9C9A88" BaseMediumHigh="#B9BBA8" BaseMediumLow="#6E6C5C"
-                             ChromeAltLow="#B9BBA8" ChromeBlackHigh="#0C0A08" ChromeBlackLow="#B9BBA8" ChromeBlackMedium="#17150F"
-                             ChromeBlackMediumLow="#2A2820" ChromeDisabledHigh="#3A372B" ChromeDisabledLow="#6E6C5C" ChromeGray="#8A8775"
-                             ChromeHigh="#4A4636" ChromeLow="#1A1812" ChromeMedium="#24221A" ChromeMediumLow="#2B291F" ChromeWhite="#E8E5DD"
-                             ListLow="#2E3226" ListMedium="#394030" />
+                             RegionColor="#120D09" Accent="#F5A639" ErrorText="#E0664A"
+                             AltHigh="#0B0705" AltLow="#0B0705" AltMedium="#0B0705" AltMediumHigh="#0B0705" AltMediumLow="#0B0705"
+                             BaseHigh="#EDE5D8" BaseLow="#2A2119" BaseMedium="#8F8372" BaseMediumHigh="#B6AB99" BaseMediumLow="#6B6052"
+                             ChromeAltLow="#B6AB99" ChromeBlackHigh="#0C0A08" ChromeBlackLow="#B6AB99" ChromeBlackMedium="#0B0705"
+                             ChromeBlackMediumLow="#2A2119" ChromeDisabledHigh="#2A2119" ChromeDisabledLow="#6B6052" ChromeGray="#8F8372"
+                             ChromeHigh="#3A2F26" ChromeLow="#17110C" ChromeMedium="#241C14" ChromeMediumLow="#2A2119" ChromeWhite="#EDE5D8"
+                             ListLow="#2A2119" ListMedium="#34291F" />
     </FluentTheme.Palettes>
   </FluentTheme>
   <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
 
   <Styles.Resources>
     <!-- The editor's palette, from deepest to lightest, then the colours of actions and axes. -->
-    <SolidColorBrush x:Key="EditorDeepBrush" Color="#17150F" />
-    <SolidColorBrush x:Key="EditorPanelBrush" Color="#1F1D16" />
+    <SolidColorBrush x:Key="EditorDeepBrush" Color="#0B0705" />
+    <SolidColorBrush x:Key="EditorPanelBrush" Color="#1D1610" />
     <!-- The frame around the content: bars, headers, tabs and the gaps between panels, lighter than the wells it holds. -->
-    <SolidColorBrush x:Key="EditorFrameBrush" Color="#2A3723" />
-    <SolidColorBrush x:Key="EditorControlBrush" Color="#2E3226" />
-    <SolidColorBrush x:Key="EditorLineBrush" Color="#3E4B34" />
-    <SolidColorBrush x:Key="EditorTextBrush" Color="#E8E5DD" />
-    <SolidColorBrush x:Key="EditorMutedTextBrush" Color="#B9BBA8" />
-    <SolidColorBrush x:Key="EditorAccentBrush" Color="#D8955A" />
-    <SolidColorBrush x:Key="EditorOverlayBrush" Color="#D91F1D16" />
+    <SolidColorBrush x:Key="EditorFrameBrush" Color="#120D09" />
+    <SolidColorBrush x:Key="EditorControlBrush" Color="#2A2119" />
+    <SolidColorBrush x:Key="EditorLineBrush" Color="#3A2F26" />
+    <SolidColorBrush x:Key="EditorTextBrush" Color="#EDE5D8" />
+    <SolidColorBrush x:Key="EditorMutedTextBrush" Color="#B6AB99" />
+    <SolidColorBrush x:Key="EditorAccentBrush" Color="#F5A639" />
+    <SolidColorBrush x:Key="EditorOverlayBrush" Color="#E01D1610" />
     <SolidColorBrush x:Key="EditorPlayBrush" Color="#A6C33F" />
     <SolidColorBrush x:Key="EditorSaveBrush" Color="#4A9BBF" />
     <SolidColorBrush x:Key="EditorDeleteBrush" Color="#C8553D" />
@@ -41,6 +41,13 @@
     <SolidColorBrush x:Key="EditorAxisZBrush" Color="#4A8FBF" />
     <!-- The bar of every other number box, which drags like the axes do. -->
     <SolidColorBrush x:Key="EditorValueBrush" Color="#D9B23A" />
+
+    <!-- Colours the code views draw with: the curve palette, code assets, the splash track and shadows. -->
+    <Color x:Key="EditorCurveBlue">#5ACCFF</Color>
+    <Color x:Key="EditorCurvePink">#D97BA6</Color>
+    <Color x:Key="EditorCodeColor">#B48EC9</Color>
+    <Color x:Key="EditorSplashTrack">#26FFFFFF</Color>
+    <Color x:Key="EditorNodeShadow">#E0000000</Color>
 
     <!-- Fluent's own tokens, read by its control themes. -->
     <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
@@ -67,8 +74,8 @@
     <x:Double x:Key="EditorMenuMaxHeight">360</x:Double>
     <CornerRadius x:Key="EditorSearchCornerRadius">10</CornerRadius>
     <!-- The wells: content sunk into the frame, slightly rounded, shaded along their top and sides. -->
-    <CornerRadius x:Key="EditorWellCornerRadius">5</CornerRadius>
-    <BoxShadows x:Key="EditorWellShadow">inset 0 3 10 2 #F0000000</BoxShadows>
+    <CornerRadius x:Key="EditorWellCornerRadius">3</CornerRadius>
+    <BoxShadows x:Key="EditorWellShadow">0 0 0 0 #00000000</BoxShadows>
 
     <!-- The item of a menu built from choices (MenuNode): its icon, its key and its submenu, or a separator. -->
     <ControlTheme x:Key="ChoiceMenuItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="menus:MenuNode">

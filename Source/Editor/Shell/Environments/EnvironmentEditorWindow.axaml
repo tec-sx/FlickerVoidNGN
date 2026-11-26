@@ -64,7 +64,7 @@
           <DataTemplate DataType="corecurves:ColorTrack">
             <Grid ColumnDefinitions="*" Height="26" Margin="0,1">
               <curves:ColorStrip x:Name="Strip" Track="{Binding}" Range="{Binding $parent[Window].((environments:EnvironmentEditorViewModel)DataContext).Curves.Range}" />
-              <TextBlock Text="{Binding Name}" FontSize="10" Margin="4,1" IsHitTestVisible="False" Foreground="#E8E5DD" />
+              <TextBlock Text="{Binding Name}" FontSize="10" Margin="4,1" IsHitTestVisible="False" Foreground="#EDE5D8" />
             </Grid>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
