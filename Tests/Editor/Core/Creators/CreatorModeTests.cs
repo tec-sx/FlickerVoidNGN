@@ -340,6 +340,37 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void ALoopCutAtTheFaceUnderTheMouseEditsTheMeshOnceAndSelectsTheNewEdges()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        Vector2 top = _builder.PixelOf(new Vector3(0, 1.65f, 0));
+        int faces = _builder.FindMesh("body")!.Faces.Count;
+
+        bool cut = mode.LoopCutMesh(top, Width, Height, 1, 0);
+
+        cut.Should().BeTrue();
+        _builder.MeshEdits.Should().Equal("body");
+        _builder.FindMesh("body")!.Faces.Count.Should().BeGreaterThan(faces);
+        mode.MeshSelection!.Element.Should().Be(FlickerVoid.Editor.Core.Meshes.MeshElement.Edge);
+        mode.MeshSelection.Edges.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void ALoopCutBesideTheSolidDoesNothing()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+
+        bool cut = mode.LoopCutMesh(new Vector2(5, 5), Width, Height, 1, 0);
+
+        cut.Should().BeFalse();
+        _builder.MeshEdits.Should().BeEmpty();
+    }
+
+    [Fact]
     public void ExtrudingWithNoFaceSelectedDoesNothing()
     {
         using CreatorMode mode = _builder.EnterAlone();
