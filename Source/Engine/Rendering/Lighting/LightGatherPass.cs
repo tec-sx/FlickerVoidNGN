@@ -29,7 +29,8 @@ internal sealed class LightGatherPass : IRenderPass
         LightingMood mood = context.Mood;
         if (mood.SunShadowDistance > 0 && (!context.RayTracing || NeedsFogShadows(context)))
         {
-            Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
+            DirectionalLight directional = DirectionalLight.Of(mood);
+            Vector3 sunDirection = Vector3.Normalize(directional.Direction);
             Matrix4x4 sun = ShadowProjections.FitSun(context.Camera, context.View, sunDirection, mood.SunShadowDistance, SunCasterReach);
             context.SunShadow = AddShadow(context, sun, _atlas.Sun, orthographic: true);
         }

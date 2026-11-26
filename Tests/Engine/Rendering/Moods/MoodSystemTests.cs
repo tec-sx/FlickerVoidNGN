@@ -84,6 +84,18 @@ public sealed class MoodSystemTests : IDisposable
     }
 
     [Fact]
+    public void TurnsTheSunAlongTheScenesPath()
+    {
+        _builder.Spawn("""{ "sceneEnvironment": { "environment": "Street.fvenv", "latitude": 0, "north": 90 } }""");
+        MoodSystem moods = _builder.Build();
+        _builder.Game.Clock.Set(1, 6);
+
+        _builder.Update();
+
+        moods.Current.SunDirection.Z.Should().BeApproximately(-1, Precision, "at dawn the light comes from the east, +Z with north at +X");
+    }
+
+    [Fact]
     public void LaysTheScenesMoodOverItsEnvironment()
     {
         _builder.WithFile("Dim.fvmood", """{ "ambient": 0.1 }""");

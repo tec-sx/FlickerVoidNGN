@@ -47,7 +47,7 @@ public sealed class MoodValuesTests
     }
 
     [Fact]
-    public void GivesTheLensTheGlowTheFinishAndTheDepthFadeAndTheEnvironmentTheRest()
+    public void GivesTheLensTheGlowTheFinishTheSkysViewAndTheDepthFadeAndTheEnvironmentTheRest()
     {
         IEnumerable<string> lens = MoodValues.All.Where(value => value.Owner == MoodOwner.Lens).Select(value => value.Name);
 
@@ -56,6 +56,7 @@ public sealed class MoodValuesTests
             "tonemapper",
             "whitePoint",
             "canvas",
+            "skyFieldOfView",
             "depthNearStart",
             "depthNearEnd",
             "depthNearAmount",

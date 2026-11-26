@@ -5,6 +5,7 @@ using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Serialization;
+using FlickerVoid.Engine.Rendering.Sky;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 
@@ -94,7 +95,7 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
         _shotMood = path;
         MoodOverride? loaded = LoadMoodOrNone(path);
         Director.SetLayer(MoodLayer.Shot, loaded, blendSeconds);
-        Director.Update(_game.Clock.Hour, 0);
+        Director.Update(_game.Clock.Day, _game.Clock.Hour, 0);
     }
 
     public override void Update(in GameTime t)
@@ -102,7 +103,7 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
         FollowScene();
         FollowStory();
         float seconds = (float)t.Elapsed.TotalSeconds;
-        Director.Update(_game.Clock.Hour, seconds);
+        Director.Update(_game.Clock.Day, _game.Clock.Hour, seconds);
     }
 
     public override void Dispose()
@@ -137,6 +138,9 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
             LightingEnvironment? loaded = LoadEnvironment(environment);
             Director.SetEnvironment(loaded, 0);
         }
+
+        SunPath? path = SceneEnvironment.FindSunPath(World);
+        Director.SetSunPath(path);
     }
 
     private void FollowStory()

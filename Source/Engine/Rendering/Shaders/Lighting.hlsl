@@ -224,7 +224,7 @@ float3 FogLight(FrameData frame, float2 pixel, float3 position, float3 towardCam
 {
     float3 light = frame.Ambient * IndoorAmbient(frame, position) + SampleProbes(frame, position, 0, towardCamera);
     float3 sunDirection = normalize(frame.SunDirection);
-    float sun = (1 - frame.Ambient) * Phase(dot(sunDirection, towardCamera), frame.FogAnisotropy);
+    float3 sun = (1 - frame.Ambient) * frame.SunLight * Phase(dot(sunDirection, towardCamera), frame.FogAnisotropy);
     if (frame.SunShadow != None)
     {
         sun *= SampleShadow(frame, frame.SunShadow, position, 0, 0, false);
@@ -380,8 +380,9 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     }
 
     float3 ambient = frame.Ambient * IndoorAmbient(frame, worldPosition) + SampleProbes(frame, worldPosition, normal, toCamera);
-    float3 diffuse = ambient * occlusion + sun * sunDiffuse;
-    float3 specular = sun * sunSpecular;
+    float3 sunLight = sun * frame.SunLight;
+    float3 diffuse = ambient * occlusion + sunLight * sunDiffuse;
+    float3 specular = sunLight * sunSpecular;
     ShadeClusterLights(frame, material, pixel, worldPosition, normal, toCamera, diffuse, specular);
     float3 color = ShadeSurface(material, albedo.rgb, diffuse, specular, ambient);
 
