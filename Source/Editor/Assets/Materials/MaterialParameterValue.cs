@@ -9,9 +9,13 @@ using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Editor.Assets.Materials;
 
-/// <summary>One parameter the shader declares, read from and written to the material being edited.</summary>
-public sealed class MaterialParameterValue(MaterialDocument document, ShaderParameter parameter) : IEditableValue
+/// <summary>
+/// One parameter the shader or the material's master declares, read from the material being edited, else from the parent that
+/// sets it (<paramref name="inherited"/>), else its default, and written to the material, which then overrides it.
+/// </summary>
+public sealed class MaterialParameterValue(MaterialDocument document, ShaderParameter parameter, InheritedValue? inherited = null) : IEditableValue
 {
+    public const string DefaultSource = "Default";
     /// <summary>The source files the content build turns into textures: images, and Rebelle paintings.</summary>
     private static readonly ContentFileAttribute TextureFiles = new(".png", ".jpg", ".jpeg", ".tga", ".bmp", ".reb");
 
@@ -62,12 +66,35 @@ public sealed class MaterialParameterValue(MaterialDocument document, ShaderPara
         return null;
     }
 
+    /// <summary>Whether the material sets the value itself rather than keeping its parent's or the default.</summary>
+    public bool IsOverridden => document.Material.Parameters.ContainsKey(parameter.Name);
+
+    /// <summary>Where the value shown comes from while the material doesn't override it: the parent setting it, or the default.</summary>
+    public string Source => inherited?.Source ?? DefaultSource;
+
+    /// <summary>Takes the material's own value out, so it keeps its parent's or the default again.</summary>
+    public void Reset()
+    {
+        document.Remove(parameter.Name);
+    }
+
+    /// <summary>Copies the value shown into the material, so it overrides it from now on.</summary>
+    public void Override()
+    {
+        object? value = Get();
+        Set(value);
+    }
+
     public object? Get()
     {
         JsonElement value = parameter.Default;
         if (document.Material.Parameters.TryGetValue(parameter.Name, out JsonElement set))
         {
             value = set;
+        }
+        else if (inherited is not null)
+        {
+            value = inherited.Value;
         }
 
         if (parameter.Type == ShaderParameterType.Texture)

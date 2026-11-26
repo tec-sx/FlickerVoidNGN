@@ -3,30 +3,42 @@
              xmlns:shell="using:FlickerVoid.Editor"
              xmlns:controls="using:FlickerVoid.Editor.Controls"
              xmlns:materials="using:FlickerVoid.Editor.Materials"
+             xmlns:assets="using:FlickerVoid.Editor.Assets.Materials"
              x:Class="FlickerVoid.Editor.Materials.MaterialEditorView"
              x:DataType="materials:MaterialEditorViewModel">
-  <Grid ColumnDefinitions="240,*,1,320">
-    <!-- The browser: every material in the content folder, narrowed by the search text. -->
+  <UserControl.Styles>
+    <!-- A value the material keeps from its parent or the default shows greyed until it is edited, which overrides it. -->
+    <Style Selector="ContentControl.inherited">
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="240,*,1,340">
+    <!-- The browser: every material in the content folder under the master or material it is an instance of, narrowed by the search text. -->
     <Border Grid.Column="0" Classes="well" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource EditorLineBrush}">
       <DockPanel>
         <Border DockPanel.Dock="Top" Classes="searchRow">
           <DockPanel>
+            <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CreateInstanceCommand}"
+                    ToolTip.Tip="New instance of the master or material picked, keeping all its values">
+              <PathIcon Data="{x:Static shell:LucideIcons.Duplicate}" />
+            </Button>
             <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CreateMaterialCommand}" ToolTip.Tip="New material">
               <PathIcon Data="{x:Static shell:LucideIcons.Add}" />
             </Button>
             <controls:SearchBox Classes="row" Text="{Binding SearchText}" PlaceholderText="Search materials" />
           </DockPanel>
         </Border>
-        <ListBox ItemsSource="{Binding Materials}" SelectedItem="{Binding SelectedMaterial}">
-          <ListBox.ItemTemplate>
-            <DataTemplate>
-              <StackPanel Orientation="Horizontal" Spacing="6">
+        <TreeView ItemsSource="{Binding Tree}" SelectedItem="{Binding SelectedNode}">
+          <TreeView.ItemTemplate>
+            <TreeDataTemplate DataType="assets:MaterialTreeNode" ItemsSource="{Binding Children}">
+              <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Path}">
                 <PathIcon Classes="small muted" Data="{x:Static shell:LucideIcons.Materials}" />
-                <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="Master" IsVisible="{Binding IsMaster}" Classes="muted" />
               </StackPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+            </TreeDataTemplate>
+          </TreeView.ItemTemplate>
+        </TreeView>
       </DockPanel>
     </Border>
     <!-- The preview fills the working area: drag to turn the shape, picked on the pill over it. -->
@@ -63,9 +75,24 @@
             <TextBlock Text="{Binding Heading}" Classes="title" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
           </DockPanel>
         </Border>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="8,4" IsVisible="{Binding Parent, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <TextBlock Text="Parent" Classes="fieldLabel" MinWidth="96" />
+          <ContentControl Grid.Column="1" Content="{Binding Parent}" />
+        </Grid>
         <ScrollViewer>
           <Border Classes="sectionBody">
-            <ItemsControl ItemsSource="{Binding Parameters}" ItemTemplate="{StaticResource FieldRow}" />
+            <ItemsControl ItemsSource="{Binding Parameters}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="materials:MaterialParameterViewModel">
+                  <Grid ColumnDefinitions="Auto,*" Margin="0,1">
+                    <CheckBox IsChecked="{Binding IsOverridden}" MinWidth="0" VerticalAlignment="Center"
+                              ToolTip.Tip="Ticked: the material's own value. Unticked: kept from its parent, or the default." />
+                    <ContentControl Grid.Column="1" Content="{Binding Field}" ContentTemplate="{StaticResource FieldRow}"
+                                    Classes.inherited="{Binding !IsOverridden}" ToolTip.Tip="{Binding Source}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </Border>
         </ScrollViewer>
       </DockPanel>

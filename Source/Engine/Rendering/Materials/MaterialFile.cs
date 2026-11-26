@@ -20,7 +20,7 @@ public sealed record MaterialFile
     /// <summary>The master or material this one is an instance of, whose values it keeps where it sets none.</summary>
     [ContentFile(Extension, MasterFile.Extension)]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Parent { get; init; }
+    public string? Parent { get; set; }
 
     public Dictionary<string, JsonElement> Parameters { get; set; } = [];
 }

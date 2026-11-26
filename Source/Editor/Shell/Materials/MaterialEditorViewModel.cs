@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -14,14 +15,17 @@ using FlickerVoid.Engine.Runtime.Content;
 namespace FlickerVoid.Editor.Materials;
 
 /// <summary>
-/// The material editor window: a browser of the content folder's materials, a field for each parameter the scene shader
-/// declares, held unsaved as it changes until saved or discarded, and a preview of the material on a sphere or a cube.
+/// The material editor window: a browser of the content folder's materials nested under the masters and materials they are
+/// instances of, the open material's parent and a row for each parameter the scene shader and its master declare (showing its
+/// parent's value until it overrides it), held unsaved as it changes until saved or discarded, and a preview of the material on
+/// a sphere or a cube.
 /// </summary>
 public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposable
 {
     public const int PreviewSize = 256;
 
     private const string NewMaterialName = "New Material";
+    private const string InstanceSuffix = " Instance";
     private const float RadiansPerPixel = 0.01f;
 
     private readonly UnsavedContent _content;
@@ -30,6 +34,8 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
     private readonly MaterialBrowser _browser;
     private readonly IReadOnlyList<ShaderParameter> _declared;
     private MaterialDocument? _document;
+    private string? _openParent;
+    private bool _selectingNode;
 
     /// <summary>Without a preview (no GPU), the window edits materials without showing them.</summary>
     public MaterialEditorViewModel(UnsavedContent content, IMaterialPreview? preview)
@@ -53,11 +59,27 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
     [ObservableProperty]
     public partial IReadOnlyList<string> Materials { get; set; } = [];
 
+    /// <summary>The materials as a tree under the masters and materials they are instances of.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<MaterialTreeNode> Tree { get; set; } = [];
+
+    /// <summary>The master or material picked in the tree; a material opens, a master can only have instances made of it.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CreateInstanceCommand))]
+    public partial MaterialTreeNode? SelectedNode { get; set; }
+
     [ObservableProperty]
     public partial string? SelectedMaterial { get; set; }
 
+    /// <summary>The open material's parent, a master or material it is an instance of.</summary>
     [ObservableProperty]
-    public partial IReadOnlyList<FieldViewModel> Parameters { get; set; } = [];
+    public partial FieldViewModel? Parent { get; set; }
+
+    [ObservableProperty]
+    public partial IReadOnlyList<MaterialParameterViewModel> Parameters { get; set; } = [];
+
+    /// <summary>The parameters' fields.</summary>
+    public IEnumerable<FieldViewModel> Fields => Parameters.Select(static parameter => parameter.Field);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSphere))]
@@ -125,7 +147,7 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
         _content.UnsavedChanged -= HandleUnsavedChanged;
         if (_document is not null)
         {
-            _document.Changed -= RenderPreview;
+            _document.Changed -= HandleDocumentChanged;
         }
 
         if (_preview is IDisposable disposable)
@@ -163,10 +185,56 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
         SelectedMaterial = path;
     }
 
+    /// <summary>Makes an instance of the master or material picked, keeping all its values, and opens it.</summary>
+    [RelayCommand(CanExecute = nameof(HasSelectedNode))]
+    private void CreateInstance()
+    {
+        MaterialTreeNode parent = SelectedNode!;
+        string path = _browser.Create(parent.Name + InstanceSuffix, parent.Path);
+        SearchText = "";
+        FindMaterials();
+        SelectedMaterial = path;
+    }
+
+    private bool HasSelectedNode() => SelectedNode is not null;
+
     partial void OnSearchTextChanged(string value) => FindMaterials();
+
+    partial void OnSelectedNodeChanged(MaterialTreeNode? value)
+    {
+        if (_selectingNode)
+        {
+            return;
+        }
+
+        if (value is null || value.IsMaster)
+        {
+            SelectedMaterial = null;
+            return;
+        }
+
+        SelectedMaterial = value.Path;
+    }
 
     partial void OnSelectedMaterialChanged(string? value)
     {
+        _selectingNode = true;
+        try
+        {
+            if (value is not null)
+            {
+                SelectedNode = FindNode(Tree, value);
+            }
+            else if (SelectedNode is { IsMaster: false })
+            {
+                SelectedNode = null;
+            }
+        }
+        finally
+        {
+            _selectingNode = false;
+        }
+
         Open(value);
         HandleUnsavedChanged();
     }
@@ -214,25 +282,71 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
     private void FindMaterials()
     {
         Materials = _browser.Find(SearchText);
+        Tree = _browser.FindTree(SearchText);
+    }
+
+    private static MaterialTreeNode? FindNode(IReadOnlyList<MaterialTreeNode> nodes, string path)
+    {
+        foreach (MaterialTreeNode node in nodes)
+        {
+            if (ContentManager.PathComparer.Equals(node.Path, path))
+            {
+                return node;
+            }
+
+            MaterialTreeNode? found = FindNode(node.Children, path);
+            if (found is not null)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Opens the material again when its parent changed, as its parameters and inherited values do; otherwise shows the edit.</summary>
+    private void HandleDocumentChanged()
+    {
+        if (_document is null)
+        {
+            return;
+        }
+
+        if (_document.Material.Parent != _openParent)
+        {
+            Open(SelectedMaterial);
+            FindMaterials();
+            return;
+        }
+
+        foreach (MaterialParameterViewModel parameter in Parameters)
+        {
+            parameter.Refresh();
+        }
+
+        RenderPreview();
     }
 
     private void Open(string? path)
     {
         if (_document is not null)
         {
-            _document.Changed -= RenderPreview;
+            _document.Changed -= HandleDocumentChanged;
             _document = null;
         }
 
         Parameters = [];
+        Parent = null;
         Status = "";
+        MaterialLineage? lineage = null;
         if (path is not null)
         {
             try
             {
                 _document = new MaterialDocument(_content, path);
+                lineage = MaterialLineage.Of(_document.Material, _content);
             }
-            catch (InvalidDataException exception)
+            catch (Exception exception) when (exception is InvalidDataException or IOException or JsonException)
             {
                 Status = exception.Message;
             }
@@ -244,16 +358,27 @@ public sealed partial class MaterialEditorViewModel : ObservableObject, IDisposa
             return;
         }
 
-        _document.Changed += RenderPreview;
-        List<FieldViewModel> fields = [];
-        foreach (ShaderParameter parameter in _declared)
+        _document.Changed += HandleDocumentChanged;
+        _openParent = _document.Material.Parent;
+        MaterialParentValue parent = new(_document);
+        Parent = FieldFactory.Create(parent, _files.Find);
+        if (lineage is null)
         {
-            MaterialParameterValue value = new(_document, parameter);
-            FieldViewModel field = FieldFactory.Create(value, _files.Find);
-            fields.Add(field);
+            RenderPreview();
+            return;
         }
 
-        Parameters = fields;
+        List<MaterialParameterViewModel> rows = [];
+        IReadOnlyList<ShaderParameter> parameters = lineage.GetParameters(_declared);
+        foreach (ShaderParameter parameter in parameters)
+        {
+            InheritedValue? inherited = lineage.Inherited.GetValueOrDefault(parameter.Name);
+            MaterialParameterValue value = new(_document, parameter, inherited);
+            FieldViewModel field = FieldFactory.Create(value, _files.Find);
+            rows.Add(new MaterialParameterViewModel(value, field));
+        }
+
+        Parameters = rows;
         RenderPreview();
     }
 
