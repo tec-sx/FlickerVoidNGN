@@ -34,15 +34,17 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     private readonly EditorCamera _camera;
     private readonly Func<bool> _save;
     private readonly Func<string, SolidMesh?>? _findMesh;
+    private readonly Action<string, SolidMesh>? _applyMesh;
     private SolidMesh? _meshSolid;
     private readonly List<Entity> _marked = [];
 
-    private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh)
+    private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh, Action<string, SolidMesh>? applyMesh)
     {
         _scene = scene;
         _camera = camera;
         _save = save;
         _findMesh = findMesh;
+        _applyMesh = applyMesh;
         Root = root;
         Placement = placement;
         History = history;
@@ -83,22 +85,22 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// Makes the creation placed in the level, greying the rest of it. <paramref name="findMesh"/> gives the mesh of a part by its id,
     /// for entering the mesh.
     /// </summary>
-    public static CreatorMode InPlace(EditorScene scene, EditorCamera camera, Entity placed, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null)
+    public static CreatorMode InPlace(EditorScene scene, EditorCamera camera, Entity placed, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null)
     {
-        return new CreatorMode(scene, camera, placed, CreatorPlacement.InPlace, history, save, findMesh);
+        return new CreatorMode(scene, camera, placed, CreatorPlacement.InPlace, history, save, findMesh, applyMesh);
     }
 
     /// <summary>
     /// Makes a creation alone: places a temporary entity with <paramref name="creation"/>, the component that names its file, at the
     /// origin, outside the scene, and sets the level aside.
     /// </summary>
-    public static CreatorMode Alone<T>(EditorScene scene, EditorCamera camera, T creation, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null)
+    public static CreatorMode Alone<T>(EditorScene scene, EditorCamera camera, T creation, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null)
         where T : struct
     {
         World world = scene.Game.World;
         Entity copy = world.Create(new Transform(), creation);
         scene.Game.Lifecycle.Start(world, copy);
-        return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh);
+        return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh, applyMesh);
     }
 
     public bool Save() => _save();
@@ -221,6 +223,34 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         }
 
         selection.Select(hit, additive);
+    }
+
+    /// <summary>Moves the selected points by an offset in the part's own space, as one undo step; false when none is selected.</summary>
+    public bool MoveMesh(Vector3 offset) => EditMesh(solid => MeshEdit.Move(solid, MeshSelection!.Points, offset));
+
+    /// <summary>Turns the selected points about their middle by degrees about the part's X, Y and Z, as one undo step.</summary>
+    public bool RotateMesh(Vector3 degrees) => EditMesh(solid => MeshEdit.Rotate(solid, MeshSelection!.Points, degrees));
+
+    /// <summary>Scales the selected points about their middle by a factor along each of the part's axes, as one undo step.</summary>
+    public bool ScaleMesh(Vector3 factor) => EditMesh(solid => MeshEdit.Scale(solid, MeshSelection!.Points, factor));
+
+    private bool EditMesh(Func<SolidMesh, SolidMesh> edit)
+    {
+        if (MeshSelection is not { } selection || selection.Points.Count == 0 || MeshPart is not { } id || _applyMesh is null)
+        {
+            return false;
+        }
+
+        if (_findMesh?.Invoke(id) is not { } solid)
+        {
+            return false;
+        }
+
+        SolidMesh edited = edit(solid);
+        _meshSolid = edited;
+        selection.TryFollow(edited);
+        _applyMesh(id, edited);
+        return true;
     }
 
     /// <summary>The point, edge or face of the entered mesh under the mouse, or null.</summary>
@@ -351,6 +381,11 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         else if (solid != _meshSolid && MeshSelection is { } old)
         {
             _meshSolid = solid;
+            if (old.TryFollow(solid))
+            {
+                return;
+            }
+
             MeshSelection selection = new(solid);
             selection.SetElement(old.Element);
             MeshSelection = selection;

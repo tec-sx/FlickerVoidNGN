@@ -268,6 +268,54 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void MovingTheSelectedPointsEditsThePartsMeshAndKeepsTheSelection()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfPoint(0), additive: false);
+        Vector3 before = _builder.FindMesh("body")!.Points[0];
+
+        bool moved = mode.MoveMesh(new Vector3(0, 0.25f, 0));
+
+        moved.Should().BeTrue();
+        _builder.MeshEdits.Should().Equal("body");
+        _builder.FindMesh("body")!.Points[0].Y.Should().BeApproximately(before.Y + 0.25f, 1e-5f);
+        mode.MeshSelection.Points.Should().Equal(0);
+    }
+
+    [Fact]
+    public void RotatingAndScalingNeedASelectionAndOneEditEach()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+
+        bool withNothing = mode.ScaleMesh(new Vector3(2, 2, 2));
+        mode.MeshSelection!.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfPoint(0), additive: false);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfPoint(1), additive: true);
+        bool rotated = mode.RotateMesh(new Vector3(0, 0, 45));
+        bool scaled = mode.ScaleMesh(new Vector3(2, 1, 1));
+
+        withNothing.Should().BeFalse();
+        rotated.Should().BeTrue();
+        scaled.Should().BeTrue();
+        _builder.MeshEdits.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ASelectionOutsideTheMeshModeEditsNothing()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+
+        bool moved = mode.MoveMesh(Vector3.One);
+
+        moved.Should().BeFalse();
+        _builder.MeshEdits.Should().BeEmpty();
+    }
+
+    [Fact]
     public void LeavingTheMeshDropsTheSelectionAndClicksSelectPartsAgain()
     {
         using CreatorMode mode = _builder.EnterAlone();
@@ -295,7 +343,7 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
-    public void ANewFileKeepsTheMeshEnteredButStartsTheSelectionAgain()
+    public void ANewFileWithTheSameFacesKeepsTheMeshEnteredAndItsSelection()
     {
         using CreatorMode mode = _builder.EnterAlone();
         mode.SelectPart("body");
@@ -307,6 +355,6 @@ public sealed class CreatorModeTests : IDisposable
 
         mode.MeshSelection.Should().NotBeNull();
         mode.MeshSelection!.Element.Should().Be(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
-        mode.MeshSelection.Faces.Should().BeEmpty();
+        mode.MeshSelection.Faces.Should().NotBeEmpty();
     }
 }

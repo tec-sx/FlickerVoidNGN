@@ -1,3 +1,5 @@
+using System.Numerics;
+
 using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Engine.Runtime.Solids;
 
@@ -200,5 +202,22 @@ public sealed class MeshSelectionTests
         selection.SelectLoop(MeshHit.OfFace(4, SolidEdge.Of(4, 8)), additive: false);
 
         selection.Faces.Should().BeEquivalentTo([4, 5, 6, 7]);
+    }
+
+    [Fact]
+    public void FollowsAMovedCopyOfTheSolidButNotOneWithOtherFaces()
+    {
+        SolidMesh box = MeshTestsBuilder.Box();
+        MeshSelection selection = new(box);
+        selection.Select(MeshHit.OfPoint(1), additive: false);
+        SolidMesh moved = MeshEdit.Move(box, new HashSet<int> { 1 }, Vector3.UnitX);
+        SolidMesh bar = MeshTestsBuilder.Bar(3);
+
+        bool followsMoved = selection.TryFollow(moved);
+        bool followsBar = selection.TryFollow(bar);
+
+        followsMoved.Should().BeTrue();
+        followsBar.Should().BeFalse();
+        selection.Points.Should().Equal(1);
     }
 }

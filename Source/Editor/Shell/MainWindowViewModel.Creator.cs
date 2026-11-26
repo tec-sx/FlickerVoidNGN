@@ -124,7 +124,7 @@ public sealed partial class MainWindowViewModel
 
         EditorScene scene = Viewport.Scene;
         UndoHistory history = _content.GetHistory(file);
-        CreatorMode creator = CreatorMode.InPlace(scene, Viewport.Camera, placed, history, () => SaveCreation(file), FindCreatorMesh);
+        CreatorMode creator = CreatorMode.InPlace(scene, Viewport.Camera, placed, history, () => SaveCreation(file), FindCreatorMesh, ApplyCreatorMesh);
         EnterCreator(creator, file, panel);
     }
 
@@ -139,7 +139,7 @@ public sealed partial class MainWindowViewModel
         EditorScene scene = Viewport.Scene;
         UndoHistory history = _content.GetHistory(path);
         Vehicle vehicle = new() { File = path };
-        CreatorMode creator = CreatorMode.Alone(scene, Viewport.Camera, vehicle, history, () => SaveCreation(path), FindCreatorMesh);
+        CreatorMode creator = CreatorMode.Alone(scene, Viewport.Camera, vehicle, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh);
         EnterCreator(creator, path, panel);
     }
 
@@ -170,6 +170,8 @@ public sealed partial class MainWindowViewModel
     }
 
     private SolidMesh? FindCreatorMesh(string id) => CreatorPanel?.FindMesh(id);
+
+    private void ApplyCreatorMesh(string id, SolidMesh mesh) => CreatorPanel?.SetMesh(id, mesh);
 
     private bool SaveCreation(string path)
     {
