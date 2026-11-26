@@ -83,9 +83,17 @@ struct FrameData
     float3 SunLight;
     // The frame buffer's own bindless index, which LoadFrame was given.
     uint Buffer;
+    // The haze (Haze.hlsl): its colour as it looks on screen, its density, its start behind the focus, its most, and its height
+    // and the falloff above it.
+    float3 HazeColor;
+    float HazeDensity;
+    float HazeStart;
+    float HazeMax;
+    float HazeHeight;
+    float HazeHeightFalloff;
 };
 
-static const uint FrameDataSize = 528;
+static const uint FrameDataSize = 560;
 static const uint None = 0xFFFFFFFF;
 
 // PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
@@ -167,6 +175,12 @@ FrameData LoadFrame(uint index)
     frame.GBufferMotion = buffer.Load<uint>(504);
     frame.AccelerationStructure = buffer.Load<uint>(508);
     frame.SunLight = buffer.Load<float3>(512);
+    frame.HazeColor = buffer.Load<float3>(528);
+    frame.HazeDensity = buffer.Load<float>(540);
+    frame.HazeStart = buffer.Load<float>(544);
+    frame.HazeMax = buffer.Load<float>(548);
+    frame.HazeHeight = buffer.Load<float>(552);
+    frame.HazeHeightFalloff = buffer.Load<float>(556);
     frame.Buffer = index;
     return frame;
 }

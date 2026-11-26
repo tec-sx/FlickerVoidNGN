@@ -141,6 +141,8 @@ internal sealed class FrameDataWriter : IDisposable
             rayOcclusion = tracedOcclusion.BindlessIndex;
         }
 
+        Vector3 hazeColor = Vector3.Lerp(mood.HazeColor, mood.SkyHorizon, mood.HazeFromSky);
+
         // Ray Reconstruction asks for samples that hold no pattern, so a denoised frame's noise is drawn afresh by its number.
         uint noiseFrame = GpuLight.None;
         if (context.Denoises)
@@ -213,7 +215,13 @@ internal sealed class FrameDataWriter : IDisposable
             gBuffer.Motion.BindlessIndex,
             accelerationStructure,
             sunLight,
-            0);
+            0,
+            hazeColor,
+            mood.HazeDensity,
+            mood.HazeStart,
+            mood.HazeMax,
+            mood.HazeHeight,
+            mood.HazeHeightFalloff);
 
         IBuffer frame = _frames.Get(size);
         ReadOnlySpan<FrameData> header = new(in data);

@@ -131,6 +131,33 @@ public sealed record LightingMood
     /// <summary>How fast fog thins above <see cref="FogHeight"/>: its density falls by e every 1 / falloff units; 0 keeps it even.</summary>
     public float FogHeightFalloff { get; set; }
 
+    /// <summary>
+    /// How fast the haze thickens with the distance beyond its start, as a share of the light it takes per world unit; 0 leaves no haze.
+    /// The haze melts what lies far from the view's focus into <see cref="HazeColor"/>, cheaply, and the sky takes it at the horizon.
+    /// </summary>
+    public float HazeDensity { get; set; }
+
+    /// <summary>How far behind the focus the haze begins, along the view.</summary>
+    public float HazeStart { get; set; } = 2;
+
+    /// <summary>The most the haze melts anything into its colour, from 0 to 1.</summary>
+    [Range(0, 1)]
+    public float HazeMax { get; set; } = 1;
+
+    /// <summary>The height below which the haze keeps its full density.</summary>
+    public float HazeHeight { get; set; }
+
+    /// <summary>How fast the haze thins above <see cref="HazeHeight"/>: its density falls by e every 1 / falloff units; 0 keeps it even.</summary>
+    public float HazeHeightFalloff { get; set; }
+
+    /// <summary>The haze's color as it looks on screen, linear, where it does not follow the sky (see <see cref="HazeFromSky"/>).</summary>
+    [Color]
+    public Vector3 HazeColor { get; set; } = new(0.82f, 0.8f, 0.76f);
+
+    /// <summary>How much the haze takes the sky's horizon color in place of <see cref="HazeColor"/>, from 0 to 1.</summary>
+    [Range(0, 1)]
+    public float HazeFromSky { get; set; } = 1;
+
     /// <summary>How strongly nearby surfaces darken the ambient and bounced light in creases and corners, from 0 to 1.</summary>
     [Range(0, 1)]
     public float AmbientOcclusion { get; set; } = 1;
