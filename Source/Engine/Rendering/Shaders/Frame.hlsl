@@ -91,9 +91,14 @@ struct FrameData
     float HazeMax;
     float HazeHeight;
     float HazeHeightFalloff;
+    // The depth axis of the frame before, which reprojects the fog volume's history.
+    float4 PreviousDepthAxis;
+    // How far the fog is lit along the view, and the integrated fog volume's bindless index (Lighting.hlsl), None without fog.
+    float FogRange;
+    uint FogVolume;
 };
 
-static const uint FrameDataSize = 560;
+static const uint FrameDataSize = 592;
 static const uint None = 0xFFFFFFFF;
 
 // PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
@@ -181,6 +186,9 @@ FrameData LoadFrame(uint index)
     frame.HazeMax = buffer.Load<float>(548);
     frame.HazeHeight = buffer.Load<float>(552);
     frame.HazeHeightFalloff = buffer.Load<float>(556);
+    frame.PreviousDepthAxis = buffer.Load<float4>(560);
+    frame.FogRange = buffer.Load<float>(576);
+    frame.FogVolume = buffer.Load<uint>(580);
     frame.Buffer = index;
     return frame;
 }

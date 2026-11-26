@@ -43,6 +43,7 @@ public static class MoodValues
         new MoodNumber("fogAnisotropy", MoodGroup.Fog, Environment, mood => mood.FogAnisotropy, (mood, value) => mood.FogAnisotropy = value),
         new MoodNumber("fogHeight", MoodGroup.Fog, Environment, mood => mood.FogHeight, (mood, value) => mood.FogHeight = value),
         new MoodNumber("fogHeightFalloff", MoodGroup.Fog, Environment, mood => mood.FogHeightFalloff, (mood, value) => mood.FogHeightFalloff = value),
+        new MoodNumber("fogRange", MoodGroup.Fog, Environment, mood => mood.FogRange, (mood, value) => mood.FogRange = value),
         new MoodNumber("hazeDensity", MoodGroup.Fog, Environment, mood => mood.HazeDensity, (mood, value) => mood.HazeDensity = value),
         new MoodNumber("hazeStart", MoodGroup.Fog, Environment, mood => mood.HazeStart, (mood, value) => mood.HazeStart = value),
         new MoodNumber("hazeMax", MoodGroup.Fog, Environment, mood => mood.HazeMax, (mood, value) => mood.HazeMax = value),

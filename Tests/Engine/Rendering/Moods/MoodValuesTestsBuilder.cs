@@ -43,6 +43,7 @@ internal sealed class MoodValuesTestsBuilder
             FogAnisotropy = -0.2f,
             FogHeight = 3,
             FogHeightFalloff = 0.4f,
+            FogRange = 30,
             HazeDensity = 0.07f,
             HazeStart = 3,
             HazeMax = 0.6f,
