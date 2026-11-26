@@ -10,28 +10,21 @@ using FlickerVoid.Engine.Runtime.Geometry;
 
 namespace FlickerVoid.Engine.Rendering.Shadows;
 
-/// <summary>Draws the depth of every mesh into the shadow atlas, once per shadow view it is in, leaving the atlas ready to sample.</summary>
+/// <summary>
+/// Draws the depth of every mesh into the shadow atlas, once per shadow view it is in, leaving the atlas ready to sample; parts in a
+/// cutout material leave out their holes.
+/// </summary>
 internal sealed class ShadowRenderer : IDisposable
 {
     private const string ShaderName = "Shadow";
 
-    private readonly IPipeline _pipeline;
+    private readonly IPipeline _solid;
+    private readonly IPipeline _cutout;
 
     public ShadowRenderer(IGraphicsDevice device, ShaderLibrary shaders)
     {
-        GraphicsPipelineDescription description = new()
-        {
-            VertexShader = shaders.Load(ShaderName, "VertexMain"),
-            PixelShader = shaders.Load(ShaderName, "PixelMain"),
-            ColorFormats = [],
-            DepthFormat = SceneRenderer.DepthFormat,
-            Depth = new DepthState(Test: true, Write: true),
-
-            // Rooms are often single-sided, so back faces cast shadows too.
-            CullMode = CullMode.None,
-            Name = "Shadow",
-        };
-        _pipeline = device.CreateGraphicsPipeline(description);
+        _solid = CreatePipeline(device, shaders, "PixelMain", "Shadow");
+        _cutout = CreatePipeline(device, shaders, "CutoutMain", "Shadow cutout");
         TextureDescription atlasDescription = new(ShadowAtlas.Size, ShadowAtlas.Size, SceneRenderer.DepthFormat, TextureUsage.DepthStencil | TextureUsage.ShaderRead)
         {
             Name = "Shadow atlas",
@@ -41,17 +34,17 @@ internal sealed class ShadowRenderer : IDisposable
 
     public ITexture Atlas { get; }
 
-    public void Draw(ICommandList commands, IReadOnlyList<ShadowView> views, IReadOnlyList<MeshDraw> draws, RenderStatistics statistics)
+    /// <summary>Draws the views' depth; <paramref name="frameBuffer"/> holds the draws' records, which cutout parts read.</summary>
+    public void Draw(ICommandList commands, uint frameBuffer, IReadOnlyList<ShadowView> views, IReadOnlyList<MeshDraw> draws, RenderStatistics statistics)
     {
         if (views.Count > 0)
         {
             commands.Barrier(Atlas, ResourceState.DepthWrite);
             DepthTarget depth = new(Atlas, LoadAction.Clear);
             commands.BeginRendering([], depth);
-            commands.SetPipeline(_pipeline);
             foreach (ShadowView view in views)
             {
-                DrawView(commands, view, draws, statistics);
+                DrawView(commands, frameBuffer, view, draws, statistics);
             }
 
             commands.EndRendering();
@@ -63,17 +56,37 @@ internal sealed class ShadowRenderer : IDisposable
     public void Dispose()
     {
         Atlas.Dispose();
-        _pipeline.Dispose();
+        _cutout.Dispose();
+        _solid.Dispose();
     }
 
-    private static void DrawView(ICommandList commands, in ShadowView view, IReadOnlyList<MeshDraw> draws, RenderStatistics statistics)
+    private static IPipeline CreatePipeline(IGraphicsDevice device, ShaderLibrary shaders, string pixelShader, string name)
+    {
+        GraphicsPipelineDescription description = new()
+        {
+            VertexShader = shaders.Load(ShaderName, "VertexMain"),
+            PixelShader = shaders.Load(ShaderName, pixelShader),
+            ColorFormats = [],
+            DepthFormat = SceneRenderer.DepthFormat,
+            Depth = new DepthState(Test: true, Write: true),
+
+            // Rooms are often single-sided, so back faces cast shadows too.
+            CullMode = CullMode.None,
+            Name = name,
+        };
+        return device.CreateGraphicsPipeline(description);
+    }
+
+    private void DrawView(ICommandList commands, uint frameBuffer, in ShadowView view, IReadOnlyList<MeshDraw> draws, RenderStatistics statistics)
     {
         ShadowTile tile = view.Tile;
         commands.SetViewport(new Viewport(tile.X, tile.Y, tile.Size, tile.Size));
         commands.SetScissor(tile.X, tile.Y, tile.Size, tile.Size);
         Frustum frustum = new(view.ViewProjection);
-        foreach (MeshDraw draw in draws)
+        IPipeline? current = null;
+        for (int index = 0; index < draws.Count; index++)
         {
+            MeshDraw draw = draws[index];
             if (draw.Flags.HasFlag(MeshFlags.OutlineOnly))
             {
                 continue;
@@ -86,7 +99,14 @@ internal sealed class ShadowRenderer : IDisposable
             }
 
             statistics.ShadowDrawn++;
-            ShadowConstants constants = new(draw.World * view.ViewProjection, draw.Vertices.BindlessIndex);
+            IPipeline pipeline = draw.Material.Cutout ? _cutout : _solid;
+            if (!ReferenceEquals(pipeline, current))
+            {
+                commands.SetPipeline(pipeline);
+                current = pipeline;
+            }
+
+            ShadowConstants constants = new(draw.World * view.ViewProjection, draw.Vertices.BindlessIndex, frameBuffer, (uint)index);
             commands.SetIndexBuffer(draw.Part.Indices, IndexFormat.UInt32);
             commands.PushConstants(constants);
             commands.DrawIndexed(draw.Part.IndexCount);

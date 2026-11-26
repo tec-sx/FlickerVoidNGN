@@ -14,6 +14,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Pipeline;
+using FlickerVoid.Engine.Rendering.Tests.Upscaling;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -27,7 +28,8 @@ namespace FlickerVoid.Engine.Rendering.Tests;
 
 /// <summary>
 /// Builds a game with rendering, its models in a temporary content folder, and the scene renderer on a Vulkan device with
-/// validation on, set up as the game asks, skipping the test without Vulkan 1.3. Renders 4x4 frames unless told otherwise; disposing it fails the test on any logged error.
+/// validation on, set up as the game asks, skipping the test without Vulkan 1.3, or without ray queries when the test needs them.
+/// Renders 4x4 frames unless told otherwise; disposing it fails the test on any logged error.
 /// </summary>
 internal sealed class SceneRendererTestsBuilder : IDisposable
 {
@@ -48,6 +50,9 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     private int _targetSize = 4;
     private LightingMood _mood = new() { AmbientOcclusion = 0, ContactShadowLength = 0, Tonemapper = Tonemapper.None };
     private Action<SceneRenderer>? _configure;
+    private GraphicsFeatures _features = GraphicsFeatures.RayQueries;
+    private bool _needsRayQueries;
+    private bool _rayReconstruction;
 
     public SceneRendererTestsBuilder()
     {
@@ -197,6 +202,27 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Skips the test where the device has no ray queries.</summary>
+    public SceneRendererTestsBuilder WithRayQueries()
+    {
+        _needsRayQueries = true;
+        return this;
+    }
+
+    /// <summary>Gives the device DLSS with Ray Reconstruction, stood in for by <see cref="StandInUpscaler"/>s.</summary>
+    public SceneRendererTestsBuilder WithRayReconstruction()
+    {
+        _rayReconstruction = true;
+        return this;
+    }
+
+    /// <summary>Creates the device without ray queries, as on a GPU that has none.</summary>
+    public SceneRendererTestsBuilder WithoutRayQueries()
+    {
+        _features = GraphicsFeatures.None;
+        return this;
+    }
+
     public SceneRendererTestsBuilder WithTargetSize(int size)
     {
         _targetSize = size;
@@ -238,6 +264,18 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         return pixels;
     }
 
+    /// <summary>Renders the world that many frames in a row, as a window would, and gives the last one's pixels.</summary>
+    public uint[] RenderFrames(int count)
+    {
+        uint[] pixels = Render();
+        for (int frame = 1; frame < count; frame++)
+        {
+            pixels = Render();
+        }
+
+        return pixels;
+    }
+
     /// <summary>Renders the world and reads back one of the G-buffer's targets of four bytes a texel, each texel's bytes as a little-endian number, top row first.</summary>
     public uint[] RenderTexels(Func<GBuffer, ITexture> target)
     {
@@ -271,6 +309,32 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
 
         return pairs;
     }
+
+    /// <summary>
+    /// Renders the world with a pass at the end of the pipeline tracing the rays against the acceleration structure the frame data
+    /// names: what each hit first, or all misses when the frame traced no rays (<see cref="TracedRays"/>).
+    /// </summary>
+    public RayHit[] TraceRays(params (Vector3 Origin, Vector3 Direction)[] rays)
+    {
+        IGraphicsDevice device = BuildDevice();
+        SceneRenderer renderer = BuildRenderer(device);
+        using RayTracePass pass = new(device, rays);
+        renderer.Pipeline.Add(pass);
+        try
+        {
+            Render();
+        }
+        finally
+        {
+            renderer.Pipeline.Remove(pass);
+        }
+
+        TracedRays = pass.TracedRays;
+        return pass.ReadHits();
+    }
+
+    /// <summary>Whether the frame <see cref="TraceRays"/> rendered last traced rays.</summary>
+    public bool TracedRays { get; private set; }
 
     /// <summary>Unfolds a normal the geometry pass folded onto an octahedron.</summary>
     public static Vector3 DecodeNormal(Vector2 folded)
@@ -426,7 +490,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
             return _device;
         }
 
-        GraphicsDeviceOptions options = new() { Validation = true };
+        GraphicsDeviceOptions options = new() { Validation = true, Features = _features };
         try
         {
             _device = new VulkanGraphicsDevice(options, _loggerFactory);
@@ -435,6 +499,16 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         {
             Assert.Skip(exception.Message);
             throw;
+        }
+
+        if (_needsRayQueries && !_device.Features.HasFlag(GraphicsFeatures.RayQueries))
+        {
+            Assert.Skip($"{_device.AdapterName} has no ray queries.");
+        }
+
+        if (_rayReconstruction)
+        {
+            _device = new UpscalingDevice(_device, GraphicsFeatures.Dlss | GraphicsFeatures.RayReconstruction);
         }
 
         return _device;

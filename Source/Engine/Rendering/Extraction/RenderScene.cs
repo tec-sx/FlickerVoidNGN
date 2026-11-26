@@ -30,6 +30,9 @@ public sealed class RenderScene
     /// <summary>The world point the first camera's depth fade is measured from; null measures from the camera.</summary>
     public Vector3? Focus { get; set; }
 
+    /// <summary>How many times the first camera's director has cut to a new view (<see cref="ActiveCamera.Cuts"/>), so effects that build on earlier frames start afresh when it changes.</summary>
+    public uint Cuts { get; set; }
+
     public void Clear()
     {
         Cameras.Clear();
@@ -41,6 +44,7 @@ public sealed class RenderScene
         Cutaway = null;
         Transition = default;
         Focus = null;
+        Cuts = 0;
     }
 
     /// <summary>Replaces what this scene holds with everything <paramref name="other"/> holds, such as a dissolve drawing another renderer's scene.</summary>
@@ -56,5 +60,6 @@ public sealed class RenderScene
         Cutaway = other.Cutaway;
         Transition = other.Transition;
         Focus = other.Focus;
+        Cuts = other.Cuts;
     }
 }

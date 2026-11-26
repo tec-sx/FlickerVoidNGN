@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Graphics.AccelerationStructures;
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
@@ -56,5 +57,19 @@ public interface ICommandList : IDisposable
     void Dispatch(int groupsX, int groupsY = 1, int groupsZ = 1);
 
     void DrawIndexed(int indexCount, int instanceCount = 1, int firstIndex = 0, int vertexOffset = 0, int firstInstance = 0);
+
+    /// <summary>
+    /// Builds bottom-level acceleration structures from their geometry, or refits refittable ones built before to their geometry's
+    /// new vertex positions, all at once. Builds wait for every earlier command and leave the structures readable by later builds
+    /// and by shaders' ray queries, so they need no barriers.
+    /// </summary>
+    void BuildBottomLevels(ReadOnlySpan<BottomLevelBuild> builds);
+
+    /// <summary>
+    /// Builds a top-level acceleration structure from the first <paramref name="instanceCount"/> <see cref="AccelerationStructureInstance"/>s
+    /// of the buffer, which has <see cref="BufferUsage.AccelerationStructureInput"/>; the bottom-level structures they place must be
+    /// built. Like bottom-level builds, it needs no barriers.
+    /// </summary>
+    void BuildTopLevel(IAccelerationStructure structure, IBuffer instances, int instanceCount);
 }
 

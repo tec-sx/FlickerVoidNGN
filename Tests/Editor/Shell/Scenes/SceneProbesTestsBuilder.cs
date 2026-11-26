@@ -20,7 +20,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlickerVoid.Editor.Tests.Scenes;
 
-/// <summary>Builds an unsaved scene in a temporary content folder and bakes its probes on the test machine's GPU, skipping the test without one.</summary>
+/// <summary>
+/// Builds an unsaved scene in a temporary content folder and bakes its probes on the test machine's GPU, skipping the test without
+/// one or where it has no ray queries.
+/// </summary>
 internal sealed class SceneProbesTestsBuilder : IDisposable
 {
     public const int ProbesPerAxis = 2;
@@ -64,11 +67,22 @@ internal sealed class SceneProbesTestsBuilder : IDisposable
         return this;
     }
 
+    /// <summary>Bakes every volume, skipping the test where the GPU has no ray queries to bake with.</summary>
     public IReadOnlyList<string> Bake()
     {
         using VulkanGraphicsDevice device = CreateDevice();
         LightingMood mood = new() { Ambient = 0, SunShadowDistance = 0 };
-        return SceneProbes.Bake(device, _scene, mood);
+        IReadOnlyList<string> baked = [];
+        try
+        {
+            baked = SceneProbes.Bake(device, _scene, mood);
+        }
+        catch (GraphicsUnavailableException exception)
+        {
+            Assert.Skip(exception.Message);
+        }
+
+        return baked;
     }
 
     public IrradianceProbes LoadProbes(string path)

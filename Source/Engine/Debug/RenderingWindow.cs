@@ -1,28 +1,36 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Pipeline;
+using FlickerVoid.Engine.Runtime.Debugging;
 
 using Hexa.NET.ImGui;
 
 namespace FlickerVoid.Engine.Debug;
 
 /// <summary>
-/// Switches the scene renderer's features, shows the G-buffer's targets in place of the frame and tweaks its lighting mood live: the
-/// sun, ambient light, shadows, fog, screen-space shadows, bloom and grade.
+/// Switches the scene renderer's features (lights, probes, ray tracing, DLSS; the <c>r.</c> console variables) and shows the size it draws at, shows the G-buffer's
+/// targets in place of the frame and tweaks its lighting mood live: the sun, ambient light, shadows, fog, screen-space shadows,
+/// bloom and grade.
 /// </summary>
 public sealed class RenderingWindow : DebugWindow
 {
     private static readonly string[] ViewNames = ["Lit", "Albedo", "Normal", "Material", "Object depth", "Motion", "Depth"];
+    private static readonly string[] UpscalingNames = ["Off", "DLSS Quality", "DLAA"];
 
     private readonly SceneRenderer _renderer;
+    private readonly RenderingSettings _settings;
     private readonly LightingMood _initial;
 
-    public RenderingWindow(SceneRenderer renderer)
+    /// <summary>Switches the renderer through the game's settings, so the console shows what it switched, or through settings of its own without them.</summary>
+    public RenderingWindow(SceneRenderer renderer, RenderingSettings? settings = null)
         : base("Rendering", "Rendering")
     {
         _renderer = renderer;
+        _settings = settings ?? RenderingSettings.Capture(renderer);
         _initial = renderer.Mood with { };
     }
 
@@ -31,22 +39,16 @@ public sealed class RenderingWindow : DebugWindow
         RenderStatistics statistics = _renderer.Statistics;
         ImGui.Text($"Mesh parts drawn {statistics.Drawn}, culled {statistics.Culled}");
         ImGui.Text($"In shadows drawn {statistics.ShadowDrawn}, culled {statistics.ShadowCulled}");
-        bool localLights = _renderer.LocalLights;
-        if (ImGui.Checkbox("Point and spot lights", ref localLights))
-        {
-            _renderer.LocalLights = localLights;
-        }
-
-        bool probes = _renderer.Probes;
-        if (ImGui.Checkbox("Irradiance probes", ref probes))
-        {
-            _renderer.Probes = probes;
-        }
-
-        int view = (int)_renderer.DebugView;
+        RenderSwitch(_settings.LocalLights, "Point and spot lights");
+        RenderSwitch(_settings.Probes, "Irradiance probes");
+        RenderSwitch(_settings.RayTracing, "Ray tracing (where the GPU has ray queries)");
+        RenderSwitch(_settings.LiveProbes, "Live probes (with ray tracing)");
+        RenderUpscaling(statistics);
+        int view = (int)_settings.DebugView.Value;
         if (ImGui.Combo("View", ref view, ViewNames, ViewNames.Length))
         {
-            _renderer.DebugView = (DebugView)view;
+            _settings.DebugView.Value = (DebugView)view;
+            _settings.Apply(_renderer);
         }
 
         LightingMood mood = _renderer.Mood;
@@ -74,6 +76,12 @@ public sealed class RenderingWindow : DebugWindow
             if (ImGui.SliderFloat("Sun shadow distance (0 is off)", ref shadowDistance, 0, 100))
             {
                 mood.SunShadowDistance = shadowDistance;
+            }
+
+            float sunAngle = mood.SunAngle;
+            if (ImGui.SliderFloat("Sun angle (softens traced shadows)", ref sunAngle, 0, 30))
+            {
+                mood.SunAngle = sunAngle;
             }
         }
 
@@ -162,6 +170,51 @@ public sealed class RenderingWindow : DebugWindow
             {
                 mood.Tint = tint;
             }
+        }
+    }
+
+    private void RenderUpscaling(RenderStatistics statistics)
+    {
+        int upscaling = (int)_settings.Upscaling.Value;
+        if (ImGui.Combo("Upscaling", ref upscaling, UpscalingNames, UpscalingNames.Length))
+        {
+            _settings.Upscaling.Value = (UpscaleMode)upscaling;
+            _settings.Apply(_renderer);
+        }
+
+        RenderSwitch(_settings.RayReconstruction, "Ray Reconstruction (with ray tracing and DLSS)");
+
+        string drawnAt = $"Drawn at {statistics.RenderWidth}x{statistics.RenderHeight} for {statistics.OutputWidth}x{statistics.OutputHeight}";
+        if (statistics.Denoised)
+        {
+            ImGui.Text($"{drawnAt}, denoised and upscaled by DLSS Ray Reconstruction");
+        }
+        else if (statistics.Upscaled)
+        {
+            ImGui.Text($"{drawnAt}, upscaled by DLSS");
+        }
+        else if (_renderer.Device.Features.HasFlag(GraphicsFeatures.Dlss))
+        {
+            ImGui.Text(drawnAt);
+        }
+        else
+        {
+            ImGui.Text($"{drawnAt}; no DLSS on this GPU");
+        }
+    }
+
+    private void RenderSwitch(ConsoleVariable<bool> variable, string label)
+    {
+        bool on = variable.Value;
+        if (ImGui.Checkbox(label, ref on))
+        {
+            variable.Value = on;
+            _settings.Apply(_renderer);
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(variable.Name);
         }
     }
 }

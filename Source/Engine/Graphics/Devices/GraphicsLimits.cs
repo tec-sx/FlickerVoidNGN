@@ -14,5 +14,8 @@ public static class GraphicsLimits
 
     /// <summary>Bindless slots for samplers.</summary>
     public const int BindlessSamplerCapacity = 256;
+
+    /// <summary>Bindless slots for top-level acceleration structures, on devices with ray queries.</summary>
+    public const int BindlessAccelerationStructureCapacity = 256;
 }
 

@@ -29,8 +29,15 @@ public sealed record LightingMood
     [Range(0, 1)]
     public float Ambient { get; set; } = 0.35f;
 
-    /// <summary>How far from the camera the sun casts shadows, in world units; 0 turns them off.</summary>
+    /// <summary>
+    /// How far from the camera the sun casts shadows through its shadow map, in world units; 0 turns them off. Traced shadows
+    /// reach as far as the scene does.
+    /// </summary>
     public float SunShadowDistance { get; set; } = 30;
+
+    /// <summary>The sun's width in degrees, which softens traced shadows the farther they fall from their casters.</summary>
+    [Range(0, 30)]
+    public float SunAngle { get; set; } = 1;
 
     /// <summary>How much of the light crossing a world unit of fog it absorbs or scatters, at and below <see cref="FogHeight"/>; 0 clears the air.</summary>
     public float FogDensity { get; set; }
@@ -56,10 +63,13 @@ public sealed record LightingMood
     [Range(0, 1)]
     public float AmbientOcclusion { get; set; } = 1;
 
-    /// <summary>How far ambient occlusion looks for nearby surfaces, in world units.</summary>
+    /// <summary>How far ambient occlusion looks for nearby surfaces, in world units: on screen, or along traced rays.</summary>
     public float AmbientOcclusionRadius { get; set; } = 0.5f;
 
-    /// <summary>How far toward the sun contact shadows look for small blockers the shadow map misses; 0 turns them off.</summary>
+    /// <summary>
+    /// How far toward the sun contact shadows look for small blockers the shadow map misses; 0 turns them off. Traced sun shadows
+    /// need none.
+    /// </summary>
     public float ContactShadowLength { get; set; } = 0.3f;
 
     /// <summary>How much of the image is replaced by its blurred glow, from 0 to 1.</summary>

@@ -20,7 +20,13 @@ public struct PointLight
     /// <summary>How far the light reaches, in world units.</summary>
     public float Range { get; set; } = 5;
 
-    /// <summary>Whether meshes block its light, through six tiles of the <see cref="ShadowAtlas"/> while tiles are free.</summary>
+    /// <summary>
+    /// Whether meshes block its light: through traced rays while the frame traces them and slots are free, else through six tiles
+    /// of the <see cref="ShadowAtlas"/> while tiles are free.
+    /// </summary>
     public bool CastsShadows { get; set; }
+
+    /// <summary>The radius of the bulb or flame, in world units; traced shadows soften with it, 0 keeps them sharp.</summary>
+    public float SourceRadius { get; set; } = 0.05f;
 }
 

@@ -29,8 +29,14 @@ public struct SpotLight
     [Range(0, 90)]
     public float OuterConeAngle { get; set; } = 30;
 
-    /// <summary>Whether meshes block its light, through a tile of the <see cref="ShadowAtlas"/> while tiles are free.</summary>
+    /// <summary>
+    /// Whether meshes block its light: through traced rays while the frame traces them and slots are free, else through a tile
+    /// of the <see cref="ShadowAtlas"/> while tiles are free.
+    /// </summary>
     public bool CastsShadows { get; set; }
+
+    /// <summary>The radius of the bulb or flame, as a <see cref="PointLight"/>'s.</summary>
+    public float SourceRadius { get; set; } = 0.05f;
 
     /// <summary>
     /// An image file in the content folder that tints the light like a slide in a projector, filling the outer cone with the

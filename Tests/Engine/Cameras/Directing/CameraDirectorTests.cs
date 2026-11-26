@@ -235,6 +235,32 @@ public sealed class CameraDirectorTests : IDisposable
     }
 
     [Fact]
+    public void CountsTheCutsToNewViewsButNotTheBlendsThere()
+    {
+        CameraDirector director = _builder.Build();
+        Entity hall = _builder.SpawnShot("Hall", """{ "position": [1, 0, 0] }""", start: true);
+        Entity cellar = _builder.SpawnShot("Cellar", """{ "position": [2, 0, 0] }""");
+        Entity attic = _builder.SpawnShot("Attic", """{ "position": [3, 0, 0] }""");
+        _builder.Run(1 / 60f);
+        uint first = _builder.Extract().Cuts;
+
+        director.Switch(cellar, ShotTransition.Cut);
+        _builder.Run(1 / 60f);
+        uint afterCut = _builder.Extract().Cuts;
+        director.Switch(attic, new ShotTransition { Kind = TransitionKind.Blend, Duration = 1 });
+        _builder.Run(1 / 60f);
+        uint afterBlend = _builder.Extract().Cuts;
+        director.Switch(hall, new ShotTransition { Kind = TransitionKind.CrossFade, Duration = 1 });
+        _builder.Run(1 / 60f);
+        uint afterCrossFade = _builder.Extract().Cuts;
+
+        first.Should().BeGreaterThan(0, "the first shot going live cuts to its view");
+        afterCut.Should().Be(first + 1);
+        afterBlend.Should().Be(afterCut, "a blend moves the view to the next shot");
+        afterCrossFade.Should().Be(afterBlend + 1, "a cross-fade draws the next shot at once under the dissolve");
+    }
+
+    [Fact]
     public void ReturnGoesBackToTheShotLiveBeforeAPush()
     {
         CameraDirector director = _builder.Build();

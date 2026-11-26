@@ -21,7 +21,7 @@ internal sealed class ShadowPass : IRenderPass
 
     public void Execute(RenderContext context)
     {
-        _shadows.Draw(context.Commands, context.ShadowViews, context.Draws, context.Statistics);
+        _shadows.Draw(context.Commands, context.FrameBuffer, context.ShadowViews, context.Draws, context.Statistics);
     }
 
     public void Dispose()

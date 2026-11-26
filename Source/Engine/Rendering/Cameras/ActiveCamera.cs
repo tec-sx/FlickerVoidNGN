@@ -37,6 +37,12 @@ public struct ActiveCamera
     /// <summary>The world point the depth fade is measured from, such as the shot's target; null measures from the camera.</summary>
     public Vector3? Focus { get; set; }
 
+    /// <summary>
+    /// How many times the director has cut to a new view rather than moved there, so what the renderer keeps from earlier frames
+    /// (an upscaler's history, traced shadows) starts afresh when it changes.
+    /// </summary>
+    public uint Cuts { get; set; }
+
     /// <summary>The view the world is drawn from: the active camera's pose, else the first camera's own, or null without a camera.</summary>
     public static RenderCamera? Find(World world)
     {

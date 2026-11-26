@@ -30,6 +30,9 @@ struct FrameData
     uint Probes;
     float3 ProbeSize;
     uint3 ProbeCounts;
+    // How far this frame's view, and so ViewProjection, was moved for an upscaler, in render pixels right and down; zero without
+    // one. TargetSize is the render size.
+    float2 Jitter;
     float3 CameraPosition;
     float NearPlane;
     float3 FogColor;
@@ -37,6 +40,9 @@ struct FrameData
     float FogAnisotropy;
     float FogHeight;
     float FogHeightFalloff;
+    // The frame's number while an upscaler denoises it, so its noise is drawn afresh each frame as white noise, as Ray
+    // Reconstruction asks; else None, and noise may hold a pattern.
+    uint NoiseFrame;
     float4x4 InverseViewProjection;
     uint ScreenShadows;
     float AmbientOcclusion;
@@ -50,12 +56,18 @@ struct FrameData
     float FarStart;
     float FarEnd;
     float FarAmount;
+    // The frame before's jitter; PreviousViewProjection is without it.
+    float2 PreviousJitter;
     float3 CutMin;
     uint Cut;
     float3 CutMax;
     float CutMuted;
     uint IndoorCount;
     uint IndoorsOffset;
+    // The traced shadows while the frame traces rays (ShadowRays.hlsl), the sun's in red and the lamps' after it, and the
+    // traced ambient occlusion in red, else None.
+    uint RayShadows;
+    uint RayOcclusion;
     float4x4 PreviousViewProjection;
     uint DrawsOffset;
     // The scene's depth and the G-buffer's targets (GBuffer.cs), by their bindless indices.
@@ -65,12 +77,29 @@ struct FrameData
     uint GBufferMaterial;
     uint GBufferObjectDepth;
     uint GBufferMotion;
+    // The scene's top-level acceleration structure while the frame traces rays, else 0, an empty one; the table of them
+    // (t0, space5) exists only on devices with ray queries.
+    uint AccelerationStructure;
     // The frame buffer's own bindless index, which LoadFrame was given.
     uint Buffer;
 };
 
 static const uint FrameDataSize = 512;
 static const uint None = 0xFFFFFFFF;
+
+// PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
+uint Hash(uint value)
+{
+    uint state = value * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
+}
+
+// A number from 0 to 1 of a hash's top 24 bits, which a float holds exactly.
+float HashToUnit(uint hash)
+{
+    return float(hash >> 8) / 16777216.0;
+}
 
 FrameData LoadFrame(uint index)
 {
@@ -96,6 +125,7 @@ FrameData LoadFrame(uint index)
     frame.Probes = buffer.Load<uint>(156);
     frame.ProbeSize = buffer.Load<float3>(160);
     frame.ProbeCounts = buffer.Load<uint3>(172);
+    frame.Jitter = buffer.Load<float2>(184);
     frame.CameraPosition = buffer.Load<float3>(192);
     frame.NearPlane = buffer.Load<float>(204);
     frame.FogColor = buffer.Load<float3>(208);
@@ -103,6 +133,7 @@ FrameData LoadFrame(uint index)
     frame.FogAnisotropy = buffer.Load<float>(224);
     frame.FogHeight = buffer.Load<float>(228);
     frame.FogHeightFalloff = buffer.Load<float>(232);
+    frame.NoiseFrame = buffer.Load<uint>(236);
     frame.InverseViewProjection = float4x4(buffer.Load<float4>(240), buffer.Load<float4>(256), buffer.Load<float4>(272), buffer.Load<float4>(288));
     frame.ScreenShadows = buffer.Load<uint>(304);
     frame.AmbientOcclusion = buffer.Load<float>(308);
@@ -116,12 +147,15 @@ FrameData LoadFrame(uint index)
     frame.FarStart = buffer.Load<float>(348);
     frame.FarEnd = buffer.Load<float>(352);
     frame.FarAmount = buffer.Load<float>(356);
+    frame.PreviousJitter = buffer.Load<float2>(360);
     frame.CutMin = buffer.Load<float3>(368);
     frame.Cut = buffer.Load<uint>(380);
     frame.CutMax = buffer.Load<float3>(384);
     frame.CutMuted = buffer.Load<float>(396);
     frame.IndoorCount = buffer.Load<uint>(400);
     frame.IndoorsOffset = buffer.Load<uint>(404);
+    frame.RayShadows = buffer.Load<uint>(408);
+    frame.RayOcclusion = buffer.Load<uint>(412);
     frame.PreviousViewProjection = float4x4(buffer.Load<float4>(416), buffer.Load<float4>(432), buffer.Load<float4>(448), buffer.Load<float4>(464));
     frame.DrawsOffset = buffer.Load<uint>(480);
     frame.Depth = buffer.Load<uint>(484);
@@ -130,6 +164,7 @@ FrameData LoadFrame(uint index)
     frame.GBufferMaterial = buffer.Load<uint>(496);
     frame.GBufferObjectDepth = buffer.Load<uint>(500);
     frame.GBufferMotion = buffer.Load<uint>(504);
+    frame.AccelerationStructure = buffer.Load<uint>(508);
     frame.Buffer = index;
     return frame;
 }
@@ -141,6 +176,14 @@ float3 WorldAtPixel(FrameData frame, float2 pixel, float depth)
     float4 ndc = float4(uv.x * 2 - 1, 1 - uv.y * 2, depth, 1);
     float4 world = mul(ndc, frame.InverseViewProjection);
     return world.xyz / world.w;
+}
+
+// The clip position without the frame's jitter, as passes drawing at the output's size want.
+float4 Unjitter(FrameData frame, float4 clip)
+{
+    float2 shift = float2(2, -2) * frame.Jitter / frame.TargetSize;
+    clip.xy -= shift * clip.w;
+    return clip;
 }
 
 // The pixel (with fraction) a clip position lands on.
@@ -176,4 +219,39 @@ static const float IndoorMargin = 0.05;
 bool IsInBox(float3 position, float3 boxMin, float3 boxMax)
 {
     return all(position >= boxMin - IndoorMargin) && all(position <= boxMax + IndoorMargin);
+}
+
+// Greys and darkens the world outside the cutaway's box by its muting, so the room it looks into stands out.
+float3 MuteOutside(FrameData frame, float3 color, float3 worldPosition)
+{
+    if (frame.Cut == 0 || frame.CutMuted <= 0 || IsInBox(worldPosition, frame.CutMin, frame.CutMax))
+    {
+        return color;
+    }
+
+    float grey = dot(color, float3(0.2126, 0.7152, 0.0722));
+    float3 muted = lerp(color, grey, frame.CutMuted);
+    return muted * (1 - (0.5 * frame.CutMuted));
+}
+
+static const uint IndoorSize = 32;
+
+// The share of the mood's ambient light at a point: the least of the indoor volumes it stands in, else all of it.
+float IndoorAmbient(FrameData frame, float3 worldPosition)
+{
+    ByteAddressBuffer buffer = Buffers[frame.Buffer];
+    float ambient = 1;
+    for (uint index = 0; index < frame.IndoorCount; index++)
+    {
+        uint offset = frame.IndoorsOffset + index * IndoorSize;
+        float3 boxMin = buffer.Load<float3>(offset);
+        float boxAmbient = buffer.Load<float>(offset + 12);
+        float3 boxMax = buffer.Load<float3>(offset + 16);
+        if (IsInBox(worldPosition, boxMin, boxMax))
+        {
+            ambient = min(ambient, boxAmbient);
+        }
+    }
+
+    return ambient;
 }

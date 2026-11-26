@@ -1,5 +1,4 @@
 using System.Numerics;
-using System.Runtime.InteropServices;
 
 using Arch.Core;
 
@@ -8,6 +7,7 @@ using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Cameras;
+using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
@@ -15,102 +15,82 @@ using FlickerVoid.Engine.Runtime.Content;
 namespace FlickerVoid.Engine.Rendering.GlobalIllumination;
 
 /// <summary>
-/// Bakes an irradiance volume's probes: each probe renders the scene in six directions with its own scene renderer and
-/// projects what it sees. The first bounce sees the scene lit directly; each further bounce sees it lit by the probes of
-/// the bounce before as well.
+/// Bakes an irradiance volume's probes with the rays live probes are traced with (<see cref="ProbePass"/>), but
+/// <see cref="ProbePass.BakeRays"/> of them a probe: each bounce is a frame of its own scene renderer, whose rays find the scene
+/// lit directly and by the probes of the bounce before. Needs a GPU with ray queries.
 /// </summary>
 public sealed class IrradianceBaker : IDisposable
 {
-    /// <summary>The width and height of each captured face; first-order harmonics need no more.</summary>
-    public const int FaceSize = 16;
-
-    private const PixelFormat CaptureFormat = PixelFormat.Rgba32Float;
+    // The frames' color is never read; the rays write the probes.
+    private const PixelFormat TargetFormat = PixelFormat.Rgba32Float;
 
     private readonly IGraphicsDevice _device;
     private readonly ITexture _color;
-    private readonly IBuffer _readback;
     private readonly ICommandList _commands;
-    private readonly int _rowPitch;
 
     public IrradianceBaker(IGraphicsDevice device, IContentManager content)
     {
+        if (!device.Features.HasFlag(GraphicsFeatures.RayQueries))
+        {
+            throw new GraphicsUnavailableException("Baking probes traces rays, and this GPU has no ray queries.");
+        }
+
         _device = device;
-        Renderer = new SceneRenderer(device, content, CaptureFormat);
-        TextureDescription colorDescription = new(FaceSize, FaceSize, CaptureFormat, TextureUsage.RenderTarget | TextureUsage.CopySource) { Name = "Probe capture" };
+        Renderer = new SceneRenderer(device, content, TargetFormat) { RayTracing = true };
+        TextureDescription colorDescription = new(1, 1, TargetFormat, TextureUsage.RenderTarget) { Name = "Probe bake" };
         _color = device.CreateTexture(colorDescription);
-        _rowPitch = CaptureFormat.GetCopyRowPitch(FaceSize);
-        BufferDescription readbackDescription = new(_rowPitch * FaceSize, BufferUsage.CopyDestination, MemoryLocation.Readback) { Name = "Probe readback" };
-        _readback = device.CreateBuffer(readbackDescription);
         _commands = device.CreateCommandList();
     }
 
-    /// <summary>The renderer the probes see the scene through; give it the game's mood. Baking ignores its post-processing.</summary>
+    /// <summary>The renderer whose frames trace the probes; give it the game's mood. Baking ignores its post-processing.</summary>
     public SceneRenderer Renderer { get; }
 
-    /// <summary>Bakes the probes of a volume centred on the position; waits for the GPU after every face.</summary>
-    public IrradianceProbes Bake(World world, in IrradianceVolume volume, Vector3 center, int bounces = 2)
+    /// <summary>Bakes the probes of a volume centred on the position, a frame a bounce; waits for the GPU after each.</summary>
+    public IrradianceProbes Bake(World world, in IrradianceVolume volume, Vector3 center, int bounces = 3)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(bounces, 1);
+        IrradianceProbes probes = new(volume.ProbesX, volume.ProbesY, volume.ProbesZ);
+        BufferDescription readbackDescription = new(probes.ByteCount, BufferUsage.CopyDestination, MemoryLocation.Readback) { Name = "Probe readback" };
+        using IBuffer readback = _device.CreateBuffer(readbackDescription);
+        Camera camera = new() { Projection = CameraProjection.Perspective, FieldOfView = 90, NearPlane = 0.05f, FarPlane = 1000 };
+        Transform transform = new() { Position = center };
         LightingMood mood = Renderer.Mood;
         Renderer.Mood = mood.WithoutPost();
-        IrradianceProbes? previous = null;
-        Vector4[] pixels = new Vector4[CubeCapture.Faces * FaceSize * FaceSize];
-        for (int bounce = 0; bounce < bounces; bounce++)
+        ProbePass pass = Renderer.ProbePass;
+        pass.Bake = new RenderProbeVolume(volume, center);
+        try
         {
-            Renderer.BakeProbes = new ProbeSource(volume, center, previous);
-            IrradianceProbes baked = new(volume.ProbesX, volume.ProbesY, volume.ProbesZ);
-            for (int z = 0; z < volume.ProbesZ; z++)
+            for (int bounce = 1; bounce <= bounces; bounce++)
             {
-                for (int y = 0; y < volume.ProbesY; y++)
+                _commands.Begin();
+                Renderer.Render(_commands, world, _color, camera, transform);
+                if (bounce == bounces)
                 {
-                    for (int x = 0; x < volume.ProbesX; x++)
-                    {
-                        Vector3 position = volume.GetProbePosition(center, x, y, z);
-                        Capture(world, position, pixels);
-                        int index = baked.GetIndex(x, y, z);
-                        baked.Probes[index] = CubeCapture.Project(pixels, FaceSize);
-                    }
+                    pass.CopyProbes(_commands, readback);
                 }
-            }
 
-            previous = baked;
+                _commands.End();
+                _device.Submit(_commands);
+                _device.WaitIdle();
+            }
+        }
+        finally
+        {
+            pass.Bake = null;
+            Renderer.Mood = mood;
         }
 
-        Renderer.BakeProbes = null;
-        Renderer.Mood = mood;
-        return previous ?? new IrradianceProbes(volume.ProbesX, volume.ProbesY, volume.ProbesZ);
+        byte[] bytes = new byte[probes.ByteCount];
+        readback.Read(bytes, 0);
+        probes.ReadFrom(bytes);
+        return probes;
     }
 
     public void Dispose()
     {
         _device.WaitIdle();
         _commands.Dispose();
-        _readback.Dispose();
         _color.Dispose();
         Renderer.Dispose();
     }
-
-    private void Capture(World world, Vector3 position, Span<Vector4> pixels)
-    {
-        Camera camera = new() { Projection = CameraProjection.Perspective, FieldOfView = 90, NearPlane = 0.05f, FarPlane = 1000 };
-        for (int face = 0; face < CubeCapture.Faces; face++)
-        {
-            Transform transform = new() { Position = position, Rotation = CubeCapture.GetFaceRotation(face) };
-            _commands.Begin();
-            Renderer.Render(_commands, world, _color, camera, transform);
-            _commands.Barrier(_color, ResourceState.CopySource);
-            _commands.CopyTextureToBuffer(_color, _readback, 0);
-            _commands.End();
-            _device.Submit(_commands);
-            _device.WaitIdle();
-
-            Span<Vector4> facePixels = pixels.Slice(face * FaceSize * FaceSize, FaceSize * FaceSize);
-            for (int row = 0; row < FaceSize; row++)
-            {
-                Span<Vector4> rowPixels = facePixels.Slice(row * FaceSize, FaceSize);
-                Span<byte> rowBytes = MemoryMarshal.AsBytes(rowPixels);
-                _readback.Read(rowBytes, (long)row * _rowPitch);
-            }
-        }
-    }
 }
-

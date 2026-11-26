@@ -1,5 +1,3 @@
-using System.Runtime.InteropServices;
-
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Rendering.Extraction;
@@ -43,7 +41,8 @@ internal sealed class ProbeCache : IDisposable
         if (!ReferenceEquals(probes, _uploaded))
         {
             _buffer?.Dispose();
-            ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes<IrradianceProbe>(probes.Probes);
+            byte[] bytes = new byte[probes.ByteCount];
+            probes.WriteTo(bytes);
             BufferDescription description = new(bytes.Length, BufferUsage.ShaderRead) { Name = "Irradiance probes" };
             _buffer = _device.CreateBuffer(description, bytes);
             _uploaded = probes;

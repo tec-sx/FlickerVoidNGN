@@ -49,6 +49,9 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
     private RenderCamera _blendFrom;
     private Vector3? _blendFromFocus;
     private float _blend = 1;
+
+    // How many times a shot went live without a blend moving the view there, which the renderer starts its history afresh on.
+    private uint _cuts;
     private float _blendSpeed;
     private ShotEase _blendEase;
 
@@ -563,6 +566,11 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         }
 
         Live = shot;
+        if (_blend >= 1)
+        {
+            _cuts++;
+        }
+
         _driver.Snap(shot);
         WriteView(0);
         _events.Send(new ShotChangedEvent(previous, shot));
@@ -592,7 +600,7 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
             focus = MixFocus(_blendFromFocus, focus, eased);
         }
 
-        ActiveCamera active = new() { Lens = view.Camera, Pose = view.Transform, Fade = _fade, FadeColor = _fadeColor };
+        ActiveCamera active = new() { Lens = view.Camera, Pose = view.Transform, Fade = _fade, FadeColor = _fadeColor, Cuts = _cuts };
         if (_dissolve > 0)
         {
             RenderCamera from = _driver.Pose(_dissolveFrom);

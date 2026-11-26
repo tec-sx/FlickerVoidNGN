@@ -1,14 +1,15 @@
 // Draws a mesh part whose vertices (float3 position, float3 normal, float2 uv) are pulled from a bindless buffer, as its record
 // among the frame buffer's draws says (pushed by its number). The geometry pass leaves its surface in the G-buffer (GBuffer.cs)
 // for Lighting.hlsl: its base color times its texture and its material's tint, its normal tilted by a painting's relief, its
-// material, its object's depth and its motion. While the camera looks into an indoor volume (the cutaway), whatever stands in
-// front of its box is cut away. The outline pass draws outlined meshes' silhouettes in their outline's color.
+// material, its object's depth and its motion, without the jitter. While the camera looks into an indoor volume (the cutaway),
+// whatever stands in front of its box is cut away. The outline pass draws outlined meshes' silhouettes in their outline's color
+// at the output's size, without the jitter. Neither draws a cutout card's holes, where its paint covers less than its
+// material's cutoff.
 // The frame buffer holds FrameData (Frame.hlsl), then the lights, the shadows, each cluster's range of light indices, the
-// indices, the indoor volumes and the draws.
+// indices, the indoor volumes and the draws (Draw.hlsl).
 
-#include "Frame.hlsl"
+#include "Draw.hlsl"
 #include "GBuffer.hlsl"
-#include "Material.hlsl"
 
 struct SceneConstants
 {
@@ -16,29 +17,7 @@ struct SceneConstants
     uint Draw;
 };
 
-// A draw's record (GpuDraw.cs): where its mesh stands this frame and the frame before, its vertices then and now, its looks,
-// its outline's color, its MeshFlags, and the centre of its box with how wholly it takes that depth for the depth tone.
-struct Draw
-{
-    float4x4 World;
-    float4x4 PreviousWorld;
-    float4 BaseColor;
-    float4 OutlineColor;
-    uint Vertices;
-    uint PreviousVertices;
-    uint Texture;
-    uint Sampler;
-    uint Material;
-    uint Flags;
-    float3 Center;
-    float Wholeness;
-};
-
-static const uint DrawSize = 208;
-
 [[vk::push_constant]] ConstantBuffer<SceneConstants> Scene : register(b0, space0);
-
-static const uint VertexStride = 32;
 
 struct VertexOutput
 {
@@ -50,30 +29,9 @@ struct VertexOutput
     float4 PreviousClip : TEXCOORD1;
 };
 
-// The draw's record; its matrices are the rows of System.Numerics matrices, which multiply row vectors.
-Draw LoadDraw(FrameData frame, uint index)
+// Where the frame's view, jittered for an upscaler, puts the vertex.
+VertexOutput Project(FrameData frame, uint vertexId)
 {
-    ByteAddressBuffer buffer = Buffers[frame.Buffer];
-    uint offset = frame.DrawsOffset + index * DrawSize;
-    Draw draw;
-    draw.World = float4x4(buffer.Load<float4>(offset), buffer.Load<float4>(offset + 16), buffer.Load<float4>(offset + 32), buffer.Load<float4>(offset + 48));
-    draw.PreviousWorld = float4x4(buffer.Load<float4>(offset + 64), buffer.Load<float4>(offset + 80), buffer.Load<float4>(offset + 96), buffer.Load<float4>(offset + 112));
-    draw.BaseColor = buffer.Load<float4>(offset + 128);
-    draw.OutlineColor = buffer.Load<float4>(offset + 144);
-    draw.Vertices = buffer.Load<uint>(offset + 160);
-    draw.PreviousVertices = buffer.Load<uint>(offset + 164);
-    draw.Texture = buffer.Load<uint>(offset + 168);
-    draw.Sampler = buffer.Load<uint>(offset + 172);
-    draw.Material = buffer.Load<uint>(offset + 176);
-    draw.Flags = buffer.Load<uint>(offset + 180);
-    draw.Center = buffer.Load<float3>(offset + 192);
-    draw.Wholeness = buffer.Load<float>(offset + 204);
-    return draw;
-}
-
-VertexOutput VertexMain(uint vertexId : SV_VertexID)
-{
-    FrameData frame = LoadFrame(Scene.Frame);
     Draw draw = LoadDraw(frame, Scene.Draw);
     ByteAddressBuffer vertices = Buffers[draw.Vertices];
     uint offset = vertexId * VertexStride;
@@ -90,10 +48,25 @@ VertexOutput VertexMain(uint vertexId : SV_VertexID)
     output.Position = mul(world, frame.ViewProjection);
     output.WorldPosition = world.xyz;
     output.Normal = mul(normal, cofactor) * mirror;
-    output.Uv = vertices.Load<float2>(offset + 24);
+    output.Uv = vertices.Load<float2>(offset + VertexUv);
     float3 previousPosition = Buffers[draw.PreviousVertices].Load<float3>(offset);
     float4 previousWorld = mul(float4(previousPosition, 1), draw.PreviousWorld);
     output.PreviousClip = mul(previousWorld, frame.PreviousViewProjection);
+    return output;
+}
+
+VertexOutput VertexMain(uint vertexId : SV_VertexID)
+{
+    FrameData frame = LoadFrame(Scene.Frame);
+    return Project(frame, vertexId);
+}
+
+// For passes drawing at the output's size, such as the outlines' silhouettes: where the view puts the vertex without the jitter.
+VertexOutput SilhouetteVertexMain(uint vertexId : SV_VertexID)
+{
+    FrameData frame = LoadFrame(Scene.Frame);
+    VertexOutput output = Project(frame, vertexId);
+    output.Position = Unjitter(frame, output.Position);
     return output;
 }
 
@@ -116,11 +89,26 @@ bool IsCutAway(FrameData frame, float3 worldPosition)
     return enter <= leave;
 }
 
-// The outline pass draws outlined meshes' silhouettes in their outline's color.
+// How much paint covers the draw where the pixel falls: its painting's alpha times its base color's.
+float Coverage(VertexOutput input, Draw draw, Material material)
+{
+    float2 uv = input.Uv;
+    uint texture = PaintTexture(draw, material, uv);
+    float4 paint = Textures[texture].Sample(Samplers[draw.Sampler], uv);
+    return paint.a * draw.BaseColor.a;
+}
+
+// The outline pass draws outlined meshes' silhouettes in their outline's color, but for a cutout card's holes.
 float4 OutlineMain(VertexOutput input) : SV_Target
 {
     FrameData frame = LoadFrame(Scene.Frame);
     Draw draw = LoadDraw(frame, Scene.Draw);
+    Material material = LoadMaterial(draw.Material);
+    if (Coverage(input, draw, material) < material.Cutoff)
+    {
+        discard;
+    }
+
     return float4(draw.OutlineColor.rgb, 1);
 }
 
@@ -174,14 +162,8 @@ struct Surface
 Surface ReadSurface(VertexOutput input, Draw draw, Material material)
 {
     SamplerState sampler = Samplers[draw.Sampler];
-    uint texture = draw.Texture;
     float2 uv = input.Uv;
-    if (material.Texture != None)
-    {
-        texture = material.Texture;
-        uv *= material.TextureScale;
-    }
-
+    uint texture = PaintTexture(draw, material, uv);
     Surface surface;
     surface.Albedo = Textures[texture].Sample(sampler, uv) * draw.BaseColor;
     surface.Albedo.rgb *= material.Tint;
@@ -216,9 +198,9 @@ struct GeometryOutput
     float2 Motion : SV_Target4;
 };
 
-// The geometry pass leaves the surface for lighting, unlit, but where the cutaway cuts it away. The object depth leans from the
-// pixel's own view depth to its box centre's as the draw is small (Draw.Wholeness), and the motion is where the surface stood in
-// the frame before less where it stands now, in pixels.
+// The geometry pass leaves the surface for lighting, unlit, but where the cutaway cuts it away or a cutout card's paint is
+// thinner than its material's cutoff. The object depth leans from the pixel's own view depth to its box centre's as the draw is
+// small (Draw.Wholeness), and the motion is where the surface stood in the frame before less where it stands now, in pixels.
 GeometryOutput GeometryMain(VertexOutput input)
 {
     FrameData frame = LoadFrame(Scene.Frame);
@@ -230,6 +212,11 @@ GeometryOutput GeometryMain(VertexOutput input)
 
     Material material = LoadMaterial(draw.Material);
     Surface surface = ReadSurface(input, draw, material);
+    if (surface.Albedo.a < material.Cutoff)
+    {
+        discard;
+    }
+
     GeometryOutput output;
     output.Albedo = surface.Albedo;
     output.Normal = EncodeNormal(surface.Normal);
@@ -237,7 +224,8 @@ GeometryOutput GeometryMain(VertexOutput input)
     float depth = dot(float4(input.WorldPosition, 1), frame.DepthAxis);
     float centerDepth = dot(float4(draw.Center, 1), frame.DepthAxis);
     output.ObjectDepth = lerp(depth, centerDepth, draw.Wholeness);
+    // The pixel without the jitter, as the frame before's view is without it too.
     float2 previous = ClipToPixel(frame, input.PreviousClip);
-    output.Motion = previous - input.Position.xy;
+    output.Motion = previous - (input.Position.xy - frame.Jitter);
     return output;
 }

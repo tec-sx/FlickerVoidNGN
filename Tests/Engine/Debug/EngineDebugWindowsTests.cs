@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Rendering.Pipeline;
 
 namespace FlickerVoid.Engine.Debug.Tests;
@@ -51,6 +52,8 @@ public sealed class EngineDebugWindowsTests : IDisposable
 
         _builder.Renderer!.LocalLights.Should().BeTrue("the window starts with the renderer's own settings");
         _builder.Renderer.Probes.Should().BeTrue();
+        _builder.Renderer.RayTracing.Should().BeFalse("the window leaves ray tracing as the renderer has it");
         _builder.Renderer.DebugView.Should().Be(DebugView.Lit, "the window shows the lit frame until a view is picked");
+        _builder.Renderer.Upscaling.Should().Be(UpscaleMode.Off, "the window leaves upscaling as the renderer has it");
     }
 }

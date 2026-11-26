@@ -11,6 +11,12 @@ public readonly record struct CameraView(Matrix4x4 View, Matrix4x4 Projection)
     public Matrix4x4 ViewProjection => View * Projection;
 
     /// <summary>
+    /// The axis whose dot product with a world position (w 1) is how far in front of the camera it lies: the view matrix's
+    /// negated third column.
+    /// </summary>
+    public Vector4 DepthAxis => -new Vector4(View.M13, View.M23, View.M33, View.M43);
+
+    /// <summary>
     /// Creates the view from the camera's transform, ignoring its scale. An orthographic view moves in whole pixels, so the
     /// scene doesn't shimmer as the camera glides.
     /// </summary>
@@ -37,6 +43,17 @@ public readonly record struct CameraView(Matrix4x4 View, Matrix4x4 Projection)
         }
 
         return new CameraView(view, projection);
+    }
+
+    /// <summary>
+    /// The view with its image moved by a jitter in pixels of a viewport that size, right and down, as frames drawn for an
+    /// upscaler are; the camera stays where it is, so only the projection moves.
+    /// </summary>
+    public CameraView Jittered(Vector2 jitter, int width, int height)
+    {
+        Matrix4x4 shift = Matrix4x4.CreateTranslation(2 * jitter.X / width, -2 * jitter.Y / height, 0);
+        Matrix4x4 projection = Projection * shift;
+        return this with { Projection = projection };
     }
 }
 

@@ -9,8 +9,10 @@ namespace FlickerVoid.Engine.Graphics.Vulkan.Descriptors;
 /// <summary>
 /// The device-wide descriptor sets shaders index into, and the one pipeline layout every pipeline uses.
 /// DXC maps register space N to set N, so set 1 holds Texture2D[] (t0, space1), set 2 ByteAddressBuffer[]
-/// (t0, space2; RWByteAddressBuffer[] at u0, space2 reads the same storage buffers), set 3 SamplerState[] (s0, space3) and
-/// set 4 RWTexture2D[] (u0, space4), indexed like set 1; set 0 is empty. Push constants are b0, space0.
+/// (t0, space2; RWByteAddressBuffer[] at u0, space2 reads the same storage buffers), set 3 SamplerState[] (s0, space3),
+/// set 4 RWTexture2D[] (u0, space4), indexed like set 1, and on devices with ray queries set 5
+/// RaytracingAccelerationStructure[] (t0, space5), the top-level acceleration structures; set 0 is empty. Push constants are
+/// b0, space0.
 /// </summary>
 internal sealed unsafe class VulkanBindlessTables : IDisposable
 {
@@ -18,28 +20,44 @@ internal sealed unsafe class VulkanBindlessTables : IDisposable
     public const uint BufferSet = 2;
     public const uint SamplerSet = 3;
     public const uint StorageImageSet = 4;
-    private const int SetCount = 5;
+    public const uint AccelerationStructureSet = 5;
 
     private readonly Vk _vk;
     private readonly Device _device;
-    private readonly DescriptorSetLayout[] _layouts = new DescriptorSetLayout[SetCount];
-    private readonly DescriptorSet[] _sets = new DescriptorSet[SetCount];
+    private readonly int _setCount;
+    private readonly DescriptorSetLayout[] _layouts;
+    private readonly DescriptorSet[] _sets;
     private readonly DescriptorPool _pool;
 
-    public VulkanBindlessTables(Vk vk, Device device, in PhysicalDeviceVulkan12Properties limits)
+    /// <param name="accelerationStructureCapacity">The slots of set 5; 0 leaves the set out, as on devices without ray queries.</param>
+    public VulkanBindlessTables(Vk vk, Device device, in PhysicalDeviceVulkan12Properties limits, uint accelerationStructureCapacity)
     {
         _vk = vk;
         _device = device;
         ResourceCapacity = (uint)Math.Min(GraphicsLimits.BindlessResourceCapacity, Math.Min(limits.MaxDescriptorSetUpdateAfterBindSampledImages, Math.Min(limits.MaxDescriptorSetUpdateAfterBindStorageBuffers, limits.MaxDescriptorSetUpdateAfterBindStorageImages)));
         SamplerCapacity = (uint)Math.Min(GraphicsLimits.BindlessSamplerCapacity, limits.MaxDescriptorSetUpdateAfterBindSamplers);
+        AccelerationStructureCapacity = accelerationStructureCapacity;
         Resources = new BindlessIndexAllocator((int)ResourceCapacity);
         Samplers = new BindlessIndexAllocator((int)SamplerCapacity);
+        _setCount = (int)StorageImageSet + 1;
+        if (accelerationStructureCapacity > 0)
+        {
+            AccelerationStructures = new BindlessIndexAllocator((int)accelerationStructureCapacity);
+            _setCount = (int)AccelerationStructureSet + 1;
+        }
 
+        _layouts = new DescriptorSetLayout[_setCount];
+        _sets = new DescriptorSet[_setCount];
         _layouts[0] = CreateEmptyLayout();
         _layouts[TextureSet] = CreateArrayLayout(DescriptorType.SampledImage, ResourceCapacity);
         _layouts[BufferSet] = CreateArrayLayout(DescriptorType.StorageBuffer, ResourceCapacity);
         _layouts[SamplerSet] = CreateArrayLayout(DescriptorType.Sampler, SamplerCapacity);
         _layouts[StorageImageSet] = CreateArrayLayout(DescriptorType.StorageImage, ResourceCapacity);
+        if (AccelerationStructures is not null)
+        {
+            _layouts[AccelerationStructureSet] = CreateArrayLayout(DescriptorType.AccelerationStructureKhr, accelerationStructureCapacity);
+        }
+
         _pool = CreatePool();
         AllocateSets();
         PipelineLayout = CreatePipelineLayout();
@@ -49,10 +67,15 @@ internal sealed unsafe class VulkanBindlessTables : IDisposable
 
     public uint SamplerCapacity { get; }
 
+    public uint AccelerationStructureCapacity { get; }
+
     /// <summary>Slots shared by textures and buffers.</summary>
     public BindlessIndexAllocator Resources { get; }
 
     public BindlessIndexAllocator Samplers { get; }
+
+    /// <summary>Slots of top-level acceleration structures; null on devices without ray queries.</summary>
+    public BindlessIndexAllocator? AccelerationStructures { get; }
 
     public PipelineLayout PipelineLayout { get; }
 
@@ -60,7 +83,7 @@ internal sealed unsafe class VulkanBindlessTables : IDisposable
     {
         fixed (DescriptorSet* sets = _sets)
         {
-            _vk.CmdBindDescriptorSets(commandBuffer, bindPoint, PipelineLayout, 0, SetCount, sets, 0, null);
+            _vk.CmdBindDescriptorSets(commandBuffer, bindPoint, PipelineLayout, 0, (uint)_setCount, sets, 0, null);
         }
     }
 
@@ -85,6 +108,19 @@ internal sealed unsafe class VulkanBindlessTables : IDisposable
         DescriptorBufferInfo info = new() { Buffer = buffer, Offset = 0, Range = Vk.WholeSize };
         WriteDescriptorSet write = CreateWrite(BufferSet, index, DescriptorType.StorageBuffer);
         write.PBufferInfo = &info;
+        _vk.UpdateDescriptorSets(_device, 1, &write, 0, null);
+    }
+
+    public void WriteAccelerationStructure(uint index, AccelerationStructureKHR structure)
+    {
+        WriteDescriptorSetAccelerationStructureKHR info = new()
+        {
+            SType = StructureType.WriteDescriptorSetAccelerationStructureKhr,
+            AccelerationStructureCount = 1,
+            PAccelerationStructures = &structure,
+        };
+        WriteDescriptorSet write = CreateWrite(AccelerationStructureSet, index, DescriptorType.AccelerationStructureKhr);
+        write.PNext = &info;
         _vk.UpdateDescriptorSets(_device, 1, &write, 0, null);
     }
 
@@ -158,17 +194,24 @@ internal sealed unsafe class VulkanBindlessTables : IDisposable
 
     private DescriptorPool CreatePool()
     {
-        DescriptorPoolSize* sizes = stackalloc DescriptorPoolSize[4];
+        DescriptorPoolSize* sizes = stackalloc DescriptorPoolSize[5];
         sizes[0] = new DescriptorPoolSize(DescriptorType.SampledImage, ResourceCapacity);
         sizes[1] = new DescriptorPoolSize(DescriptorType.StorageBuffer, ResourceCapacity);
         sizes[2] = new DescriptorPoolSize(DescriptorType.Sampler, SamplerCapacity);
         sizes[3] = new DescriptorPoolSize(DescriptorType.StorageImage, ResourceCapacity);
+        uint sizeCount = 4;
+        if (AccelerationStructures is not null)
+        {
+            sizes[4] = new DescriptorPoolSize(DescriptorType.AccelerationStructureKhr, AccelerationStructureCapacity);
+            sizeCount = 5;
+        }
+
         DescriptorPoolCreateInfo info = new()
         {
             SType = StructureType.DescriptorPoolCreateInfo,
             Flags = DescriptorPoolCreateFlags.UpdateAfterBindBit,
-            MaxSets = SetCount,
-            PoolSizeCount = 4,
+            MaxSets = (uint)_setCount,
+            PoolSizeCount = sizeCount,
             PPoolSizes = sizes,
         };
         VulkanResult.Check(_vk.CreateDescriptorPool(_device, &info, null, out DescriptorPool pool));
@@ -184,7 +227,7 @@ internal sealed unsafe class VulkanBindlessTables : IDisposable
             {
                 SType = StructureType.DescriptorSetAllocateInfo,
                 DescriptorPool = _pool,
-                DescriptorSetCount = SetCount,
+                DescriptorSetCount = (uint)_setCount,
                 PSetLayouts = layouts,
             };
             VulkanResult.Check(_vk.AllocateDescriptorSets(_device, &info, sets));
@@ -199,7 +242,7 @@ internal sealed unsafe class VulkanBindlessTables : IDisposable
             PipelineLayoutCreateInfo info = new()
             {
                 SType = StructureType.PipelineLayoutCreateInfo,
-                SetLayoutCount = SetCount,
+                SetLayoutCount = (uint)_setCount,
                 PSetLayouts = layouts,
                 PushConstantRangeCount = 1,
                 PPushConstantRanges = &pushConstants,

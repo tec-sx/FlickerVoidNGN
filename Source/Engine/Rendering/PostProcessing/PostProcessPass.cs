@@ -19,11 +19,8 @@ internal sealed class PostProcessPass : IRenderPass
         _content = content;
     }
 
+    /// <summary>Finds the mood's canvas, which passes that paint into the lit scene read too (the sky).</summary>
     public void Prepare(RenderContext context)
-    {
-    }
-
-    public void Execute(RenderContext context)
     {
         CanvasFile file = new();
         ITexture? image = null;
@@ -38,8 +35,12 @@ internal sealed class PostProcessPass : IRenderPass
         }
 
         CanvasView view = CanvasView.From(context.View, context.Camera, context.Height, file.Tiling);
-        PostCanvas canvas = new(file, image, view);
-        _post.Run(context.Commands, context.Targets, context.ColorTarget, context.Mood, canvas, context.ClampSampler, context.Sampler, context.FrameBuffer);
+        context.Canvas = new PostCanvas(file, image, view);
+    }
+
+    public void Execute(RenderContext context)
+    {
+        _post.Run(context.Commands, context.Targets, context.ColorTarget, context.Mood, context.Canvas, context.ClampSampler, context.Sampler);
     }
 
     public void Dispose()

@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Devices;
+using FlickerVoid.Engine.Graphics.Resources;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
@@ -14,9 +15,10 @@ using FlickerVoid.Engine.Runtime.Geometry;
 namespace FlickerVoid.Engine.Rendering.Lighting;
 
 /// <summary>
-/// Writes the frame's view, sun, lights, shadows, light clusters, probes, indoor volumes, cutaway, draws and the bindless indices
-/// of its depth and G-buffer into the frame buffer ring, after every pass has prepared and before any executes; remembers the
-/// view for the next frame's view before.
+/// Writes the frame's view (jittered for an upscaler), sun, lights, shadows, light clusters, probes, indoor volumes, cutaway, draws
+/// and the bindless indices of its traced shadows and occlusion, depth, G-buffer and acceleration structure into the frame buffer
+/// ring, after every pass has prepared and before any executes; remembers the view without its jitter, and the jitter, for the
+/// next frame's view before, which a frame that starts its history afresh takes from its own.
 /// </summary>
 internal sealed class FrameDataWriter : IDisposable
 {
@@ -27,7 +29,9 @@ internal sealed class FrameDataWriter : IDisposable
     private readonly FrameBufferRing _frames;
     private readonly ProbeCache _probes;
     private readonly List<GpuDraw> _draws = [];
-    private Matrix4x4? _previousViewProjection;
+    private Matrix4x4 _previousViewProjection;
+    private Vector2 _previousJitter;
+    private uint _number;
 
     public FrameDataWriter(IGraphicsDevice device, ProbeCache probes, int framesInFlight)
     {
@@ -60,9 +64,8 @@ internal sealed class FrameDataWriter : IDisposable
         ReadOnlySpan<byte> indoorBytes = MemoryMarshal.AsBytes(indoors.AsSpan());
         int indoorsOffset = indicesOffset + indexBytes.Length;
 
-        // A pixel's view depth is the dot product of its world position and the view matrix's negated third column.
         Matrix4x4 viewMatrix = view.View;
-        Vector4 depthAxis = -new Vector4(viewMatrix.M13, viewMatrix.M23, viewMatrix.M33, viewMatrix.M43);
+        Vector4 depthAxis = view.DepthAxis;
         Vector3 viewDirection = new(depthAxis.X, depthAxis.Y, depthAxis.Z);
         CollectDraws(context, viewDirection);
         ReadOnlySpan<byte> drawBytes = MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(_draws));
@@ -78,10 +81,9 @@ internal sealed class FrameDataWriter : IDisposable
         Vector3 probeMin = Vector3.Zero;
         Vector3 probeSize = Vector3.Zero;
         IrradianceVolume volume = new();
-        ProbeSource? probes = context.ProbeSource;
-        if (probes?.Probes is not null)
+        if (context.ProbeSource is { } probes && FindProbeBuffer(probes) is { } found)
         {
-            probeBuffer = _probes.Upload(probes.Probes);
+            probeBuffer = found;
             volume = probes.Volume;
             probeSize = volume.Size;
             probeMin = probes.Center - (volume.Size / 2);
@@ -96,7 +98,9 @@ internal sealed class FrameDataWriter : IDisposable
         }
 
         Matrix4x4.Invert(viewMatrix, out Matrix4x4 cameraWorld);
-        Matrix4x4.Invert(view.ViewProjection, out Matrix4x4 inverseViewProjection);
+        CameraView jittered = view.Jittered(context.Jitter, context.RenderWidth, context.RenderHeight);
+        Matrix4x4 viewProjection = jittered.ViewProjection;
+        Matrix4x4.Invert(viewProjection, out Matrix4x4 inverseViewProjection);
         LightingMood mood = context.Mood;
         DepthFade fade = context.DepthFade;
         float focusDepth = 0;
@@ -105,16 +109,51 @@ internal sealed class FrameDataWriter : IDisposable
             focusDepth = Vector4.Dot(new Vector4(focus, 1), depthAxis);
         }
 
-        Matrix4x4 previousViewProjection = _previousViewProjection ?? view.ViewProjection;
+        if (context.ResetsHistory)
+        {
+            _previousViewProjection = view.ViewProjection;
+            _previousJitter = context.Jitter;
+        }
+
+        Matrix4x4 previousViewProjection = _previousViewProjection;
+        Vector2 previousJitter = _previousJitter;
         _previousViewProjection = view.ViewProjection;
+        _previousJitter = context.Jitter;
         Vector3 sunDirection = Vector3.Normalize(mood.SunDirection);
         GBuffer gBuffer = context.GBuffer;
+        uint accelerationStructure = BindlessIndex.None;
+        if (context.AccelerationStructure is { } scene)
+        {
+            accelerationStructure = scene.BindlessIndex;
+        }
+
+        uint rayShadows = GpuLight.None;
+        if (context.RayShadows is { } tracedShadows)
+        {
+            rayShadows = tracedShadows.BindlessIndex;
+        }
+
+        uint rayOcclusion = GpuLight.None;
+        if (context.RayOcclusion is { } tracedOcclusion)
+        {
+            rayOcclusion = tracedOcclusion.BindlessIndex;
+        }
+
+        // Ray Reconstruction asks for samples that hold no pattern, so a denoised frame's noise is drawn afresh by its number.
+        uint noiseFrame = GpuLight.None;
+        if (context.Denoises)
+        {
+            noiseFrame = _number;
+        }
+
+        _number++;
+
         FrameData data = new(
-            view.ViewProjection,
+            viewProjection,
             depthAxis,
             sunDirection,
             mood.Ambient,
-            new Vector2(context.Width, context.Height),
+            new Vector2(context.RenderWidth, context.RenderHeight),
             _clusters.SliceScale,
             _clusters.SliceBias,
             logarithmic,
@@ -131,8 +170,7 @@ internal sealed class FrameDataWriter : IDisposable
             (uint)volume.ProbesX,
             (uint)volume.ProbesY,
             (uint)volume.ProbesZ,
-            0,
-            0,
+            context.Jitter,
             cameraWorld.Translation,
             camera.NearPlane,
             mood.FogColor,
@@ -140,7 +178,7 @@ internal sealed class FrameDataWriter : IDisposable
             mood.FogAnisotropy,
             mood.FogHeight,
             mood.FogHeightFalloff,
-            0,
+            noiseFrame,
             inverseViewProjection,
             context.Targets.ScreenShadows.BindlessIndex,
             mood.AmbientOcclusion,
@@ -154,25 +192,24 @@ internal sealed class FrameDataWriter : IDisposable
             fade.FarStart,
             fade.FarEnd,
             fade.FarAmount,
-            0,
-            0,
+            previousJitter,
             cutaway.Min,
             cut,
             cutaway.Max,
             cutaway.OutsideMuted,
             (uint)indoors.Length,
             (uint)indoorsOffset,
-            0,
-            0,
+            rayShadows,
+            rayOcclusion,
             previousViewProjection,
             (uint)drawsOffset,
-            context.Depth.BindlessIndex,
+            context.Targets.Depth.BindlessIndex,
             gBuffer.Albedo.BindlessIndex,
             gBuffer.Normal.BindlessIndex,
             gBuffer.Material.BindlessIndex,
             gBuffer.ObjectDepth.BindlessIndex,
             gBuffer.Motion.BindlessIndex,
-            0);
+            accelerationStructure);
 
         IBuffer frame = _frames.Get(size);
         ReadOnlySpan<FrameData> header = new(in data);
@@ -184,6 +221,22 @@ internal sealed class FrameDataWriter : IDisposable
         frame.Write(indoorBytes, indoorsOffset);
         frame.Write(drawBytes, drawsOffset);
         return frame;
+    }
+
+    /// <summary>The bindless index of the buffer holding the probes: the live ones traced on the GPU, else the baked ones uploaded.</summary>
+    private uint? FindProbeBuffer(ProbeSource probes)
+    {
+        if (probes.Live is { } live)
+        {
+            return live.BindlessIndex;
+        }
+
+        if (probes.Probes is { } baked)
+        {
+            return _probes.Upload(baked);
+        }
+
+        return null;
     }
 
     private static int AlignUp(int offset, int alignment)
@@ -219,10 +272,10 @@ internal sealed class FrameDataWriter : IDisposable
                 draw.Vertices.BindlessIndex,
                 draw.PreviousVertices.BindlessIndex,
                 texture.BindlessIndex,
-                context.Sampler.BindlessIndex,
-                draw.Material.BindlessIndex,
+                context.MaterialSampler.BindlessIndex,
+                draw.Material.Parameters.BindlessIndex,
                 (uint)draw.Flags,
-                0,
+                part.Indices.BindlessIndex,
                 0,
                 box.Center,
                 wholeness);

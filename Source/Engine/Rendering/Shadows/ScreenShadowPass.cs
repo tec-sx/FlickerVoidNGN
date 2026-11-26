@@ -6,7 +6,10 @@ using FlickerVoid.Engine.Rendering.PostProcessing;
 
 namespace FlickerVoid.Engine.Rendering.Shadows;
 
-/// <summary>Works out contact shadows and ambient occlusion from the scene depth and normals into the screen shadows target.</summary>
+/// <summary>
+/// Works out contact shadows and ambient occlusion from the scene depth and normals into the screen shadows target, unless the
+/// frame traces rays, which trace the occlusion and sun shadows that need no contact shadow (<see cref="ShadowRayPass"/>).
+/// </summary>
 internal sealed class ScreenShadowPass : IRenderPass
 {
     private const int GroupSize = 8;
@@ -29,6 +32,11 @@ internal sealed class ScreenShadowPass : IRenderPass
 
     public void Execute(RenderContext context)
     {
+        if (context.RayOcclusion is not null)
+        {
+            return;
+        }
+
         ICommandList commands = context.Commands;
         ScreenTargets targets = context.Targets;
         commands.Barrier(targets.Depth, ResourceState.ShaderRead);
@@ -37,7 +45,7 @@ internal sealed class ScreenShadowPass : IRenderPass
         commands.SetPipeline(_pipeline);
         ScreenShadowConstants constants = new(context.FrameBuffer, targets.ScreenShadows.BindlessIndex);
         commands.PushConstants(constants);
-        commands.Dispatch((context.Width + GroupSize - 1) / GroupSize, (context.Height + GroupSize - 1) / GroupSize);
+        commands.Dispatch((context.RenderWidth + GroupSize - 1) / GroupSize, (context.RenderHeight + GroupSize - 1) / GroupSize);
         commands.Barrier(targets.ScreenShadows, ResourceState.ShaderRead);
     }
 

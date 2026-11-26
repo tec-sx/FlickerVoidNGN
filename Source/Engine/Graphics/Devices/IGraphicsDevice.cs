@@ -1,9 +1,11 @@
+using FlickerVoid.Engine.Graphics.AccelerationStructures;
 using FlickerVoid.Engine.Graphics.Buffers;
 using FlickerVoid.Engine.Graphics.Commands;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Presentation;
 using FlickerVoid.Engine.Graphics.Samplers;
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Upscaling;
 
 namespace FlickerVoid.Engine.Graphics.Devices;
 
@@ -11,6 +13,9 @@ namespace FlickerVoid.Engine.Graphics.Devices;
 public interface IGraphicsDevice : IDisposable
 {
     string AdapterName { get; }
+
+    /// <summary>What it can do beyond what every device does: what the GPU has, less what its options left out.</summary>
+    GraphicsFeatures Features { get; }
 
     /// <summary>The adapter, the API version and the memory the device's resources hold now.</summary>
     GraphicsInfo GetInfo();
@@ -26,6 +31,24 @@ public interface IGraphicsDevice : IDisposable
     IPipeline CreateGraphicsPipeline(GraphicsPipelineDescription description);
 
     IPipeline CreateComputePipeline(ComputePipelineDescription description);
+
+    /// <summary>
+    /// Creates a bottom-level acceleration structure big enough for the triangles, to build with
+    /// <see cref="ICommandList.BuildBottomLevels"/>; throws <see cref="NotSupportedException"/> without <see cref="GraphicsFeatures.RayQueries"/>.
+    /// </summary>
+    IAccelerationStructure CreateBottomLevel(in BottomLevelDescription description);
+
+    /// <summary>
+    /// Creates a top-level acceleration structure big enough for the instances, to build with <see cref="ICommandList.BuildTopLevel"/>;
+    /// throws <see cref="NotSupportedException"/> without <see cref="GraphicsFeatures.RayQueries"/>.
+    /// </summary>
+    IAccelerationStructure CreateTopLevel(in TopLevelDescription description);
+
+    /// <summary>
+    /// Creates a DLSS upscaler for the mode and output size, which picks the size frames are drawn at; throws
+    /// <see cref="NotSupportedException"/> without <see cref="GraphicsFeatures.Dlss"/> or for <see cref="UpscaleMode.Off"/>.
+    /// </summary>
+    IUpscaler CreateUpscaler(in UpscalerDescription description);
 
     ICommandList CreateCommandList();
 

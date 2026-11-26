@@ -99,7 +99,7 @@ internal sealed class SkinningPass : IRenderPass
                 materialPath = materials[index];
             }
 
-            IBuffer material = _materials.Get(materialPath, context.Textures);
+            GpuMaterial material = _materials.Get(materialPath, context.Textures);
             Outline? outline = mesh.Outline;
             if (mesh.Flags.HasFlag(MeshFlags.ShadowOnly))
             {
@@ -113,7 +113,7 @@ internal sealed class SkinningPass : IRenderPass
             }
 
             bool inView = IsInView(context.Statistics, mesh.Flags, bounds, view);
-            context.Draws.Add(new MeshDraw(mesh.World, previousWorld, part, vertices, previousVertices, material, outline, mesh.Flags, bounds, inView));
+            context.Draws.Add(new MeshDraw(mesh.Id, mesh.World, previousWorld, part, vertices, previousVertices, material, outline, mesh.Flags, bounds, inView));
         }
     }
 }

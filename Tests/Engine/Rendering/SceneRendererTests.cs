@@ -1,8 +1,10 @@
 using System.Numerics;
 
 using FlickerVoid.Engine.Graphics.Textures;
+using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 
@@ -19,6 +21,13 @@ public sealed class SceneRendererTests : IDisposable
     /// <summary>A part a module's mesh source makes, standing two metres below the view's centre, so a box four high covers the view.</summary>
     private const string VanBody = """{ "name": "Van", "components": { "transform": { "position": [0, -2, 0] }, "meshRenderer": { "mesh": "Van.fvtest#body" } } }""";
 
+    /// <summary>A wall a unit high and wide standing on the floor's right, facing +X, from the floor's middle up and down.</summary>
+    private const string Wall = """{ "name": "Wall", "components": { "transform": { "position": [0.5, 0, 0.5], "rotation": [0, 0.70710677, 0, 0.70710677], "scale": [0.5, 0.5, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""";
+
+    /// <summary>A card 0.8 wide a unit above the floor, from 0.1 to 0.9 right of its centre, in the cutout material.</summary>
+    private const string Card = """{ "name": "Card", "components": { "transform": { "position": [0.5, 0, 1], "scale": [0.4, 0.4, 1] }, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Card.fvmat"] } } }""";
+
+    private static readonly Vector3 Down = -Vector3.UnitZ;
     private static readonly Vector4 Red = new(1, 0, 0, 1);
     private static readonly uint RedPixel = SceneRendererTestsBuilder.Rgba(255, 0, 0, 255);
     private static readonly uint BlackPixel = SceneRendererTestsBuilder.Rgba(0, 0, 0, 255);
@@ -531,14 +540,22 @@ public sealed class SceneRendererTests : IDisposable
         pixels.Should().AllBeEquivalentTo(RedPixel);
     }
 
-    [Fact]
-    public void DarkensAmbientLightNearOccluders()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DarkensAmbientLightNearOccluders(bool rayTracing)
     {
+        if (rayTracing)
+        {
+            _builder.WithRayQueries();
+        }
+
         _builder.WithTargetSize(16).WithMood(static mood => mood with { AmbientOcclusion = 1, AmbientOcclusionRadius = 0.5f });
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
         _builder.WithScene(Camera, Quad, """{ "name": "Step", "components": { "transform": { "position": [-0.5, 0, 0.3], "scale": [0.5, 1, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithRenderer(renderer => renderer.RayTracing = rayTracing);
 
-        uint[] pixels = _builder.Render();
+        uint[] pixels = _builder.RenderFrames(16);
 
         (byte nearTheStep, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 8]);
         (byte open, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 15]);
@@ -619,6 +636,55 @@ public sealed class SceneRendererTests : IDisposable
         uint[] pixels = _builder.Render();
 
         pixels[5].Should().Be(RedPixel);
+    }
+
+    [Theory]
+    [InlineData(Tonemapper.None)]
+    [InlineData(Tonemapper.Uncharted2)]
+    [InlineData(Tonemapper.Aces)]
+    public void MeltsTheFarSideIntoTheFarColourAsTheScreenShowsIt(Tonemapper tonemapper)
+    {
+        Vector3 farColor = new(0.2f, 0.4f, 0.6f);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(mood => mood with
+        {
+            Exposure = 2,
+            Contrast = 1.2f,
+            Saturation = 0.8f,
+            Tonemapper = tonemapper,
+            DepthFarStart = 0,
+            DepthFarEnd = 1,
+            DepthFarAmount = 1,
+            DepthFarColor = farColor,
+        });
+        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, 3));
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeCloseTo(51, 2, "the far colour is the colour the far side takes on screen, whatever the grade");
+        green.Should().BeCloseTo(102, 2);
+        blue.Should().BeCloseTo(153, 2);
+    }
+
+    [Fact]
+    public void LeavesTheSkyOutOfTheDepthFade()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(static mood => mood with { DepthFarStart = 0, DepthFarEnd = 1, DepthFarAmount = 1, DepthFarColor = Vector3.Zero });
+        _builder.WithRenderer(static renderer =>
+        {
+            renderer.Focus = new Vector3(0, 0, 3);
+            renderer.Sky = true;
+        });
+
+        uint[] pixels = _builder.Render();
+
+        pixels[5].Should().Be(BlackPixel, "the quad lies past the far end");
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[0]);
+        (red + green + blue).Should().BeGreaterThan(30, "the sky fills the empty corner and stays out of the fade");
     }
 
     [Fact]
@@ -1341,6 +1407,339 @@ public sealed class SceneRendererTests : IDisposable
 
         (byte shade, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
         shade.Should().BeInRange(78, 80, "the crate's front stands 4.5 from the camera, shown as 4.5 / (4.5 + 10)");
+    }
+
+    [Fact]
+    public void TracesRaysAgainstTheMeshesItDrawsWhenTracingRays()
+    {
+        _builder.WithRayQueries();
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Step", "components": { "transform": { "position": [2, 0, 1], "scale": [0.25, 0.25, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithRenderer(static renderer => renderer.RayTracing = true);
+
+        RayHit[] hits = _builder.TraceRays((new Vector3(0, 0, 5), Down), (new Vector3(2, 0, 5), Down), (new Vector3(2.2f, 0, 5), Down), (new Vector3(-2, 0, 5), Down));
+
+        _builder.TracedRays.Should().BeTrue();
+        hits[0].DrawPosition.Should().Be(Vector3.Zero, "the ray names the quad's draw, which stands at the origin");
+        hits[0].Distance.Should().BeApproximately(5, 0.001f, "the quad stands five below the ray's start");
+        hits[1].DrawPosition.Should().Be(new Vector3(2, 0, 1), "the step is outside the view but still traced");
+        hits[1].Distance.Should().BeApproximately(4, 0.001f, "the step stands a unit above the quad");
+        hits[2].Missed.Should().BeTrue("the step is scaled to a quarter of the quad");
+        hits[3].Missed.Should().BeTrue("nothing stands there");
+    }
+
+    [Fact]
+    public void FollowsPosedMeshesInTheScenesAccelerationStructure()
+    {
+        _builder.WithRayQueries();
+        _builder.WithModel("Walker.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red).WithMovingJoint(Vector3.Zero, new Vector3(1, 1, 0), 2));
+        _builder.WithScene(Camera, """{ "name": "Walker", "components": { "transform": {}, "meshRenderer": { "mesh": "Walker.glb" }, "meshAnimator": { "time": 0 } } }""");
+        _builder.WithRenderer(static renderer => renderer.RayTracing = true);
+        (Vector3, Vector3) start = (new Vector3(0.1f, 0.1f, 5), Down);
+        (Vector3, Vector3) end = (new Vector3(0.75f, 0.75f, 5), Down);
+
+        RayHit[] before = _builder.TraceRays(start, end);
+        RayHit[] after = _builder.WithAnimationTime(1).TraceRays(start, end);
+        RayHit[] later = _builder.WithAnimationTime(1.5f).TraceRays(start, end);
+
+        before[0].Missed.Should().BeFalse("the walker starts at the origin");
+        before[1].Missed.Should().BeTrue();
+        after[0].Missed.Should().BeFalse("halfway, the walker still covers the point just up and right of the origin");
+        after[1].Missed.Should().BeFalse("halfway, the walker has moved half a unit up and right");
+        later[0].Missed.Should().BeTrue("three quarters of the way, the walker has left the point behind");
+        later[1].Distance.Should().BeApproximately(5, 0.001f, "three quarters of the way, the walker covers the end");
+    }
+
+    [Fact]
+    public void LeavesOutlineOnlyMeshesOutOfTheScenesAccelerationStructure()
+    {
+        _builder.WithRayQueries();
+        _builder.WithScene(Camera, """{ "name": "Doorway", "components": { "transform": {}, "doorway": { "size": [1, 1, 1] } } }""");
+        _builder.WithRenderer(static renderer => renderer.RayTracing = true);
+
+        RayHit[] hits = _builder.TraceRays((new Vector3(0, 0, 5), Down));
+
+        _builder.TracedRays.Should().BeTrue();
+        hits[0].Missed.Should().BeTrue("a doorway is only an outline, which rays pass through");
+    }
+
+    [Fact]
+    public void TracesNoRaysUnlessAskedTo()
+    {
+        _builder.WithRayQueries();
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+
+        _builder.TraceRays((new Vector3(0, 0, 5), Down));
+
+        _builder.TracedRays.Should().BeFalse("stages, previews and bakes draw without ray tracing");
+    }
+
+    [Fact]
+    public void DrawsWithoutRayTracingWhereTheDeviceHasNoRayQueries()
+    {
+        _builder.WithoutRayQueries();
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithRenderer(static renderer => renderer.RayTracing = true);
+
+        uint[] pixels = _builder.Render();
+        _builder.TraceRays((new Vector3(0, 0, 5), Down));
+
+        pixels[5].Should().Be(RedPixel, "the frame draws as it does on any device");
+        _builder.TracedRays.Should().BeFalse("the device has no ray queries");
+    }
+
+    [Fact]
+    public void TracesSunShadowsSharpBesideTheirCasterAndSofterFartherAway()
+    {
+        _builder.WithRayQueries().WithTargetSize(16).WithMood(static mood => mood with { SunAngle = 20 });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, Wall);
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+        _builder.WithRenderer(static renderer => renderer.RayTracing = true);
+
+        uint[] pixels = _builder.RenderFrames(16);
+
+        // Rows 3 and 4 lie either side of the edge of the wall's shadow; column 11 a sixteenth of the wall's height from its foot,
+        // column 5 four fifths.
+        (byte nearOutside, _, _) = SceneRendererTestsBuilder.Channels(pixels[(3 * 16) + 11]);
+        (byte nearInside, _, _) = SceneRendererTestsBuilder.Channels(pixels[(4 * 16) + 11]);
+        (byte farOutside, _, _) = SceneRendererTestsBuilder.Channels(pixels[(3 * 16) + 5]);
+        (byte farInside, _, _) = SceneRendererTestsBuilder.Channels(pixels[(4 * 16) + 5]);
+        nearOutside.Should().BeInRange(195, 203, "beside the wall's foot, the edge of its shadow is sharp");
+        nearInside.Should().BeInRange(62, 66);
+        farOutside.Should().BeInRange(80, 185, "far from the wall's foot, the sun's width softens the edge");
+        farInside.Should().BeInRange(80, 185);
+        farOutside.Should().BeGreaterThan(farInside);
+    }
+
+    [Fact]
+    public void LeavesTracedShadowsUnfilteredForRayReconstructionToDenoise()
+    {
+        _builder.WithRayQueries().WithRayReconstruction().WithTargetSize(16).WithMood(static mood => mood with { SunAngle = 20 });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, Wall);
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+        _builder.WithRenderer(static renderer =>
+        {
+            renderer.RayTracing = true;
+            renderer.Upscaling = UpscaleMode.Dlaa;
+        });
+
+        uint[] pixels = _builder.RenderFrames(16);
+
+        // Far from the wall's foot, where the filter softens the shadow's edge over the frames, rows 3 and 4 of column 5.
+        foreach (int pixel in (int[])[(3 * 16) + 5, (4 * 16) + 5])
+        {
+            (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[pixel]);
+            red.Should().Match(value => value >= 195 || value <= 66, "each pixel holds its one ray of the frame, which met the sun or the wall, for Ray Reconstruction to denoise");
+        }
+    }
+
+    [Theory]
+    [InlineData("pointLight", "")]
+    [InlineData("spotLight", """, "innerConeAngle": 70, "outerConeAngle": 80""")]
+    public void TracesSharpShadowsFromALampWithoutSize(string light, string cone)
+    {
+        WithLampOverABlocker(light, cone, sourceRadius: 0);
+
+        uint[] pixels = _builder.RenderFrames(16);
+
+        (byte inside, byte outside, byte mirrored) = LampShadowEdge(pixels);
+        inside.Should().Be(0, "the blocker hides the whole lamp");
+        outside.Should().BeCloseTo(mirrored, 3, "nothing hides any of the lamp");
+    }
+
+    [Theory]
+    [InlineData("pointLight", "")]
+    [InlineData("spotLight", """, "innerConeAngle": 70, "outerConeAngle": 80""")]
+    public void SoftensLampShadowsByTheSizeOfTheirSource(string light, string cone)
+    {
+        WithLampOverABlocker(light, cone, sourceRadius: 0.3f);
+
+        uint[] pixels = _builder.RenderFrames(16);
+
+        (byte inside, byte outside, byte mirrored) = LampShadowEdge(pixels);
+        inside.Should().BeGreaterThan(10, "part of the lamp shows past the blocker's edge");
+        outside.Should().BeLessThan((byte)(mirrored - 10), "the blocker hides part of the lamp");
+    }
+
+    [Fact]
+    public void TracesSunShadowsBeyondTheShadowMapsReach()
+    {
+        _builder.WithRayQueries().WithMood(static mood => mood with { SunShadowDistance = 2 });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Blocker", "components": { "transform": { "position": [0.75, 0.25, 1], "scale": [0.25, 0.25, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+
+        uint[] mapped = _builder.Render();
+        uint[] traced = _builder.WithRenderer(static renderer => renderer.RayTracing = true).Render();
+
+        (byte mappedRed, _, _) = SceneRendererTestsBuilder.Channels(mapped[5]);
+        (byte tracedRed, _, _) = SceneRendererTestsBuilder.Channels(traced[5]);
+        mappedRed.Should().BeInRange(195, 203, "the floor lies five from the camera, beyond the shadow map's two");
+        tracedRed.Should().BeInRange(62, 66, "rays reach as far as the scene does");
+    }
+
+    [Fact]
+    public void LetsATracedShadowGoTheMomentItsCasterMoves()
+    {
+        _builder.WithRayQueries().WithTargetSize(16).WithRenderer(static renderer => renderer.RayTracing = true);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Blocker", "components": { "transform": { "position": [0.5, 0.5, 1], "scale": [0.5, 0.5, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+        _builder.RenderFrames(16);
+
+        uint[] pixels = _builder.WithPosition("Blocker", new Vector3(0.5f, -0.5f, 1)).Render();
+
+        (byte left, _, _) = SceneRendererTestsBuilder.Channels(pixels[(4 * 16) + 4]);
+        (byte fallen, _, _) = SceneRendererTestsBuilder.Channels(pixels[(11 * 16) + 4]);
+        left.Should().BeInRange(195, 203, "the shadow leaves the top left with its caster, with no trace of the frames before");
+        fallen.Should().BeInRange(62, 66, "and falls on the bottom left at once");
+    }
+
+    [Fact]
+    public void CutsHolesWhereACutoutCardsPaintIsClear()
+    {
+        WithCutoutCard();
+
+        uint[] pixels = _builder.Render();
+
+        (byte throughRed, _, byte throughBlue) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 10]);
+        (byte paintedRed, _, byte paintedBlue) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 13]);
+        throughRed.Should().BeInRange(195, 203, "the white floor shows through where the card's paint is clear");
+        throughBlue.Should().BeInRange(195, 203);
+        paintedRed.Should().Be(0, "the card is painted blue on its right");
+        paintedBlue.Should().BeInRange(195, 203);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CastsTheShadowOfACutoutCardsPaint(bool rayTracing)
+    {
+        if (rayTracing)
+        {
+            _builder.WithRayQueries();
+        }
+
+        WithCutoutCard();
+        _builder.WithRenderer(renderer => renderer.RayTracing = rayTracing);
+
+        uint[] pixels = _builder.Render();
+
+        (byte belowClear, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 2]);
+        (byte belowPainted, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 5]);
+        belowClear.Should().BeInRange(195, 203, "light passes where the card's paint is clear");
+        belowPainted.Should().BeInRange(62, 66, "the card's paint casts its shadow");
+    }
+
+    [Fact]
+    public void OutlinesOnlyACutoutCardsPaint()
+    {
+        uint yellow = SceneRendererTestsBuilder.Rgba(255, 255, 0, 255);
+        WithCutoutCard();
+        _builder.WithComponent("Card", new Outline { Color = new Vector3(1, 1, 0) });
+
+        uint[] pixels = _builder.Render();
+
+        pixels[(8 * 16) + 7].Should().NotBe(yellow, "the clear left of the card is a hole, so no line runs along its left edge");
+        pixels[(8 * 16) + 15].Should().Be(yellow, "a line runs along the painted right of the card, the width of the outline");
+    }
+
+    [Fact]
+    public void TracesAmbientOcclusionIntoTheCornerAtAWallsFoot()
+    {
+        _builder.WithRayQueries().WithTargetSize(16).WithRenderer(static renderer => renderer.RayTracing = true);
+        _builder.WithMood(static mood => mood with { AmbientOcclusion = 1, AmbientOcclusionRadius = 0.5f });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, Wall);
+
+        uint[] pixels = _builder.RenderFrames(16);
+
+        (byte corner, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 11]);
+        (byte open, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 2]);
+        corner.Should().BeLessThan(200, "the wall, which the view sees edge on, hides half the sky from the floor at its foot");
+        open.Should().Be(255, "nothing stands within the radius");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DarkensTheFloorUnderAPlankTheViewLeavesOutOnlyWithRays(bool rayTracing)
+    {
+        const string nearCamera = """{ "name": "Camera", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 2, "nearPlane": 4.8 } } }""";
+        const string plank = """{ "name": "Plank", "components": { "transform": { "position": [0.5, 0, 0.3], "scale": [0.5, 0.5, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""";
+        if (rayTracing)
+        {
+            _builder.WithRayQueries();
+        }
+
+        _builder.WithTargetSize(16).WithRenderer(renderer => renderer.RayTracing = rayTracing);
+        _builder.WithMood(static mood => mood with { AmbientOcclusion = 1, AmbientOcclusionRadius = 0.5f });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(nearCamera, Quad, plank);
+
+        uint[] pixels = _builder.RenderFrames(16);
+
+        (byte under, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 12]);
+        (byte open, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 2]);
+        open.Should().Be(255);
+        if (rayTracing)
+        {
+            under.Should().BeLessThan(200, "rays meet the plank over the floor, which stands nearer the camera than its near plane");
+        }
+        else
+        {
+            under.Should().Be(255, "the screen holds nothing of the plank for screen-space occlusion to find");
+        }
+    }
+
+    /// <summary>
+    /// A lamp two above the floor's centre and a blocker a quarter wide half way down, to the right, so the blocker's shadow falls
+    /// right of it; ambient light and the sun are off.
+    /// </summary>
+    private void WithLampOverABlocker(string light, string cone, float sourceRadius)
+    {
+        string radius = sourceRadius.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        _builder.WithRayQueries().WithTargetSize(16).WithRenderer(static renderer => renderer.RayTracing = true);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(
+            Camera,
+            Quad,
+            """{ "name": "Blocker", "components": { "transform": { "position": [0.5, 0, 1], "scale": [0.25, 0.25, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""",
+            $$"""{ "name": "Lamp", "components": { "transform": { "position": [0, 0, 2] }, "{{light}}": { "intensity": 4, "range": 5, "castsShadows": true, "sourceRadius": {{radius}}{{cone}} } } }""");
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+    }
+
+    /// <summary>
+    /// The floor's red either side of the side edge of the blocker's shadow, past the blocker itself (column 13, rows 4 and 3), and
+    /// mirrored left of the lamp, where nothing stands.
+    /// </summary>
+    private static (byte Inside, byte Outside, byte Mirrored) LampShadowEdge(uint[] pixels)
+    {
+        (byte inside, _, _) = SceneRendererTestsBuilder.Channels(pixels[(4 * 16) + 13]);
+        (byte outside, _, _) = SceneRendererTestsBuilder.Channels(pixels[(3 * 16) + 13]);
+        (byte mirrored, _, _) = SceneRendererTestsBuilder.Channels(pixels[(3 * 16) + 2]);
+        return (inside, outside, mirrored);
+    }
+
+    /// <summary>
+    /// A white floor lit by the sun at 45 degrees, with a quarter ambient light, and a card a unit above it, right of the centre,
+    /// whose material cuts out its left half, painted clear, and paints its right half blue; the sun casts the card's shadow a
+    /// unit to the left.
+    /// </summary>
+    private void WithCutoutCard()
+    {
+        uint clear = SceneRendererTestsBuilder.Rgba(0, 0, 255, 0);
+        uint blue = SceneRendererTestsBuilder.Rgba(0, 0, 255, 255);
+        _builder.WithTargetSize(16);
+        _builder.WithTexture("Card.tga", 4, 1, [clear, clear, blue, blue]);
+        _builder.WithFile("Card.fvmat", """{ "parameters": { "texture": "Card.tga", "cutoff": 0.5 } }""");
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Vector4.One));
+        _builder.WithScene(Camera, Quad, Card);
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
     }
 
     /// <summary>A paper of sixteen different greys under the entities, a camera first.</summary>
