@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Creations.Serialization;
 using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Creations;
@@ -18,8 +19,11 @@ public static class CreationsGameExtensions
 
         CreationParts parts = new(game.World, game.Lifecycle);
         game.Services.AddService(parts);
-        JointSystem joints = new(game.World, game.Lifecycle);
+        JointSystem joints = new(game.World, game.Lifecycle, game.Events);
         game.FrameSystems.Add(joints);
+        game.Data.AddResolver(CreationsJsonContext.Default);
+        PartToggleSaves saves = new(game.World, parts, joints);
+        game.SaveStates.Add<SavedPartToggles>("partToggles", saves.Save, saves.Restore);
         return parts;
     }
 }

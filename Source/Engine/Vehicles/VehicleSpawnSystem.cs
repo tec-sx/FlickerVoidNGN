@@ -2,6 +2,7 @@ using Arch.Core;
 using Arch.System;
 
 using FlickerVoid.Engine.Creations;
+using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -59,6 +60,17 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
             string mesh = VehicleMeshSource.GetName(path, id);
             MeshRenderer renderer = new() { Mesh = mesh };
             PartData data = new PartData(id, part.Place).With(renderer);
+            if (part.Joint is { } joint)
+            {
+                data.With(joint);
+            }
+
+            if (part.Toggle is { } action)
+            {
+                Toggle toggle = new() { Action = action };
+                data.With(toggle);
+            }
+
             parts.Add(data);
         }
 

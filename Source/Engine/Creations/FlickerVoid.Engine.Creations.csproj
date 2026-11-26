@@ -4,5 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Runtime/FlickerVoid.Engine.Runtime.csproj" />
+    <ProjectReference Include="../Interaction/FlickerVoid.Engine.Interaction.csproj" />
   </ItemGroup>
 </Project>
