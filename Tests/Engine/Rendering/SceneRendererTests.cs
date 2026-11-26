@@ -725,6 +725,19 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void DrawsThinPaintOpaqueWithoutAPaper()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(1, 0, 0, 0.5f)));
+        _builder.WithScene(Camera, Quad);
+
+        uint[] pixels = _builder.Render();
+
+        byte alpha = (byte)(pixels[5] >> 24);
+        alpha.Should().Be(255, "paint is thin on its canvas, not see-through to what lies behind the image");
+        SceneRendererTestsBuilder.Channels(pixels[5]).Should().Be(((byte)255, (byte)0, (byte)0));
+    }
+
+    [Fact]
     public void KeepsThinPaintsColourOverThePaper()
     {
         uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
