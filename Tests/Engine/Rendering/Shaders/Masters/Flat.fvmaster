@@ -1,0 +1,8 @@
+{
+  // A test master painting its surfaces one flat color of its own, and as thick as its instances say.
+  "shadingModel": "Painted",
+  "parameters": [
+    { "name": "flatColor", "type": "color", "default": [1, 0, 0] },
+    { "name": "thickness", "type": "float", "default": 0 }
+  ]
+}

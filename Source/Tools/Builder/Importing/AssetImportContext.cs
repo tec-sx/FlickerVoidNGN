@@ -34,6 +34,14 @@ public sealed class AssetImportContext
         _dependencies.Add(path);
     }
 
+    /// <summary>Whether the file is in the source folder, where dependencies are recorded.</summary>
+    public bool IsSource(string fullPath)
+    {
+        string relativePath = Path.GetRelativePath(_sourceDirectory, fullPath);
+        bool outside = relativePath == ".." || relativePath.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+        return !outside && !Path.IsPathRooted(relativePath);
+    }
+
     /// <summary>Records an output file and returns its full path, creating its folder.</summary>
     public string GetOutputPath(string path)
     {

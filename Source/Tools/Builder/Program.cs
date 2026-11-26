@@ -23,11 +23,12 @@ if (args.Length != 2 && !watch)
 
 using DxcShaderCompiler compiler = new();
 ShaderImporter shaders = new(compiler);
+MasterImporter masters = new(compiler, MasterImporter.EngineShaders);
 SkipImporter shaderSources = new(".hlsl", ".hlsli");
 TextureImporter textures = new();
 PaintingImporter paintings = new();
 ModelImporter models = new();
-IAssetImporter[] importers = [shaders, shaderSources, textures, paintings, models];
+IAssetImporter[] importers = [shaders, masters, shaderSources, textures, paintings, models];
 AssetBuilder builder = new(importers);
 if (watch)
 {

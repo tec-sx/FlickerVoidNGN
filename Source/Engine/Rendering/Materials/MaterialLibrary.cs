@@ -10,7 +10,7 @@ namespace FlickerVoid.Engine.Rendering.Materials;
 
 /// <summary>
 /// Packs each material file the first time it is drawn, flattened with its parents, into a GPU buffer of the scene shader's
-/// parameters, and keeps it until the file, a parent or a texture it names changes on disk; mesh parts without a material share
+/// parameters followed by its master's own (<see cref="MasterFile"/>), if it has one, and keeps it until the file, a parent, its master or a texture it names changes on disk; mesh parts without a material share
 /// one buffer of the shader's defaults.
 /// </summary>
 internal sealed class MaterialLibrary : IDisposable
@@ -57,7 +57,16 @@ internal sealed class MaterialLibrary : IDisposable
             AddUser(parentPath, fullPath);
             return _content.Load(parentPath, RenderingJsonContext.Default.MaterialFile);
         });
-        byte[] packed = MaterialLayout.Pack(_parameters, material, texturePath =>
+        IReadOnlyList<ShaderParameter> parameters = _parameters;
+        string? master = material.Parent;
+        if (master is not null)
+        {
+            AddUser(master, fullPath);
+            MasterFile masterFile = _content.Load(master, RenderingJsonContext.Default.MasterFile);
+            parameters = [.. _parameters, .. masterFile.Parameters];
+        }
+
+        byte[] packed = MaterialLayout.Pack(parameters, material, texturePath =>
         {
             string builtPath = TextureLibrary.GetBuiltPath(texturePath);
             string reliefPath = TextureLibrary.GetReliefPath(texturePath);
@@ -69,7 +78,7 @@ internal sealed class MaterialLibrary : IDisposable
             return new MaterialTexture(image.BindlessIndex, reliefIndex);
         });
         IBuffer buffer = Upload(packed, path);
-        GpuMaterial made = new(buffer, CutsOut(material));
+        GpuMaterial made = new(buffer, CutsOut(material), master);
         _materials.Add(fullPath, made);
         return made;
     }

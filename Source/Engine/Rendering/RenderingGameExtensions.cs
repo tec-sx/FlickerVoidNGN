@@ -40,6 +40,7 @@ public static class RenderingGameExtensions
         game.Schemas.AddFile("environment", LightingEnvironment.Extension, static () => RenderingJsonContext.Default.LightingEnvironment);
         game.Schemas.AddFile("lens", CameraLens.Extension, static () => RenderingJsonContext.Default.CameraLens, CameraLens.CreateSchema);
         game.Schemas.AddFile("material", MaterialFile.Extension, static () => RenderingJsonContext.Default.MaterialFile);
+        game.Schemas.AddFile("master", MasterFile.Extension, static () => RenderingJsonContext.Default.MasterFile);
         game.Schemas.AddFile("canvas", CanvasFile.Extension, static () => RenderingJsonContext.Default.CanvasFile);
         game.Schemas.AddFile("flare", FlareFile.Extension, static () => RenderingJsonContext.Default.FlareFile);
         game.Schemas.AddFile("texture", TextureSettings.Extension, static () => RenderingJsonContext.Default.TextureSettings);

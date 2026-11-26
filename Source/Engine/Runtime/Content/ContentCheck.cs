@@ -19,6 +19,9 @@ namespace FlickerVoid.Engine.Runtime.Content;
 public sealed class ContentCheck
 {
     /// <summary>Content files may hold comments and trailing commas, as the game's readers skip them.</summary>
+    /// <summary>The folder of the built content that holds the engine's own, which content may name.</summary>
+    public const string EngineFolder = "Engine";
+
     private static readonly JsonDocumentOptions ParseOptions = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
 
     private readonly Game _game;
@@ -510,7 +513,8 @@ public sealed class ContentCheck
 
         string combined = Path.Combine(_folder, file);
         string fullPath = Path.GetFullPath(combined);
-        if (!fullPath.StartsWith(_root, StringComparison.Ordinal) || !File.Exists(fullPath))
+        bool inFolder = fullPath.StartsWith(_root, StringComparison.Ordinal) && File.Exists(fullPath);
+        if (!inFolder && !IsEngineContent(file))
         {
             Report($"{at} names {file}, which isn't in the content folder.");
             return false;
@@ -525,6 +529,21 @@ public sealed class ContentCheck
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Whether the file is the engine's own content (<c>Engine/Rendering/Masters/Painted.fvmaster</c>), which the content build
+    /// puts under <see cref="EngineFolder"/> beside the program rather than in a game's source folder.
+    /// </summary>
+    private static bool IsEngineContent(string file)
+    {
+        if (!file.StartsWith(EngineFolder + "/", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        string built = Path.Combine(AppContext.BaseDirectory, "Content", file);
+        return File.Exists(built);
     }
 
     private static string Join(string at, string name)

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 using FlickerVoid.Tools.Builder.Caching;
 using FlickerVoid.Tools.Builder.Importing;
@@ -14,7 +13,7 @@ namespace FlickerVoid.Tools.Builder.Shaders;
 /// The HLSL and the files it includes are recorded as dependencies. Declared material parameters are written to
 /// <c>Name.fvparams</c>, where the renderer and the editor read them.
 /// </summary>
-public sealed partial class ShaderImporter(IShaderCompiler compiler) : IAssetImporter
+public sealed class ShaderImporter(IShaderCompiler compiler) : IAssetImporter
 {
     private const string Extension = ".fvshader";
 
@@ -31,7 +30,7 @@ public sealed partial class ShaderImporter(IShaderCompiler compiler) : IAssetImp
             ?? throw new InvalidDataException($"{context.SourcePath} is empty.");
         string name = context.SourcePath[..^Extension.Length];
         string hlslPath = context.SourceFullPath[..^Extension.Length] + ".hlsl";
-        AddIncludes(context, hlslPath, []);
+        ShaderIncludes.Record(context, hlslPath);
         string code = File.ReadAllText(hlslPath);
 
         foreach ((string entryPoint, ShaderStage stage) in asset.EntryPoints)
@@ -55,25 +54,4 @@ public sealed partial class ShaderImporter(IShaderCompiler compiler) : IAssetImp
             File.WriteAllBytes(parametersPath, parametersJson);
         }
     }
-
-    /// <summary>Records the file and, through its quoted includes, every file it reads; a missing one is left to the compiler.</summary>
-    private static void AddIncludes(AssetImportContext context, string fullPath, HashSet<string> visited)
-    {
-        if (!File.Exists(fullPath) || !visited.Add(fullPath))
-        {
-            return;
-        }
-
-        context.AddDependency(fullPath);
-        string folder = Path.GetDirectoryName(fullPath)!;
-        string code = File.ReadAllText(fullPath);
-        foreach (Match include in IncludePattern().Matches(code))
-        {
-            string includedPath = Path.GetFullPath(include.Groups[1].Value, folder);
-            AddIncludes(context, includedPath, visited);
-        }
-    }
-
-    [GeneratedRegex("""^\s*#\s*include\s*"([^"]+)"\s*$""", RegexOptions.Multiline)]
-    private static partial Regex IncludePattern();
 }

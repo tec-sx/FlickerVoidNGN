@@ -10,6 +10,10 @@
     <PackageReference Include="SharpGLTF.Core" />
     <PackageReference Include="StbImageSharp" />
   </ItemGroup>
+  <!-- Masters include the engine's rendering shaders, from the engine the builder was built in. -->
+  <ItemGroup>
+    <AssemblyMetadata Include="EngineShaders" Value="$(MSBuildThisFileDirectory)../../Engine/Rendering/Shaders" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
     <ProjectReference Include="../ShaderCompiler/FlickerVoid.Tools.ShaderCompiler.csproj" />
