@@ -1,1 +1,1 @@
-{ "entryPoints": { "ComputeMain": "Compute" } }
+{ "entryPoints": { "ComputeMain": "Compute", "FogLightMain": "Compute", "FogIntegrateMain": "Compute" } }
