@@ -4,11 +4,77 @@
              xmlns:controls="using:FlickerVoid.Editor.Controls"
              xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Controls.SearchMenu"
-             x:DataType="menus:SearchMenuViewModel"
-             Width="240">
+             x:DataType="menus:SearchMenuViewModel">
+  <UserControl.Styles>
+    <!-- The command palette: wider, with a large query row over the rows and the keys under them. -->
+    <Style Selector="controls|SearchMenu">
+      <Setter Property="Width" Value="240" />
+    </Style>
+    <Style Selector="controls|SearchMenu.palette">
+      <Setter Property="Width" Value="600" />
+    </Style>
+    <Style Selector="controls|SearchMenu.palette TextBox.search">
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="MinHeight" Value="40" />
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Padding" Value="8,0" />
+    </Style>
+    <Style Selector="controls|SearchMenu.palette TextBox.search:focus /template/ Border#PART_BorderElement, controls|SearchMenu.palette TextBox.search:pointerover /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="controls|SearchMenu.palette TextBox.search PathIcon.searchGlass">
+      <Setter Property="Width" Value="15" />
+      <Setter Property="Height" Value="15" />
+      <Setter Property="Margin" Value="14,0,0,0" />
+    </Style>
+    <Style Selector="controls|SearchMenu.palette ListBox.menuRows ListBoxItem">
+      <Setter Property="MinHeight" Value="28" />
+    </Style>
+    <Style Selector="controls|SearchMenu.palette ListBox.menuRows ListBoxItem:disabled">
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="controls|SearchMenu Border.queryRow">
+      <Setter Property="Padding" Value="4" />
+    </Style>
+    <Style Selector="controls|SearchMenu.palette Border.queryRow">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="controls|SearchMenu Border.keys">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="controls|SearchMenu.palette Border.keys">
+      <Setter Property="IsVisible" Value="True" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="Padding" Value="12,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+  </UserControl.Styles>
   <!-- Type to search, Up and Down to choose, Enter to run or open a group, Escape to close. -->
   <DockPanel>
-    <controls:SearchBox x:Name="Search" DockPanel.Dock="Top" Margin="4" Text="{Binding SearchText}" />
+    <Border DockPanel.Dock="Top" Classes="queryRow">
+      <controls:SearchBox x:Name="Search" Text="{Binding SearchText}" />
+    </Border>
+    <Border DockPanel.Dock="Bottom" Classes="keys">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="5">
+          <Border Classes="kbd"><TextBlock Text="Esc" /></Border>
+          <TextBlock Text="close" Classes="menuDetail" VerticalAlignment="Center" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="5">
+          <Border Classes="kbd"><TextBlock Text="↑↓" /></Border>
+          <TextBlock Text="move" Classes="menuDetail" VerticalAlignment="Center" Margin="0,0,10,0" />
+          <Border Classes="kbd"><TextBlock Text="Enter" /></Border>
+          <TextBlock Text="run or open" Classes="menuDetail" VerticalAlignment="Center" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
     <ListBox x:Name="Rows" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" Classes="menuRows"
              MaxHeight="{StaticResource EditorMenuMaxHeight}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
       <ListBox.Styles>
@@ -19,19 +85,22 @@
       <ListBox.ItemTemplate>
         <DataTemplate DataType="menus:MenuRow">
           <Panel>
-            <TextBlock Classes="menuHeading" Text="{Binding Text}" IsVisible="{Binding IsHeading}" />
-            <Grid ColumnDefinitions="18,*,Auto" ColumnSpacing="6" IsVisible="{Binding !IsHeading}" Background="Transparent">
+            <TextBlock Classes="menuHeading" Text="{Binding Text, Converter={x:Static controls:MenuConverters.Upper}}" IsVisible="{Binding IsHeading}" />
+            <Grid ColumnDefinitions="18,Auto,*,Auto" ColumnSpacing="6" IsVisible="{Binding !IsHeading}" Background="Transparent">
               <Panel Width="14" Height="14">
-                <PathIcon Width="14" Height="14" Data="{Binding Icon, Converter={x:Static shell:MaterialIcons.ByName}}"
+                <PathIcon Width="14" Height="14" Classes="muted" Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}"
                           IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                <PathIcon Width="14" Height="14" Data="{x:Static shell:MaterialIcons.Back}" IsVisible="{Binding IsBack}" />
-                <PathIcon Width="14" Height="14" Data="{x:Static shell:MaterialIcons.Folder}" IsVisible="{Binding IsGroup}" />
+                <PathIcon Width="14" Height="14" Classes="muted" Data="{x:Static shell:LucideIcons.Back}" IsVisible="{Binding IsBack}" />
+                <PathIcon Width="14" Height="14" Classes="muted" Data="{x:Static shell:LucideIcons.Folder}" IsVisible="{Binding IsGroup}" />
               </Panel>
               <TextBlock Grid.Column="1" Text="{Binding Text}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                <TextBlock Text="{Binding Detail}" Classes="menuDetail" IsVisible="{Binding Detail, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                <TextBlock Text="{Binding Gesture}" Classes="menuDetail" IsVisible="{Binding Gesture, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                <PathIcon Width="12" Height="12" Data="{x:Static shell:MaterialIcons.Next}" IsVisible="{Binding IsGroup}" />
+              <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="menuDetail" VerticalAlignment="Center" Margin="4,0,0,0"
+                         TextTrimming="CharacterEllipsis" IsVisible="{Binding Detail, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Border Classes="kbd" IsVisible="{Binding Gesture, Converter={x:Static ObjectConverters.IsNotNull}}">
+                  <TextBlock Text="{Binding Gesture}" />
+                </Border>
+                <PathIcon Width="12" Height="12" Classes="faint" Data="{x:Static shell:LucideIcons.Next}" IsVisible="{Binding IsGroup}" />
               </StackPanel>
             </Grid>
           </Panel>

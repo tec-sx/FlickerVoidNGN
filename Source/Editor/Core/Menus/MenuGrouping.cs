@@ -9,6 +9,9 @@ public enum MenuGrouping
     /// <summary>Groups one after another, apart by separators, or by headings in a searchable menu.</summary>
     Separators,
 
+    /// <summary>Groups under headings, kept while searching (the command palette).</summary>
+    Sections,
+
     /// <summary>A submenu per group.</summary>
     Submenus,
 }

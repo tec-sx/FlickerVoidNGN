@@ -147,6 +147,12 @@ public sealed class RenderingWindow : DebugWindow
                 mood.Bloom = bloom;
             }
 
+            float bloomRadius = mood.BloomRadius;
+            if (ImGui.SliderFloat("Bloom radius", ref bloomRadius, 0, 1))
+            {
+                mood.BloomRadius = bloomRadius;
+            }
+
             float exposure = mood.Exposure;
             if (ImGui.SliderFloat("Exposure", ref exposure, 0.1f, 4))
             {

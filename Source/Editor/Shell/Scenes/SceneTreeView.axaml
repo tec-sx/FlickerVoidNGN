@@ -3,27 +3,37 @@
              xmlns:scenes="using:FlickerVoid.Editor.Core.Scenes"
              xmlns:local="using:FlickerVoid.Editor.Scenes"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
              x:Class="FlickerVoid.Editor.Scenes.SceneTreeView"
              x:DataType="scenes:SceneTreeViewModel">
   <!-- Folders and the entities at the top with their icons; Ctrl or Shift picks several, a folder selects everything in it, and
        dragged items drop into a folder (or onto the empty space below, to the top) or onto an entity, to nest under it. Right-click
        for options. -->
   <DockPanel>
-  <!-- The outline's own controls: reveal every nested entity, hide or show the selection, show everything. -->
-  <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="2" Margin="2,2,2,0" HorizontalAlignment="Right">
-    <ToggleButton Classes="icon outlineRow" IsChecked="{Binding RevealAllNested}" ToolTip.Tip="Reveal every nested entity">
-      <PathIcon Data="{x:Static shell:MaterialIcons.Nested}" />
-    </ToggleButton>
-    <Button Classes="icon outlineRow" Command="{Binding HideSelectedCommand}" ToolTip.Tip="Hide the selection in the editor's views">
-      <PathIcon Data="{x:Static shell:MaterialIcons.Invisible}" />
-    </Button>
-    <Button Classes="icon outlineRow" Command="{Binding ShowSelectedCommand}" ToolTip.Tip="Show the selection again">
-      <PathIcon Data="{x:Static shell:MaterialIcons.Visible}" />
-    </Button>
-    <Button Classes="icon outlineRow" Command="{Binding ShowAllCommand}" ToolTip.Tip="Show every hidden entity" Width="NaN" Padding="4,0">
-      <TextBlock Text="Show all" FontSize="{StaticResource EditorSmallFontSize}" VerticalAlignment="Center" />
-    </Button>
-  </StackPanel>
+  <!-- The outline's search, and behind its filter button what it shows: every nested entity, the selection hidden or shown. -->
+  <Border DockPanel.Dock="Top" Classes="searchRow">
+    <DockPanel>
+      <Button DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="What the outline shows">
+        <PathIcon Data="{x:Static shell:LucideIcons.Filter}" />
+        <Button.Flyout>
+          <MenuFlyout Placement="BottomEdgeAlignedRight">
+            <MenuItem Header="Reveal every nested entity" ToggleType="CheckBox" IsChecked="{Binding RevealAllNested}">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Nested}" /></MenuItem.Icon>
+            </MenuItem>
+            <Separator />
+            <MenuItem Header="Hide the selection" Command="{Binding HideSelectedCommand}">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Invisible}" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Show the selection" Command="{Binding ShowSelectedCommand}">
+              <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Visible}" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Show everything hidden" Command="{Binding ShowAllCommand}" />
+          </MenuFlyout>
+        </Button.Flyout>
+      </Button>
+      <controls:SearchBox Classes="row" Text="{Binding SearchText}" PlaceholderText="Search entities" />
+    </DockPanel>
+  </Border>
   <TreeView x:Name="Tree" SelectionMode="Multiple" Classes="outline" DragDrop.AllowDrop="True">
     <TreeView.ItemContainerTheme>
       <ControlTheme TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}" x:DataType="scenes:SceneTreeItem">
