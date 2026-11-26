@@ -1,10 +1,15 @@
-// The sky: fills what the scene left empty in the lit scene, before the depth fade, the upscale and the grade, with a gradient
-// like an atmosphere: dark ground below the horizon and a lighter warm haze above it fading to a muted blue overhead. A
-// perspective view shades by where each pixel's view ray points; an orthographic one, whose rays all point the same way, by
-// height on the near plane. Its colours are meant for the screen, so they are turned back through the mood's grade
-// (Grade.hlsl), and it is the thinnest paint (SkyCoverage): over a canvas Post.hlsl lets the canvas's threads through it whole, so
-// it is painted at the canvas's average brightness times the gradient over the horizon's, a wash the paper shows through. A
-// thread a pixel.
+// The sky: fills what the scene left empty in the lit scene, before the depth fade, the upscale and the grade. Its gradient is
+// the mood's: the ground below the horizon (darkening farther down), the horizon's colour and the zenith's overhead, blended
+// across the horizon over its softness, by where each pixel's view ray points. An orthographic view, whose rays all point the
+// same way, sees the sky through a virtual lens: the lens's sky field of view, looking level along the camera's heading. A
+// scene's painted mask, wrapped once round the sky, gives the position in the gradient in place of the plain elevation, a band
+// in its own colour, where the sun's glow is held back and where stars show, blended in by the mask's strength. The gradient's colours are meant for the screen, so they are
+// turned back through the mood's grade (Grade.hlsl), and it is the thinnest paint (SkyCoverage): over a canvas Post.hlsl
+// lets the canvas's threads through it whole, and it is painted at the gradient times the canvas's average brightness,
+// a wash the paper shows through, as dark as the sky is. Over it, as light that the grade, bloom and flares take as they take the scene's, the sun's
+// disc and glow, the moon's disc, lit on the side facing the sun, and its corona, and the stars, turning about the pole with
+// the sun and drowned where the sky is bright; the ground hides them below the horizon.
+// A thread a pixel.
 
 #include "Frame.hlsl"
 #include "Grade.hlsl"
@@ -18,15 +23,58 @@ struct SkyConstants
     uint Output;
     uint WrapSampler;
     float Orthographic;
+    uint Data;
+    uint Mask;
 };
 
 [[vk::push_constant]] ConstantBuffer<SkyConstants> Sky : register(b0, space0);
 
-// sRGB colours, turned linear for the screen.
-static const float3 Zenith = float3(0.23, 0.33, 0.40);
-static const float3 Horizon = float3(0.54, 0.52, 0.44);
-static const float3 GroundNear = float3(0.17, 0.16, 0.13);
-static const float3 GroundFar = float3(0.07, 0.065, 0.05);
+// Mirrors GpuSky.
+struct SkyData
+{
+    float3 Zenith;
+    float HorizonSoftness;
+    float3 Horizon;
+    float SunDiscCosine;
+    float3 Ground;
+    float SunDiscIntensity;
+    float3 TowardSun;
+    float SunGlow;
+    float3 SunColor;
+    float SunGlowRadians;
+    float3 TowardMoon;
+    float MoonDiscCosine;
+    float3 MoonColor;
+    float MoonDiscIntensity;
+    float MoonCorona;
+    float MoonDiscRadians;
+    float StarIntensity;
+    float SkyTanHalfView;
+    float3 StarPole;
+    float MaskStrength;
+    float3 BandColor;
+    float NorthRadians;
+};
+
+// How much darker the ground is straight down than at the horizon.
+static const float GroundFalloff = 0.14;
+
+// The stars: cells of a grid this many to a unit round the sky, the share of cells holding a star, and the sky's screen
+// brightness at which they are drowned.
+static const float StarCells = 160;
+static const float StarShare = 0.25;
+static const float StarDrowned = 0.02;
+
+// The sine of the height over the horizon below which the stars fade into the air.
+static const float StarHorizon = 0.1;
+
+// The width of a disc's soft rim, as a share of its radius.
+static const float DiscRim = 0.15;
+
+SkyData LoadSky()
+{
+    return Buffers[Sky.Data].Load<SkyData>(0);
+}
 
 float3 WorldAtNdc(FrameData frame, float2 ndc, float depth)
 {
@@ -34,43 +82,90 @@ float3 WorldAtNdc(FrameData frame, float2 ndc, float depth)
     return world.xyz / world.w;
 }
 
-// From -1 straight down to 1 straight up, 0 at the horizon.
-float Elevation(FrameData frame, float2 pixel)
+// The direction an orthographic pixel sees the sky along: through a virtual lens of the sky's field of view, looking level
+// along the camera's heading (or, looking straight down, toward the top of the screen).
+float3 VirtualRay(FrameData frame, SkyData sky, float2 pixel)
 {
-    float3 nearPoint = WorldAtPixel(frame, pixel, 0);
-    if (Sky.Orthographic > 0.5)
+    float3 centre = WorldAtNdc(frame, float2(0, 0), 0);
+    float3 forward = WorldAtNdc(frame, float2(0, 0), 1) - centre;
+    float3 screenUp = WorldAtNdc(frame, float2(0, 1), 0) - centre;
+    float3 heading = float3(forward.x, 0, forward.z);
+    if (dot(heading, heading) < 1e-6 * dot(forward, forward))
     {
-        float3 top = WorldAtNdc(frame, float2(0, 1), 0);
-        float3 bottom = WorldAtNdc(frame, float2(0, -1), 0);
-        float3 centre = WorldAtNdc(frame, float2(0, 0), 0);
-        return (nearPoint.y - centre.y) / max(length(top - bottom), 0.0001);
+        heading = float3(screenUp.x, 0, screenUp.z);
     }
 
-    float3 farPoint = WorldAtPixel(frame, pixel, 1);
-    float3 direction = normalize(farPoint - nearPoint);
-    return direction.y;
+    heading = normalize(heading);
+    float3 up = float3(0, 1, 0);
+    float3 right = cross(heading, up);
+    float2 uv = pixel / frame.TargetSize;
+    float2 ndc = float2(uv.x * 2 - 1, 1 - uv.y * 2);
+    float aspect = frame.TargetSize.x / frame.TargetSize.y;
+    float3 ray = heading + right * (ndc.x * sky.SkyTanHalfView * aspect) + up * (ndc.y * sky.SkyTanHalfView);
+    return normalize(ray);
 }
 
-// The gradient's colour on the screen, linear.
-float3 Gradient(float elevation)
+// The direction a pixel sees the sky along: its own view ray in a perspective view, else the virtual lens's.
+float3 ViewRay(FrameData frame, SkyData sky, float2 pixel)
 {
-    float3 color;
-    if (elevation >= 0)
+    if (Sky.Orthographic > 0.5)
     {
-        color = lerp(Horizon, Zenith, smoothstep(0, 0.6, elevation));
-    }
-    else
-    {
-        color = lerp(GroundNear, GroundFar, smoothstep(0, 0.4, -elevation));
+        return VirtualRay(frame, sky, pixel);
     }
 
-    return pow(color, 2.2);
+    float3 nearPoint = WorldAtPixel(frame, pixel, 0);
+    float3 farPoint = WorldAtPixel(frame, pixel, 1);
+    return normalize(farPoint - nearPoint);
+}
+
+// The painted mask's channels along a direction (position in the gradient, band, glow held back, stars), or the plain sky's
+// when the scene paints none: around by compass from north at both edges, up from the horizon at the bottom to the zenith at
+// the top, held at the horizon's row below it.
+float4 SampleMask(SkyData sky, float3 direction, float elevation)
+{
+    float plain = smoothstep(0, 0.6, max(elevation, 0));
+    if (Sky.Mask == None)
+    {
+        return float4(plain, 0, 0, 1);
+    }
+
+    float3 north = float3(sin(sky.NorthRadians), 0, -cos(sky.NorthRadians));
+    float3 east = float3(cos(sky.NorthRadians), 0, sin(sky.NorthRadians));
+    float around = atan2(dot(direction, east), dot(direction, north)) / (2 * 3.14159265);
+    around -= floor(around);
+    Texture2D mask = Textures[Sky.Mask];
+    uint width;
+    uint height;
+    uint levels;
+    mask.GetDimensions(0, width, height, levels);
+    float up = asin(clamp(elevation, 0, 1)) / (0.5 * 3.14159265);
+    float halfTexel = 0.5 / height;
+    float v = clamp(1 - up, halfTexel, 1 - halfTexel);
+    float4 painted = mask.SampleLevel(Samplers[Sky.WrapSampler], float2(around, v), 0);
+    float4 unpainted = float4(plain, 0, 0, 1);
+    return lerp(unpainted, painted, sky.MaskStrength);
+}
+
+// How much of the sky, rather than the ground, shows at an elevation.
+float SkyShare(SkyData sky, float elevation)
+{
+    float softness = max(sky.HorizonSoftness, 1e-4);
+    return smoothstep(-softness, softness, elevation);
+}
+
+// The gradient's colour on the screen, linear, at a position in it and with a share of the band laid over the sky.
+float3 Gradient(SkyData sky, float elevation, float4 mask)
+{
+    float3 above = lerp(sky.Horizon, sky.Zenith, saturate(mask.r));
+    above = lerp(above, sky.BandColor, saturate(mask.g));
+    float3 below = lerp(sky.Ground, sky.Ground * GroundFalloff, smoothstep(0, 0.4, max(-elevation, 0)));
+    return lerp(below, above, SkyShare(sky, elevation));
 }
 
 // The sky's alpha: paint so thin that the canvas's threads show through it whole.
 static const float SkyCoverage = 1.0 / 64;
 
-// Over a canvas, the canvas's average brightness (as Post.hlsl weighs it) times the gradient over the horizon's brightness.
+// Over a canvas, the gradient times the canvas's average brightness (as Post.hlsl weighs it), so a dark sky stays dark.
 float3 Wash(float3 gradient)
 {
     Texture2D canvas = Textures[Sky.Canvas];
@@ -80,9 +175,96 @@ float3 Wash(float3 gradient)
     canvas.GetDimensions(0, width, height, levels);
     float3 averageCanvas = canvas.SampleLevel(Samplers[Sky.WrapSampler], 0.5, levels - 1).rgb * Sky.CanvasTint;
     float averageLuminance = max(dot(averageCanvas, ToLuminance), 1e-3);
-    float3 horizon = pow(Horizon, 2.2);
-    float brightest = dot(horizon, ToLuminance);
-    return saturate(gradient / brightest) * averageLuminance;
+    return gradient * averageLuminance;
+}
+
+// 1 inside a disc of the cosine of its radius, falling to 0 over a soft rim.
+float Disc(float cosine, float discCosine)
+{
+    float radius = acos(clamp(discCosine, -1, 1));
+    float angle = acos(clamp(cosine, -1, 1));
+    return 1 - smoothstep(radius * (1 - DiscRim), radius, angle);
+}
+
+// The sun's disc and glow, as light; the mask's blue holds the glow back.
+float3 SunLight(SkyData sky, float3 direction, float heldBack)
+{
+    float cosine = dot(direction, sky.TowardSun);
+    float disc = Disc(cosine, sky.SunDiscCosine) * sky.SunDiscIntensity;
+    float angle = acos(clamp(cosine, -1, 1));
+    float reach = saturate(1 - angle / max(sky.SunGlowRadians, 1e-4));
+    float glow = sky.SunGlow * reach * reach * (1 - saturate(heldBack));
+    return sky.SunColor * (disc + glow);
+}
+
+// The moon's disc, lit where its face turns toward the sun as a ball is, and its corona, as bright as its lit share.
+float3 MoonLight(SkyData sky, float3 direction)
+{
+    float3 centre = sky.TowardMoon;
+    float cosine = dot(direction, centre);
+    float lit = (1 - dot(sky.TowardSun, centre)) * 0.5;
+    float3 light = 0;
+    float disc = Disc(cosine, sky.MoonDiscCosine);
+    if (disc > 0 && cosine > 0)
+    {
+        float radius = max(sin(sky.MoonDiscRadians), 1e-5);
+        float3 across = (direction - centre * cosine) / radius;
+        float facing = sqrt(saturate(1 - dot(across, across)));
+        float3 normal = across - centre * facing;
+        float shade = saturate(dot(normal, sky.TowardSun));
+        light += sky.MoonColor * (disc * shade * sky.MoonDiscIntensity);
+    }
+
+    float angle = acos(clamp(cosine, -1, 1));
+    float reach = saturate(1 - angle / max(sky.MoonDiscRadians * 6, 1e-4));
+    light += sky.MoonColor * (sky.MoonCorona * lit * reach * reach);
+    return light;
+}
+
+// A direction in the stars' own frame, which turns about the pole with the sun, so they wheel through the night with it.
+float3 ToStars(SkyData sky, float3 direction)
+{
+    float3 pole = sky.StarPole;
+    float3 across = sky.TowardSun - pole * dot(sky.TowardSun, pole);
+    if (dot(across, across) < 1e-6)
+    {
+        across = abs(pole.x) < 0.9 ? float3(1, 0, 0) : float3(0, 0, 1);
+        across -= pole * dot(across, pole);
+    }
+
+    across = normalize(across);
+    float3 side = cross(pole, across);
+    return float3(dot(direction, across), dot(direction, side), dot(direction, pole));
+}
+
+// The stars' light along a direction, a pixel's width across, where the sky's own colour, before any paper darkens it, is as
+// given; they fade into the thicker air toward the horizon.
+float3 StarLight(SkyData sky, float3 direction, float pixelRadians, float3 gradient)
+{
+    float drowned = saturate(1 - dot(gradient, ToLuminance) / StarDrowned) * smoothstep(0, StarHorizon, direction.y);
+    if (sky.StarIntensity <= 0 || drowned <= 0)
+    {
+        return 0;
+    }
+
+    float3 star = ToStars(sky, direction) * StarCells;
+    float3 cell = floor(star);
+    uint3 key = uint3(int3(cell) + 4096);
+    uint seed = Hash(key.x ^ Hash(key.y ^ Hash(key.z)));
+    if (HashToUnit(seed) > StarShare)
+    {
+        return 0;
+    }
+
+    float3 centre = cell + float3(HashToUnit(Hash(seed + 1)), HashToUnit(Hash(seed + 2)), HashToUnit(Hash(seed + 3)));
+    float3 towardStar = normalize(centre);
+    float angle = acos(clamp(dot(normalize(star), towardStar), -1, 1));
+    float radius = max(pixelRadians * 0.75, 1e-5);
+    float spot = 1 - smoothstep(radius * 0.5, radius, angle);
+    float brightness = pow(HashToUnit(Hash(seed + 4)), 3);
+    float warmth = HashToUnit(Hash(seed + 5));
+    float3 tint = lerp(float3(0.8, 0.85, 1), float3(1, 0.9, 0.75), warmth);
+    return tint * (spot * brightness * sky.StarIntensity * drowned);
 }
 
 [numthreads(8, 8, 1)]
@@ -100,14 +282,24 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
         return;
     }
 
+    SkyData sky = LoadSky();
     float2 pixel = float2(id.xy) + 0.5;
-    float elevation = Elevation(frame, pixel);
-    float3 screen = Gradient(elevation);
+    float3 direction = ViewRay(frame, sky, pixel);
+    float elevation = direction.y;
+    float4 mask = SampleMask(sky, direction, elevation);
+    float3 gradient = Gradient(sky, elevation, mask);
+    float3 screen = gradient;
     if (Sky.Canvas != None)
     {
-        screen = Wash(screen);
+        screen = Wash(gradient);
     }
 
     float3 light = Ungrade(Sky.Grade, screen);
+    float3 next = ViewRay(frame, sky, pixel + float2(0, 1));
+    float pixelRadians = acos(clamp(dot(direction, next), -1, 1));
+    float3 stars = StarLight(sky, direction, pixelRadians, gradient) * saturate(mask.a);
+    float3 bodies = SunLight(sky, direction, mask.b) + MoonLight(sky, direction) + stars;
+    light += bodies * SkyShare(sky, elevation);
+
     RWTextures[Sky.Output][id.xy] = float4(light, SkyCoverage);
 }

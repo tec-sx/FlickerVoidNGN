@@ -258,6 +258,17 @@ public sealed class ViewportViewModelTests : IDisposable
     }
 
     [Fact]
+    public void TurnsTheSunAlongTheScenesPathAtTheViewportsHour()
+    {
+        _builder.WithFile("Street.fvenv", Environment);
+        _builder.OpenScene(SceneWithEnvironment);
+
+        _builder.ViewModel.Hour = 6;
+
+        _builder.ViewModel.GetDrawnMood().SunDirection.X.Should().BeApproximately(-1, 1e-4f, "at dawn the light comes from the east");
+    }
+
+    [Fact]
     public void KeepsTheHourWhenTheSceneHasNoEnvironment()
     {
         _builder.ViewModel.Hour = 7;
