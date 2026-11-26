@@ -65,10 +65,10 @@ internal sealed class MoodValuesTestsBuilder
             DepthNearStart = 0.5f,
             DepthNearEnd = 3,
             DepthNearAmount = 0.4f,
+            DepthNearBurn = 0.2f,
             DepthFarStart = 4,
             DepthFarEnd = 12,
             DepthFarAmount = 0.3f,
-            DepthFarColor = new Vector3(0.7f, 0.6f, 0.5f),
         };
     }
 }

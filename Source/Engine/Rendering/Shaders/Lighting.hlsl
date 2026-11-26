@@ -7,6 +7,7 @@
 // sun shadows have no need of a contact shadow. Alpha is the paint's coverage, more where its impasto stands thick, for the
 // canvas; where nothing was drawn the target is left transparent, for the sky or a stage's background.
 
+#include "DepthTone.hlsl"
 #include "Frame.hlsl"
 #include "GBuffer.hlsl"
 #include "Light.hlsl"
@@ -381,9 +382,14 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
 
     float3 ambient = frame.Ambient * IndoorAmbient(frame, worldPosition) + SampleProbes(frame, worldPosition, normal, toCamera);
     float3 sunLight = sun * frame.SunLight;
-    float3 diffuse = ambient * occlusion + sunLight * sunDiffuse;
+    float3 direct = sunLight * sunDiffuse;
     float3 specular = sunLight * sunSpecular;
-    ShadeClusterLights(frame, material, pixel, worldPosition, normal, toCamera, diffuse, specular);
+    ShadeClusterLights(frame, material, pixel, worldPosition, normal, toCamera, direct, specular);
+    // A near object stands in a cast shadow: its direct light goes by its object depth, its ambient light stays.
+    float objectDepth = Textures[frame.GBufferObjectDepth].Load(texel).r;
+    float keep = NearShadow(frame, objectDepth);
+    float3 diffuse = ambient * occlusion + direct * keep;
+    specular *= keep;
     float3 color = albedo.rgb * diffuse + specular;
 
     // Painted touches: a tint where little light falls, a rim toward the silhouette, and the material's own glow.

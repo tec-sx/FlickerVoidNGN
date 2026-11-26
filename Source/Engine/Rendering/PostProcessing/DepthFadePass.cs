@@ -6,9 +6,9 @@ using FlickerVoid.Engine.Rendering.Pipeline;
 namespace FlickerVoid.Engine.Rendering.PostProcessing;
 
 /// <summary>
-/// Lays the camera's depth fade (<see cref="RenderContext.DepthFade"/>) on the lit scene before the upscale and the grade: what
-/// stands nearer than the focus darkens and what lies farther melts into the far colour, as it shows on screen, and lays the
-/// mood's haze: what lies beyond its start melts into its colour.
+/// Lays the camera's depth tone (<see cref="RenderContext.DepthFade"/>) on the lit scene before the upscale and the grade, by each
+/// object's depth: what stands nearer than the focus is burned and what lies farther loses its colour (the near shadow is
+/// Lighting.hlsl's); and lays the mood's haze: what lies beyond its start melts into its colour.
 /// </summary>
 internal sealed class DepthFadePass : IRenderPass
 {
@@ -36,6 +36,7 @@ internal sealed class DepthFadePass : IRenderPass
         ICommandList commands = context.Commands;
         ScreenTargets targets = context.Targets;
         commands.Barrier(targets.Depth, ResourceState.ShaderRead);
+        commands.Barrier(context.GBuffer.ObjectDepth, ResourceState.ShaderRead);
         commands.Barrier(targets.Hdr, ResourceState.ShaderWrite);
         commands.SetPipeline(_pipeline);
         Grading grade = Grading.From(context.Mood);

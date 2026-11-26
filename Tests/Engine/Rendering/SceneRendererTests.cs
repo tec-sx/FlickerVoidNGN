@@ -610,37 +610,144 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
-    public void DarkensWhatStandsNearerThanTheFocus()
+    public void TakesTheDirectLightOffWhatStandsNearerThanTheFocus()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
         _builder.WithScene(Camera, Quad);
+        _builder.WithLight(sunDirection: Down, ambient: 0);
         _builder.WithMood(static mood => mood with { DepthNearStart = 0, DepthNearEnd = 1, DepthNearAmount = 0.5f });
         _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, -5));
 
         uint[] pixels = _builder.Render();
 
         (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
-        red.Should().BeInRange(126, 129, "the quad stands five units in front of the focus, past the near end");
+        red.Should().BeInRange(126, 129, "the quad stands five units in front of the focus, past the near end, and half its direct light is gone");
         green.Should().Be(0);
         blue.Should().Be(0);
         pixels[0].Should().Be(EmptyPixel, "nothing is painted there to darken");
     }
 
     [Fact]
-    public void MeltsWhatLiesFartherThanTheFocusIntoTheFarColour()
+    public void LeavesTheAmbientLightUnderTheNearShadow()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
         _builder.WithScene(Camera, Quad);
-        _builder.WithMood(static mood => mood with { DepthFarStart = 0, DepthFarEnd = 1, DepthFarAmount = 0.5f, DepthFarColor = new Vector3(0, 0, 1) });
+        _builder.WithMood(static mood => mood with { DepthNearStart = 0, DepthNearEnd = 1, DepthNearAmount = 1 });
+        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, -5));
+
+        uint[] pixels = _builder.Render();
+
+        pixels[5].Should().Be(RedPixel, "the shadow takes the sun's and the lamps' light and leaves the ambient's");
+    }
+
+    [Fact]
+    public void TonesAWholeObjectAsOneThroughItsObjectDepth()
+    {
+        _builder.WithTargetSize(16);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": { "rotation": [0, 0.5, 0, 0.8660254] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: Down, ambient: 0);
+        _builder.WithMood(static mood => mood with { DepthNearStart = 4, DepthNearEnd = 6, DepthNearAmount = 1 });
+        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, -5));
+
+        uint[] pixels = _builder.Render();
+
+        (byte left, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 6]);
+        (byte right, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * 16) + 9]);
+        left.Should().BeGreaterThan(0, "the quad is lit, a little, under the shadow");
+        left.Should().BeCloseTo(right, 1, "the quad's near and far edges are one object, and share its one depth");
+    }
+
+    [Fact]
+    public void SinksTheMidTonesOfWhatStandsNearerThanTheFocusWithTheBurn()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(new Vector4(0.5f, 0.5f, 0.5f, 1)));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(static mood => mood with { DepthNearStart = 0, DepthNearEnd = 1, DepthNearBurn = 1 });
+        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, -5));
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeLessThan(100, "a mid-tone grey of 128 sinks");
+        red.Should().BeGreaterThan(0);
+        pixels[0].Should().Be(EmptyPixel);
+    }
+
+    [Fact]
+    public void HoldsTheHighlightsUnderTheBurn()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(new Vector4(1, 1, 1, 1)));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithLight(sunDirection: Down, ambient: 0);
+        _builder.WithMood(static mood => mood with { SunIntensity = 3, Exposure = 0.25f, DepthNearStart = 0, DepthNearEnd = 1, DepthNearBurn = 1 });
+        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, -5));
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(188, 194, "a light three times white, graded down to 0.75, is a highlight the burn leaves");
+    }
+
+    [Fact]
+    public void TakesTheColourFromWhatLiesFartherThanTheFocus()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(static mood => mood with { DepthFarStart = 0, DepthFarEnd = 1, DepthFarAmount = 1 });
         _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, 3));
 
         uint[] pixels = _builder.Render();
 
         (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
-        red.Should().BeInRange(126, 129, "the quad lies three units behind the focus, past the far end");
-        green.Should().Be(0);
-        blue.Should().BeInRange(126, 129);
+        red.Should().BeCloseTo(54, 2, "the quad lies three units behind the focus, past the far end, and keeps only its luminance");
+        green.Should().BeCloseTo(54, 2);
+        blue.Should().BeCloseTo(54, 2);
         pixels[0].Should().Be(EmptyPixel);
+    }
+
+    [Fact]
+    public void MeasuresTheDepthToneFromTheCameraWithoutAFocus()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(static mood => mood with { DepthFarStart = 4, DepthFarEnd = 4.5f, DepthFarAmount = 1 });
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        green.Should().Be(red, "the quad is five units from the camera, past the far end, and has lost its colour");
+    }
+
+    [Fact]
+    public void LeavesTheDepthToneOutWhileItIsSwitchedOff()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithMood(static mood => mood with { DepthFarStart = 0, DepthFarEnd = 1, DepthFarAmount = 1 });
+        _builder.WithRenderer(static renderer => renderer.DepthFades = false);
+
+        uint[] pixels = _builder.Render();
+
+        pixels[5].Should().Be(RedPixel);
+    }
+
+    [Fact]
+    public void LeavesTheSkyOutOfTheDepthTone()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithRenderer(static renderer =>
+        {
+            renderer.Focus = new Vector3(0, 0, 3);
+            renderer.Sky = true;
+        });
+        uint[] plain = _builder.Render();
+        _builder.WithMood(static mood => mood with { DepthFarStart = 0, DepthFarEnd = 1, DepthFarAmount = 1 });
+
+        uint[] pixels = _builder.Render();
+
+        pixels[0].Should().Be(plain[0], "the sky fills the empty corner and stays out of the tone");
     }
 
     [Fact]
@@ -714,80 +821,6 @@ public sealed class SceneRendererTests : IDisposable
         red.Should().BeCloseTo(51, 2, "the haze takes the sky's horizon colour as it shows on screen, whatever the grade");
         green.Should().BeCloseTo(102, 2);
         blue.Should().BeCloseTo(153, 2);
-    }
-
-    [Fact]
-    public void MeasuresTheDepthFadeFromTheCameraWithoutAFocus()
-    {
-        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
-        _builder.WithScene(Camera, Quad);
-        _builder.WithMood(static mood => mood with { DepthFarStart = 4, DepthFarEnd = 4.5f, DepthFarAmount = 1, DepthFarColor = Vector3.Zero });
-
-        uint[] pixels = _builder.Render();
-
-        pixels[5].Should().Be(BlackPixel, "the quad is five units from the camera, past the far end");
-    }
-
-    [Fact]
-    public void LeavesTheDepthFadeOutWhileItIsSwitchedOff()
-    {
-        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
-        _builder.WithScene(Camera, Quad);
-        _builder.WithMood(static mood => mood with { DepthFarStart = 0, DepthFarEnd = 1, DepthFarAmount = 1, DepthFarColor = Vector3.Zero });
-        _builder.WithRenderer(static renderer => renderer.DepthFades = false);
-
-        uint[] pixels = _builder.Render();
-
-        pixels[5].Should().Be(RedPixel);
-    }
-
-    [Theory]
-    [InlineData(Tonemapper.None)]
-    [InlineData(Tonemapper.Uncharted2)]
-    [InlineData(Tonemapper.Aces)]
-    public void MeltsTheFarSideIntoTheFarColourAsTheScreenShowsIt(Tonemapper tonemapper)
-    {
-        Vector3 farColor = new(0.2f, 0.4f, 0.6f);
-        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
-        _builder.WithScene(Camera, Quad);
-        _builder.WithMood(mood => mood with
-        {
-            Exposure = 2,
-            Contrast = 1.2f,
-            Saturation = 0.8f,
-            Tonemapper = tonemapper,
-            DepthFarStart = 0,
-            DepthFarEnd = 1,
-            DepthFarAmount = 1,
-            DepthFarColor = farColor,
-        });
-        _builder.WithRenderer(static renderer => renderer.Focus = new Vector3(0, 0, 3));
-
-        uint[] pixels = _builder.Render();
-
-        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
-        red.Should().BeCloseTo(51, 2, "the far colour is the colour the far side takes on screen, whatever the grade");
-        green.Should().BeCloseTo(102, 2);
-        blue.Should().BeCloseTo(153, 2);
-    }
-
-    [Fact]
-    public void LeavesTheSkyOutOfTheDepthFade()
-    {
-        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
-        _builder.WithScene(Camera, Quad);
-        _builder.WithMood(static mood => mood with { DepthFarStart = 0, DepthFarEnd = 1, DepthFarAmount = 1, DepthFarColor = Vector3.Zero });
-        _builder.WithRenderer(static renderer =>
-        {
-            renderer.Focus = new Vector3(0, 0, 3);
-            renderer.Sky = true;
-        });
-
-        uint[] pixels = _builder.Render();
-
-        pixels[5].Should().Be(BlackPixel, "the quad lies past the far end");
-        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[0]);
-        (red + green + blue).Should().BeGreaterThan(30, "the sky fills the empty corner and stays out of the fade");
     }
 
     [Fact]

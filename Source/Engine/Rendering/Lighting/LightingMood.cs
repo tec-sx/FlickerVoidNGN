@@ -209,29 +209,32 @@ public sealed record LightingMood
     [Range(1, 170)]
     public float SkyFieldOfView { get; set; } = 60;
 
-    /// <summary>How far in front of the focus things start to darken.</summary>
+    /// <summary>How far in front of the focus things start to fall into shadow and burn.</summary>
     public float DepthNearStart { get; set; } = 1;
 
-    /// <summary>How far in front of the focus things are darkened by the whole <see cref="DepthNearAmount"/>.</summary>
+    /// <summary>How far in front of the focus things take the whole of <see cref="DepthNearAmount"/> and <see cref="DepthNearBurn"/>.</summary>
     public float DepthNearEnd { get; set; } = 6;
 
-    /// <summary>How much the nearest things darken, from 0 (not at all) to 1 (black).</summary>
+    /// <summary>
+    /// How much of its direct light (the sun's and the lamps') a near object loses, from 0 (none) to 1 (all, leaving the ambient
+    /// light), as if a shadow fell on it.
+    /// </summary>
     [Range(0, 1)]
     public float DepthNearAmount { get; set; }
 
-    /// <summary>How far behind the focus things start to melt into <see cref="DepthFarColor"/>.</summary>
+    /// <summary>How much a near object is burned, as a photographer burns a print in: mid-tones sink and colours deepen, highlights hold; from 0 to 1.</summary>
+    [Range(0, 1)]
+    public float DepthNearBurn { get; set; }
+
+    /// <summary>How far behind the focus things start to lose their colour.</summary>
     public float DepthFarStart { get; set; } = 2;
 
-    /// <summary>How far behind the focus things melt into <see cref="DepthFarColor"/> by the whole <see cref="DepthFarAmount"/>.</summary>
+    /// <summary>How far behind the focus things lose the whole of <see cref="DepthFarAmount"/> of their colour.</summary>
     public float DepthFarEnd { get; set; } = 20;
 
-    /// <summary>How much the farthest things melt into <see cref="DepthFarColor"/>, from 0 (not at all) to 1 (all colour).</summary>
+    /// <summary>How much of their colour the farthest things lose, from 0 (none) to 1 (all, leaving their luminance).</summary>
     [Range(0, 1)]
     public float DepthFarAmount { get; set; }
-
-    /// <summary>The haze far things melt into, as graded colour.</summary>
-    [Color]
-    public Vector3 DepthFarColor { get; set; } = new(0.82f, 0.8f, 0.76f);
 
     /// <summary>
     /// The mood <paramref name="amount"/> of the way from <paramref name="from"/> to <paramref name="to"/>: numbers and
@@ -249,10 +252,10 @@ public sealed record LightingMood
         return blended;
     }
 
-    /// <summary>The painter's fade by depth its depth values spell.</summary>
+    /// <summary>The depth tone its depth values spell.</summary>
     public DepthFade ToDepthFade()
     {
-        return new DepthFade(DepthNearStart, DepthNearEnd, DepthNearAmount, DepthFarStart, DepthFarEnd, DepthFarAmount, DepthFarColor);
+        return new DepthFade(DepthNearStart, DepthNearEnd, DepthNearAmount, DepthNearBurn, DepthFarStart, DepthFarEnd, DepthFarAmount);
     }
 
     /// <summary>This mood with neutral post-processing, for captures that need the light as it is.</summary>
@@ -268,6 +271,7 @@ public sealed record LightingMood
             Tonemapper = Tonemapper.None,
             Canvas = null,
             DepthNearAmount = 0,
+            DepthNearBurn = 0,
             DepthFarAmount = 0,
         };
     }
