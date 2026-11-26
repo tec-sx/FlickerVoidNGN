@@ -104,6 +104,21 @@ public sealed class MaterialLayoutTests
     }
 
     [Fact]
+    public void PacksSkinsScatterColorThenItsWidthAsTheModelsValues()
+    {
+        MasterFile master = MaterialLayoutTestsBuilder.Master("""
+            { "shadingModel": "Skin", "parameters": [{ "name": "scatterWidth", "type": "float", "default": 0.5 }, { "name": "scatter", "type": "color", "default": [1, 0, 0] }] }
+            """);
+        MaterialFile material = MaterialLayoutTestsBuilder.Material("""{ "parameters": { "scatter": [0.9, 0.3, 0.2] } }""");
+
+        byte[] packed = MaterialLayout.PackInstance(_builder.Parameters, master, material);
+
+        float[] values = MemoryMarshal.Cast<byte, float>(packed).ToArray();
+        int model = MaterialLayout.Size(_builder.Parameters) / sizeof(float);
+        values[(model + 1)..(model + 5)].Should().Equal(0.9f, 0.3f, 0.2f, 0.5f);
+    }
+
+    [Fact]
     public void PacksAMaterialWithoutAMasterAsPainted()
     {
         byte[] packed = MaterialLayout.PackInstance(_builder.Parameters, null, null);

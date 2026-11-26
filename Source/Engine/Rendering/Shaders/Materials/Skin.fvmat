@@ -1,0 +1,12 @@
+// Skin: a warm painted tone, red scattered round the terminator, a soft broad sheen and faint blotches.
+{
+  "parent": "Engine/Rendering/Masters/Skin.fvmaster",
+  "parameters": {
+    "tint": [0.86, 0.66, 0.55],
+    "specular": 0.2,
+    "glossiness": 0.3,
+    "scatter": [0.9, 0.3, 0.18],
+    "scatterWidth": 0.5,
+    "variation": 0.08
+  }
+}

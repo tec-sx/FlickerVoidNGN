@@ -83,8 +83,8 @@ float3 Rotate(float4 rotation, float3 vector)
 float3 SunOn(FrameData frame, Material material, float3 origin, float3 normal)
 {
     float3 toSun = -normalize(frame.SunDirection);
-    float sun = (1 - frame.Ambient) * Diffuse(material, dot(normal, toSun));
-    if (sun <= 0 || all(frame.SunLight <= 0))
+    float3 sun = (1 - frame.Ambient) * Diffuse(material, dot(normal, toSun));
+    if (all(sun <= 0) || all(frame.SunLight <= 0))
     {
         return 0;
     }
@@ -102,8 +102,8 @@ float3 LampsOn(FrameData frame, Material material, float3 position, float3 origi
         float3 direction;
         float distance;
         float3 reach = LightReach(lamp, position, direction, distance);
-        float diffuse = Diffuse(material, dot(normal, direction));
-        if (all(reach <= 0) || diffuse <= 0)
+        float3 diffuse = Diffuse(material, dot(normal, direction));
+        if (all(reach <= 0) || all(diffuse <= 0))
         {
             continue;
         }
