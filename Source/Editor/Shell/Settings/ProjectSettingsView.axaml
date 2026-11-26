@@ -1,10 +1,8 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:settings="using:FlickerVoid.Editor.Core.Settings"
-        x:Class="FlickerVoid.Editor.Settings.ProjectSettingsWindow"
-        x:DataType="settings:ProjectSettingsViewModel"
-        Title="Project Settings"
-        Width="640" Height="480">
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:settings="using:FlickerVoid.Editor.Core.Settings"
+             x:Class="FlickerVoid.Editor.Settings.ProjectSettingsView"
+             x:DataType="settings:ProjectSettingsViewModel">
   <!-- Each change is set in the edited game at once and written to the project's settings file. -->
   <DockPanel>
     <DockPanel DockPanel.Dock="Bottom" Margin="12,8">
@@ -41,4 +39,4 @@
       </TabItem>
     </TabControl>
   </DockPanel>
-</Window>
+</UserControl>

@@ -29,7 +29,6 @@ namespace FlickerVoid.Editor;
 /// <summary>The editor's main window: a toolbar, the scene view, the asset browser, the inspector and a status bar; opens the material editor.</summary>
 public sealed partial class MainWindow : Window
 {
-    private ProjectSettingsWindow? _projectSettings;
     private bool _closingDecided;
 
     /// <summary>The project the editor reopens on once this window has closed, chosen with Open Project.</summary>
@@ -193,29 +192,27 @@ public sealed partial class MainWindow : Window
         return dialog.ShowDialog<UnsavedAssetsChoice?>(this);
     }
 
-    /// <summary>Shows the project settings window, opening it once.</summary>
+    /// <summary>Shows the project settings in their document tab, opening it once.</summary>
     private void HandleProjectSettingsClick(object? sender, RoutedEventArgs e)
     {
-        if (_projectSettings is not null)
-        {
-            _projectSettings.Activate();
-            return;
-        }
-
         if (DataContext is not MainWindowViewModel main)
         {
             return;
         }
 
-        ProjectSettingsViewModel settings = new(main.Viewport.Scene);
-        _projectSettings = new ProjectSettingsWindow { DataContext = settings };
-        _projectSettings.Closed += (_, _) =>
+        EditorDocument? open = main.Documents.Find(ProjectSettingsKey);
+        if (open is null)
         {
-            settings.Dispose();
-            _projectSettings = null;
-        };
-        _projectSettings.Show(this);
+            ProjectSettingsViewModel settings = new(main.Viewport.Scene);
+            ProjectSettingsView view = new() { DataContext = settings };
+            open = new EditorDocument(ProjectSettingsKey, "Project settings", view, settings.Dispose);
+        }
+
+        main.Documents.Show(open);
     }
+
+    /// <summary>The project settings' tab.</summary>
+    private const string ProjectSettingsKey = "Project settings";
 
     /// <summary>The material editor's tab: one editor lists every material.</summary>
     private const string MaterialsKey = "Materials";
