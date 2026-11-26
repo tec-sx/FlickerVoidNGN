@@ -129,6 +129,15 @@ public sealed class MeshSelection
         Flush();
     }
 
+    /// <summary>Selects exactly these faces, in face mode.</summary>
+    public void SelectFaces(IEnumerable<int> faces)
+    {
+        ClearPrimary();
+        Element = MeshElement.Face;
+        _faces.UnionWith(faces);
+        Flush();
+    }
+
     public void SelectAll()
     {
         ClearPrimary();

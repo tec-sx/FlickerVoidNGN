@@ -234,6 +234,32 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>Scales the selected points about their middle by a factor along each of the part's axes, as one undo step.</summary>
     public bool ScaleMesh(Vector3 factor) => EditMesh(solid => MeshEdit.Scale(solid, MeshSelection!.Points, factor));
 
+    /// <summary>
+    /// Extrudes the selected faces by a distance along their normal as one undo step, leaving the pushed faces selected in face mode;
+    /// false when no face is selected or all are.
+    /// </summary>
+    public bool ExtrudeMesh(float distance)
+    {
+        if (MeshSelection is not { } selection || MeshPart is not { } id || _applyMesh is null || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return false;
+        }
+
+        MeshResult? result = MeshExtrude.Faces(solid, selection.Faces, distance);
+        if (result is null)
+        {
+            return false;
+        }
+
+        MeshSelection next = new(result.Solid);
+        next.SelectFaces(result.Faces);
+        _meshSolid = result.Solid;
+        MeshSelection = next;
+        _applyMesh(id, result.Solid);
+        MeshModeChanged?.Invoke();
+        return true;
+    }
+
     private bool EditMesh(Func<SolidMesh, SolidMesh> edit)
     {
         if (MeshSelection is not { } selection || selection.Points.Count == 0 || MeshPart is not { } id || _applyMesh is null)
