@@ -1,7 +1,7 @@
 // Turns the lit scene into the final image: adds bloom, then grades it (Grade.hlsl: exposure, contrast, saturation and tint,
 // then the tonemapper's curve), then lays it over the canvas. The scene's alpha is how much paint lies there (0 to 1) plus how
-// thick it stands (0 to 1, from a painting's impasto): bare canvas shows where there is none, and the canvas's weave shows
-// through paint that isn't thick, so everything looks painted on it; only thick impasto hides it. The canvas is flat and moves
+// thick it stands (0 to 1, from a painting's impasto): bare canvas shows only where nothing was painted, and under paint the
+// canvas never changes its colour, it shows as its threads, the more the thinner the paint, so shadows stay shadows. The canvas is flat and moves
 // with the world as an orthographic camera pans and zooms. The camera's depth fade was laid on the lit scene before
 // (DepthFade.hlsl), as was the sky (Sky.hlsl). Draws one triangle that covers the target.
 
@@ -77,13 +77,20 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
         float3 canvasColor = max(lerp(averageCanvas, sampled, Post.CanvasIntensity), 0);
         float averageLuminance = max(dot(averageCanvas, ToLuminance), 1e-3);
 
-        // Paint that isn't thick lets the canvas's weave through: the canvas over its own average brightness, so it keeps the
-        // painted colour's light and takes the canvas's texture and hue.
-        float thickness = saturate(sceneColor.a - 1);
-        float3 weave = canvasColor / averageLuminance;
-        float3 painted = lerp(color * weave, color, thickness);
+        // The canvas never colours the paint: it shows as its threads alone, its brightness over its own average, the more the
+        // thinner the paint is, and not at all under opaque paint or thick impasto. Only where nothing was painted is it bare.
+        if (sceneColor.a <= 0)
+        {
+            color = canvasColor;
+        }
+        else
+        {
+            float threads = dot(canvasColor, ToLuminance) / averageLuminance;
+            float thickness = saturate(sceneColor.a - 1);
+            float thin = (1 - coverage * coverage) * (1 - thickness);
+            color *= lerp(1, threads, thin);
+        }
 
-        color = lerp(canvasColor, painted, coverage);
         coverage = 1;
     }
 
