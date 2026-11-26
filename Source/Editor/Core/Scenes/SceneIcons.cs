@@ -17,6 +17,7 @@ public static class SceneIcons
         ("spotLight", "SpotLight"),
         ("irradianceVolume", "Grid"),
         ("sceneMood", "Mood"),
+        ("sceneEnvironment", "Mood"),
         ("interactable", "Entity"),
         ("vehicle", "Vehicle"),
         ("meshRenderer", "Model"),
