@@ -43,6 +43,14 @@ public static class MoodValues
         new MoodNumber("fogAnisotropy", MoodGroup.Fog, Environment, mood => mood.FogAnisotropy, (mood, value) => mood.FogAnisotropy = value),
         new MoodNumber("fogHeight", MoodGroup.Fog, Environment, mood => mood.FogHeight, (mood, value) => mood.FogHeight = value),
         new MoodNumber("fogHeightFalloff", MoodGroup.Fog, Environment, mood => mood.FogHeightFalloff, (mood, value) => mood.FogHeightFalloff = value),
+        new MoodNumber("fogRange", MoodGroup.Fog, Environment, mood => mood.FogRange, (mood, value) => mood.FogRange = value),
+        new MoodNumber("hazeDensity", MoodGroup.Fog, Environment, mood => mood.HazeDensity, (mood, value) => mood.HazeDensity = value),
+        new MoodNumber("hazeStart", MoodGroup.Fog, Environment, mood => mood.HazeStart, (mood, value) => mood.HazeStart = value),
+        new MoodNumber("hazeMax", MoodGroup.Fog, Environment, mood => mood.HazeMax, (mood, value) => mood.HazeMax = value),
+        new MoodNumber("hazeHeight", MoodGroup.Fog, Environment, mood => mood.HazeHeight, (mood, value) => mood.HazeHeight = value),
+        new MoodNumber("hazeHeightFalloff", MoodGroup.Fog, Environment, mood => mood.HazeHeightFalloff, (mood, value) => mood.HazeHeightFalloff = value),
+        new MoodColor("hazeColor", MoodGroup.Fog, Environment, mood => mood.HazeColor, (mood, value) => mood.HazeColor = value),
+        new MoodNumber("hazeFromSky", MoodGroup.Fog, Environment, mood => mood.HazeFromSky, (mood, value) => mood.HazeFromSky = value),
         new MoodNumber("ambientOcclusion", MoodGroup.Sky, Environment, mood => mood.AmbientOcclusion, (mood, value) => mood.AmbientOcclusion = value),
         new MoodNumber("ambientOcclusionRadius", MoodGroup.Sky, Environment, mood => mood.AmbientOcclusionRadius, (mood, value) => mood.AmbientOcclusionRadius = value),
         new MoodNumber("contactShadowLength", MoodGroup.Sun, Environment, mood => mood.ContactShadowLength, (mood, value) => mood.ContactShadowLength = value),
@@ -58,10 +66,10 @@ public static class MoodValues
         new MoodNumber("depthNearStart", MoodGroup.Depth, Lens, mood => mood.DepthNearStart, (mood, value) => mood.DepthNearStart = value),
         new MoodNumber("depthNearEnd", MoodGroup.Depth, Lens, mood => mood.DepthNearEnd, (mood, value) => mood.DepthNearEnd = value),
         new MoodNumber("depthNearAmount", MoodGroup.Depth, Lens, mood => mood.DepthNearAmount, (mood, value) => mood.DepthNearAmount = value),
+        new MoodNumber("depthNearBurn", MoodGroup.Depth, Lens, mood => mood.DepthNearBurn, (mood, value) => mood.DepthNearBurn = value),
         new MoodNumber("depthFarStart", MoodGroup.Depth, Lens, mood => mood.DepthFarStart, (mood, value) => mood.DepthFarStart = value),
         new MoodNumber("depthFarEnd", MoodGroup.Depth, Lens, mood => mood.DepthFarEnd, (mood, value) => mood.DepthFarEnd = value),
         new MoodNumber("depthFarAmount", MoodGroup.Depth, Lens, mood => mood.DepthFarAmount, (mood, value) => mood.DepthFarAmount = value),
-        new MoodColor("depthFarColor", MoodGroup.Depth, Lens, mood => mood.DepthFarColor, (mood, value) => mood.DepthFarColor = value),
     ];
 
     private static readonly Dictionary<string, MoodValue> ByName = Values.ToDictionary(value => value.Name);
