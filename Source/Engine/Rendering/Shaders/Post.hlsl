@@ -1,7 +1,8 @@
 // Turns the lit scene into the final image: adds bloom, then grades it (Grade.hlsl: exposure, contrast, saturation and tint,
 // then the tonemapper's curve), then lays it over the canvas. The scene's alpha is how much paint lies there (0 to 1) plus how
 // thick it stands (0 to 1, from a painting's impasto): bare canvas shows where there is none, and the canvas's weave shows
-// through paint that isn't thick, so everything looks painted on it; only thick impasto hides it. The canvas is flat and moves
+// through paint that isn't thick, so everything looks painted on it; only thick impasto hides it. The canvas under paint takes
+// the light and shadow of the surface, as much as the mood's canvas shading says; bare canvas keeps its own colour. The canvas is flat and moves
 // with the world as an orthographic camera pans and zooms. The camera's depth fade was laid on the lit scene before
 // (DepthFade.hlsl), as was the sky (Sky.hlsl). Draws one triangle that covers the target.
 
@@ -22,12 +23,42 @@ struct PostConstants
     float3 CanvasTint;
     float CanvasPanRight;
     float CanvasPanUp;
+    uint CanvasLight;
+    float CanvasShading;
 };
 
 [[vk::push_constant]] ConstantBuffer<PostConstants> Post : register(b0, space0);
 
 // The bloom levels the upsampling summed, which averaging divides back out.
 static const float BloomLevels = 5;
+
+// How the canvas under thin paint is lit at the pixel, by CanvasShading: the light its surface takes, averaged over the 4 by 4
+// pixels round it (traced shadows are noisy while an upscaler denoises the scene, and only the scene is denoised), through the
+// grade, as a share of what full light grades to, so the canvas darkens in shadow as much as the paint looks to.
+float3 CanvasShade(float2 pixel, float2 outputSize)
+{
+    if (Post.CanvasShading <= 0)
+    {
+        return 1;
+    }
+
+    Texture2D lights = Textures[Post.CanvasLight];
+    uint width;
+    uint height;
+    lights.GetDimensions(width, height);
+    float2 uv = pixel / outputSize;
+    float2 texel = 1 / float2(width, height);
+    SamplerState clamp = Samplers[Post.ClampSampler];
+    float3 light = lights.SampleLevel(clamp, uv + texel * float2(-1, -1), 0).rgb;
+    light += lights.SampleLevel(clamp, uv + texel * float2(1, -1), 0).rgb;
+    light += lights.SampleLevel(clamp, uv + texel * float2(-1, 1), 0).rgb;
+    light += lights.SampleLevel(clamp, uv + texel * float2(1, 1), 0).rgb;
+    light *= 0.25;
+    float3 lit = Grade(Post.Grade, MiddleGrey * light);
+    float3 full = Grade(Post.Grade, float3(MiddleGrey, MiddleGrey, MiddleGrey));
+    float3 shade = lit / max(full, 1e-4);
+    return lerp(1, shade, Post.CanvasShading);
+}
 
 // Where the pixel lies on the flat canvas, in image uvs: the image CanvasImageHeight pixels high, slid by the camera's pan so
 // the canvas moves with the world.
@@ -83,7 +114,11 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
         float3 weave = canvasColor / averageLuminance;
         float3 painted = lerp(color * weave, color, thickness);
 
-        color = lerp(canvasColor, painted, coverage);
+        uint sceneWidth;
+        uint sceneHeight;
+        scene.GetDimensions(sceneWidth, sceneHeight);
+        float3 shade = CanvasShade(position.xy, float2(sceneWidth, sceneHeight));
+        color = lerp(canvasColor * shade, painted, coverage);
         coverage = 1;
     }
 

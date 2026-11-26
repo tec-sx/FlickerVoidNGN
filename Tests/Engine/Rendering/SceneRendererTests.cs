@@ -746,6 +746,44 @@ public sealed class SceneRendererTests : IDisposable
         red.Should().BeInRange(150, 160);
     }
 
+    [Theory]
+    [InlineData(1, 0, 3)]
+    [InlineData(0, 25, 31)]
+    [InlineData(0.5f, 9, 17)]
+    public void ShadesThePaperUnderThinPaintAsThePaintIsLit(float shading, int least, int most)
+    {
+        uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
+        _builder.WithTexture("Paper.tga", 1, 1, [grey]);
+        _builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga" }""");
+        _builder.WithMood(mood => mood with { Canvas = "Paper.fvcanvas", CanvasShading = shading });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(1, 0, 0, 0.5f)));
+        _builder.WithLight(sunDirection: new Vector3(0, 0, 1), ambient: 0);
+        _builder.WithScene(Camera, Quad);
+
+        uint[] pixels = _builder.Render();
+
+        (_, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        green.Should().BeInRange((byte)least, (byte)most, "the paper under paint in the dark is darkened by the shading");
+        blue.Should().Be(green);
+    }
+
+    [Fact]
+    public void KeepsThePaperUnderThinPaintInFullLight()
+    {
+        uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
+        _builder.WithTexture("Paper.tga", 1, 1, [grey]);
+        _builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga" }""");
+        _builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas" });
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(1, 0, 0, 0.5f)));
+        _builder.WithLight(sunDirection: new Vector3(0, 0, -1), ambient: 0);
+        _builder.WithScene(Camera, Quad);
+
+        uint[] pixels = _builder.Render();
+
+        (_, byte green, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        green.Should().BeInRange(25, 31, "a surface the sun meets head on takes the paper's own light");
+    }
+
     [Fact]
     public void ShowsThePaperUnlitWhereNothingIsPainted()
     {
