@@ -99,4 +99,26 @@ public sealed class VehicleEntityTests : IDisposable
 
         _builder.Parts.FindAll(van).Should().HaveCount(5);
     }
+
+    [Fact]
+    public void ADoorPartSpawnsWithItsJointAndToggleAndOpensWhenToggled()
+    {
+        VehicleFile car = VehicleFileTestsBuilder.WithDoor();
+        _builder.WithVehicle(Van, car).Build();
+        Entity van = _builder.Place(Van);
+        World world = _builder.Game.World;
+
+        Entity door = _builder.Parts.Find(van, "door.1");
+
+        world.Get<PartJoint>(door).Should().Be(car.Doors[0].Joint);
+        world.Get<FlickerVoid.Engine.Interaction.Toggles.Toggle>(door).Open.Should().BeFalse();
+        _builder.Game.Events.Send(new FlickerVoid.Engine.Interaction.Toggles.ToggledEvent(door, true, Entity.Null));
+        _builder.Game.Events.Dispatch();
+        for (int tick = 0; tick < 8; tick++)
+        {
+            _builder.Game.Tick(TimeSpan.FromSeconds(0.25));
+        }
+
+        world.Get<JointPose>(door).Position.Should().BeApproximately(90, 1e-3f);
+    }
 }
