@@ -1,1 +1,1 @@
-{ "entryPoints": { "ThresholdMain": "Compute", "BlurMain": "Compute", "GhostsMain": "Compute" } }
+{ "entryPoints": { "ThresholdMain": "Compute", "BlurMain": "Compute", "GhostsMain": "Compute", "FinishMain": "Compute" } }

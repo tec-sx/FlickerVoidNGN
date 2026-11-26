@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace FlickerVoid.Engine.Rendering.PostProcessing;
 
-/// <summary>The push constants of Shaders/Flare.hlsl, for one pass.</summary>
+/// <summary>The push constants of Shaders/Flare.hlsl, for one pass; each float3 starts a 16-byte row, as HLSL packs them.</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal readonly record struct FlareConstants(
     Vector2 SourceTexel,
@@ -17,4 +17,11 @@ internal readonly record struct FlareConstants(
     float ThresholdRange,
     float Intensity,
     float ChromaShift,
-    float EdgeFade);
+    float EdgeFade,
+    float HaloRadius,
+    float HaloWidth,
+    Vector3 CenterColor,
+    float HaloIntensity,
+    Vector3 EdgeColor,
+    float HaloChroma,
+    float Aspect);
