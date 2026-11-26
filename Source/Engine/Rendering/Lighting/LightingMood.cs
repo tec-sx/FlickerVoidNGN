@@ -56,6 +56,47 @@ public sealed record LightingMood
     [Range(0, 100)]
     public float MoonIntensity { get; set; } = 0.25f;
 
+    /// <summary>The sky's color overhead, as it looks on screen whatever the grade, linear.</summary>
+    public Vector3 SkyZenith { get; set; } = new(0.0394f, 0.0872f, 0.1332f);
+
+    /// <summary>The sky's color at the horizon, as it looks on screen, linear.</summary>
+    public Vector3 SkyHorizon { get; set; } = new(0.2578f, 0.2373f, 0.1643f);
+
+    /// <summary>The ground's color below the horizon, as it looks on screen, linear; it darkens farther down.</summary>
+    public Vector3 SkyGround { get; set; } = new(0.0203f, 0.0177f, 0.0112f);
+
+    /// <summary>How far above and below the horizon sky and ground blend, as the sine of the height; 0 is a hard line.</summary>
+    [Range(0, 1)]
+    public float HorizonSoftness { get; set; } = 0.02f;
+
+    /// <summary>The sun's disc's width across the sky, in degrees.</summary>
+    [Range(0, 30)]
+    public float SunDiscSize { get; set; } = 2;
+
+    /// <summary>How bright the sun's disc is, times the sun's color, as light, so it blooms.</summary>
+    [Range(0, 1000)]
+    public float SunDiscIntensity { get; set; } = 8;
+
+    /// <summary>How bright the glow round the sun is, times the sun's color, as light.</summary>
+    [Range(0, 100)]
+    public float SunGlow { get; set; } = 0.4f;
+
+    /// <summary>How far from the sun its glow reaches, in degrees.</summary>
+    [Range(0, 180)]
+    public float SunGlowSize { get; set; } = 25;
+
+    /// <summary>The moon's disc's width across the sky, in degrees.</summary>
+    [Range(0, 30)]
+    public float MoonDiscSize { get; set; } = 2.5f;
+
+    /// <summary>How bright the lit face of the moon is, times the moon's color, as light.</summary>
+    [Range(0, 1000)]
+    public float MoonDiscIntensity { get; set; } = 2;
+
+    /// <summary>How bright the corona round the moon is, times its color and its lit share, as light.</summary>
+    [Range(0, 100)]
+    public float MoonCorona { get; set; } = 0.15f;
+
     /// <summary>How much of the light crossing a world unit of fog it absorbs or scatters, at and below <see cref="FogHeight"/>; 0 clears the air.</summary>
     public float FogDensity { get; set; }
 

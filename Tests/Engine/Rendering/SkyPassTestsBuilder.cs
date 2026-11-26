@@ -47,7 +47,7 @@ internal sealed class SkyPassTestsBuilder : IDisposable
         Directory.CreateDirectory(_contentFolder);
     }
 
-    public Camera Camera { get; set; } = new();
+    public Camera Camera { get; set; } = new() { Projection = CameraProjection.Perspective };
 
     public Transform CameraTransform { get; set; } = new() { Position = new Vector3(0, 1, 5) };
 

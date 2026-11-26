@@ -53,6 +53,22 @@ public sealed class SkyPassTests : IDisposable
         light.Should().BeGreaterThan(darker + 60, "the sky is laid over the paper, not over it like a wall");
     }
 
+    [Fact]
+    public void PaintsADarkSkyDarkOverPaperToo()
+    {
+        using SkyPassTestsBuilder night = new();
+        _builder.WithPaper(220);
+        night.WithPaper(220);
+        night.WithMood(mood => mood with { SkyZenith = mood.SkyZenith * 0.02f, SkyHorizon = mood.SkyHorizon * 0.02f });
+
+        uint[] byDay = _builder.Render();
+        uint[] byNight = night.Render();
+
+        int day = SkyPassTestsBuilder.Brightness(byDay[(TopRow * Size) + Centre]);
+        int dark = SkyPassTestsBuilder.Brightness(byNight[(TopRow * Size) + Centre]);
+        dark.Should().BeLessThan(day / 3, "the wash is as dark as the sky's colours, however bright the paper");
+    }
+
     [Theory]
     [InlineData(Tonemapper.Uncharted2)]
     [InlineData(Tonemapper.Aces)]
@@ -75,6 +91,61 @@ public sealed class SkyPassTests : IDisposable
     }
 
     [Fact]
+    public void PaintsTheZenithHorizonAndGroundColorsTheMoodGives()
+    {
+        _builder.WithMood(static mood => mood with { SkyZenith = new Vector3(0.6f, 0.05f, 0.05f), SkyHorizon = new Vector3(0.3f, 0.3f, 0.3f), SkyGround = new Vector3(0.02f, 0.3f, 0.02f) });
+
+        uint[] pixels = _builder.Render();
+
+        (byte topRed, byte topGreen, _) = SkyPassTestsBuilder.Channels(pixels[(TopRow * Size) + Centre]);
+        (byte bottomRed, byte bottomGreen, _) = SkyPassTestsBuilder.Channels(pixels[(BottomRow * Size) + Centre]);
+        topRed.Should().BeGreaterThan((byte)(topGreen + 40), "the sky turns to the zenith's red overhead");
+        bottomGreen.Should().BeGreaterThan((byte)(bottomRed + 20), "the ground is the mood's green");
+    }
+
+    [Fact]
+    public void BlendsSkyAndGroundOverTheHorizonsSoftness()
+    {
+        using SkyPassTestsBuilder soft = new();
+        soft.WithMood(static mood => mood with { HorizonSoftness = 0.3f });
+
+        uint[] sharpPixels = _builder.Render();
+        uint[] softPixels = soft.Render();
+
+        int sharpStep = Step(sharpPixels);
+        int softStep = Step(softPixels);
+        softStep.Should().BeLessThan(sharpStep / 2, "a soft horizon has no hard line between sky and ground");
+    }
+
+    [Fact]
+    public void DrawsTheSunsDiscAsLightWhereTheSunIsInView()
+    {
+        using SkyPassTestsBuilder hidden = new();
+        Vector3 inView = Vector3.Normalize(new Vector3(0, -0.15f, 1));
+        _builder.WithMood(mood => mood with { SunDirection = inView });
+        hidden.WithMood(mood => mood with { SunDirection = inView, SunDiscIntensity = 0, SunGlow = 0 });
+
+        int withSun = Brightest(_builder.Render());
+        int withoutSun = Brightest(hidden.Render());
+
+        withSun.Should().BeGreaterThan(withoutSun + 150);
+    }
+
+    [Fact]
+    public void LightsTheMoonsFaceByWhereTheSunIs()
+    {
+        using SkyPassTestsBuilder newMoon = new();
+        Vector3 moon = Vector3.Normalize(new Vector3(0, -0.15f, 1));
+        _builder.WithMood(mood => mood with { SunDirection = Vector3.Normalize(new Vector3(0, 0.4f, -1)), MoonDirection = moon, SunDiscIntensity = 0, SunGlow = 0 });
+        newMoon.WithMood(mood => mood with { SunDirection = Vector3.Normalize(new Vector3(0, 0.05f, 1)), MoonDirection = moon, SunDiscIntensity = 0, SunGlow = 0 });
+
+        int full = Brightest(_builder.Render());
+        int dark = Brightest(newMoon.Render());
+
+        full.Should().BeGreaterThan(dark + 100, "a full moon is lit whole and a new one turns its dark side to us");
+    }
+
+    [Fact]
     public void DrawsNothingWhileTheRendererHasNoSky()
     {
         _builder.Render();
@@ -83,5 +154,24 @@ public sealed class SkyPassTests : IDisposable
         uint[] pixels = _builder.Render();
 
         SkyPassTestsBuilder.Channels(pixels[Centre]).Should().Be(((byte)0, (byte)0, (byte)0));
+    }
+
+    private static int Brightest(uint[] pixels)
+    {
+        int brightest = 0;
+        foreach (uint pixel in pixels)
+        {
+            brightest = Math.Max(brightest, SkyPassTestsBuilder.Brightness(pixel));
+        }
+
+        return brightest;
+    }
+
+    /// <summary>The change in brightness across the horizon, between the rows just above and below the middle.</summary>
+    private static int Step(uint[] pixels)
+    {
+        int above = SkyPassTestsBuilder.Brightness(pixels[((Centre - 2) * Size) + Centre]);
+        int below = SkyPassTestsBuilder.Brightness(pixels[((Centre + 2) * Size) + Centre]);
+        return Math.Abs(above - below);
     }
 }
