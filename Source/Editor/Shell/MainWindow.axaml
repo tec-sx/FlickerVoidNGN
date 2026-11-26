@@ -178,6 +178,8 @@
               <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Text="{Binding MoodHeading}" Classes="heading"
                            TextTrimming="CharacterEllipsis" ToolTip.Tip="The lighting mood the viewport draws with. Open a mood file in the content browser to edit it." />
+                <CheckBox DockPanel.Dock="Top" Content="Canvas" IsChecked="{Binding Viewport.ShowCanvas}" Margin="6,2"
+                          ToolTip.Tip="Draw the canvas the scene is painted on. Off hides it in the viewport only; the mood and lens keep it." />
                 <Border Classes="well">
                 <ScrollViewer>
                   <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" ItemTemplate="{StaticResource FieldRow}" Margin="4,2" />

@@ -268,6 +268,33 @@ public sealed class ViewportViewModelTests : IDisposable
     }
 
     [Fact]
+    public void DrawsTheValuesItsMoodChangesOverTheLens()
+    {
+        _builder.WithFile("Main.fvlens", """{ "bloom": 0.2, "canvas": "Linen.fvcanvas" }""");
+        _builder.OpenScene("""{ "entities": [ { "name": "Camera", "components": { "transform": {}, "camera": {}, "mainCamera": { "lens": "Main.fvlens" } } } ] }""");
+        _builder.ViewModel.Mood = new LightingMood { Canvas = "Paper.fvcanvas" };
+
+        LightingMood drawn = _builder.ViewModel.GetDrawnMood();
+
+        drawn.Canvas.Should().Be("Paper.fvcanvas", "the scene's mood lies over the lens, as in the game");
+        drawn.Bloom.Should().Be(0.2f);
+    }
+
+    [Fact]
+    public void DrawsWithoutTheCanvasWhenItIsHidden()
+    {
+        _builder.WithFile("Main.fvlens", """{ "canvas": "Linen.fvcanvas" }""");
+        _builder.OpenScene("""{ "entities": [ { "name": "Camera", "components": { "transform": {}, "camera": {}, "mainCamera": { "lens": "Main.fvlens" } } } ] }""");
+        _builder.ViewModel.Mood = new LightingMood { Canvas = "Paper.fvcanvas" };
+
+        _builder.ViewModel.ShowCanvas = false;
+        LightingMood drawn = _builder.ViewModel.GetDrawnMood();
+
+        drawn.Canvas.Should().BeNull();
+        _builder.ViewModel.Mood.Canvas.Should().Be("Paper.fvcanvas", "hiding the canvas changes only the view");
+    }
+
+    [Fact]
     public void PreviewsTheSelectedShotsDepthFadeFromItsMood()
     {
         _builder.WithFile("Main.fvlens", """{ "depthNearAmount": 0.4, "depthFarAmount": 0.3 }""");

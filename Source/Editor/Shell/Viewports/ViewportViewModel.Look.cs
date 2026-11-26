@@ -24,30 +24,65 @@ public sealed partial class ViewportViewModel
     /// <summary>The mood file the View tab edits, whose values the viewport lays over the environment and lens; null for none.</summary>
     public string? MoodPath { get; set; }
 
-    /// <summary>
-    /// The mood the viewport draws, built as the game builds it: under it the View tab's <see cref="Mood"/> when no mood file is
-    /// open, else the defaults; then the scene's environment at <see cref="Hour"/>, the lens the main camera names, and the
-    /// values the mood file names. A file that can't be read is left out.
-    /// </summary>
+    /// <summary>The mood the viewport draws: the <see cref="GetLayeredMood"/>, without its canvas while <see cref="ShowCanvas"/> is off.</summary>
     public LightingMood GetDrawnMood()
     {
+        LightingMood drawn = GetLayeredMood();
+        if (!ShowCanvas)
+        {
+            drawn.Canvas = null;
+        }
+
+        return drawn;
+    }
+
+    /// <summary>
+    /// The mood built as the game builds it: the defaults, the scene's environment at <see cref="Hour"/>, the lens the main
+    /// camera names, then the values the mood file names, or, when no mood file is open, the values the View tab's
+    /// <see cref="Mood"/> changes from the defaults. A file that can't be read is left out.
+    /// </summary>
+    public LightingMood GetLayeredMood()
+    {
         World world = Scene.Game.World;
-        MoodOverride? file = LoadMood(MoodPath);
-        LightingMood drawn = file is null ? Mood with { } : new LightingMood();
+        LightingMood layered = new();
         string? environmentPath = SceneEnvironment.Find(world);
         if (Load(environmentPath, RenderingJsonContext.Default.LightingEnvironment) is { } environment)
         {
-            environment.Apply(Hour, drawn);
+            environment.Apply(Hour, layered);
         }
 
         string? lensPath = MainCamera.FindLens(world);
         if (Load(lensPath, RenderingJsonContext.Default.CameraLens) is { } lens)
         {
-            lens.Values.Apply(drawn);
+            lens.Values.Apply(layered);
         }
 
-        file?.Apply(drawn);
-        return drawn;
+        MoodOverride? file = LoadMood(MoodPath);
+        if (file is null)
+        {
+            LayChangedValues(layered);
+        }
+        else
+        {
+            file.Apply(layered);
+        }
+
+        return layered;
+    }
+
+    /// <summary>Writes onto a mood the values of <see cref="Mood"/> that differ from the defaults.</summary>
+    private void LayChangedValues(LightingMood layered)
+    {
+        LightingMood defaults = new();
+        foreach (MoodValue value in MoodValues.All)
+        {
+            LightingMood probe = defaults with { };
+            value.Copy(Mood, probe);
+            if (probe != defaults)
+            {
+                value.Copy(Mood, layered);
+            }
+        }
     }
 
     private MoodOverride? LoadMood(string? path)
