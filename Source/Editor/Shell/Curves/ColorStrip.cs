@@ -1,0 +1,188 @@
+using System.ComponentModel;
+using System.Numerics;
+
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media;
+
+using FlickerVoid.Editor.Core.Curves;
+using FlickerVoid.Engine.Runtime.Curves;
+
+namespace FlickerVoid.Editor.Curves;
+
+/// <summary>
+/// A color curve as a gradient across the times of a curve view's range, with a marker under each key: a press selects a
+/// key and a drag moves it (Alt without snapping), a double-click adds one, Delete removes the selected one.
+/// </summary>
+public sealed class ColorStrip : Control
+{
+    public static readonly StyledProperty<ColorTrack?> TrackProperty =
+        AvaloniaProperty.Register<ColorStrip, ColorTrack?>(nameof(Track));
+
+    /// <summary>The times shown, shared with the curve view above so both scroll and zoom together.</summary>
+    public static readonly StyledProperty<CurveRange?> RangeProperty =
+        AvaloniaProperty.Register<ColorStrip, CurveRange?>(nameof(Range));
+
+    private const double MarkerHeight = 8;
+    private const double SampleStep = 2;
+    private const double ReachPixels = 7;
+
+    private static readonly IBrush MarkerBrush = new SolidColorBrush(Color.Parse("#E8E5DD"));
+    private static readonly IBrush SelectedBrush = new SolidColorBrush(Color.Parse("#D8955A"));
+    private static readonly IPen MarkerPen = new Pen(new SolidColorBrush(Color.Parse("#17150F")), 1);
+
+    private ColorTrack? _watchedTrack;
+    private CurveRange? _watchedRange;
+    private bool _dragging;
+
+    static ColorStrip()
+    {
+        AffectsRender<ColorStrip>(TrackProperty, RangeProperty);
+        FocusableProperty.OverrideDefaultValue<ColorStrip>(true);
+    }
+
+    public ColorTrack? Track
+    {
+        get => GetValue(TrackProperty);
+        set => SetValue(TrackProperty, value);
+    }
+
+    public CurveRange? Range
+    {
+        get => GetValue(RangeProperty);
+        set => SetValue(RangeProperty, value);
+    }
+
+    public override void Render(DrawingContext context)
+    {
+        if (Track is not { } track || Range is not { } range)
+        {
+            return;
+        }
+
+        double gradientHeight = Math.Max(Bounds.Height - MarkerHeight, 1);
+        for (double x = 0; x < Bounds.Width; x += SampleStep)
+        {
+            double time = ToTime(range, x + (SampleStep / 2));
+            Vector3 color = track.Evaluate((float)time);
+            IBrush brush = new SolidColorBrush(ToColor(color));
+            context.DrawRectangle(brush, null, new Rect(x, 0, SampleStep + 0.5, gradientHeight));
+        }
+
+        for (int i = 0; i < track.Curve.Keys.Count; i++)
+        {
+            ColorKey key = track.Curve.Keys[i];
+            double x = ToX(range, key.Time);
+            IBrush fill = track.Selected == i ? SelectedBrush : MarkerBrush;
+            StreamGeometry marker = CreateMarker(x, gradientHeight);
+            context.DrawGeometry(fill, MarkerPen, marker);
+        }
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == TrackProperty)
+        {
+            _watchedTrack?.PropertyChanged -= HandleChanged;
+            _watchedTrack = Track;
+            _watchedTrack?.PropertyChanged += HandleChanged;
+        }
+        else if (change.Property == RangeProperty)
+        {
+            _watchedRange?.PropertyChanged -= HandleChanged;
+            _watchedRange = Range;
+            _watchedRange?.PropertyChanged += HandleChanged;
+        }
+    }
+
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+        if (Track is not { } track || Range is not { } range || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        Focus();
+        double x = e.GetPosition(this).X;
+        double time = ToTime(range, x);
+        if (e.ClickCount == 2)
+        {
+            track.AddKey(time);
+        }
+        else
+        {
+            double reach = ToTime(range, x + ReachPixels) - time;
+            _dragging = track.Press(time, reach);
+        }
+
+        e.Pointer.Capture(this);
+        e.Handled = true;
+    }
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        if (!_dragging || Track is not { } track || Range is not { } range)
+        {
+            return;
+        }
+
+        double time = ToTime(range, e.GetPosition(this).X);
+        bool snap = !e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+        track.Drag(time, snap);
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        Track?.Release();
+        _dragging = false;
+        e.Pointer.Capture(null);
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.Key == Key.Delete && Track is { } track)
+        {
+            track.DeleteSelected();
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>A mood color as its field's color picker shows it: sRGB channels from 0 to 1, clamped.</summary>
+    public static Color ToColor(Vector3 srgb)
+    {
+        byte red = ToByte(srgb.X);
+        byte green = ToByte(srgb.Y);
+        byte blue = ToByte(srgb.Z);
+        return Color.FromRgb(red, green, blue);
+    }
+
+    private static byte ToByte(float channel)
+    {
+        float clamped = Math.Clamp(channel, 0, 1);
+        return (byte)MathF.Round(clamped * 255);
+    }
+
+    // The range's screen is the curve view's, so its times are mapped across this strip's own width.
+    private double ToTime(CurveRange range, double x) => range.MinTime + (x / Math.Max(Bounds.Width, 1) * (range.MaxTime - range.MinTime));
+
+    private double ToX(CurveRange range, double time) => (time - range.MinTime) / (range.MaxTime - range.MinTime) * Bounds.Width;
+
+    private static StreamGeometry CreateMarker(double x, double top)
+    {
+        StreamGeometry geometry = new();
+        using StreamGeometryContext context = geometry.Open();
+        context.BeginFigure(new Point(x, top), true);
+        context.LineTo(new Point(x + (MarkerHeight * 0.6), top + MarkerHeight));
+        context.LineTo(new Point(x - (MarkerHeight * 0.6), top + MarkerHeight));
+        context.EndFigure(true);
+        return geometry;
+    }
+
+    private void HandleChanged(object? sender, PropertyChangedEventArgs e) => InvalidateVisual();
+}
