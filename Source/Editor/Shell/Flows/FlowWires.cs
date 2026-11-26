@@ -15,7 +15,7 @@ public sealed class FlowWires : Control
     public static readonly StyledProperty<FlowGraphViewModel?> GraphProperty =
         AvaloniaProperty.Register<FlowWires, FlowGraphViewModel?>(nameof(Graph));
 
-    private static readonly Pen WirePen = new(new SolidColorBrush(Color.Parse("#C8C2B0")), 2);
+    private static readonly Pen WirePen = new(new SolidColorBrush(Color.Parse("#B6AB99")), 2);
     private static readonly Pen PendingPen = new(new SolidColorBrush(Color.Parse("#E0AC2C")), 2);
 
     private FlowGraphViewModel? _watched;

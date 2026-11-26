@@ -29,11 +29,12 @@
       </StackPanel>
     </DataTemplate>
     <DataTemplate DataType="data:DataListViewModel">
-      <StackPanel Margin="0,4,0,0">
+      <StackPanel>
         <DockPanel>
-          <DropDownButton DockPanel.Dock="Right" Content="Add" IsEnabled="{Binding !!AddChoices.Count}">
-            <DropDownButton.Flyout>
-              <MenuFlyout ItemsSource="{Binding AddChoices}">
+          <Button DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="Add" IsEnabled="{Binding !!AddChoices.Count}">
+            <PathIcon Data="{x:Static shell:LucideIcons.Add}" />
+            <Button.Flyout>
+              <MenuFlyout Placement="BottomEdgeAlignedRight" ItemsSource="{Binding AddChoices}">
                 <MenuFlyout.ItemContainerTheme>
                   <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="data:DataChoice">
                     <Setter Property="Header" Value="{Binding Name}" />
@@ -41,9 +42,9 @@
                   </ControlTheme>
                 </MenuFlyout.ItemContainerTheme>
               </MenuFlyout>
-            </DropDownButton.Flyout>
-          </DropDownButton>
-          <TextBlock Text="{Binding Label}" Classes="heading" VerticalAlignment="Center" />
+            </Button.Flyout>
+          </Button>
+          <TextBlock Text="{Binding Label}" Classes="caps" VerticalAlignment="Center" Margin="2,6,0,4" />
         </DockPanel>
         <ItemsControl ItemsSource="{Binding Items}">
           <ItemsControl.ItemTemplate>
@@ -53,7 +54,7 @@
                   <DockPanel>
                     <Button DockPanel.Dock="Right" Classes="icon delete" ToolTip.Tip="Remove"
                             Command="{Binding List.RemoveCommand}" CommandParameter="{Binding}">
-                      <PathIcon Data="{x:Static shell:MaterialIcons.Delete}" />
+                      <PathIcon Data="{x:Static shell:LucideIcons.Delete}" />
                     </Button>
                     <TextBlock Text="{Binding Form.Title}" VerticalAlignment="Center" />
                   </DockPanel>
@@ -67,11 +68,22 @@
     </DataTemplate>
     <DataTemplate DataType="tables:TableViewModel">
       <StackPanel>
-        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2">
-          <Button Content="Add Row" Command="{Binding AddRowCommand}" />
-          <Button Content="Export CSV" Click="HandleExportClick" />
-          <Button Content="Import CSV" Click="HandleImportClick" />
-        </StackPanel>
+        <Border Classes="searchRow">
+          <StackPanel Orientation="Horizontal" Spacing="2">
+            <Button Classes="quiet" Command="{Binding AddRowCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Add}" />
+                <TextBlock Text="Row" />
+              </StackPanel>
+            </Button>
+            <Button Classes="icon" ToolTip.Tip="Import CSV" Click="HandleImportClick">
+              <PathIcon Data="{x:Static shell:LucideIcons.Import}" />
+            </Button>
+            <Button Classes="icon" ToolTip.Tip="Export CSV" Click="HandleExportClick">
+              <PathIcon Data="{x:Static shell:LucideIcons.Open}" />
+            </Button>
+          </StackPanel>
+        </Border>
         <ItemsControl ItemsSource="{Binding Rows}">
           <ItemsControl.ItemTemplate>
             <DataTemplate DataType="tables:TableRowViewModel">
@@ -80,7 +92,7 @@
                   <DockPanel>
                     <Button DockPanel.Dock="Right" Classes="icon delete" ToolTip.Tip="Remove row"
                             Command="{Binding Table.RemoveRowCommand}" CommandParameter="{Binding}">
-                      <PathIcon Data="{x:Static shell:MaterialIcons.Delete}" />
+                      <PathIcon Data="{x:Static shell:LucideIcons.Delete}" />
                     </Button>
                     <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}" />
                   </DockPanel>
@@ -94,6 +106,6 @@
     </DataTemplate>
   </UserControl.DataTemplates>
   <ScrollViewer>
-    <ContentControl Content="{Binding}" Margin="4,2" />
+    <ContentControl Content="{Binding}" Margin="8,4" />
   </ScrollViewer>
 </UserControl>

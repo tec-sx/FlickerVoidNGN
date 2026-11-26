@@ -81,6 +81,17 @@ public static class AssetTypes
     /// <summary>Every type a file can have, in the order the browser's filter and New menu list them.</summary>
     public static IReadOnlyList<AssetType> Files { get; } = [Other, Scene, Vehicle, Model, Material, Texture, Mood, Environment, Lens, Canvas, Shader, Data, Table, Flow, Code];
 
+    /// <summary>The content drawer's filter chips (rule R11, categories before long lists): everything, then five kinds of work.</summary>
+    public static IReadOnlyList<AssetFilter> Filters { get; } =
+    [
+        new("All", []),
+        new("Scenes", [Scene, Vehicle], Scene.Color),
+        new("Art", [Model, Material, Texture, Canvas, Shader], Model.Color),
+        new("Light", [Mood, Environment, Lens], Mood.Color),
+        new("Data", [Data, Table, Flow], Flow.Color),
+        new("Code", [Code], Code.Color),
+    ];
+
     /// <summary>The type of the file at the path, by its extension; <see cref="Other"/> for none the editor knows.</summary>
     public static AssetType Find(string path)
     {

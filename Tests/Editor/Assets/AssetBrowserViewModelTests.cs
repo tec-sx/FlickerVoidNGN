@@ -29,6 +29,31 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     }
 
     [Fact]
+    public void TheFilterChipsAreCategoriesOfFileTypes()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Wall.fvmat").WithFile("Night.fvmood").WithFile("Scenes/Room.fvscene").Build();
+
+        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Label == "Art");
+
+        browser.Filters.Select(static filter => filter.Label).Should().Equal("All", "Scenes", "Art", "Light", "Data", "Code");
+        browser.Assets.Select(static asset => asset.Path).Should().Equal("Room.glb", "Wall.fvmat");
+        browser.Filters[0].IsAll.Should().BeTrue();
+        browser.Filters[1].Color.Should().Be(AssetTypes.Scene.Color);
+    }
+
+    [Fact]
+    public void TheBreadcrumbNamesTheFoldersDownToTheSelectedOne()
+    {
+        AssetBrowserViewModel browser = _builder.WithFile("Art/Walls/Brick.png").Build();
+
+        browser.SelectedFolder = browser.Folders[0].Children[0].Children[0];
+
+        browser.FolderTrail.Should().Be($"{browser.Folders[0].Name} / Art / ");
+        browser.FolderName.Should().Be("Walls");
+        browser.SearchHint.Should().Be("Search in Walls");
+    }
+
+    [Fact]
     public void ListsTheSubfoldersBeforeTheFilesOfTheSelectedFolder()
     {
         AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.fvscene").WithFile("Moods/Night.fvmood").Build();
@@ -139,7 +164,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     {
         AssetBrowserViewModel browser = _builder.WithFile("Room.glb").WithFile("Scenes/Room.fvscene").WithFile("Scenes/Hall.fvscene").Build();
 
-        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Type == AssetTypes.Scene);
+        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Label == "Scenes");
         browser.Assets.Should().HaveCount(2);
         browser.SearchText = "room";
 
@@ -251,11 +276,11 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     }
 
     [Fact]
-    public void FiltersVehiclesByTheirOwnType()
+    public void FiltersVehiclesWithTheScenes()
     {
         AssetBrowserViewModel browser = _builder.WithFile("Vehicles/Van.fvvehicle").WithFile("Room.glb").Build();
 
-        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Type == AssetTypes.Vehicle);
+        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Label == "Scenes");
 
         browser.Assets.Should().ContainSingle().Which.Path.Should().Be("Vehicles/Van.fvvehicle");
         browser.Assets[0].Type.Icon.Should().Be("Vehicle");
@@ -465,7 +490,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
     {
         AssetBrowserViewModel browser = _builder.WithFile("Room.fvmodel").WithSourceFile(outputFolder, "Room.glb").Build();
 
-        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Type == AssetTypes.Model);
+        browser.SelectedFilter = browser.Filters.Single(static filter => filter.Label == "Art");
 
         browser.Assets.Select(static asset => asset.Path).Should().Equal(path);
     }

@@ -12,6 +12,9 @@ public sealed record AssetEntry(string Path, string Name, AssetType Type)
     /// <summary>The path of the file that owns this one; null when none does.</summary>
     public string? Owner { get; init; }
 
+    /// <summary>The full path of the image its tile shows in place of its type's icon; null when it is not an image the browser draws.</summary>
+    public string? Thumbnail { get; init; }
+
     /// <summary>Whether the browser lists the owned files after this one; left out of equality, so expanding keeps the selection.</summary>
     public bool IsExpanded { get; init; }
 
