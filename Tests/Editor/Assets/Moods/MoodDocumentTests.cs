@@ -68,4 +68,34 @@ public sealed class MoodDocumentTests : IDisposable
 
         document.Mood.Exposure.Should().Be(4);
     }
+
+    [Fact]
+    public void WritesOnlyTheValuesTheFileNamedAndTheOnesEdited()
+    {
+        MoodDocument document = _builder.Build();
+
+        document.Mood.FogDensity = 0.3f;
+        document.Hold();
+        _builder.Content.Save(MoodDocumentTestsBuilder.Night);
+
+        string file = _builder.ReadFile();
+        file.Should().Contain("\"exposure\": 0.5");
+        file.Should().Contain("\"fogDensity\": 0.3");
+        file.Should().NotContain("bloom", "a value never named or edited stays out, so what lies under the mood shows");
+    }
+
+    [Fact]
+    public void KeepsAnEditedValueWhenItGoesBackToWhatItWas()
+    {
+        MoodDocument document = _builder.Build();
+        float before = document.Mood.FogDensity;
+
+        document.Mood.FogDensity = 0.3f;
+        document.Hold();
+        document.Mood.FogDensity = before;
+        document.Hold();
+        _builder.Content.Save(MoodDocumentTestsBuilder.Night);
+
+        _builder.ReadFile().Should().Contain("fogDensity", "a value set here overrides what lies under it, even at its default");
+    }
 }

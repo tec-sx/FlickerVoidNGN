@@ -2,7 +2,7 @@
 // like an atmosphere: dark ground below the horizon and a lighter warm haze above it fading to a muted blue overhead. A
 // perspective view shades by where each pixel's view ray points; an orthographic one, whose rays all point the same way, by
 // height on the near plane. Its colours are meant for the screen, so they are turned back through the mood's grade
-// (Grade.hlsl), and it is thin paint (coverage 1, no thickness): over a canvas Post.hlsl lets the canvas's weave through it, so
+// (Grade.hlsl), and it is the thinnest paint (SkyCoverage): over a canvas Post.hlsl lets the canvas's threads through it whole, so
 // it is painted at the canvas's average brightness times the gradient over the horizon's, a wash the paper shows through. A
 // thread a pixel.
 
@@ -67,6 +67,9 @@ float3 Gradient(float elevation)
     return pow(color, 2.2);
 }
 
+// The sky's alpha: paint so thin that the canvas's threads show through it whole.
+static const float SkyCoverage = 1.0 / 64;
+
 // Over a canvas, the canvas's average brightness (as Post.hlsl weighs it) times the gradient over the horizon's brightness.
 float3 Wash(float3 gradient)
 {
@@ -106,5 +109,5 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     }
 
     float3 light = Ungrade(Sky.Grade, screen);
-    RWTextures[Sky.Output][id.xy] = float4(light, 1);
+    RWTextures[Sky.Output][id.xy] = float4(light, SkyCoverage);
 }

@@ -14,6 +14,7 @@ public static class ComponentChoices
         ["spotLight"] = "SpotLight",
         ["irradianceVolume"] = "Grid",
         ["sceneMood"] = "Mood",
+        ["sceneEnvironment"] = "Mood",
         ["meshRenderer"] = "Model",
         ["greybox"] = "Model",
         ["protagonist"] = "Character",
