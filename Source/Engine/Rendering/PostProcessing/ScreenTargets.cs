@@ -11,7 +11,14 @@ namespace FlickerVoid.Engine.Rendering.PostProcessing;
 internal sealed class ScreenTargets : IDisposable
 {
     public const PixelFormat HdrFormat = PixelFormat.Rgba16Float;
-    public const int BloomLevels = 5;
+    private const int MaxBloomLevels = 8;
+
+    /// <summary>How many levels the bloom has for an output this high: the smallest stays a few pixels, so the glow keeps its size on screen at any resolution (8 at 1080p).</summary>
+    public static int BloomLevelsFor(int outputHeight)
+    {
+        int levels = (int)Math.Floor(Math.Log2(Math.Max(outputHeight, 1))) - 2;
+        return Math.Clamp(levels, 1, MaxBloomLevels);
+    }
 
     private readonly IGraphicsDevice _device;
 
@@ -82,8 +89,9 @@ internal sealed class ScreenTargets : IDisposable
             Upscaled = _device.CreateTexture(upscaledDescription);
         }
 
-        Bloom = new ITexture[BloomLevels];
-        for (int level = 0; level < BloomLevels; level++)
+        int bloomLevels = BloomLevelsFor(outputHeight);
+        Bloom = new ITexture[bloomLevels];
+        for (int level = 0; level < bloomLevels; level++)
         {
             int levelWidth = Math.Max(1, outputWidth >> (level + 1));
             int levelHeight = Math.Max(1, outputHeight >> (level + 1));

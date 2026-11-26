@@ -870,6 +870,23 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void SpreadsBloomFartherAsItsRadiusGrows()
+    {
+        const string light = """{ "name": "Light", "components": { "transform": { "position": [0, 0, 0.5] }, "pointLight": { "intensity": 3, "range": 2 } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithTargetSize(64);
+        _builder.WithScene(Camera, Quad, light);
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+        _builder.WithMood(static mood => mood with { Bloom = 0.15f, BloomRadius = 0.1f });
+        (byte tight, _, _) = SceneRendererTestsBuilder.Channels(_builder.Render()[0]);
+
+        _builder.WithMood(static mood => mood with { BloomRadius = 1 });
+        (byte wide, _, _) = SceneRendererTestsBuilder.Channels(_builder.Render()[0]);
+
+        wide.Should().BeGreaterThan(tight, "the glow reaches the far corner only as the upsample keeps the smaller levels");
+    }
+
+    [Fact]
     public void GradesTheImage()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));

@@ -45,7 +45,7 @@ internal sealed class PostProcessor : IDisposable
         uint bloom = GpuLight.None;
         if (mood.Bloom > 0)
         {
-            DrawBloom(commands, targets, clamp);
+            DrawBloom(commands, targets, clamp, mood.BloomRadius);
             bloom = targets.Bloom[0].BindlessIndex;
         }
 
@@ -88,7 +88,7 @@ internal sealed class PostProcessor : IDisposable
         _down.Dispose();
     }
 
-    private void DrawBloom(ICommandList commands, ScreenTargets targets, ISampler clamp)
+    private void DrawBloom(ICommandList commands, ScreenTargets targets, ISampler clamp, float radius)
     {
         ITexture[] levels = targets.Bloom;
         commands.SetPipeline(_down);
@@ -96,7 +96,7 @@ internal sealed class PostProcessor : IDisposable
         foreach (ITexture level in levels)
         {
             commands.Barrier(level, ResourceState.ShaderWrite);
-            Dispatch(commands, source, level, clamp);
+            Dispatch(commands, source, level, clamp, 1);
             commands.Barrier(level, ResourceState.ShaderRead);
             source = level;
         }
@@ -106,16 +106,16 @@ internal sealed class PostProcessor : IDisposable
         {
             ITexture destination = levels[index];
             commands.Barrier(destination, ResourceState.ShaderWrite);
-            Dispatch(commands, levels[index + 1], destination, clamp);
+            Dispatch(commands, levels[index + 1], destination, clamp, radius);
             commands.Barrier(destination, ResourceState.ShaderRead);
         }
     }
 
-    private static void Dispatch(ICommandList commands, ITexture source, ITexture destination, ISampler clamp)
+    private static void Dispatch(ICommandList commands, ITexture source, ITexture destination, ISampler clamp, float radius)
     {
         Vector2 sourceTexel = new(1f / source.Description.Width, 1f / source.Description.Height);
         Vector2 destinationSize = new(destination.Description.Width, destination.Description.Height);
-        BloomConstants constants = new(sourceTexel, destinationSize, source.BindlessIndex, destination.BindlessIndex, clamp.BindlessIndex);
+        BloomConstants constants = new(sourceTexel, destinationSize, source.BindlessIndex, destination.BindlessIndex, clamp.BindlessIndex, radius);
         commands.PushConstants(constants);
         int groupsX = (destination.Description.Width + GroupSize - 1) / GroupSize;
         int groupsY = (destination.Description.Height + GroupSize - 1) / GroupSize;
