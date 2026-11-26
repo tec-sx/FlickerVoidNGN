@@ -248,6 +248,21 @@ public sealed class VehicleFileTests
     }
 
     [Fact]
+    public void ThePartsMirrorSwitchIsSavedOnlyWhenOn()
+    {
+        VehicleFile car = VehicleFile.Create(VehicleType.Car);
+        string plain = VehicleFileTestsBuilder.Write(car);
+        car.Body.Mirror = true;
+
+        string json = VehicleFileTestsBuilder.Write(car);
+
+        plain.Should().NotContain("mirror");
+        json.Should().Contain("\"mirror\":true");
+        VehicleFileTestsBuilder.Read(json).Body.Mirror.Should().BeTrue();
+        VehicleFileTestsBuilder.Read(json).Wheels[0].Mirror.Should().BeFalse();
+    }
+
+    [Fact]
     public void PartsWithoutAJointOrToggleWriteNeither()
     {
         string json = VehicleFileTestsBuilder.Write(VehicleFile.Create(VehicleType.Car));

@@ -42,4 +42,20 @@ public sealed class VehicleDocument(UnsavedContent content, string path)
 
         throw new ArgumentException($"The vehicle has no part {id}.", nameof(id));
     }
+
+    /// <summary>Turns the part's mirror switch on or off, held in the file as one undo step; throws for an id the vehicle lacks.</summary>
+    public void SetMirror(string id, bool mirror)
+    {
+        foreach ((string partId, VehiclePart part) in Vehicle.GetParts())
+        {
+            if (partId == id)
+            {
+                part.Mirror = mirror;
+                Hold();
+                return;
+            }
+        }
+
+        throw new ArgumentException($"The vehicle has no part {id}.", nameof(id));
+    }
 }

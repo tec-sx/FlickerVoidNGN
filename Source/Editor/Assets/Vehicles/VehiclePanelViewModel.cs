@@ -49,6 +49,22 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
         return null;
     }
 
+    /// <summary>Whether the part with the id has its mirror switch on; false for an id the vehicle lacks.</summary>
+    public bool FindMirror(string id)
+    {
+        foreach ((string partId, VehiclePart part) in _document.Vehicle.GetParts())
+        {
+            if (partId == id)
+            {
+                return part.Mirror;
+            }
+        }
+
+        return false;
+    }
+
+    public void SetMirror(string id, bool mirror) => _document.SetMirror(id, mirror);
+
     /// <summary>Gives the part a new solid, held in the file as one undo step.</summary>
     public void SetMesh(string id, SolidMesh mesh) => _document.SetMesh(id, mesh);
 
