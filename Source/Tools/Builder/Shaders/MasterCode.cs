@@ -8,12 +8,19 @@ namespace FlickerVoid.Tools.Builder.Shaders;
 /// <summary>
 /// Writes the HLSL the content build compiles for a master: the scene shader's surface code, the master's parameters as a
 /// struct loaded from the material's buffer after the scene shader's, the master's own <c>SurfaceOf</c>, and the geometry pass
-/// reading the surface through it.
+/// (or for glass the transparent pass) reading the surface through it.
 /// </summary>
 public static class MasterCode
 {
-    /// <summary>The code for the master whose HLSL is <paramref name="hlslFile"/>, with its parameters starting <paramref name="offset"/> bytes in.</summary>
-    public static string Generate(string hlslFile, IReadOnlyList<ShaderParameter> parameters, int offset)
+    public const string GeometryFile = "Geometry.hlsl";
+
+    public const string TransparentFile = "Transparent.hlsl";
+
+    /// <summary>
+    /// The code for the master whose HLSL is <paramref name="hlslFile"/>, with its parameters starting <paramref name="offset"/>
+    /// bytes in, for the pass whose pixel shader <paramref name="passFile"/> holds.
+    /// </summary>
+    public static string Generate(string hlslFile, IReadOnlyList<ShaderParameter> parameters, int offset, string passFile = GeometryFile)
     {
         StringBuilder code = new();
         code.AppendLine("#include \"SceneSurface.hlsl\"");
@@ -76,7 +83,7 @@ public static class MasterCode
         code.AppendLine("    return SurfaceOf(input, draw, material, parameters);");
         code.AppendLine("}");
         code.AppendLine();
-        code.AppendLine("#include \"Geometry.hlsl\"");
+        code.AppendLine(CultureInfo.InvariantCulture, $"#include \"{passFile}\"");
         return code.ToString();
     }
 

@@ -209,7 +209,8 @@ internal sealed class FrameDataWriter : IDisposable
             gBuffer.Material.BindlessIndex,
             gBuffer.ObjectDepth.BindlessIndex,
             gBuffer.Motion.BindlessIndex,
-            accelerationStructure);
+            accelerationStructure,
+            context.Targets.Behind.BindlessIndex);
 
         IBuffer frame = _frames.Get(size);
         ReadOnlySpan<FrameData> header = new(in data);

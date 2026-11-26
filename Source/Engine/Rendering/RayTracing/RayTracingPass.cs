@@ -59,7 +59,8 @@ internal sealed class RayTracingPass : IRenderPass
         for (int index = 0; index < context.Draws.Count; index++)
         {
             MeshDraw draw = context.Draws[index];
-            if (draw.Flags.HasFlag(MeshFlags.OutlineOnly) || draw.Part.IndexCount == 0)
+            // Rays pass through glass.
+            if (draw.Flags.HasFlag(MeshFlags.OutlineOnly) || draw.Material.Transparent || draw.Part.IndexCount == 0)
             {
                 continue;
             }

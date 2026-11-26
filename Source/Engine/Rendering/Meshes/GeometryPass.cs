@@ -6,7 +6,6 @@ using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Pipeline;
-using FlickerVoid.Engine.Rendering.Serialization;
 using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
@@ -15,27 +14,25 @@ namespace FlickerVoid.Engine.Rendering.Meshes;
 /// Draws the meshes the view sees into the scene's depth and the <see cref="GBuffer"/>, unlit, cutting away what the cutaway
 /// does, for screen shadows and lighting to read. Each draw reads its record in the frame's data buffer by its number. Materials
 /// with a master are drawn by its geometry pass, made the first time one is drawn and again when the content build changes it or
-/// its file, both sides of the master's surfaces when it is two-sided, a master at a time after those without.
+/// its file, both sides of the master's surfaces when it is two-sided, a master at a time after those without; glass is left to
+/// the <see cref="TransparentPass"/>.
 /// </summary>
 internal sealed class GeometryPass : IRenderPass
 {
     private readonly IGraphicsDevice _device;
-    private readonly IContentManager _content;
     private readonly ShaderBytecode _vertexShader;
     private readonly IPipeline _pipeline;
-    private readonly Dictionary<string, IPipeline> _masters = new(ContentManager.PathComparer);
-    private readonly Dictionary<string, string> _masterShaders = new(ContentManager.PathComparer);
+    private readonly MasterPipelines _masters;
     private readonly List<string> _drawnMasters = [];
     private readonly ColorTarget[] _targets = new ColorTarget[GBuffer.Formats.Count];
 
     public GeometryPass(IGraphicsDevice device, ShaderLibrary shaders, IContentManager content)
     {
         _device = device;
-        _content = content;
         _vertexShader = shaders.Load("Scene", "VertexMain");
         ShaderBytecode pixelShader = shaders.Load("Scene", "GeometryMain");
-        _pipeline = CreatePipeline(pixelShader, "Geometry");
-        _content.Changed += HandleChanged;
+        _pipeline = CreatePipeline(pixelShader, CullMode.Back, "Geometry");
+        _masters = new MasterPipelines(content, (shader, cull, master) => CreatePipeline(shader, cull, $"Geometry {master}"));
     }
 
     public void Prepare(RenderContext context)
@@ -64,7 +61,7 @@ internal sealed class GeometryPass : IRenderPass
         DrawMeshes(context, null);
         foreach (string master in _drawnMasters)
         {
-            IPipeline pipeline = GetMasterPipeline(master);
+            IPipeline pipeline = _masters.Get(master);
             commands.SetPipeline(pipeline);
             DrawMeshes(context, master);
         }
@@ -74,17 +71,11 @@ internal sealed class GeometryPass : IRenderPass
 
     public void Dispose()
     {
-        _content.Changed -= HandleChanged;
         _pipeline.Dispose();
-        foreach (IPipeline pipeline in _masters.Values)
-        {
-            pipeline.Dispose();
-        }
-
-        _masters.Clear();
+        _masters.Dispose();
     }
 
-    private IPipeline CreatePipeline(ShaderBytecode pixelShader, string name, CullMode cull = CullMode.Back)
+    private IPipeline CreatePipeline(ShaderBytecode pixelShader, CullMode cull, string name)
     {
         GraphicsPipelineDescription description = new()
         {
@@ -99,41 +90,6 @@ internal sealed class GeometryPass : IRenderPass
         return _device.CreateGraphicsPipeline(description);
     }
 
-    private IPipeline GetMasterPipeline(string master)
-    {
-        if (_masters.TryGetValue(master, out IPipeline? made))
-        {
-            return made;
-        }
-
-        string shaderPath = MasterFile.GetGeometryPath(master);
-        string shaderFullPath = _content.GetFullPath(shaderPath);
-        byte[] code = File.ReadAllBytes(shaderFullPath);
-        ShaderBytecode pixelShader = new(code, MasterFile.GeometryEntryPoint);
-        MasterFile file = _content.Load(master, RenderingJsonContext.Default.MasterFile);
-        CullMode cull = CullMode.Back;
-        if (file.TwoSided)
-        {
-            cull = CullMode.None;
-        }
-
-        IPipeline pipeline = CreatePipeline(pixelShader, $"Geometry {master}", cull);
-        _masters.Add(master, pipeline);
-        _masterShaders[shaderFullPath] = master;
-        string masterFullPath = _content.GetFullPath(master);
-        _masterShaders[masterFullPath] = master;
-        return pipeline;
-    }
-
-    // The device destroys a replaced pipeline once the GPU is done with it.
-    private void HandleChanged(string fullPath)
-    {
-        if (_masterShaders.TryGetValue(fullPath, out string? master) && _masters.Remove(master, out IPipeline? pipeline))
-        {
-            pipeline.Dispose();
-        }
-    }
-
     /// <summary>Draws the meshes in view whose material has the master, or none; without one, notes the masters it passes over.</summary>
     private void DrawMeshes(RenderContext context, string? master)
     {
@@ -141,7 +97,7 @@ internal sealed class GeometryPass : IRenderPass
         for (int index = 0; index < context.Draws.Count; index++)
         {
             MeshDraw draw = context.Draws[index];
-            if (!draw.InView)
+            if (!draw.InView || draw.Material.Transparent)
             {
                 continue;
             }

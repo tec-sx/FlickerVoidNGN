@@ -87,7 +87,8 @@ internal sealed class ShadowRenderer : IDisposable
         for (int index = 0; index < draws.Count; index++)
         {
             MeshDraw draw = draws[index];
-            if (draw.Flags.HasFlag(MeshFlags.OutlineOnly))
+            // Light passes through glass.
+            if (draw.Flags.HasFlag(MeshFlags.OutlineOnly) || draw.Material.Transparent)
             {
                 continue;
             }

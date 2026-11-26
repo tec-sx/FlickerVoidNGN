@@ -1,0 +1,13 @@
+// A dirty window: window glass under a layer of grime.
+{
+  "parent": "Engine/Rendering/Masters/Glass.fvmaster",
+  "parameters": {
+    "tint": [0.92, 0.97, 0.94],
+    "specular": 0.6,
+    "glossiness": 0.8,
+    "bend": 0.05,
+    "frost": 0.15,
+    "paintTint": [0.42, 0.38, 0.3],
+    "paintAmount": 0.35
+  }
+}

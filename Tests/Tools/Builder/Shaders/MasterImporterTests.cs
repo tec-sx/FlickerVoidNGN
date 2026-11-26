@@ -52,6 +52,21 @@ public sealed class MasterImporterTests : IDisposable
     }
 
     [Fact]
+    public void CompilesAGlassMastersTransparentPassInPlaceOfItsGeometryPass()
+    {
+        _files.WithSource("Masters/Pane.fvmaster", """{ "shadingModel": "Glass", "parameters": [{ "name": "bend", "type": "float", "default": 0 }] }""")
+            .WithSource("Masters/Pane.hlsl", "Surface SurfaceOf(VertexOutput input, Draw draw, Material material, MasterParameters parameters) { return ReadSurface(input, draw, material); }");
+        AssetBuilder builder = _files.Build();
+
+        BuildReport report = _files.BuildAll(builder);
+
+        report.Failed.Should().BeEmpty();
+        byte[] transparent = _files.ReadOutput("Masters/Pane.TransparentMain.spv");
+        BitConverter.ToUInt32(transparent, 0).Should().Be(SpirvMagic);
+        _files.OutputExists("Masters/Pane.GeometryMain.spv").Should().BeFalse();
+    }
+
+    [Fact]
     public void BuildsTheMasterAgainWhenItsHlslOrAnIncludeChanges()
     {
         _files.WithSource("Masters/Brick.fvmaster", Master)

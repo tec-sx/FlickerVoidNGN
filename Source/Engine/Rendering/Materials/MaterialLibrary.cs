@@ -77,7 +77,8 @@ internal sealed class MaterialLibrary : IDisposable
             return new MaterialTexture(image.BindlessIndex, reliefIndex);
         });
         IBuffer buffer = Upload(packed, path);
-        GpuMaterial made = new(buffer, CutsOut(material), master);
+        bool transparent = masterFile is not null && ShadingModels.IsTransparent(masterFile.ShadingModel);
+        GpuMaterial made = new(buffer, CutsOut(material), master, transparent);
         _materials.Add(fullPath, made);
         return made;
     }
