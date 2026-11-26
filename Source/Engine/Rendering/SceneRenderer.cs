@@ -103,7 +103,7 @@ public sealed class SceneRenderer : IDisposable
         Pipeline.Add(new TransparentPass(device, shaders, content));
         Pipeline.Add(new DepthFadePass(device, shaders));
         Pipeline.Add(new UpscalePass(device, shaders));
-        Pipeline.Add(new PostProcessPass(device, shaders, colorFormat, content));
+        Pipeline.Add(new PostProcessPass(device, shaders, colorFormat, content, MaxFramesInFlight));
         Pipeline.Add(new DebugViewPass(device, shaders, colorFormat));
         Pipeline.Add(new OutlinePass(device, shaders, colorFormat));
     }

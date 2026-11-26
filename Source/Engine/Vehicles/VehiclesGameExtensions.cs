@@ -1,4 +1,7 @@
+using Arch.Core;
+
 using FlickerVoid.Engine.Creations;
+using FlickerVoid.Engine.Physics;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -23,6 +26,8 @@ public static class VehiclesGameExtensions
             return;
         }
 
+        ArrayRegistry.Add<StaticBody>();
+        ArrayRegistry.Add<RigidBody>();
         game.Schemas.AddFile("vehicle", VehicleFile.Extension, static () => VehiclesJsonContext.Default.VehicleFile);
         game.Spawner.Register("vehicle", VehiclesJsonContext.Default.Vehicle);
         ILogger logger = game.LoggerFactory.CreateLogger(typeof(VehicleFiles));

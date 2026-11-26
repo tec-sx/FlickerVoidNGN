@@ -53,6 +53,18 @@ public sealed class MoodValuesTests
 
         lens.Should().Equal(
             "bloom",
+            "bloomRadius",
+            "dirt",
+            "dirtAmount",
+            "vignetteIntensity",
+            "vignetteRadius",
+            "vignetteSoftness",
+            "vignetteRoundness",
+            "vignetteColor",
+            "flare",
+            "flareIntensity",
+            "flareThreshold",
+            "flareThresholdRange",
             "tonemapper",
             "whitePoint",
             "canvas",

@@ -3,6 +3,8 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Engine.Creations;
+using FlickerVoid.Engine.Physics;
+using FlickerVoid.Engine.Physics.Colliders;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -98,5 +100,62 @@ public sealed class VehicleEntityTests : IDisposable
         Entity van = _builder.Place(Van);
 
         _builder.Parts.FindAll(van).Should().HaveCount(5);
+    }
+
+    [Fact]
+    public void ADoorPartSpawnsWithItsJointAndToggleAndOpensWhenToggled()
+    {
+        VehicleFile car = VehicleFileTestsBuilder.WithDoor();
+        _builder.WithVehicle(Van, car).Build();
+        Entity van = _builder.Place(Van);
+        World world = _builder.Game.World;
+
+        Entity door = _builder.Parts.Find(van, "door.1");
+
+        world.Get<PartJoint>(door).Should().Be(car.Doors[0].Joint);
+        world.Get<FlickerVoid.Engine.Interaction.Toggles.Toggle>(door).Open.Should().BeFalse();
+        _builder.Game.Events.Send(new FlickerVoid.Engine.Interaction.Toggles.ToggledEvent(door, true, Entity.Null));
+        _builder.Game.Events.Dispatch();
+        for (int tick = 0; tick < 8; tick++)
+        {
+            _builder.Game.Tick(TimeSpan.FromSeconds(0.25));
+        }
+
+        world.Get<JointPose>(door).Position.Should().BeApproximately(90, 1e-3f);
+    }
+
+    [Fact]
+    public void StandingPartsGetStaticTriangleBodiesAndADoorAKinematicHull()
+    {
+        VehicleFile car = VehicleFileTestsBuilder.WithDoor();
+        _builder.WithVehicle(Van, car).Build();
+        Entity van = _builder.Place(Van);
+        World world = _builder.Game.World;
+
+        Entity body = _builder.Parts.Find(van, "body");
+        Entity door = _builder.Parts.Find(van, "door.1");
+
+        TriangleCollider walls = world.Get<StaticBody>(body).Collider.Should().BeOfType<TriangleCollider>().Subject;
+        walls.Indices.Should().HaveCount(36);
+        world.Has<RigidBody>(body).Should().BeFalse();
+        RigidBody moving = world.Get<RigidBody>(door);
+        moving.Kinematic.Should().BeTrue();
+        moving.Obstacle.Should().BeTrue();
+        HullCollider hull = moving.Collider.Should().BeOfType<HullCollider>().Subject;
+        hull.Points.Should().Equal(car.Doors[0].Mesh.Points);
+        world.Has<StaticBody>(door).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ThePartsGetBodiesInTheSimulationWhenThereIsPhysics()
+    {
+        _builder.WithVehicle(Van, VehicleFileTestsBuilder.WithDoor()).Build();
+        IPhysicsSystem physics = _builder.Game.AddPhysics();
+        Entity van = _builder.Place(Van);
+
+        _builder.Game.Tick(TimeSpan.FromSeconds(0.1));
+
+        physics.HasBody(_builder.Parts.Find(van, "body")).Should().BeTrue();
+        physics.HasBody(_builder.Parts.Find(van, "door.1")).Should().BeTrue();
     }
 }
