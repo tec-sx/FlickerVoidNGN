@@ -11,7 +11,14 @@ namespace FlickerVoid.Engine.Rendering.PostProcessing;
 internal sealed class ScreenTargets : IDisposable
 {
     public const PixelFormat HdrFormat = PixelFormat.Rgba16Float;
-    public const int BloomLevels = 5;
+    private const int MaxBloomLevels = 8;
+
+    /// <summary>How many levels the bloom has for an output this high: the smallest stays a few pixels, so the glow keeps its size on screen at any resolution (8 at 1080p).</summary>
+    public static int BloomLevelsFor(int outputHeight)
+    {
+        int levels = (int)Math.Floor(Math.Log2(Math.Max(outputHeight, 1))) - 2;
+        return Math.Clamp(levels, 1, MaxBloomLevels);
+    }
 
     private readonly IGraphicsDevice _device;
 
@@ -51,6 +58,15 @@ internal sealed class ScreenTargets : IDisposable
     /// <summary>Half the output's size, then halving again; the first ends up holding the whole glow.</summary>
     public ITexture[] Bloom { get; private set; } = [];
 
+    /// <summary>One of the two quarter-size textures the lens flare's passes write in turn before its last.</summary>
+    public ITexture FlarePing { get; private set; } = null!;
+
+    /// <summary>The other of the lens flare's working textures.</summary>
+    public ITexture FlarePong { get; private set; } = null!;
+
+    /// <summary>The lens flare, at a quarter of the output's size, added to the image.</summary>
+    public ITexture Flare { get; private set; } = null!;
+
     /// <summary>
     /// Remakes the textures when a size changes or upscaling starts or stops, and says whether it did; the device releases old
     /// ones once the GPU is done with them.
@@ -82,8 +98,9 @@ internal sealed class ScreenTargets : IDisposable
             Upscaled = _device.CreateTexture(upscaledDescription);
         }
 
-        Bloom = new ITexture[BloomLevels];
-        for (int level = 0; level < BloomLevels; level++)
+        int bloomLevels = BloomLevelsFor(outputHeight);
+        Bloom = new ITexture[bloomLevels];
+        for (int level = 0; level < bloomLevels; level++)
         {
             int levelWidth = Math.Max(1, outputWidth >> (level + 1));
             int levelHeight = Math.Max(1, outputHeight >> (level + 1));
@@ -91,11 +108,20 @@ internal sealed class ScreenTargets : IDisposable
             Bloom[level] = _device.CreateTexture(bloom);
         }
 
+        int flareWidth = Math.Max(1, outputWidth >> 2);
+        int flareHeight = Math.Max(1, outputHeight >> 2);
+        TextureDescription flare = new(flareWidth, flareHeight, HdrFormat, readWrite) { Name = "Flare ping" };
+        FlarePing = _device.CreateTexture(flare);
+        FlarePong = _device.CreateTexture(flare with { Name = "Flare pong" });
+        Flare = _device.CreateTexture(flare with { Name = "Flare", Usage = readWrite | TextureUsage.RenderTarget });
         return true;
     }
 
     public void Dispose()
     {
+        Flare?.Dispose();
+        FlarePong?.Dispose();
+        FlarePing?.Dispose();
         foreach (ITexture level in Bloom)
         {
             level.Dispose();

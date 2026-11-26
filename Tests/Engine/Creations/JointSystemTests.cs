@@ -101,6 +101,68 @@ public sealed class JointSystemTests : IDisposable
         ShouldStandAt(Swung(90) + new Vector3(0, 0, 5), RotationOf(90));
     }
 
+    [Fact]
+    public void ADoorOpensWhenItsToggleOpens()
+    {
+        PartJoint hinge = JointSystemTestsBuilder.Hinge(new Vector3(1, 0, 0), 0, 90, 90);
+        _builder.PlaceDoor(hinge, open: false);
+
+        _builder.Toggled(open: true);
+        _builder.Tick(0.5f);
+        float halfway = _builder.PositionOfJoint();
+        _builder.Tick(1);
+
+        halfway.Should().BeApproximately(45, Precision);
+        _builder.PositionOfJoint().Should().BeApproximately(90, Precision);
+    }
+
+    [Fact]
+    public void ADoorShutsWhenItsToggleCloses()
+    {
+        PartJoint hinge = JointSystemTestsBuilder.Hinge(new Vector3(1, 0, 0), 0, 90, 90);
+        _builder.PlaceDoor(hinge, open: true);
+
+        _builder.Toggled(open: false);
+        _builder.Tick(2);
+
+        _builder.PositionOfJoint().Should().BeApproximately(0, Precision);
+    }
+
+    [Fact]
+    public void ADoorThatStartsOpenStandsOpen()
+    {
+        PartJoint hinge = JointSystemTestsBuilder.Hinge(new Vector3(1, 0, 0), 0, 90, 90);
+
+        _builder.PlaceDoor(hinge, open: true);
+
+        _builder.PositionOfJoint().Should().Be(90);
+        ShouldStandAt(Swung(90), RotationOf(90));
+    }
+
+    [Fact]
+    public void ADoorThatOpensTheOtherWayOpensToItsFarLimit()
+    {
+        PartJoint hinge = JointSystemTestsBuilder.Hinge(new Vector3(1, 0, 0), -80, 0, 90);
+        _builder.PlaceDoor(hinge, open: false);
+
+        _builder.Toggled(open: true);
+        _builder.Tick(2);
+
+        _builder.PositionOfJoint().Should().BeApproximately(-80, Precision);
+    }
+
+    [Fact]
+    public void AToggleOnSomethingWithoutAJointIsIgnored()
+    {
+        PartJoint hinge = JointSystemTestsBuilder.Hinge(new Vector3(1, 0, 0), 0, 90, 90);
+        _builder.PlaceDoor(hinge, open: false);
+
+        _builder.Toggled(_builder.Root, open: true);
+        _builder.Tick(2);
+
+        _builder.PositionOfJoint().Should().Be(0);
+    }
+
     private static Quaternion RotationOf(float degrees)
     {
         return Quaternion.CreateFromAxisAngle(Vector3.UnitY, float.DegreesToRadians(degrees));

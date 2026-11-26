@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Creations/FlickerVoid.Engine.Creations.csproj" />
+    <ProjectReference Include="../Physics/FlickerVoid.Engine.Physics.csproj" />
     <ProjectReference Include="../Rendering/FlickerVoid.Engine.Rendering.csproj" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,4 @@
-// Turns the lit scene into the final image: adds bloom, then grades it (Grade.hlsl: exposure, contrast, saturation and tint,
+// Turns the lit scene into the final image: mixes in bloom (more where the lens's dirt is bright), adds the lens flare, then grades it (Grade.hlsl: exposure, contrast, saturation and tint,
 // then the tonemapper's curve), then lays it over the canvas. The scene's alpha is how much paint lies there (0 to 1) plus how
 // thick it stands (0 to 1, from a painting's impasto): bare canvas shows only where nothing was painted, and under paint the
 // canvas never changes its colour, it shows as its threads, the more the thinner the paint, so shadows stay shadows. The canvas is flat and moves
@@ -22,12 +22,17 @@ struct PostConstants
     float3 CanvasTint;
     float CanvasPanRight;
     float CanvasPanUp;
+    float VignetteIntensity;
+    float VignetteRadius;
+    float VignetteSoftness;
+    float VignetteRoundness;
+    float DirtAmount;
+    uint Dirt;
+    uint Flare;
+    float3 VignetteColor;
 };
 
 [[vk::push_constant]] ConstantBuffer<PostConstants> Post : register(b0, space0);
-
-// The bloom levels the upsampling summed, which averaging divides back out.
-static const float BloomLevels = 5;
 
 // Where the pixel lies on the flat canvas, in image uvs: the image CanvasImageHeight pixels high, slid by the camera's pan so
 // the canvas moves with the world.
@@ -36,6 +41,17 @@ float2 CanvasUv(float2 pixel, float2 canvasSize)
     float2 imagePixels = float2(Post.CanvasImageHeight * canvasSize.x / canvasSize.y, Post.CanvasImageHeight);
     float2 panned = pixel + float2(Post.CanvasPanRight, -Post.CanvasPanUp);
     return panned / imagePixels;
+}
+
+// How much the vignette takes this pixel, from 0 to the intensity: nothing within the radius, then rising over the softness. The
+// distance is measured to the corner, with roundness 1 making it a circle and 0 following the screen's shape.
+float Vignette(float2 uv, float aspect)
+{
+    float2 centered = uv * 2 - 1;
+    centered.x *= lerp(1, aspect, Post.VignetteRoundness);
+    float reach = length(float2(lerp(1, aspect, Post.VignetteRoundness), 1));
+    float distanceFromMiddle = length(centered) / reach;
+    return Post.VignetteIntensity * smoothstep(Post.VignetteRadius, Post.VignetteRadius + Post.VignetteSoftness, distanceFromMiddle);
 }
 
 float4 VertexMain(uint vertexId : SV_VertexID) : SV_Position
@@ -49,17 +65,35 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
     Texture2D scene = Textures[Post.Scene];
     float4 sceneColor = scene.Load(int3(position.xy, 0));
     float3 color = sceneColor.rgb;
+    uint width;
+    uint height;
+    scene.GetDimensions(width, height);
+    float2 uv = position.xy / float2(width, height);
+    float dirt = 0;
+    if (Post.Dirt != None)
+    {
+        dirt = Textures[Post.Dirt].SampleLevel(Samplers[Post.ClampSampler], uv, 0).r * Post.DirtAmount;
+    }
+
     if (Post.BloomTexture != None)
     {
-        uint width;
-        uint height;
-        scene.GetDimensions(width, height);
-        float2 uv = position.xy / float2(width, height);
-        float3 bloom = Textures[Post.BloomTexture].SampleLevel(Samplers[Post.ClampSampler], uv, 0).rgb / BloomLevels;
-        color = lerp(color, bloom, Post.Bloom);
+        float3 bloom = Textures[Post.BloomTexture].SampleLevel(Samplers[Post.ClampSampler], uv, 0).rgb;
+        color = lerp(color, bloom, saturate(Post.Bloom + dirt));
+    }
+
+    // The lens flare adds its light, raised where the lens's dirt catches it, so it shows with no bloom at all.
+    if (Post.Flare != None)
+    {
+        float3 flare = Textures[Post.Flare].SampleLevel(Samplers[Post.ClampSampler], uv, 0).rgb;
+        color += flare * (1 + dirt);
     }
 
     color = Grade(Post.Grade, color);
+    if (sceneColor.a > 0 && Post.VignetteIntensity > 0)
+    {
+        color = lerp(color, Post.VignetteColor, Vignette(uv, (float)width / height));
+    }
+
     float coverage = saturate(sceneColor.a);
     if (Post.Canvas != None)
     {

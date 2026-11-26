@@ -34,6 +34,9 @@ public sealed class VehicleFile : IJsonOnDeserialized
     /// <summary>The wheels, front axle first and left before right; <see cref="SetWheelCount"/> changes how many.</summary>
     public List<VehiclePart> Wheels { get; set; } = [];
 
+    /// <summary>The doors, numbered from 1 in order: <c>door.1</c>, <c>door.2</c>; the door tool adds them.</summary>
+    public List<VehiclePart> Doors { get; set; } = [];
+
     /// <summary>A new vehicle of the type: a box body and the fewest wheels it takes.</summary>
     public static VehicleFile Create(VehicleType type)
     {
@@ -94,7 +97,7 @@ public sealed class VehicleFile : IJsonOnDeserialized
         Type = type;
     }
 
-    /// <summary>Every part with its id: the body first, then the wheels in order.</summary>
+    /// <summary>Every part with its id: the body first, then the wheels in order, then the doors.</summary>
     public IReadOnlyList<(string Id, VehiclePart Part)> GetParts()
     {
         List<(string Id, VehiclePart Part)> parts = [(BodyId, Body)];
@@ -110,6 +113,11 @@ public sealed class VehicleFile : IJsonOnDeserialized
             }
 
             parts.Add((id, Wheels[index]));
+        }
+
+        for (int index = 0; index < Doors.Count; index++)
+        {
+            parts.Add(($"door.{index + 1}", Doors[index]));
         }
 
         return parts;

@@ -172,4 +172,397 @@ public sealed class CreatorModeTests : IDisposable
         QueryDescription query = new QueryDescription().WithAll<T>();
         return world.CountEntities(in query);
     }
+
+    [Fact]
+    public void ThereIsNoMeshToEnterUntilAPartIsSelected()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+
+        bool entered = mode.EnterMesh();
+
+        entered.Should().BeFalse();
+        mode.MeshSelection.Should().BeNull();
+    }
+
+    [Fact]
+    public void EnteringTheMeshOfTheSelectedPartGivesAnEmptySelectionInPointMode()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        int changes = 0;
+        mode.MeshModeChanged += () => changes++;
+
+        bool entered = mode.EnterMesh();
+
+        entered.Should().BeTrue();
+        mode.MeshPart.Should().Be("body");
+        mode.MeshSelection!.Element.Should().Be(FlickerVoid.Editor.Core.Meshes.MeshElement.Point);
+        mode.MeshSelection.Points.Should().BeEmpty();
+        changes.Should().Be(1);
+    }
+
+    [Fact]
+    public void WhileTheMeshIsEnteredAClickSelectsInTheMeshAndNotAnotherPart()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        Vector2 onBody = _builder.PixelOf(new Vector3(0, 1.5f, 0));
+
+        mode.PointerPressed(onBody, Width, Height);
+
+        mode.SelectedPart.Should().Be("body");
+        mode.MeshSelection.Faces.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void ShiftAddsAndAltSelectsALoopInTheMesh()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        Vector2 top = _builder.PixelOf(new Vector3(0, 1.65f, 0));
+        Vector2 side = _builder.PixelOf(new Vector3(0.9f, 1, 0));
+
+        mode.PressMesh(top, Width, Height, additive: false, loop: false);
+        mode.PressMesh(side, Width, Height, additive: true, loop: false);
+
+        mode.MeshSelection.Faces.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void TheMouseOverAnElementOfTheEnteredMeshHoversItAndLeavingTheMeshClearsIt()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        Vector2 top = _builder.PixelOf(new Vector3(0, 1.65f, 0));
+
+        mode.PointerMoved(top, Width, Height);
+        FlickerVoid.Editor.Core.Meshes.MeshHit? hovered = mode.Hover;
+        mode.LeaveMesh();
+
+        hovered.Should().NotBeNull();
+        mode.Hover.Should().BeNull();
+    }
+
+    [Fact]
+    public void TheMeshIsDrawnOnlyWhileItIsEntered()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        FlickerVoid.Editor.Core.Overlays.OverlayBuilder outside = new();
+        outside.Begin(_builder.Camera, Height);
+        FlickerVoid.Editor.Core.Overlays.OverlayBuilder inside = new();
+        inside.Begin(_builder.Camera, Height);
+
+        mode.DrawMesh(outside);
+        mode.EnterMesh();
+        mode.DrawMesh(inside);
+
+        outside.Vertices.Length.Should().Be(0);
+        inside.Vertices.Length.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void MovingTheSelectedPointsEditsThePartsMeshAndKeepsTheSelection()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfPoint(0), additive: false);
+        Vector3 before = _builder.FindMesh("body")!.Points[0];
+
+        bool moved = mode.MoveMesh(new Vector3(0, 0.25f, 0));
+
+        moved.Should().BeTrue();
+        _builder.MeshEdits.Should().Equal("body");
+        _builder.FindMesh("body")!.Points[0].Y.Should().BeApproximately(before.Y + 0.25f, 1e-5f);
+        mode.MeshSelection.Points.Should().Equal(0);
+    }
+
+    [Fact]
+    public void RotatingAndScalingNeedASelectionAndOneEditEach()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+
+        bool withNothing = mode.ScaleMesh(new Vector3(2, 2, 2));
+        mode.MeshSelection!.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfPoint(0), additive: false);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfPoint(1), additive: true);
+        bool rotated = mode.RotateMesh(new Vector3(0, 0, 45));
+        bool scaled = mode.ScaleMesh(new Vector3(2, 1, 1));
+
+        withNothing.Should().BeFalse();
+        rotated.Should().BeTrue();
+        scaled.Should().BeTrue();
+        _builder.MeshEdits.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ExtrudingTheSelectedFaceEditsTheMeshOnceAndSelectsTheNewFace()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfFace(2, default), additive: false);
+        int points = _builder.FindMesh("body")!.Points.Count;
+
+        bool extruded = mode.ExtrudeMesh(0.5f);
+
+        extruded.Should().BeTrue();
+        _builder.MeshEdits.Should().Equal("body");
+        _builder.FindMesh("body")!.Points.Should().HaveCount(points + 4);
+        mode.MeshSelection!.Faces.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void InsettingTheSelectedFaceEditsTheMeshOnceAndSelectsTheInnerFace()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfFace(2, default), additive: false);
+        int faces = _builder.FindMesh("body")!.Faces.Count;
+
+        bool inset = mode.InsetMesh(0.1f);
+
+        inset.Should().BeTrue();
+        _builder.MeshEdits.Should().Equal("body");
+        _builder.FindMesh("body")!.Faces.Should().HaveCount(faces + 4);
+        mode.MeshSelection!.Faces.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void ALoopCutAtTheFaceUnderTheMouseEditsTheMeshOnceAndSelectsTheNewEdges()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        Vector2 top = _builder.PixelOf(new Vector3(0, 1.65f, 0));
+        int faces = _builder.FindMesh("body")!.Faces.Count;
+
+        bool cut = mode.LoopCutMesh(top, Width, Height, 1, 0);
+
+        cut.Should().BeTrue();
+        _builder.MeshEdits.Should().Equal("body");
+        _builder.FindMesh("body")!.Faces.Count.Should().BeGreaterThan(faces);
+        mode.MeshSelection!.Element.Should().Be(FlickerVoid.Editor.Core.Meshes.MeshElement.Edge);
+        mode.MeshSelection.Edges.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void ALoopCutBesideTheSolidDoesNothing()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+
+        bool cut = mode.LoopCutMesh(new Vector2(5, 5), Width, Height, 1, 0);
+
+        cut.Should().BeFalse();
+        _builder.MeshEdits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BevelingTheSelectedEdgeEditsTheMeshOnceAndSelectsTheStrip()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Edge);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfEdge(FlickerVoid.Engine.Runtime.Solids.SolidEdge.Of(0, 1)), additive: false);
+        int faces = _builder.FindMesh("body")!.Faces.Count;
+
+        bool beveled = mode.BevelMesh(0.1f, 2, round: true);
+
+        beveled.Should().BeTrue();
+        _builder.MeshEdits.Should().Equal("body");
+        _builder.FindMesh("body")!.Faces.Should().HaveCount(faces + 2);
+        mode.MeshSelection!.Faces.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void TheMirrorSwitchIsKeptInTheFileAndNeedsTheMeshEntered()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+
+        bool outside = mode.SetMirror(true);
+        mode.EnterMesh();
+        bool inside = mode.SetMirror(true);
+
+        outside.Should().BeFalse();
+        inside.Should().BeTrue();
+        mode.Mirror.Should().BeTrue();
+        _builder.IsMirrored("body").Should().BeTrue();
+    }
+
+    [Fact]
+    public void WithTheMirrorOnMovingAPointMovesItsTwinTheOtherWay()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.SetMirror(true);
+        mode.MeshSelection!.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfPoint(1), additive: false);
+
+        mode.MoveMesh(new Vector3(0.2f, 0, 0));
+
+        FlickerVoid.Engine.Runtime.Solids.SolidMesh body = _builder.FindMesh("body")!;
+        body.Points[0].X.Should().BeApproximately(-body.Points[1].X, 1e-4f);
+    }
+
+    [Fact]
+    public void WithTheMirrorOnExtrudingASideFaceExtrudesTheOtherSideToo()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.SetMirror(true);
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfFace(0, default), additive: false);
+        int points = _builder.FindMesh("body")!.Points.Count;
+
+        mode.ExtrudeMesh(0.3f);
+
+        _builder.FindMesh("body")!.Points.Should().HaveCount(points + 8);
+        mode.MeshSelection!.Faces.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void WithTheMirrorOnALoopCutLeavesTheSolidSymmetric()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.SetMirror(true);
+        Vector2 side = _builder.PixelOf(new Vector3(0.9f, 1, 0));
+
+        bool cut = mode.LoopCutMesh(side, Width, Height, 1, 0.3f);
+
+        cut.Should().BeTrue();
+        FlickerVoid.Editor.Core.Meshes.MeshMirror.FindTwins(_builder.FindMesh("body")!).Should().NotContain(-1);
+    }
+
+    [Fact]
+    public void CuttingAPocketIntoTheSelectedFaceEditsTheMeshOnceAndSelectsItsFloor()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfFace(2, default), additive: false);
+
+        bool cut = mode.CutMesh(0.1f, through: false);
+
+        cut.Should().BeTrue();
+        _builder.MeshEdits.Should().Equal("body");
+        mode.MeshSelection!.Faces.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void AdoorHungInTheFaceUnderTheMouseIsAPartTheCreatorCanSwing()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        Vector2 side = _builder.PixelOf(new Vector3(0.9f, 1, 0));
+
+        string? door = mode.HangDoor(side, Width, Height, new FlickerVoid.Editor.Core.Meshes.Doors.DoorOptions());
+        bool swung = mode.SwingDoor("door.1");
+        bool missing = mode.SwingDoor("door.9");
+
+        door.Should().Be("door.1");
+        mode.MeshSelection.Should().BeNull("the mesh is left once the door is made");
+        swung.Should().BeTrue();
+        missing.Should().BeFalse();
+        _builder.World.Get<FlickerVoid.Engine.Interaction.Toggles.Toggle>(_builder.Parts.Find(mode.Root, "door.1")).Open.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ADoorBesideTheSolidIsNotHung()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+
+        string? door = mode.HangDoor(new Vector2(5, 5), Width, Height, new FlickerVoid.Editor.Core.Meshes.Doors.DoorOptions());
+
+        door.Should().BeNull();
+    }
+
+    [Fact]
+    public void ExtrudingWithNoFaceSelectedDoesNothing()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+
+        bool extruded = mode.ExtrudeMesh(0.5f);
+
+        extruded.Should().BeFalse();
+        _builder.MeshEdits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ASelectionOutsideTheMeshModeEditsNothing()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+
+        bool moved = mode.MoveMesh(Vector3.One);
+
+        moved.Should().BeFalse();
+        _builder.MeshEdits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void LeavingTheMeshDropsTheSelectionAndClicksSelectPartsAgain()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+
+        mode.LeaveMesh();
+        mode.PointerPressed(_builder.PixelOf(new Vector3(0.8f, 0.35f, 1.35f)), Width, Height);
+
+        mode.MeshSelection.Should().BeNull();
+        mode.MeshPart.Should().BeNull();
+        mode.SelectedPart.Should().Be("wheel.1L");
+    }
+
+    [Fact]
+    public void SelectingAnotherPartLeavesTheMesh()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+
+        mode.SelectPart("wheel.1L");
+
+        mode.MeshSelection.Should().BeNull();
+    }
+
+    [Fact]
+    public void ANewFileWithTheSameFacesKeepsTheMeshEnteredAndItsSelection()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        mode.MeshSelection.SelectAll();
+
+        _builder.ReplaceCar();
+
+        mode.MeshSelection.Should().NotBeNull();
+        mode.MeshSelection!.Element.Should().Be(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        mode.MeshSelection.Faces.Should().NotBeEmpty();
+    }
 }

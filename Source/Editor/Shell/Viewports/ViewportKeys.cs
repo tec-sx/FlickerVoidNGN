@@ -21,6 +21,13 @@ public static class ViewportKeys
         Key.F => ViewportKey.F,
         Key.Delete => ViewportKey.Delete,
         Key.Escape => ViewportKey.Escape,
+        Key.Tab => ViewportKey.Tab,
+        Key.D1 => ViewportKey.One,
+        Key.D2 => ViewportKey.Two,
+        Key.D3 => ViewportKey.Three,
+        Key.I => ViewportKey.I,
+        Key.C => ViewportKey.C,
+        Key.B => ViewportKey.B,
         _ => null,
     };
 }
