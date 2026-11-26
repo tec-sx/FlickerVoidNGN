@@ -1,3 +1,4 @@
+using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 using FlickerVoid.Engine.Vehicles.Serialization;
@@ -57,5 +58,17 @@ public sealed class VehicleDocument(UnsavedContent content, string path)
         }
 
         throw new ArgumentException($"The vehicle has no part {id}.", nameof(id));
+    }
+
+    /// <summary>Hangs a door in the face of the part, hinged on the edge, held in the file as one undo step; the new door's id, or null when it can't be made.</summary>
+    public string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options)
+    {
+        string? id = DoorTool.Hang(Vehicle, partId, face, hinge, options);
+        if (id is not null)
+        {
+            Hold();
+        }
+
+        return id;
     }
 }

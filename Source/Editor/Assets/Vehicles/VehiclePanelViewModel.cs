@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
+using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 
@@ -62,6 +63,9 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
 
         return false;
     }
+
+    /// <summary>Hangs a door in the part's face on the edge; the new door's id, or null.</summary>
+    public string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options) => _document.HangDoor(partId, face, hinge, options);
 
     public void SetMirror(string id, bool mirror) => _document.SetMirror(id, mirror);
 

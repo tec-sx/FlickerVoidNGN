@@ -468,6 +468,37 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void AdoorHungInTheFaceUnderTheMouseIsAPartTheCreatorCanSwing()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        Vector2 side = _builder.PixelOf(new Vector3(0.9f, 1, 0));
+
+        string? door = mode.HangDoor(side, Width, Height, new FlickerVoid.Editor.Core.Meshes.Doors.DoorOptions());
+        bool swung = mode.SwingDoor("door.1");
+        bool missing = mode.SwingDoor("door.9");
+
+        door.Should().Be("door.1");
+        mode.MeshSelection.Should().BeNull("the mesh is left once the door is made");
+        swung.Should().BeTrue();
+        missing.Should().BeFalse();
+        _builder.World.Get<FlickerVoid.Engine.Interaction.Toggles.Toggle>(_builder.Parts.Find(mode.Root, "door.1")).Open.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ADoorBesideTheSolidIsNotHung()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+
+        string? door = mode.HangDoor(new Vector2(5, 5), Width, Height, new FlickerVoid.Editor.Core.Meshes.Doors.DoorOptions());
+
+        door.Should().BeNull();
+    }
+
+    [Fact]
     public void ExtrudingWithNoFaceSelectedDoesNothing()
     {
         using CreatorMode mode = _builder.EnterAlone();

@@ -1,5 +1,6 @@
 using FlickerVoid.Editor.Assets.Vehicles;
 using FlickerVoid.Editor.Core.Undo;
+using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 
@@ -81,6 +82,23 @@ public sealed class VehicleDocumentTests : IDisposable
         _builder.Load().Body.Mirror.Should().BeFalse();
         Action unknown = () => document.SetMirror("roof", true);
         unknown.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void AHungDoorIsOneUndoStepThatPlacedCopiesSee()
+    {
+        VehicleDocument document = _builder.Build();
+        UndoHistory history = _builder.Content.GetHistory(VehicleDocumentTestsBuilder.Van);
+        SolidMesh body = document.Vehicle.Body.Mesh;
+        SolidEdge hinge = new SolidTopology(body).GetFaceEdges(0).First();
+
+        string? id = document.HangDoor("body", 0, hinge, new DoorOptions());
+
+        id.Should().Be("door.1");
+        _builder.Load().Doors.Should().ContainSingle();
+        history.Undo();
+        _builder.Load().Doors.Should().BeEmpty();
+        document.HangDoor("roof", 0, hinge, new DoorOptions()).Should().BeNull();
     }
 
     [Fact]
