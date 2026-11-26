@@ -725,63 +725,21 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
-    public void LaysThePaperUnderThePaintShowingThroughWhereItIsThin()
+    public void KeepsThinPaintsColourOverThePaper()
     {
         uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
         _builder.WithTexture("Paper.tga", 1, 1, [grey]);
         _builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga" }""");
         _builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas" });
-        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(1, 0, 0, 0.5f)));
         _builder.WithScene(Camera, Quad);
 
-        uint[] thick = _builder.Render();
-        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(1, 0, 0, 0.5f)));
-        _builder.NotifyChanged("Quad.fvmodel");
-        uint[] thin = _builder.Render();
-
-        SceneRendererTestsBuilder.Channels(thick[5]).Should().Be(((byte)255, (byte)0, (byte)0), "thick paint hides the paper");
-        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(thin[5]);
-        green.Should().BeInRange(25, 31, "half of the paper's light (sRGB 128 is about a fifth) shows through half-thick paint");
-        blue.Should().Be(green);
-        red.Should().BeInRange(150, 160);
-    }
-
-    [Theory]
-    [InlineData(1, 0, 3)]
-    [InlineData(0, 25, 31)]
-    [InlineData(0.5f, 9, 17)]
-    public void ShadesThePaperUnderThinPaintAsThePaintIsLit(float shading, int least, int most)
-    {
-        uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
-        _builder.WithTexture("Paper.tga", 1, 1, [grey]);
-        _builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga" }""");
-        _builder.WithMood(mood => mood with { Canvas = "Paper.fvcanvas", CanvasShading = shading });
-        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(1, 0, 0, 0.5f)));
+        uint[] lit = _builder.Render();
         _builder.WithLight(sunDirection: new Vector3(0, 0, 1), ambient: 0);
-        _builder.WithScene(Camera, Quad);
+        uint[] dark = _builder.Render();
 
-        uint[] pixels = _builder.Render();
-
-        (_, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
-        green.Should().BeInRange((byte)least, (byte)most, "the paper under paint in the dark is darkened by the shading");
-        blue.Should().Be(green);
-    }
-
-    [Fact]
-    public void KeepsThePaperUnderThinPaintInFullLight()
-    {
-        uint grey = SceneRendererTestsBuilder.Rgba(128, 128, 128, 255);
-        _builder.WithTexture("Paper.tga", 1, 1, [grey]);
-        _builder.WithFile("Paper.fvcanvas", """{ "image": "Paper.tga" }""");
-        _builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas" });
-        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(1, 0, 0, 0.5f)));
-        _builder.WithLight(sunDirection: new Vector3(0, 0, -1), ambient: 0);
-        _builder.WithScene(Camera, Quad);
-
-        uint[] pixels = _builder.Render();
-
-        (_, byte green, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
-        green.Should().BeInRange(25, 31, "a surface the sun meets head on takes the paper's own light");
+        SceneRendererTestsBuilder.Channels(lit[5]).Should().Be(((byte)255, (byte)0, (byte)0), "the paper never colours the paint, however thin");
+        SceneRendererTestsBuilder.Channels(dark[5]).Should().Be(((byte)0, (byte)0, (byte)0), "thin paint in the dark is dark, not the paper's grey");
     }
 
     [Fact]
@@ -802,14 +760,31 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
-    public void ShowsTheCanvasThroughPlainPaint()
+    public void ShowsTheCanvasThreadsThroughThinPaint()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0.3f, 0.3f, 0.3f, 0.5f)));
+
+        uint[] pixels = RenderPaper(_builder, Camera, Quad);
+
+        uint[] painted = [pixels[5], pixels[6], pixels[9], pixels[10]];
+        painted.Distinct().Should().HaveCountGreaterThan(1, "the canvas's threads show through thin paint");
+        foreach (uint pixel in painted)
+        {
+            (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixel);
+            green.Should().Be(red, "the threads change the paint's brightness, never its colour");
+            blue.Should().Be(red);
+        }
+    }
+
+    [Fact]
+    public void HidesTheCanvasUnderOpaquePaint()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0.3f, 0.3f, 0.3f, 1)));
 
         uint[] pixels = RenderPaper(_builder, Camera, Quad);
 
         uint[] painted = [pixels[5], pixels[6], pixels[9], pixels[10]];
-        painted.Distinct().Should().HaveCountGreaterThan(1, "the canvas's weave shows through paint without impasto");
+        painted.Distinct().Should().ContainSingle("opaque paint covers the canvas's threads");
     }
 
     [Fact]

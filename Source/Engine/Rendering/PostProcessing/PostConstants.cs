@@ -17,6 +17,4 @@ internal readonly record struct PostConstants(
     float CanvasImageHeight,
     Vector3 CanvasTint,
     float CanvasPanRight,
-    float CanvasPanUp,
-    uint CanvasLight,
-    float CanvasShading);
+    float CanvasPanUp);

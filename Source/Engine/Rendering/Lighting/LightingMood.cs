@@ -103,13 +103,6 @@ public sealed record LightingMood
     [ContentFile(".fvcanvas")]
     public string? Canvas { get; set; }
 
-    /// <summary>
-    /// How much the canvas showing through thin paint takes the light and shadow of the surface it lies under: 0 shows it at
-    /// its own colour whatever the light, 1 lights it as the paint is lit.
-    /// </summary>
-    [Range(0, 1)]
-    public float CanvasShading { get; set; } = 1;
-
     /// <summary>How far in front of the focus things start to darken.</summary>
     public float DepthNearStart { get; set; } = 1;
 

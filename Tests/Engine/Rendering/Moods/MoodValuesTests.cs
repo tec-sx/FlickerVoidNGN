@@ -56,7 +56,6 @@ public sealed class MoodValuesTests
             "tonemapper",
             "whitePoint",
             "canvas",
-            "canvasShading",
             "depthNearStart",
             "depthNearEnd",
             "depthNearAmount",
