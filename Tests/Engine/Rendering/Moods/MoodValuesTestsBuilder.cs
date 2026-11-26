@@ -43,6 +43,14 @@ internal sealed class MoodValuesTestsBuilder
             FogAnisotropy = -0.2f,
             FogHeight = 3,
             FogHeightFalloff = 0.4f,
+            FogRange = 30,
+            HazeDensity = 0.07f,
+            HazeStart = 3,
+            HazeMax = 0.6f,
+            HazeHeight = 1,
+            HazeHeightFalloff = 0.3f,
+            HazeColor = new Vector3(0.7f, 0.6f, 0.5f),
+            HazeFromSky = 0.5f,
             AmbientOcclusion = 0.5f,
             AmbientOcclusionRadius = 1.5f,
             ContactShadowLength = 0.1f,
@@ -58,10 +66,10 @@ internal sealed class MoodValuesTestsBuilder
             DepthNearStart = 0.5f,
             DepthNearEnd = 3,
             DepthNearAmount = 0.4f,
+            DepthNearBurn = 0.2f,
             DepthFarStart = 4,
             DepthFarEnd = 12,
             DepthFarAmount = 0.3f,
-            DepthFarColor = new Vector3(0.7f, 0.6f, 0.5f),
         };
     }
 }

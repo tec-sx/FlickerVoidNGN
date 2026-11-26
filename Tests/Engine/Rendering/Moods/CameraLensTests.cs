@@ -17,7 +17,7 @@ public sealed class CameraLensTests : IDisposable
           "bloom": 0.2,
           "tonemapper": "Aces",
           "depthNearAmount": 0.3,
-          "depthFarColor": [0.78, 0.74, 0.68]
+          "depthNearBurn": 0.4
         }
         """;
 
@@ -36,7 +36,7 @@ public sealed class CameraLensTests : IDisposable
         mood.Bloom.Should().Be(0.2f);
         mood.Tonemapper.Should().Be(Tonemapper.Aces);
         mood.DepthNearAmount.Should().Be(0.3f);
-        mood.DepthFarColor.Should().Be(new Vector3(0.78f, 0.74f, 0.68f));
+        mood.DepthNearBurn.Should().Be(0.4f);
         mood.Exposure.Should().Be(0.8f, "the exposure is the environment's");
     }
 
@@ -81,7 +81,7 @@ public sealed class CameraLensTests : IDisposable
 
         JsonObject properties = JsonNode.Parse(written)!["properties"]!.AsObject();
         properties.Should().ContainKey("bloom");
-        properties.Should().ContainKey("depthFarColor");
+        properties.Should().ContainKey("depthNearBurn");
         properties.Should().ContainKey("$schema");
         properties.Should().NotContainKey("exposure");
     }
