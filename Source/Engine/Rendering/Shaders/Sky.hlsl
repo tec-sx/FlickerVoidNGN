@@ -237,11 +237,11 @@ float3 ToStars(SkyData sky, float3 direction)
     return float3(dot(direction, across), dot(direction, side), dot(direction, pole));
 }
 
-// The stars' light along a direction, a pixel's width across, where the screen's sky is as bright as given; they fade into the
-// thicker air toward the horizon.
-float3 StarLight(SkyData sky, float3 direction, float pixelRadians, float3 screen)
+// The stars' light along a direction, a pixel's width across, where the sky's own colour, before any paper darkens it, is as
+// given; they fade into the thicker air toward the horizon.
+float3 StarLight(SkyData sky, float3 direction, float pixelRadians, float3 gradient)
 {
-    float drowned = saturate(1 - dot(screen, ToLuminance) / StarDrowned) * smoothstep(0, StarHorizon, direction.y);
+    float drowned = saturate(1 - dot(gradient, ToLuminance) / StarDrowned) * smoothstep(0, StarHorizon, direction.y);
     if (sky.StarIntensity <= 0 || drowned <= 0)
     {
         return 0;
@@ -287,16 +287,17 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     float3 direction = ViewRay(frame, sky, pixel);
     float elevation = direction.y;
     float4 mask = SampleMask(sky, direction, elevation);
-    float3 screen = Gradient(sky, elevation, mask);
+    float3 gradient = Gradient(sky, elevation, mask);
+    float3 screen = gradient;
     if (Sky.Canvas != None)
     {
-        screen = Wash(screen);
+        screen = Wash(gradient);
     }
 
     float3 light = Ungrade(Sky.Grade, screen);
     float3 next = ViewRay(frame, sky, pixel + float2(0, 1));
     float pixelRadians = acos(clamp(dot(direction, next), -1, 1));
-    float3 stars = StarLight(sky, direction, pixelRadians, screen) * saturate(mask.a);
+    float3 stars = StarLight(sky, direction, pixelRadians, gradient) * saturate(mask.a);
     float3 bodies = SunLight(sky, direction, mask.b) + MoonLight(sky, direction) + stars;
     light += bodies * SkyShare(sky, elevation);
 
