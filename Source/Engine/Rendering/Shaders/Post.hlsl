@@ -22,8 +22,14 @@ struct PostConstants
     float3 CanvasTint;
     float CanvasPanRight;
     float CanvasPanUp;
+    float VignetteIntensity;
+    float VignetteRadius;
+    float VignetteSoftness;
+    float VignetteRoundness;
     float DirtAmount;
     uint Dirt;
+    float Padding;
+    float3 VignetteColor;
 };
 
 [[vk::push_constant]] ConstantBuffer<PostConstants> Post : register(b0, space0);
@@ -37,6 +43,17 @@ float2 CanvasUv(float2 pixel, float2 canvasSize)
     return panned / imagePixels;
 }
 
+// How much the vignette takes this pixel, from 0 to the intensity: nothing within the radius, then rising over the softness. The
+// distance is measured to the corner, with roundness 1 making it a circle and 0 following the screen's shape.
+float Vignette(float2 uv, float aspect)
+{
+    float2 centered = uv * 2 - 1;
+    centered.x *= lerp(1, aspect, Post.VignetteRoundness);
+    float reach = length(float2(lerp(1, aspect, Post.VignetteRoundness), 1));
+    float distanceFromMiddle = length(centered) / reach;
+    return Post.VignetteIntensity * smoothstep(Post.VignetteRadius, Post.VignetteRadius + Post.VignetteSoftness, distanceFromMiddle);
+}
+
 float4 VertexMain(uint vertexId : SV_VertexID) : SV_Position
 {
     float2 corner = float2((vertexId << 1) & 2, vertexId & 2);
@@ -48,12 +65,12 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
     Texture2D scene = Textures[Post.Scene];
     float4 sceneColor = scene.Load(int3(position.xy, 0));
     float3 color = sceneColor.rgb;
+    uint width;
+    uint height;
+    scene.GetDimensions(width, height);
+    float2 uv = position.xy / float2(width, height);
     if (Post.BloomTexture != None)
     {
-        uint width;
-        uint height;
-        scene.GetDimensions(width, height);
-        float2 uv = position.xy / float2(width, height);
         float3 bloom = Textures[Post.BloomTexture].SampleLevel(Samplers[Post.ClampSampler], uv, 0).rgb;
         float amount = Post.Bloom;
         if (Post.Dirt != None)
@@ -66,6 +83,11 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
     }
 
     color = Grade(Post.Grade, color);
+    if (sceneColor.a > 0 && Post.VignetteIntensity > 0)
+    {
+        color = lerp(color, Post.VignetteColor, Vignette(uv, (float)width / height));
+    }
+
     float coverage = saturate(sceneColor.a);
     if (Post.Canvas != None)
     {
