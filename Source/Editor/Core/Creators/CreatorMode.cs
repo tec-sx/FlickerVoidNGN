@@ -238,14 +238,22 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// Extrudes the selected faces by a distance along their normal as one undo step, leaving the pushed faces selected in face mode;
     /// false when no face is selected or all are.
     /// </summary>
-    public bool ExtrudeMesh(float distance)
+    public bool ExtrudeMesh(float distance) => ReplaceMesh((solid, faces) => MeshExtrude.Faces(solid, faces, distance));
+
+    /// <summary>
+    /// Insets the selected faces by a thickness as one undo step, leaving the inner faces selected in face mode; false when no face
+    /// is selected or all are.
+    /// </summary>
+    public bool InsetMesh(float thickness) => ReplaceMesh((solid, faces) => MeshInset.Faces(solid, faces, thickness));
+
+    private bool ReplaceMesh(Func<SolidMesh, IReadOnlySet<int>, MeshResult?> tool)
     {
         if (MeshSelection is not { } selection || MeshPart is not { } id || _applyMesh is null || _findMesh?.Invoke(id) is not { } solid)
         {
             return false;
         }
 
-        MeshResult? result = MeshExtrude.Faces(solid, selection.Faces, distance);
+        MeshResult? result = tool(solid, selection.Faces);
         if (result is null)
         {
             return false;

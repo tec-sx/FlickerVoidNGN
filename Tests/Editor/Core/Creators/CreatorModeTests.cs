@@ -322,6 +322,24 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void InsettingTheSelectedFaceEditsTheMeshOnceAndSelectsTheInnerFace()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfFace(2, default), additive: false);
+        int faces = _builder.FindMesh("body")!.Faces.Count;
+
+        bool inset = mode.InsetMesh(0.1f);
+
+        inset.Should().BeTrue();
+        _builder.MeshEdits.Should().Equal("body");
+        _builder.FindMesh("body")!.Faces.Should().HaveCount(faces + 4);
+        mode.MeshSelection!.Faces.Should().ContainSingle();
+    }
+
+    [Fact]
     public void ExtrudingWithNoFaceSelectedDoesNothing()
     {
         using CreatorMode mode = _builder.EnterAlone();
