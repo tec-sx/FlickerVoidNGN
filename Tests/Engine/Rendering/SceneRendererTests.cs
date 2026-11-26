@@ -515,6 +515,35 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void LightsTheFogOnlyAsFarAsItsRange()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(3).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithFog(density: 0.1f, color: Vector3.Zero);
+        _builder.WithMood(static mood => mood with { FogRange = 2 });
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(207, 215, "black fog lets exp(-0.1 * 1.9) of the light through, lit only to its range of 2 units");
+    }
+
+    [Fact]
+    public void KeepsTheFogSteadyFromFrameToFrame()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0, 0, 0, 1)));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithFog(density: 0.1f, color: Vector3.One);
+
+        uint[] first = _builder.RenderFrames(1);
+        uint[] later = _builder.RenderFrames(8);
+
+        (byte before, _, _) = SceneRendererTestsBuilder.Channels(first[5]);
+        (byte after, _, _) = SceneRendererTestsBuilder.Channels(later[5]);
+        after.Should().BeCloseTo(before, 3, "the fog's lighting is filtered over frames, and a still view's light does not change");
+    }
+
+    [Fact]
     public void LightsFogByTheAmbientLight()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0, 0, 0, 1)));

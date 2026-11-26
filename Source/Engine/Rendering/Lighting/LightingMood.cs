@@ -131,6 +131,10 @@ public sealed record LightingMood
     /// <summary>How fast fog thins above <see cref="FogHeight"/>: its density falls by e every 1 / falloff units; 0 keeps it even.</summary>
     public float FogHeightFalloff { get; set; }
 
+    /// <summary>How far from the camera along the view the fog is lit, in units; beyond it the haze takes over and the fog adds nothing.</summary>
+    [Range(1, 500)]
+    public float FogRange { get; set; } = 60;
+
     /// <summary>
     /// How fast the haze thickens with the distance beyond its start, as a share of the light it takes per world unit; 0 leaves no haze.
     /// The haze melts what lies far from the view's focus into <see cref="HazeColor"/>, cheaply, and the sky takes it at the horizon.
