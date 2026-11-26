@@ -24,7 +24,7 @@ using Microsoft.Extensions.Logging;
 namespace FlickerVoid.Editor.Materials;
 
 /// <summary>
-/// Renders materials on a grey sphere or cube with the game's own renderer, on a device of its own, and reads the image
+/// Renders materials on a grey sphere, cube or plane in a day, night or indoor mood with the game's own renderer, on a device of its own, and reads the image
 /// back, so the material editor can show it without sharing textures with Avalonia. It reads the editor's content, so the
 /// material's textures are found, and writes the preview meshes and the material being shown into a hidden folder there.
 /// </summary>
@@ -34,6 +34,7 @@ public sealed class MaterialPreview : IMaterialPreview, IDisposable
     private const string MaterialPath = FolderName + "/Preview.fvmat";
     private const string SpherePath = FolderName + "/Sphere.glb";
     private const string CubePath = FolderName + "/Cube.glb";
+    private const string PlanePath = FolderName + "/Plane.glb";
     private const PixelFormat Format = PixelFormat.Rgba8UNormSrgb;
     private const float CameraHeight = 1.2f;
     private const float CameraDistance = 3.2f;
@@ -42,6 +43,7 @@ public sealed class MaterialPreview : IMaterialPreview, IDisposable
     private readonly ContentManager _content;
     private readonly Game _game;
     private readonly Entity _mesh;
+    private readonly Entity _lamp;
     private readonly VulkanGraphicsDevice _device;
     private readonly SceneRenderer _renderer;
     private readonly ICommandList _commands;
@@ -58,10 +60,13 @@ public sealed class MaterialPreview : IMaterialPreview, IDisposable
         WriteModel(Path.ChangeExtension(SpherePath, ".fvmodel"), sphere);
         ModelData cube = PreviewMeshes.CreateCube(size: 0.95f);
         WriteModel(Path.ChangeExtension(CubePath, ".fvmodel"), cube);
+        ModelData plane = PreviewMeshes.CreatePlane(size: 1.3f);
+        WriteModel(Path.ChangeExtension(PlanePath, ".fvmodel"), plane);
         _game = new Game(loggerFactory);
         _game.AddRendering();
         CreateCamera(_game.World);
         _mesh = _game.World.Create(new Transform(), new MeshRenderer { Mesh = SpherePath });
+        _lamp = _game.World.Create(new Transform(), new PointLight { Intensity = 0 });
         try
         {
             _device = new VulkanGraphicsDevice(new GraphicsDeviceOptions(), loggerFactory);
@@ -73,19 +78,21 @@ public sealed class MaterialPreview : IMaterialPreview, IDisposable
             throw;
         }
 
-        _renderer = new SceneRenderer(_device, _content, Format) { Mood = CreateMood() };
+        _renderer = new SceneRenderer(_device, _content, Format);
         _commands = _device.CreateCommandList();
     }
 
-    public byte[] Render(MaterialFile material, PreviewShape shape, float yaw, int size)
+    public byte[] Render(MaterialFile material, PreviewView view, int size)
     {
         WriteMaterial(material);
-        string mesh = SpherePath;
-        if (shape == PreviewShape.Cube)
+        string mesh = view.Shape switch
         {
-            mesh = CubePath;
-        }
-
+            PreviewShape.Cube => CubePath,
+            PreviewShape.Plane => PlanePath,
+            _ => SpherePath,
+        };
+        float yaw = view.Yaw;
+        Light(view.Mood, view.LightYaw);
         World world = _game.World;
         Transform turned = new() { Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, yaw) };
         MeshRenderer renderer = new() { Mesh = mesh, Materials = [MaterialPath] };
@@ -129,11 +136,38 @@ public sealed class MaterialPreview : IMaterialPreview, IDisposable
         world.Create(transform, camera);
     }
 
-    /// <summary>A sun from the upper left in front and soft ambient light, with nothing screen-based to darken a lone shape.</summary>
-    private static LightingMood CreateMood()
+    /// <summary>
+    /// Lights the shape in the mood, its sun or lamp turned about the shape by the yaw, with nothing screen-based to darken a
+    /// lone shape. The sun lights by one less the ambient light, so a mood without it is all ambient light, kept faint.
+    /// </summary>
+    private void Light(PreviewMood mood, float lightYaw)
     {
+        Quaternion turn = Quaternion.CreateFromAxisAngle(Vector3.UnitY, lightYaw);
         Vector3 sun = Vector3.Normalize(new Vector3(0.6f, -0.5f, -0.7f));
-        return new LightingMood { SunDirection = sun, Ambient = 0.3f, AmbientOcclusion = 0, ContactShadowLength = 0 };
+        LightingMood lit = new() { SunDirection = Vector3.Transform(sun, turn), Ambient = 0.3f, AmbientOcclusion = 0, ContactShadowLength = 0 };
+        PointLight lamp = new() { Intensity = 0 };
+        Vector3 lampPosition = Vector3.Zero;
+        switch (mood)
+        {
+            case PreviewMood.Night:
+                lit.Ambient = 1;
+                lit.Exposure = 0.12f;
+                lit.Tint = new Vector3(0.6f, 0.75f, 1.2f);
+                lamp = new PointLight { Color = new Vector3(1, 0.62f, 0.3f), Intensity = 40, Range = 6 };
+                lampPosition = new Vector3(-1.2f, 0.6f, 1.1f);
+                break;
+            case PreviewMood.Indoors:
+                lit.Ambient = 1;
+                lit.Exposure = 0.2f;
+                lamp = new PointLight { Color = new Vector3(1, 0.85f, 0.65f), Intensity = 20, Range = 6 };
+                lampPosition = new Vector3(0.4f, 1.6f, 0.8f);
+                break;
+        }
+
+        _renderer.Mood = lit;
+        Transform placed = new() { Position = Vector3.Transform(lampPosition, turn) };
+        _game.World.Set(_lamp, placed);
+        _game.World.Set(_lamp, lamp);
     }
 
     private static byte[] ReadPixels(IBuffer readback, int size)

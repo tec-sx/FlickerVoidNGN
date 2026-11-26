@@ -67,6 +67,22 @@ public static class PreviewMeshes
         return Create([.. vertices], [.. indices]);
     }
 
+    /// <summary>A square facing +Z, its uvs running once across it.</summary>
+    public static ModelData CreatePlane(float size)
+    {
+        float half = size / 2;
+        Vector3 normal = Vector3.UnitZ;
+        MeshVertex[] vertices =
+        [
+            new(new Vector3(-half, -half, 0), normal, new Vector2(0, 1)),
+            new(new Vector3(half, -half, 0), normal, new Vector2(1, 1)),
+            new(new Vector3(half, half, 0), normal, new Vector2(1, 0)),
+            new(new Vector3(-half, half, 0), normal, new Vector2(0, 0)),
+        ];
+        uint[] indices = [0, 2, 1, 0, 3, 2];
+        return Create(vertices, indices);
+    }
+
     /// <summary>A direction along the face, picked so side, up and normal turn the same way on every face.</summary>
     private static Vector3 GetSide(Vector3 normal)
     {

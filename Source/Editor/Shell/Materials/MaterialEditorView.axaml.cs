@@ -18,6 +18,7 @@ public sealed partial class MaterialEditorView : UserControl
     private readonly Image _preview;
     private MaterialEditorViewModel? _viewModel;
     private Point? _lastPointer;
+    private bool _turningLight;
 
     public MaterialEditorView()
     {
@@ -83,6 +84,8 @@ public sealed partial class MaterialEditorView : UserControl
     private void HandlePreviewPressed(object? sender, PointerPressedEventArgs e)
     {
         _lastPointer = e.GetPosition(_preview);
+        PointerPointProperties pressed = e.GetCurrentPoint(_preview).Properties;
+        _turningLight = pressed.IsRightButtonPressed || e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         e.Pointer.Capture(_preview);
     }
 
@@ -97,6 +100,12 @@ public sealed partial class MaterialEditorView : UserControl
         Point moved = position - last;
         _lastPointer = position;
         Vector2 drag = new((float)moved.X, (float)moved.Y);
+        if (_turningLight)
+        {
+            _viewModel.DragLight(drag);
+            return;
+        }
+
         _viewModel.DragPreview(drag);
     }
 

@@ -43,7 +43,7 @@
     </Border>
     <!-- The preview fills the working area: drag to turn the shape, picked on the pill over it. -->
     <Panel Grid.Column="1" Background="{DynamicResource EditorDeepBrush}">
-      <Image x:Name="Preview" Stretch="Uniform" Cursor="SizeWestEast" ToolTip.Tip="Drag to turn" MaxWidth="640" MaxHeight="640" />
+      <Image x:Name="Preview" Stretch="Uniform" Cursor="SizeWestEast" ToolTip.Tip="Drag to turn the shape; right-drag or Shift-drag to turn the light" MaxWidth="640" MaxHeight="640" />
       <Border Classes="viewportBar" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12">
         <StackPanel Orientation="Horizontal">
           <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsSphere}" ToolTip.Tip="Preview on a sphere">
@@ -52,8 +52,14 @@
           <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsCube}" ToolTip.Tip="Preview on a cube">
             <PathIcon Data="{x:Static shell:LucideIcons.Cube}" />
           </ToggleButton>
+          <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsPlane}" ToolTip.Tip="Preview on a plane">
+            <PathIcon Data="{x:Static shell:LucideIcons.Layers}" />
+          </ToggleButton>
+          <ComboBox ItemsSource="{Binding Moods}" SelectedItem="{Binding Mood}" MinWidth="90" ToolTip.Tip="How the preview is lit" />
         </StackPanel>
       </Border>
+      <TextBlock Text="{Binding MasterSummary}" Classes="muted" TextWrapping="Wrap" MaxWidth="480" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="12,12,12,48"
+                 IsVisible="{Binding MasterSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
       <Border Classes="toast" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="12"
               IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
         <TextBlock Text="{Binding Status}" TextWrapping="Wrap" MaxWidth="480" Foreground="{DynamicResource EditorBakeBrush}" />
