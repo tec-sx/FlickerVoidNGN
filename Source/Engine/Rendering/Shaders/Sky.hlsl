@@ -190,11 +190,11 @@ float3 ToStars(SkyData sky, float3 direction)
     return float3(dot(direction, across), dot(direction, side), dot(direction, pole));
 }
 
-// The stars' light along a direction, a pixel's width across, where the screen's sky is as bright as given; they fade into the
-// thicker air toward the horizon.
-float3 StarLight(SkyData sky, float3 direction, float pixelRadians, float3 screen)
+// The stars' light along a direction, a pixel's width across, where the sky's own colour, before any paper darkens it, is as
+// given; they fade into the thicker air toward the horizon.
+float3 StarLight(SkyData sky, float3 direction, float pixelRadians, float3 gradient)
 {
-    float drowned = saturate(1 - dot(screen, ToLuminance) / StarDrowned) * smoothstep(0, StarHorizon, direction.y);
+    float drowned = saturate(1 - dot(gradient, ToLuminance) / StarDrowned) * smoothstep(0, StarHorizon, direction.y);
     if (sky.StarIntensity <= 0 || drowned <= 0)
     {
         return 0;
@@ -238,10 +238,11 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     SkyData sky = LoadSky();
     float2 pixel = float2(id.xy) + 0.5;
     float elevation = Elevation(frame, pixel);
-    float3 screen = Gradient(sky, elevation);
+    float3 gradient = Gradient(sky, elevation);
+    float3 screen = gradient;
     if (Sky.Canvas != None)
     {
-        screen = Wash(screen);
+        screen = Wash(gradient);
     }
 
     float3 light = Ungrade(Sky.Grade, screen);
@@ -250,7 +251,7 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
         float3 direction = ViewRay(frame, pixel);
         float3 next = ViewRay(frame, pixel + float2(0, 1));
         float pixelRadians = acos(clamp(dot(direction, next), -1, 1));
-        float3 bodies = SunLight(sky, direction) + MoonLight(sky, direction) + StarLight(sky, direction, pixelRadians, screen);
+        float3 bodies = SunLight(sky, direction) + MoonLight(sky, direction) + StarLight(sky, direction, pixelRadians, gradient);
         light += bodies * SkyShare(sky, elevation);
     }
 
