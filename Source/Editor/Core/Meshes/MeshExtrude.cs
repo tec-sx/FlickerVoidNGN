@@ -4,8 +4,11 @@ using FlickerVoid.Engine.Runtime.Solids;
 
 namespace FlickerVoid.Editor.Core.Meshes;
 
-/// <summary>A solid a tool made and the faces the tool leaves selected in it.</summary>
-public sealed record MeshResult(SolidMesh Solid, IReadOnlyList<int> Faces);
+/// <summary>A solid a tool made and what the tool leaves selected in it: the faces, or the edges when it names none.</summary>
+public sealed record MeshResult(SolidMesh Solid, IReadOnlyList<int> Faces)
+{
+    public IReadOnlyList<SolidEdge> Edges { get; init; } = [];
+}
 
 /// <summary>
 /// Extrudes the selected faces as one region, as Blender's region extrude does: the region's faces move along their average normal

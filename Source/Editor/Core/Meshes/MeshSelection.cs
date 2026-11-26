@@ -138,6 +138,15 @@ public sealed class MeshSelection
         Flush();
     }
 
+    /// <summary>Selects exactly these edges, in edge mode.</summary>
+    public void SelectEdges(IEnumerable<SolidEdge> edges)
+    {
+        ClearPrimary();
+        Element = MeshElement.Edge;
+        _edges.UnionWith(edges);
+        Flush();
+    }
+
     public void SelectAll()
     {
         ClearPrimary();

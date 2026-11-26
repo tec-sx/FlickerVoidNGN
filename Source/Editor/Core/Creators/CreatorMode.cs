@@ -246,6 +246,29 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// </summary>
     public bool InsetMesh(float thickness) => ReplaceMesh((solid, faces) => MeshInset.Faces(solid, faces, thickness));
 
+    /// <summary>
+    /// Cuts loops across the ring of quads through the edge of the face under the mouse nearest it (Ctrl+R), as one undo step,
+    /// leaving the new edges selected; <paramref name="slide"/> (-1 to 1) moves them along the ring. False when the mouse is over no
+    /// face or the ring crosses no quad.
+    /// </summary>
+    public bool LoopCutMesh(Vector2 pixel, int width, int height, int cuts, float slide)
+    {
+        if (MeshSelection is null || MeshPart is not { } id || FindSelectedPart() is not { } part || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return false;
+        }
+
+        Matrix4x4 toWorld = _scene.Game.World.Get<Transform>(part).ToMatrix();
+        MeshPicker picker = new(solid, toWorld, _camera, width, height);
+        MeshHit? hit = picker.Pick(MeshElement.Face, pixel);
+        if (hit is not { } found)
+        {
+            return false;
+        }
+
+        return ReplaceMesh((current, _) => MeshLoopCut.Cut(current, found.Edge, cuts, slide));
+    }
+
     private bool ReplaceMesh(Func<SolidMesh, IReadOnlySet<int>, MeshResult?> tool)
     {
         if (MeshSelection is not { } selection || MeshPart is not { } id || _applyMesh is null || _findMesh?.Invoke(id) is not { } solid)
@@ -260,7 +283,15 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         }
 
         MeshSelection next = new(result.Solid);
-        next.SelectFaces(result.Faces);
+        if (result.Edges.Count > 0)
+        {
+            next.SelectEdges(result.Edges);
+        }
+        else
+        {
+            next.SelectFaces(result.Faces);
+        }
+
         _meshSolid = result.Solid;
         MeshSelection = next;
         _applyMesh(id, result.Solid);
