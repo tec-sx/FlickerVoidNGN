@@ -2,6 +2,9 @@ using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
+using FlickerVoid.Engine.Creations;
+using FlickerVoid.Engine.Gameplay.Tags;
+using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles.Serialization;
 
 namespace FlickerVoid.Engine.Vehicles.Tests;
@@ -15,6 +18,16 @@ internal static class VehicleFileTestsBuilder
     {
         VehicleFile? vehicle = JsonSerializer.Deserialize(json, VehiclesJsonContext.Default.VehicleFile);
         return vehicle ?? throw new InvalidDataException("The file holds null.");
+    }
+
+    /// <summary>A new car with a door on its left side, hinged at its front edge, that opens outward 90 degrees.</summary>
+    public static VehicleFile WithDoor()
+    {
+        VehicleFile car = VehicleFile.Create(VehicleType.Car);
+        PartJoint joint = new() { Kind = JointKind.Hinge, Pivot = new Vector3(1, 0.5f, 1), Axis = Vector3.UnitY, Min = 0, Max = 90, Speed = 120 };
+        VehiclePart door = new() { Mesh = SolidMesh.Box(new Vector3(0.1f, 1, 1)), Joint = joint, Toggle = new Tag("Interaction.Action.Toggle") };
+        car.Doors.Add(door);
+        return car;
     }
 
     /// <summary>The box round the body in the vehicle's space, for a body that is neither turned nor scaled.</summary>

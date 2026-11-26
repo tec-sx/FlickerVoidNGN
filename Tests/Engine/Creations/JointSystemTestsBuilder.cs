@@ -2,7 +2,9 @@ using System.Numerics;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Creations.Tests;
@@ -14,10 +16,14 @@ internal sealed class JointSystemTestsBuilder : IDisposable
 
     public JointSystemTestsBuilder()
     {
-        System = new JointSystem(_parts.World, _parts.Spawner.Lifecycle);
+        System = new JointSystem(_parts.World, _parts.Spawner.Lifecycle, Events);
     }
 
     public World World => _parts.World;
+
+    public EventBus Events { get; } = new();
+
+    public CreationParts Parts => _parts.Parts;
 
     public JointSystem System { get; }
 
@@ -34,6 +40,26 @@ internal sealed class JointSystemTestsBuilder : IDisposable
         Root = _parts.Place(position);
         Part = _parts.Parts.Find(Root, "door");
         return this;
+    }
+
+    /// <summary>Places a creation whose part <c>door</c> has a toggle that starts open or closed.</summary>
+    public JointSystemTestsBuilder PlaceDoor(PartJoint joint, bool open)
+    {
+        Transform place = new() { Position = new Vector3(2, 0, 0) };
+        Toggle toggle = new() { Open = open };
+        PartData door = new PartData("door", place).With(joint).With(toggle);
+        _parts.Redescribe(door);
+        Root = _parts.Place(Vector3.Zero);
+        Part = _parts.Parts.Find(Root, "door");
+        return this;
+    }
+
+    public void Toggled(bool open) => Toggled(Part, open);
+
+    public void Toggled(Entity target, bool open)
+    {
+        Events.Send(new ToggledEvent(target, open, Entity.Null));
+        Events.Dispatch();
     }
 
     public static PartJoint Hinge(Vector3 pivot, float min, float max, float speed)

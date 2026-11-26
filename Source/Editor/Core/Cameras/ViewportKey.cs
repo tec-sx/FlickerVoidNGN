@@ -14,4 +14,11 @@ public enum ViewportKey
     F,
     Delete,
     Escape,
+    Tab,
+    One,
+    Two,
+    Three,
+    I,
+    C,
+    B,
 }

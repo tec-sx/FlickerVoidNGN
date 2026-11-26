@@ -5,7 +5,9 @@ using Arch.Core;
 
 using CommunityToolkit.Mvvm.Input;
 
+using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Creators;
+using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Vehicles;
 
@@ -63,6 +65,7 @@ public sealed partial class ViewportViewModel
         SceneMode.PointerReleased();
         Selection.Select(null);
         Mode = creator;
+        creator.MeshModeChanged += MeshTools.Refresh;
         CreatorFile = file;
         NotifyCreator();
         FrameSelected();
@@ -78,9 +81,75 @@ public sealed partial class ViewportViewModel
         }
 
         Mode = SceneMode;
+        creator.MeshModeChanged -= MeshTools.Refresh;
         CreatorFile = null;
         creator.Dispose();
         NotifyCreator();
+    }
+
+    /// <summary>
+    /// The mesh keys of the creator: Tab enters and leaves the mesh, then 1, 2 and 3 pick points, edges or faces, E extrudes, I
+    /// insets, C cuts, Ctrl+B bevels, Ctrl+R cuts a loop and D hangs a door where the mouse is. Escape leaves the mesh before the
+    /// creator. True when the key was taken.
+    /// </summary>
+    private bool PressMeshKey(ViewportKey key, bool ctrl)
+    {
+        if (key == ViewportKey.Tab)
+        {
+            if (MeshTools.IsMeshMode)
+            {
+                MeshTools.Leave();
+            }
+            else
+            {
+                MeshTools.Enter();
+            }
+
+            return true;
+        }
+
+        if (!MeshTools.IsMeshMode)
+        {
+            return false;
+        }
+
+        switch (key)
+        {
+            case ViewportKey.One:
+                MeshTools.Element = MeshElement.Point;
+                break;
+            case ViewportKey.Two:
+                MeshTools.Element = MeshElement.Edge;
+                break;
+            case ViewportKey.Three:
+                MeshTools.Element = MeshElement.Face;
+                break;
+            case ViewportKey.E:
+                MeshTools.Extrude();
+                break;
+            case ViewportKey.I:
+                MeshTools.Inset();
+                break;
+            case ViewportKey.C:
+                MeshTools.Cut();
+                break;
+            case ViewportKey.B when ctrl:
+                MeshTools.Bevel();
+                break;
+            case ViewportKey.R when ctrl:
+                MeshTools.LoopCut();
+                break;
+            case ViewportKey.D:
+                MeshTools.HangDoor();
+                break;
+            case ViewportKey.Escape:
+                MeshTools.Leave();
+                break;
+            default:
+                return false;
+        }
+
+        return true;
     }
 
     private void NotifyCreator()
