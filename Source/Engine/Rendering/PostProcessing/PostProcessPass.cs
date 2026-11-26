@@ -13,9 +13,9 @@ internal sealed class PostProcessPass : IRenderPass
     private readonly PostProcessor _post;
     private readonly IContentManager _content;
 
-    public PostProcessPass(IGraphicsDevice device, ShaderLibrary shaders, PixelFormat outputFormat, IContentManager content)
+    public PostProcessPass(IGraphicsDevice device, ShaderLibrary shaders, PixelFormat outputFormat, IContentManager content, int framesInFlight)
     {
-        _post = new PostProcessor(device, shaders, outputFormat);
+        _post = new PostProcessor(device, shaders, outputFormat, framesInFlight);
         _content = content;
     }
 
@@ -36,11 +36,22 @@ internal sealed class PostProcessPass : IRenderPass
 
         CanvasView view = CanvasView.From(context.View, context.Camera, context.Height, file.Tiling);
         context.Canvas = new PostCanvas(file, image, view);
+        context.Dirt = null;
+        if (context.Mood.Dirt is not null && context.Mood.DirtAmount > 0)
+        {
+            context.Dirt = context.Textures.Get(context.Mood.Dirt);
+        }
+
+        context.Flare = null;
+        if (context.Mood.Flare is not null && context.Mood.FlareIntensity > 0)
+        {
+            context.Flare = _content.Load(context.Mood.Flare, RenderingJsonContext.Default.FlareFile);
+        }
     }
 
     public void Execute(RenderContext context)
     {
-        _post.Run(context.Commands, context.Targets, context.ColorTarget, context.Mood, context.Canvas, context.ClampSampler, context.Sampler);
+        _post.Run(context.Commands, context.Targets, context.ColorTarget, context.Mood, context.Canvas, context.Dirt, context.Flare, context.ClampSampler, context.Sampler);
     }
 
     public void Dispose()

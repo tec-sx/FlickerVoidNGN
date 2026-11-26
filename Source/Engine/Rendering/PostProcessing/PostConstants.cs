@@ -17,4 +17,12 @@ internal readonly record struct PostConstants(
     float CanvasImageHeight,
     Vector3 CanvasTint,
     float CanvasPanRight,
-    float CanvasPanUp);
+    float CanvasPanUp,
+    float VignetteIntensity,
+    float VignetteRadius,
+    float VignetteSoftness,
+    float VignetteRoundness,
+    float DirtAmount,
+    uint Dirt,
+    uint Flare,
+    Vector3 VignetteColor);

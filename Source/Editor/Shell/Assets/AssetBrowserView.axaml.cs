@@ -5,6 +5,9 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
 
+using FlickerVoid.Editor.Controls;
+using FlickerVoid.Editor.Core.Menus;
+
 namespace FlickerVoid.Editor.Assets;
 
 /// <summary>
@@ -134,6 +137,15 @@ public sealed partial class AssetBrowserView : UserControl
                 HandleDeleteFolderClick(sender, e);
                 e.Handled = true;
                 break;
+        }
+    }
+
+    /// <summary>The header's New: the searchable menu of what can be made in the selected folder.</summary>
+    private void HandleNewClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control button && DataContext is AssetBrowserViewModel browser)
+        {
+            SearchMenu.Show(button, browser.NewChoices, MenuGrouping.Separators);
         }
     }
 

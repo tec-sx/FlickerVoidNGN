@@ -4,22 +4,25 @@
              xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Scenes.SceneTreeRow"
              x:DataType="scenes:SceneTreeItem">
-  <!-- An outline row: icon and name, nested entities in their own colour, hidden ones faded; at the far right the button that
-       reveals what is nested under the entity, then the eye that hides it in the editor's views. -->
-  <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="5" Background="Transparent">
-    <PathIcon Width="13" Height="13" Data="{Binding Icon, Converter={x:Static shell:MaterialIcons.ByName}}"
+  <!-- An outline row: icon, name and how many items it holds, nested entities in their own colour, hidden ones faded; at the
+       far right, under the pointer or on the selected row, the button that reveals what is nested under the entity and the eye
+       that hides it in the editor's views (a hidden entity keeps its struck eye). -->
+  <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Background="Transparent">
+    <PathIcon Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}" Margin="0,0,6,0"
               Classes="outlineIcon" Classes.folder="{Binding IsFolder}" Classes.hidden="{Binding IsHidden}" />
     <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-               Classes="outlineName" Classes.nested="{Binding IsNested}" Classes.hidden="{Binding IsHidden}" />
-    <ToggleButton Grid.Column="2" Classes="icon outlineRow" IsVisible="{Binding HasNested}"
+               Classes="outlineName" Classes.folder="{Binding IsFolder}" Classes.nested="{Binding IsNested}" Classes.hidden="{Binding IsHidden}" />
+    <TextBlock Grid.Column="2" Text="{Binding Count}" Classes="faint small" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding HasCount}" />
+    <ToggleButton Grid.Column="3" Classes="icon outlineRow rowEye" Classes.on="{Binding IsRevealed}" IsVisible="{Binding HasNested}"
                   IsChecked="{Binding IsRevealed, Mode=OneWay}" Command="{Binding ToggleRevealCommand}"
                   ToolTip.Tip="Reveal the entities nested under this one">
-      <PathIcon Data="{x:Static shell:MaterialIcons.Nested}" />
+      <PathIcon Data="{x:Static shell:LucideIcons.Nested}" />
     </ToggleButton>
-    <Button Grid.Column="3" Classes="icon outlineRow" Command="{Binding ToggleHiddenCommand}" ToolTip.Tip="Hide or show in the editor's views">
+    <Button Grid.Column="4" Classes="icon outlineRow rowEye" Classes.on="{Binding IsHidden}" Command="{Binding ToggleHiddenCommand}" Margin="0,0,4,0"
+            ToolTip.Tip="Hide or show in the editor's views">
       <Panel>
-        <PathIcon Data="{x:Static shell:MaterialIcons.Visible}" IsVisible="{Binding !IsHidden}" />
-        <PathIcon Data="{x:Static shell:MaterialIcons.Invisible}" IsVisible="{Binding IsHidden}" />
+        <PathIcon Data="{x:Static shell:LucideIcons.Visible}" IsVisible="{Binding !IsHidden}" />
+        <PathIcon Data="{x:Static shell:LucideIcons.Invisible}" IsVisible="{Binding IsHidden}" />
       </Panel>
     </Button>
   </Grid>

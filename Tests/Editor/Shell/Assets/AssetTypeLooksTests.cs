@@ -16,12 +16,12 @@ public sealed class AssetTypeLooksTests
             IEnumerable<AssetType> types = AssetTypes.Files.Append(AssetTypes.Folder);
             foreach (AssetType type in types)
             {
-                MaterialIcons.Find(type.Icon).Should().NotBeNull($"{type.Name} names the icon {type.Icon}");
+                LucideIcons.Find(type.Icon).Should().NotBeNull($"{type.Name} names the icon {type.Icon}");
                 Color.TryParse(type.Color, out _).Should().BeTrue($"{type.Name}'s colour is {type.Color}");
             }
 
             types.Should().OnlyHaveUniqueItems(static type => type.Color);
-            MaterialIcons.Find(AssetTypes.Vehicle.Icon).Should().NotBeSameAs(MaterialIcons.File);
+            LucideIcons.Find(AssetTypes.Vehicle.Icon).Should().NotBeSameAs(LucideIcons.File);
         });
     }
 }
