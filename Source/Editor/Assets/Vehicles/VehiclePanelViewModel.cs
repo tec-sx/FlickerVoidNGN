@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
+using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Assets.Vehicles;
@@ -33,6 +34,20 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
     /// <summary>The ids of the vehicle's parts: its body, then its wheels from the front.</summary>
     [ObservableProperty]
     public partial IReadOnlyList<string> Parts { get; private set; } = [];
+
+    /// <summary>The solid of the part with the id as the file holds it, or null when the vehicle has no such part.</summary>
+    public SolidMesh? FindMesh(string id)
+    {
+        foreach ((string partId, VehiclePart part) in _document.Vehicle.GetParts())
+        {
+            if (partId == id)
+            {
+                return part.Mesh;
+            }
+        }
+
+        return null;
+    }
 
     partial void OnTypeChanged(VehicleType value)
     {

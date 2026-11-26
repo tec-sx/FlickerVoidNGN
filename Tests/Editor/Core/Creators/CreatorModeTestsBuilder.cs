@@ -10,6 +10,7 @@ using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Tests.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Creations;
+using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 using FlickerVoid.Engine.Vehicles.Serialization;
 
@@ -34,10 +35,11 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
         """;
 
     private readonly EditorSceneTestsBuilder _scene = new();
+    private VehicleFile _car = VehicleFile.Create(VehicleType.Car);
 
     public CreatorModeTestsBuilder()
     {
-        string json = Serialize(VehicleFile.Create(VehicleType.Car));
+        string json = Serialize(_car);
         _scene.WithFile(File, json).WithScene("Street.fvscene", Street).Open("Street.fvscene");
         Camera.LookAt(Vector3.Zero, yaw: 0.6f, pitch: -0.4f, distance: 8);
     }
@@ -59,13 +61,13 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
     public CreatorMode EnterInPlace(string name)
     {
         Entity placed = Find(name);
-        return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save);
+        return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save, FindMesh);
     }
 
     public CreatorMode EnterAlone()
     {
         Vehicle vehicle = new() { File = File };
-        return CreatorMode.Alone(Scene, Camera, vehicle, FileHistory, Save);
+        return CreatorMode.Alone(Scene, Camera, vehicle, FileHistory, Save, FindMesh);
     }
 
     /// <summary>Writes the car file again with the wheel count, as the creator's panel would.</summary>
@@ -76,6 +78,29 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
         string json = Serialize(car);
         byte[] bytes = Encoding.UTF8.GetBytes(json);
         Scene.Content.Write(File, bytes);
+    }
+
+    /// <summary>Writes a new car file with new meshes, as saving the file again does.</summary>
+    public void ReplaceCar()
+    {
+        _car = VehicleFile.Create(VehicleType.Car);
+        string json = Serialize(_car);
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+        Scene.Content.Write(File, bytes);
+    }
+
+    /// <summary>The mesh of the car's part, as the creator's panel would give it.</summary>
+    public SolidMesh? FindMesh(string id)
+    {
+        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        {
+            if (partId == id)
+            {
+                return part.Mesh;
+            }
+        }
+
+        return null;
     }
 
     public Vector2 PixelOf(Vector3 point) => Camera.Project(point, Width, Height);

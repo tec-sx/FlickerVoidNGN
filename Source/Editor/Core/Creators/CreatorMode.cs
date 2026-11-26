@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Editor.Core.Cameras;
+using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Core.Viewports;
@@ -11,13 +12,15 @@ using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Geometry;
+using FlickerVoid.Engine.Runtime.Solids;
 
 namespace FlickerVoid.Editor.Core.Creators;
 
 /// <summary>
 /// The viewport's mode while a creation is made (<see cref="CreatorPlacement"/>): everything but the creation is greyed or set aside,
 /// only its parts can be picked, a work light follows the view, and undo, redo and save act on the creation's file. Leaving takes the
-/// marks, the light and a temporary copy away again.
+/// marks, the light and a temporary copy away again. A selected part's mesh can be entered (Tab): clicks then select its points,
+/// edges or faces, and the part can't change until the mesh is left.
 /// </summary>
 public sealed class CreatorMode : IViewportMode, IDisposable
 {
@@ -29,13 +32,16 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     private readonly EditorScene _scene;
     private readonly EditorCamera _camera;
     private readonly Func<bool> _save;
+    private readonly Func<string, SolidMesh?>? _findMesh;
+    private SolidMesh? _meshSolid;
     private readonly List<Entity> _marked = [];
 
-    private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save)
+    private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh)
     {
         _scene = scene;
         _camera = camera;
         _save = save;
+        _findMesh = findMesh;
         Root = root;
         Placement = placement;
         History = history;
@@ -63,23 +69,35 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>Raised when another part, or none, is selected.</summary>
     public event Action? PartSelected;
 
-    /// <summary>Makes the creation placed in the level, greying the rest of it.</summary>
-    public static CreatorMode InPlace(EditorScene scene, EditorCamera camera, Entity placed, UndoHistory history, Func<bool> save)
+    /// <summary>The selection in the mesh of the part being edited, or null while no mesh is entered.</summary>
+    public MeshSelection? MeshSelection { get; private set; }
+
+    /// <summary>The id of the part whose mesh is entered, or null.</summary>
+    public string? MeshPart { get; private set; }
+
+    /// <summary>Raised when a mesh is entered or left.</summary>
+    public event Action? MeshModeChanged;
+
+    /// <summary>
+    /// Makes the creation placed in the level, greying the rest of it. <paramref name="findMesh"/> gives the mesh of a part by its id,
+    /// for entering the mesh.
+    /// </summary>
+    public static CreatorMode InPlace(EditorScene scene, EditorCamera camera, Entity placed, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null)
     {
-        return new CreatorMode(scene, camera, placed, CreatorPlacement.InPlace, history, save);
+        return new CreatorMode(scene, camera, placed, CreatorPlacement.InPlace, history, save, findMesh);
     }
 
     /// <summary>
     /// Makes a creation alone: places a temporary entity with <paramref name="creation"/>, the component that names its file, at the
     /// origin, outside the scene, and sets the level aside.
     /// </summary>
-    public static CreatorMode Alone<T>(EditorScene scene, EditorCamera camera, T creation, UndoHistory history, Func<bool> save)
+    public static CreatorMode Alone<T>(EditorScene scene, EditorCamera camera, T creation, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null)
         where T : struct
     {
         World world = scene.Game.World;
         Entity copy = world.Create(new Transform(), creation);
         scene.Game.Lifecycle.Start(world, copy);
-        return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save);
+        return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh);
     }
 
     public bool Save() => _save();
@@ -87,6 +105,12 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>Selects the part of the creation under the mouse, whatever is in front of it, or none.</summary>
     public void PointerPressed(Vector2 pixel, int width, int height)
     {
+        if (MeshSelection is not null)
+        {
+            PressMesh(pixel, width, height, additive: false, loop: false);
+            return;
+        }
+
         World world = _scene.Game.World;
         Ray ray = _camera.GetRay(pixel, width, height);
         Entity? picked = _scene.Picker.PickPart(world, ray, Root);
@@ -99,13 +123,15 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         SelectPart(id);
     }
 
-    /// <summary>Selects the creation's part with the id, or none, as a click on it does.</summary>
+    /// <summary>Selects the creation's part with the id, or none, as a click on it does; another part leaves the mesh.</summary>
     public void SelectPart(string? id)
     {
         if (id == SelectedPart)
         {
             return;
         }
+
+        LeaveMesh();
 
         SelectedPart = id;
         PartSelected?.Invoke();
@@ -129,6 +155,72 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         return part;
     }
 
+    /// <summary>
+    /// Enters the mesh of the selected part (Tab); false when no part is selected or the creation gives it no mesh. Clicks then select
+    /// points, edges or faces, with no point, edge or face selected to begin with.
+    /// </summary>
+    public bool EnterMesh()
+    {
+        if (MeshSelection is not null)
+        {
+            return true;
+        }
+
+        if (SelectedPart is not { } id || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return false;
+        }
+
+        MeshPart = id;
+        _meshSolid = solid;
+        MeshSelection = new MeshSelection(solid);
+        MeshModeChanged?.Invoke();
+        return true;
+    }
+
+    /// <summary>Leaves the mesh (Tab again), dropping its selection; does nothing when none is entered.</summary>
+    public void LeaveMesh()
+    {
+        if (MeshSelection is null)
+        {
+            return;
+        }
+
+        MeshSelection = null;
+        MeshPart = null;
+        _meshSolid = null;
+        MeshModeChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Selects in the entered mesh what is under the mouse: with <paramref name="additive"/> (Shift) it joins the selection or leaves
+    /// it, and with <paramref name="loop"/> (Alt) the loop through it is selected instead. Does nothing outside the mesh.
+    /// </summary>
+    public void PressMesh(Vector2 pixel, int width, int height, bool additive, bool loop)
+    {
+        if (MeshSelection is not { } selection || MeshPart is not { } id || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return;
+        }
+
+        Entity? part = FindSelectedPart();
+        if (part is not { } entity)
+        {
+            return;
+        }
+
+        Matrix4x4 toWorld = _scene.Game.World.Get<Transform>(entity).ToMatrix();
+        MeshPicker picker = new(solid, toWorld, _camera, width, height);
+        MeshHit? hit = picker.Pick(selection.Element, pixel);
+        if (loop && hit is { } found)
+        {
+            selection.SelectLoop(found, additive);
+            return;
+        }
+
+        selection.Select(hit, additive);
+    }
+
     public void PointerMoved(Vector2 pixel, int width, int height)
     {
     }
@@ -150,6 +242,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>Leaves the creator: takes the marks off the level and removes the work light and a temporary copy with its parts.</summary>
     public void Dispose()
     {
+        LeaveMesh();
         _scene.Content.Changed -= HandleChanged;
         World world = _scene.Game.World;
         foreach (Entity entity in _marked)
@@ -202,6 +295,28 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         }
     }
 
+    /// <summary>A file change may have given the part another solid, which the selection no longer fits: it starts again empty, in the same kind; the mesh is left when the part is gone.</summary>
+    private void RefreshMesh()
+    {
+        if (MeshPart is not { } id)
+        {
+            return;
+        }
+
+        SolidMesh? solid = _findMesh?.Invoke(id);
+        if (solid is null)
+        {
+            LeaveMesh();
+        }
+        else if (solid != _meshSolid && MeshSelection is { } old)
+        {
+            _meshSolid = solid;
+            MeshSelection selection = new(solid);
+            selection.SetElement(old.Element);
+            MeshSelection = selection;
+        }
+    }
+
     private bool IsMarked(World world, Entity entity)
     {
         if (Placement == CreatorPlacement.InPlace)
@@ -227,6 +342,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>A file change may have spawned parts for other copies of the creation, which are marked like the rest.</summary>
     private void HandleChanged(string fullPath)
     {
+        RefreshMesh();
         _marked.RemoveAll(entity => !_scene.Game.World.IsAlive(entity));
         Mark();
     }
