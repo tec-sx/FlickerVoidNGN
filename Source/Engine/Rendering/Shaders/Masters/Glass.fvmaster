@@ -1,0 +1,19 @@
+{
+  // Glass: windows, bottles, jars, lamp shades. Drawn over the lit scene after lighting (ShadingModel.Glass): what is behind it
+  // shows through times its tint, bent by its normal and blurred by frost, with a reflection toward its edges and its highlights;
+  // a painted layer of grime or a sign lies on it as paint, which is lit as paint is.
+  "shadingModel": "Glass",
+  "twoSided": true,
+  "parameters": [
+    // How far the glass's normal (its relief, or a curved bottle) bends what is behind it: 0 not at all, 1 a quarter unit.
+    { "name": "bend", "type": "float", "default": 0.2, "minimum": 0, "maximum": 1 },
+    // How much the glass blurs what is behind it: 0 clear, 1 frosted.
+    { "name": "frost", "type": "float", "default": 0, "minimum": 0, "maximum": 1 },
+    // A painting or image laid on the glass as paint; its alpha is where it lies. None lays the paint's tint alone.
+    { "name": "paint", "type": "texture", "default": null },
+    { "name": "paintTint", "type": "color", "default": [0.4, 0.36, 0.3] },
+    { "name": "paintScale", "type": "float", "default": 1, "minimum": 0.1, "maximum": 16 },
+    // How much of the paint lies on the glass: 0 none, 1 all of it where its mask is whole.
+    { "name": "paintAmount", "type": "float", "default": 0, "minimum": 0, "maximum": 1 }
+  ]
+}

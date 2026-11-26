@@ -1,0 +1,10 @@
+// Window glass: clear, a faint green, barely bending.
+{
+  "parent": "Engine/Rendering/Masters/Glass.fvmaster",
+  "parameters": {
+    "tint": [0.92, 0.97, 0.94],
+    "specular": 0.8,
+    "glossiness": 0.9,
+    "bend": 0.05
+  }
+}

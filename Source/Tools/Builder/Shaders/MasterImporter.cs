@@ -18,7 +18,7 @@ public sealed class MasterImporter(IShaderCompiler compiler, string engineShader
 {
     public string Name => "Master";
 
-    public int Version => 2;
+    public int Version => 3;
 
     public IReadOnlyList<string> Extensions { get; } = [MasterFile.Extension];
 
@@ -48,22 +48,29 @@ public sealed class MasterImporter(IShaderCompiler compiler, string engineShader
         string[] includeDirectories = [engineShaders];
         ShaderIncludes.Record(context, hlslPath, includeDirectories);
         string sceneSurface = Path.Combine(engineShaders, "SceneSurface.hlsl");
-        string geometry = Path.Combine(engineShaders, "Geometry.hlsl");
+        string entryPoint = master.EntryPoint;
+        string passFile = MasterCode.GeometryFile;
+        if (entryPoint == MasterFile.TransparentEntryPoint)
+        {
+            passFile = MasterCode.TransparentFile;
+        }
+
+        string pass = Path.Combine(engineShaders, passFile);
         ShaderIncludes.Record(context, sceneSurface, includeDirectories);
-        ShaderIncludes.Record(context, geometry, includeDirectories);
+        ShaderIncludes.Record(context, pass, includeDirectories);
         int offset = GetSceneParametersSize(context);
         string hlslFile = Path.GetFileName(hlslPath);
-        string code = MasterCode.Generate(hlslFile, master.Parameters, offset);
+        string code = MasterCode.Generate(hlslFile, master.Parameters, offset, passFile);
         // Named beside the master's HLSL, so its quoted includes are found there first.
         string generatedPath = context.SourceFullPath + ".hlsl";
-        ShaderSource source = new(code, MasterFile.GeometryEntryPoint, ShaderStage.Pixel) { Name = generatedPath, IncludeDirectories = includeDirectories };
+        ShaderSource source = new(code, entryPoint, ShaderStage.Pixel) { Name = generatedPath, IncludeDirectories = includeDirectories };
         ShaderCompileResult result = compiler.Compile(source);
         if (!result.Succeeded)
         {
-            throw new InvalidDataException($"The master's geometry pass failed to compile:\n{result.Messages}");
+            throw new InvalidDataException($"The master's {entryPoint} failed to compile:\n{result.Messages}");
         }
 
-        string shaderPath = context.GetOutputPath($"{name}.{MasterFile.GeometryEntryPoint}.spv");
+        string shaderPath = context.GetOutputPath($"{name}.{entryPoint}.spv");
         File.WriteAllBytes(shaderPath, result.Bytecode);
         string copyPath = context.GetOutputPath(context.SourcePath);
         File.WriteAllBytes(copyPath, json);

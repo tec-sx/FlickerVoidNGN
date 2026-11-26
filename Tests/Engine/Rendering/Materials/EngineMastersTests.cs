@@ -33,6 +33,25 @@ public sealed class EngineMastersTests : IDisposable
     }
 
     [Fact]
+    public void ReflectsTheMoodsWorldInMetal()
+    {
+        uint[] green = Enumerable.Repeat(SceneRendererTestsBuilder.Rgba(0, 255, 0, 255), 8 * 4).ToArray();
+        _builder.WithTexture("World.png", 8, 4, green, mips: true);
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+        _builder.WithMood(static mood => mood with { Reflection = "World.png" });
+        _builder.WithFile("Chrome.fvmat", """{ "parent": "Engine/Rendering/Masters/Metal.fvmaster", "parameters": { "tint": [1, 1, 1], "specular": 1, "glossiness": 1, "metalness": 1 } }""");
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f));
+        _builder.WithBuiltContent("Engine/Rendering/Masters");
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Chrome.fvmat"] } } }""");
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte greenValue, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        greenValue.Should().BeGreaterThan(150, "white metal mirrors the green world all around");
+        red.Should().BeLessThan(20);
+    }
+
+    [Fact]
     public void LightsGlowingPaintWithoutLight()
     {
         _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
@@ -57,6 +76,46 @@ public sealed class EngineMastersTests : IDisposable
 
         painted.Should().BeLessThan(10, "the sun is behind the paint's terminator");
         skin.Should().BeGreaterThan(25, "red light scatters round the terminator of skin");
+    }
+
+    [Fact]
+    public void ShowsWhatIsBehindGlassTintedByIt()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithModel("Pane.glb", static model => model.WithQuad(0.5f));
+        _builder.WithBuiltContent("Engine/Rendering/Masters");
+        _builder.WithFile("Clear.fvmat", """{ "parent": "Engine/Rendering/Masters/Glass.fvmaster", "parameters": { "tint": [1, 1, 1], "bend": 0 } }""");
+        _builder.WithFile("Cyan.fvmat", """{ "parent": "Engine/Rendering/Masters/Glass.fvmaster", "parameters": { "tint": [0, 1, 1], "bend": 0 } }""");
+        _builder.WithScene(
+            Camera,
+            """{ "name": "Left", "components": { "transform": { "position": [-0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb" } } }""",
+            """{ "name": "Right", "components": { "transform": { "position": [0.5, 0, 0] }, "meshRenderer": { "mesh": "Quad.glb" } } }""",
+            """{ "name": "Clear", "components": { "transform": { "position": [-0.5, 0, 1] }, "meshRenderer": { "mesh": "Pane.glb", "materials": ["Clear.fvmat"] } } }""",
+            """{ "name": "Cyan", "components": { "transform": { "position": [0.5, 0, 1] }, "meshRenderer": { "mesh": "Pane.glb", "materials": ["Cyan.fvmat"] } } }""");
+
+        uint[] pixels = _builder.Render();
+
+        (byte clear, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        (byte cyan, _, _) = SceneRendererTestsBuilder.Channels(pixels[6]);
+        clear.Should().BeGreaterThan(180, "clear glass shows the red quad behind it");
+        cyan.Should().BeLessThan(40, "cyan glass lets no red through");
+    }
+
+    [Fact]
+    public void LeavesGlassOutOfTheGBuffer()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithModel("Pane.glb", static model => model.WithQuad(0.5f));
+        _builder.WithBuiltContent("Engine/Rendering/Masters");
+        _builder.WithFile("Window.fvmat", """{ "parent": "Engine/Rendering/Masters/Glass.fvmaster" }""");
+        _builder.WithScene(
+            Camera,
+            """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb" } } }""",
+            """{ "name": "Window", "components": { "transform": { "position": [0, 0, 1] }, "meshRenderer": { "mesh": "Pane.glb", "materials": ["Window.fvmat"] } } }""");
+
+        uint[] albedo = _builder.RenderTexels(static gBuffer => gBuffer.Albedo);
+
+        albedo[5].Should().Be(SceneRendererTestsBuilder.Rgba(255, 0, 0, 255), "glass is drawn over the lit scene, not into the G-buffer");
     }
 
     [Fact]
@@ -104,7 +163,8 @@ public sealed class EngineMastersTests : IDisposable
         files.Should().Contain(file => file.EndsWith("Drywall.fvmat", StringComparison.Ordinal))
             .And.Contain(file => file.EndsWith("Brick.fvmat", StringComparison.Ordinal))
             .And.Contain(file => file.EndsWith("Rubber.fvmat", StringComparison.Ordinal))
-            .And.Contain(file => file.EndsWith("Skin.fvmat", StringComparison.Ordinal));
+            .And.Contain(file => file.EndsWith("Skin.fvmat", StringComparison.Ordinal))
+            .And.Contain(file => file.EndsWith("Window.fvmat", StringComparison.Ordinal));
         foreach (string file in files)
         {
             MaterialFile material = ReadFile(file, RenderingJsonContext.Default.MaterialFile);

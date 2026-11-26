@@ -53,6 +53,8 @@ internal sealed class MoodValuesTestsBuilder
             HazeFromSky = 0.5f,
             AmbientOcclusion = 0.5f,
             AmbientOcclusionRadius = 1.5f,
+            Reflection = "Sky.png",
+            ReflectionIntensity = 0.5f,
             ContactShadowLength = 0.1f,
             Bloom = 0.2f,
             BloomRadius = 0.4f,

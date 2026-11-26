@@ -96,9 +96,16 @@ struct FrameData
     // How far the fog is lit along the view, and the integrated fog volume's bindless index (Lighting.hlsl), None without fog.
     float FogRange;
     uint FogVolume;
+    // The lit scene before glass was drawn over it (TransparentPass), which glass bends and blurs.
+    uint Behind;
+    // The world glossy surfaces reflect (LightingMood.Reflection), an equirectangular image with its mips, else None; the sampler
+    // it is read with and how bright it is.
+    uint Reflection;
+    uint ReflectionSampler;
+    float ReflectionIntensity;
 };
 
-static const uint FrameDataSize = 592;
+static const uint FrameDataSize = 608;
 static const uint None = 0xFFFFFFFF;
 
 // PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
@@ -189,6 +196,10 @@ FrameData LoadFrame(uint index)
     frame.PreviousDepthAxis = buffer.Load<float4>(560);
     frame.FogRange = buffer.Load<float>(576);
     frame.FogVolume = buffer.Load<uint>(580);
+    frame.Behind = buffer.Load<uint>(592);
+    frame.Reflection = buffer.Load<uint>(596);
+    frame.ReflectionSampler = buffer.Load<uint>(600);
+    frame.ReflectionIntensity = buffer.Load<float>(604);
     frame.Buffer = index;
     return frame;
 }

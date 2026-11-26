@@ -46,6 +46,9 @@ internal sealed class ScreenTargets : IDisposable
     /// <summary>The lit scene before post-processing.</summary>
     public ITexture Hdr { get; private set; } = null!;
 
+    /// <summary>A copy of the lit scene before glass is drawn over it, which glass bends and blurs.</summary>
+    public ITexture Behind { get; private set; } = null!;
+
     /// <summary>The lit scene an upscaler filled in at the output's size, or null while the scene is drawn at it.</summary>
     public ITexture? Upscaled { get; private set; }
 
@@ -85,8 +88,11 @@ internal sealed class ScreenTargets : IDisposable
         OutputWidth = outputWidth;
         OutputHeight = outputHeight;
         TextureUsage readWrite = TextureUsage.ShaderRead | TextureUsage.ShaderWrite;
-        TextureDescription hdr = new(width, height, HdrFormat, readWrite) { Name = "Scene HDR" };
+        TextureUsage hdrUsage = readWrite | TextureUsage.RenderTarget | TextureUsage.CopySource;
+        TextureDescription hdr = new(width, height, HdrFormat, hdrUsage) { Name = "Scene HDR" };
         Hdr = _device.CreateTexture(hdr);
+        TextureDescription behind = new(width, height, HdrFormat, TextureUsage.ShaderRead | TextureUsage.CopyDestination) { Name = "Scene behind glass" };
+        Behind = _device.CreateTexture(behind);
         TextureDescription depth = new(width, height, SceneRenderer.DepthFormat, TextureUsage.DepthStencil | TextureUsage.ShaderRead) { Name = "Scene depth" };
         Depth = _device.CreateTexture(depth);
         GBuffer = new GBuffer(_device, width, height);
@@ -133,6 +139,7 @@ internal sealed class ScreenTargets : IDisposable
         ScreenShadows?.Dispose();
         GBuffer?.Dispose();
         Depth?.Dispose();
+        Behind?.Dispose();
         Hdr?.Dispose();
     }
 }

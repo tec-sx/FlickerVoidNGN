@@ -17,4 +17,11 @@ public enum ShadingModel
 
     /// <summary>Skin, wax or leaves: light wraps further round the terminator in the <c>scatter</c> color, by <c>scatterWidth</c>, as it scatters under the surface.</summary>
     Skin,
+
+    /// <summary>
+    /// Glass, drawn after lighting over the lit scene and never into the G-buffer: what is behind it bent by <c>bend</c> and blurred
+    /// by <c>frost</c>, tinted by its color, with a reflection toward its edges and its highlights; where its paint covers it, the
+    /// paint is lit as paint is.
+    /// </summary>
+    Glass,
 }

@@ -7,6 +7,11 @@ public static class ShadingModels
     /// The names of the parameters whose values the model reads, in the order they fill the four model values; a master declares
     /// them among its own parameters, as floats or colors, and one it leaves out reads 0.
     /// </summary>
+    public static bool IsTransparent(ShadingModel model)
+    {
+        return model == ShadingModel.Glass;
+    }
+
     public static IReadOnlyList<string> GetValues(ShadingModel model)
     {
         switch (model)
@@ -17,6 +22,8 @@ public static class ShadingModels
                 return ["glow", "lit"];
             case ShadingModel.Skin:
                 return ["scatter", "scatterWidth"];
+            case ShadingModel.Glass:
+                return ["bend", "frost"];
             default:
                 return [];
         }

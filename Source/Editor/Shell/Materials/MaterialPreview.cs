@@ -24,7 +24,7 @@ using Microsoft.Extensions.Logging;
 namespace FlickerVoid.Editor.Materials;
 
 /// <summary>
-/// Renders materials on a grey sphere, cube or plane in a day, night or indoor mood with the game's own renderer, on a device of its own, and reads the image
+/// Renders materials on a grey sphere, cube or plane in a day, night or indoor mood, each reflecting a world of its own, with the game's own renderer, on a device of its own, and reads the image
 /// back, so the material editor can show it without sharing textures with Avalonia. It reads the editor's content, so the
 /// material's textures are found, and writes the preview meshes and the material being shown into a hidden folder there.
 /// </summary>
@@ -38,6 +38,11 @@ public sealed class MaterialPreview : IMaterialPreview, IDisposable
     private const PixelFormat Format = PixelFormat.Rgba8UNormSrgb;
     private const float CameraHeight = 1.2f;
     private const float CameraDistance = 3.2f;
+
+    // The engine's reflections (public domain panoramas from Poly Haven, CC0), one a mood.
+    private const string DayReflection = "Engine/Rendering/Reflections/Quarry.jpg";
+    private const string NightReflection = "Engine/Rendering/Reflections/Moonless Golf.jpg";
+    private const string IndoorsReflection = "Engine/Rendering/Reflections/Venice Sunset.jpg";
 
     private readonly string _folder;
     private readonly ContentManager _content;
@@ -144,7 +149,7 @@ public sealed class MaterialPreview : IMaterialPreview, IDisposable
     {
         Quaternion turn = Quaternion.CreateFromAxisAngle(Vector3.UnitY, lightYaw);
         Vector3 sun = Vector3.Normalize(new Vector3(0.6f, -0.5f, -0.7f));
-        LightingMood lit = new() { SunDirection = Vector3.Transform(sun, turn), Ambient = 0.3f, AmbientOcclusion = 0, ContactShadowLength = 0 };
+        LightingMood lit = new() { SunDirection = Vector3.Transform(sun, turn), Ambient = 0.3f, AmbientOcclusion = 0, ContactShadowLength = 0, Reflection = DayReflection };
         PointLight lamp = new() { Intensity = 0 };
         Vector3 lampPosition = Vector3.Zero;
         switch (mood)
@@ -153,15 +158,24 @@ public sealed class MaterialPreview : IMaterialPreview, IDisposable
                 lit.Ambient = 1;
                 lit.Exposure = 0.12f;
                 lit.Tint = new Vector3(0.6f, 0.75f, 1.2f);
+                lit.Reflection = NightReflection;
                 lamp = new PointLight { Color = new Vector3(1, 0.62f, 0.3f), Intensity = 40, Range = 6 };
                 lampPosition = new Vector3(-1.2f, 0.6f, 1.1f);
                 break;
             case PreviewMood.Indoors:
                 lit.Ambient = 1;
                 lit.Exposure = 0.2f;
+                lit.Reflection = IndoorsReflection;
                 lamp = new PointLight { Color = new Vector3(1, 0.85f, 0.65f), Intensity = 20, Range = 6 };
                 lampPosition = new Vector3(0.4f, 1.6f, 0.8f);
                 break;
+        }
+
+        // The preview's content may lack the engine's reflections (the editor's tests draw from content of their own).
+        string builtReflection = Path.ChangeExtension(lit.Reflection!, ".dds");
+        if (!File.Exists(_content.GetFullPath(builtReflection)))
+        {
+            lit.Reflection = null;
         }
 
         _renderer.Mood = lit;

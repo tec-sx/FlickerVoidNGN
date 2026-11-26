@@ -1,0 +1,11 @@
+// Frosted glass: pale, what is behind it blurred.
+{
+  "parent": "Engine/Rendering/Masters/Glass.fvmaster",
+  "parameters": {
+    "tint": [0.95, 0.95, 0.97],
+    "specular": 0.4,
+    "glossiness": 0.5,
+    "bend": 0.1,
+    "frost": 0.8
+  }
+}

@@ -62,6 +62,19 @@ public sealed class WorldExtractorTests : IDisposable
     }
 
     [Fact]
+    public void DrawsAGreyboxsBoxInItsMaterialButNotItsSwaps()
+    {
+        Greybox box = new() { Material = "Glass/Window.fvmat" };
+        Greybox swapped = new() { Material = "Glass/Window.fvmat", Swaps = ["Walls/Plain.glb"], Swap = 1 };
+
+        RenderScene scene = _builder.WithGreybox(box, new Transform()).WithGreybox(swapped, new Transform()).Extract();
+
+        scene.Meshes.Should().HaveCount(2);
+        scene.Meshes.Should().ContainSingle(mesh => mesh.Materials != null && mesh.Materials.SequenceEqual(new[] { "Glass/Window.fvmat" }));
+        scene.Meshes.Should().ContainSingle(mesh => mesh.Mesh == "Walls/Plain.glb" && mesh.Materials == null);
+    }
+
+    [Fact]
     public void DrawsTheSwapModelShownInAGreyboxsPlace()
     {
         Greybox greybox = new() { Swaps = ["Walls/Plain.glb", "Walls/Broken.glb"], Swap = 2 };

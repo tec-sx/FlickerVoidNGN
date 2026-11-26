@@ -42,8 +42,8 @@
       </DockPanel>
     </Border>
     <!-- The preview fills the working area: drag to turn the shape, picked on the pill over it. -->
-    <Panel Grid.Column="1" Background="{DynamicResource EditorDeepBrush}">
-      <Image x:Name="Preview" Stretch="Uniform" Cursor="SizeWestEast" ToolTip.Tip="Drag to turn the shape; right-drag or Shift-drag to turn the light" MaxWidth="640" MaxHeight="640" />
+    <Panel x:Name="PreviewArea" Grid.Column="1" Background="{DynamicResource EditorDeepBrush}" ClipToBounds="True">
+      <Image x:Name="Preview" Stretch="Uniform" Cursor="SizeWestEast" ToolTip.Tip="Drag to turn the shape; right-drag or Shift-drag to turn the light" />
       <Border Classes="viewportBar" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12">
         <StackPanel Orientation="Horizontal">
           <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsSphere}" ToolTip.Tip="Preview on a sphere">

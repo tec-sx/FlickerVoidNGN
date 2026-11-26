@@ -133,6 +133,13 @@ internal sealed class FrameDataWriter : IDisposable
             accelerationStructure = scene.BindlessIndex;
         }
 
+        uint reflection = GpuLight.None;
+        if (mood.Reflection is not null)
+        {
+            ITexture image = context.Textures.Get(mood.Reflection);
+            reflection = image.BindlessIndex;
+        }
+
         uint rayShadows = GpuLight.None;
         if (context.RayShadows is { } tracedShadows)
         {
@@ -236,7 +243,11 @@ internal sealed class FrameDataWriter : IDisposable
             previousDepthAxis,
             mood.FogRange,
             fogVolume,
-            Vector2.Zero);
+            Vector2.Zero,
+            context.Targets.Behind.BindlessIndex,
+            reflection,
+            context.Sampler.BindlessIndex,
+            mood.ReflectionIntensity);
 
         IBuffer frame = _frames.Get(size);
         ReadOnlySpan<FrameData> header = new(in data);

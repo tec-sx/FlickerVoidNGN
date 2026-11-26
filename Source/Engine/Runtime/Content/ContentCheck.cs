@@ -533,7 +533,8 @@ public sealed class ContentCheck
 
     /// <summary>
     /// Whether the file is the engine's own content (<c>Engine/Rendering/Masters/Painted.fvmaster</c>), which the content build
-    /// puts under <see cref="EngineFolder"/> beside the program rather than in a game's source folder.
+    /// puts under <see cref="EngineFolder"/> beside the program rather than in a game's source folder, named by its source as the
+    /// game's own content is (<c>Engine/Rendering/Reflections/Quarry.jpg</c>, built as <c>Quarry.dds</c>).
     /// </summary>
     private static bool IsEngineContent(string file)
     {
@@ -543,7 +544,20 @@ public sealed class ContentCheck
         }
 
         string built = Path.Combine(AppContext.BaseDirectory, "Content", file);
-        return File.Exists(built);
+        if (File.Exists(built))
+        {
+            return true;
+        }
+
+        // A source the build turns into a file of another kind (an image into a .dds) is named by its source.
+        string folder = Path.GetDirectoryName(built)!;
+        if (!Directory.Exists(folder))
+        {
+            return false;
+        }
+
+        string pattern = Path.GetFileNameWithoutExtension(built) + ".*";
+        return Directory.EnumerateFiles(folder, pattern).Any();
     }
 
     private static string Join(string at, string name)
