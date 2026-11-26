@@ -52,7 +52,7 @@ struct FrameData
     float NearStart;
     float NearEnd;
     float NearAmount;
-    float3 FarColor;
+    float NearBurn;
     float FarStart;
     float FarEnd;
     float FarAmount;
@@ -83,9 +83,22 @@ struct FrameData
     float3 SunLight;
     // The frame buffer's own bindless index, which LoadFrame was given.
     uint Buffer;
+    // The haze (Haze.hlsl): its colour as it looks on screen, its density, its start behind the focus, its most, and its height
+    // and the falloff above it.
+    float3 HazeColor;
+    float HazeDensity;
+    float HazeStart;
+    float HazeMax;
+    float HazeHeight;
+    float HazeHeightFalloff;
+    // The depth axis of the frame before, which reprojects the fog volume's history.
+    float4 PreviousDepthAxis;
+    // How far the fog is lit along the view, and the integrated fog volume's bindless index (Lighting.hlsl), None without fog.
+    float FogRange;
+    uint FogVolume;
 };
 
-static const uint FrameDataSize = 528;
+static const uint FrameDataSize = 592;
 static const uint None = 0xFFFFFFFF;
 
 // PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
@@ -144,7 +157,7 @@ FrameData LoadFrame(uint index)
     frame.NearStart = buffer.Load<float>(324);
     frame.NearEnd = buffer.Load<float>(328);
     frame.NearAmount = buffer.Load<float>(332);
-    frame.FarColor = buffer.Load<float3>(336);
+    frame.NearBurn = buffer.Load<float>(336);
     frame.FarStart = buffer.Load<float>(348);
     frame.FarEnd = buffer.Load<float>(352);
     frame.FarAmount = buffer.Load<float>(356);
@@ -167,6 +180,15 @@ FrameData LoadFrame(uint index)
     frame.GBufferMotion = buffer.Load<uint>(504);
     frame.AccelerationStructure = buffer.Load<uint>(508);
     frame.SunLight = buffer.Load<float3>(512);
+    frame.HazeColor = buffer.Load<float3>(528);
+    frame.HazeDensity = buffer.Load<float>(540);
+    frame.HazeStart = buffer.Load<float>(544);
+    frame.HazeMax = buffer.Load<float>(548);
+    frame.HazeHeight = buffer.Load<float>(552);
+    frame.HazeHeightFalloff = buffer.Load<float>(556);
+    frame.PreviousDepthAxis = buffer.Load<float4>(560);
+    frame.FogRange = buffer.Load<float>(576);
+    frame.FogVolume = buffer.Load<uint>(580);
     frame.Buffer = index;
     return frame;
 }
