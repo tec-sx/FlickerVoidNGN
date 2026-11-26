@@ -21,6 +21,14 @@ public sealed class ViewportViewModelTests : IDisposable
     private const int Width = ViewportViewModelTestsBuilder.Width;
     private const int Height = ViewportViewModelTestsBuilder.Height;
 
+    private const string Environment = """
+        { "numbers": { "exposure": { "keys": [ { "time": 0, "value": 0.2, "mode": "Linear" }, { "time": 12, "value": 1, "mode": "Linear" } ] } } }
+        """;
+
+    private const string SceneWithEnvironment = """
+        { "entities": [ { "name": "Look", "components": { "sceneEnvironment": { "environment": "Street.fvenv", "startHour": 12 } } } ] }
+        """;
+
     private readonly ViewportViewModelTestsBuilder _builder = new();
 
     public void Dispose() => _builder.Dispose();
@@ -211,6 +219,52 @@ public sealed class ViewportViewModelTests : IDisposable
         drawn.Bloom.Should().Be(0.2f);
         drawn.Exposure.Should().Be(0.7f);
         _builder.ViewModel.GetDepthFade().NearAmount.Should().Be(0.4f);
+    }
+
+    [Fact]
+    public void DrawsTheScenesEnvironmentAtTheViewportsHour()
+    {
+        _builder.WithFile("Street.fvenv", Environment);
+        _builder.OpenScene(SceneWithEnvironment);
+
+        _builder.ViewModel.Hour.Should().Be(12, "a scene opens at its environment's start hour");
+        _builder.ViewModel.GetDrawnMood().Exposure.Should().BeApproximately(1, 1e-4f);
+
+        _builder.ViewModel.Hour = 0;
+
+        _builder.ViewModel.GetDrawnMood().Exposure.Should().BeApproximately(0.2f, 1e-4f);
+    }
+
+    [Fact]
+    public void LaysTheLensAndThenTheMoodFileOverTheEnvironment()
+    {
+        _builder.WithFile("Street.fvenv", Environment);
+        _builder.WithFile("Main.fvlens", """{ "bloom": 0.2, "canvas": "Linen.fvcanvas" }""");
+        _builder.WithFile("Dusk.fvmood", """{ "fogDensity": 0.3, "bloom": 0.5 }""");
+        _builder.OpenScene("""
+            { "entities": [
+              { "name": "Look", "components": { "sceneEnvironment": { "environment": "Street.fvenv", "startHour": 12 } } },
+              { "name": "Camera", "components": { "transform": {}, "camera": {}, "mainCamera": { "lens": "Main.fvlens" } } } ] }
+            """);
+        _builder.ViewModel.Mood = new LightingMood { FogDensity = 0.3f, Exposure = 3 };
+        _builder.ViewModel.MoodPath = "Dusk.fvmood";
+
+        LightingMood drawn = _builder.ViewModel.GetDrawnMood();
+
+        drawn.Exposure.Should().BeApproximately(1, 1e-4f, "the mood file does not name the exposure, so the environment's shows");
+        drawn.FogDensity.Should().Be(0.3f);
+        drawn.Bloom.Should().Be(0.5f, "the scene's mood lies over the lens, as in the game");
+        drawn.Canvas.Should().Be("Linen.fvcanvas");
+    }
+
+    [Fact]
+    public void KeepsTheHourWhenTheSceneHasNoEnvironment()
+    {
+        _builder.ViewModel.Hour = 7;
+
+        _builder.OpenScene("""{ "entities": [] }""");
+
+        _builder.ViewModel.Hour.Should().Be(7);
     }
 
     [Fact]
