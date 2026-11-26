@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Creations.Serialization;
 using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Creations;
@@ -6,7 +7,7 @@ namespace FlickerVoid.Engine.Creations;
 public static class CreationsGameExtensions
 {
     /// <summary>
-    /// The game's <see cref="CreationParts"/>, a service added the first time with the <see cref="JointSystem"/> as a frame system,
+    /// The game's <see cref="CreationParts"/>, a service added the first time with the <see cref="JointSystem"/> as a frame system and a service too,
     /// which each kind of creation spawns its parts with.
     /// </summary>
     public static CreationParts AddCreations(this Game game)
@@ -18,8 +19,12 @@ public static class CreationsGameExtensions
 
         CreationParts parts = new(game.World, game.Lifecycle);
         game.Services.AddService(parts);
-        JointSystem joints = new(game.World, game.Lifecycle);
+        JointSystem joints = new(game.World, game.Lifecycle, game.Events);
         game.FrameSystems.Add(joints);
+        game.Services.AddService(joints);
+        game.Data.AddResolver(CreationsJsonContext.Default);
+        PartToggleSaves saves = new(game.World, parts, joints);
+        game.SaveStates.Add<SavedPartToggles>("partToggles", saves.Save, saves.Restore);
         return parts;
     }
 }

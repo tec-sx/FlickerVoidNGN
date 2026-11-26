@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:shell="using:FlickerVoid.Editor"
              xmlns:viewports="using:FlickerVoid.Editor.Viewports"
+             xmlns:inspector="using:FlickerVoid.Editor.Inspector"
              xmlns:shots="using:FlickerVoid.Editor.Shots"
              x:Class="FlickerVoid.Editor.Viewports.ViewportOverlay"
              x:DataType="viewports:ViewportViewModel">
@@ -74,6 +75,44 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
         </StackPanel>
+      </StackPanel>
+    </Border>
+    <!-- The creator's mesh mode: element kind, tools with their numbers, mirror and the door test, along the bottom. -->
+    <Border Classes="viewportBar" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+            IsVisible="{Binding MeshTools.IsMeshMode}">
+      <StackPanel Orientation="Horizontal" Spacing="2" DataContext="{Binding MeshTools}" x:DataType="viewports:MeshToolsViewModel">
+        <RadioButton GroupName="MeshElement" Content="Point" IsChecked="{Binding IsPoint}" ToolTip.Tip="Points (1)" />
+        <RadioButton GroupName="MeshElement" Content="Edge" IsChecked="{Binding IsEdge}" ToolTip.Tip="Edges (2)" />
+        <RadioButton GroupName="MeshElement" Content="Face" IsChecked="{Binding IsFace}" ToolTip.Tip="Faces (3)" />
+        <Rectangle Width="1" Fill="{StaticResource EditorLineBrush}" Margin="2,0" />
+        <Button Content="Extrude" Command="{Binding ExtrudeCommand}" ToolTip.Tip="Extrude the faces by the amount (E)" />
+        <Button Content="Inset" Command="{Binding InsetCommand}" ToolTip.Tip="Inset the faces by the thickness (I)" />
+        <Button Content="Cut" Command="{Binding CutCommand}" ToolTip.Tip="Cut the faces in by the amount, or through (C)" />
+        <Button Content="Bevel" Command="{Binding BevelCommand}" ToolTip.Tip="Bevel the edges by the thickness (Ctrl+B)" />
+        <Button Content="Loop" Command="{Binding LoopCutCommand}" ToolTip.Tip="Cut loops through the face under the mouse (Ctrl+R)" />
+        <Button Content="Door" Command="{Binding HangDoorCommand}" ToolTip.Tip="Hang a door in the face under the mouse (D)" />
+        <Button Content="Test" Command="{Binding TestCommand}" ToolTip.Tip="Open or shut the selected door" />
+        <Rectangle Width="1" Fill="{StaticResource EditorLineBrush}" Margin="2,0" />
+        <ToggleButton Content="Mirror" IsChecked="{Binding Mirror}" ToolTip.Tip="Edits are made on both sides of the centre line" />
+        <ToggleButton Content="Round" IsChecked="{Binding Round}" ToolTip.Tip="Round bevels" />
+        <ToggleButton Content="Through" IsChecked="{Binding Through}" ToolTip.Tip="Cuts and doors go through the whole part" />
+        <ToggleButton Content="Outward" IsChecked="{Binding Outward}" ToolTip.Tip="Doors swing out of the face" />
+        <inspector:DragNumberBox Width="56" Value="{Binding Amount}" Minimum="0" ToolTip.Tip="Amount: extrude and cut depth, in metres" />
+        <inspector:DragNumberBox Width="56" Value="{Binding Thickness}" Minimum="0" ToolTip.Tip="Thickness: inset, bevel width and door depth, in metres" />
+        <inspector:DragNumberBox Width="44" Value="{Binding Rows}" Minimum="1" Maximum="8" Step="1" ToolTip.Tip="Bevel rows" />
+        <inspector:DragNumberBox Width="44" Value="{Binding Cuts}" Minimum="1" Maximum="8" Step="1" ToolTip.Tip="Loop cuts" />
+        <inspector:DragNumberBox Width="48" Value="{Binding Slide}" Minimum="-1" Maximum="1" ToolTip.Tip="Loop slide, -1 to 1" />
+        <inspector:DragNumberBox Width="52" Value="{Binding Angle}" Minimum="1" Maximum="170" Step="1" ToolTip.Tip="Door angle, in degrees" />
+        <Rectangle Width="1" Fill="{StaticResource EditorLineBrush}" Margin="2,0" />
+        <ComboBox SelectedIndex="{Binding TransformToolIndex}" ToolTip.Tip="Numeric move, rotate or scale of the selection">
+          <ComboBoxItem>Move</ComboBoxItem>
+          <ComboBoxItem>Rotate</ComboBoxItem>
+          <ComboBoxItem>Scale</ComboBoxItem>
+        </ComboBox>
+        <inspector:DragNumberBox Width="52" Value="{Binding TransformX}" AxisBrush="{StaticResource EditorAxisXBrush}" ToolTip.Tip="X" />
+        <inspector:DragNumberBox Width="52" Value="{Binding TransformY}" AxisBrush="{StaticResource EditorAxisYBrush}" ToolTip.Tip="Y" />
+        <inspector:DragNumberBox Width="52" Value="{Binding TransformZ}" AxisBrush="{StaticResource EditorAxisZBrush}" ToolTip.Tip="Z" />
+        <Button Content="Apply" Command="{Binding ApplyTransformCommand}" ToolTip.Tip="Do it to the selection" />
       </StackPanel>
     </Border>
     <!-- The selected shot's timeline, left of the camera preview in the bottom right corner. -->

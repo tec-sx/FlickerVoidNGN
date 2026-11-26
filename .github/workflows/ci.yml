@@ -38,6 +38,11 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Windows" ]; then pwsh -File Source/Native/Dlss/build.ps1; else bash Source/Native/Dlss/build.sh; fi
+      # The editor's mesh Booleans: its tests need the library, so they fail here when it is missing instead of skipping.
+      - name: Build Manifold, the mesh Boolean library
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then pwsh -File Source/Native/Manifold/build.ps1; else bash Source/Native/Manifold/build.sh; fi
       - name: Build the engine and the samples, and pack the engine
         shell: bash
         run: |
@@ -54,6 +59,7 @@ jobs:
         env:
           # llvmpipe's linear rasterizer reads push constants past the first 16 bytes as zero on full-rectangle draws.
           LP_PERF: no_rast_linear
+          FLICKERVOID_REQUIRE_MANIFOLD: "1"
       - name: Create a project from the template, build it and run it on lavapipe (under Xvfb on Linux)
         shell: bash
         env:
