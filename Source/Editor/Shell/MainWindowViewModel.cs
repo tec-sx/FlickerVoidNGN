@@ -16,6 +16,7 @@ using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Core.Viewports;
+using FlickerVoid.Editor.Documents;
 using FlickerVoid.Editor.Persistence.Layout;
 using FlickerVoid.Editor.Persistence.Projects;
 using FlickerVoid.Editor.Projects;
@@ -74,6 +75,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         EditorLayout? layout = null)
     {
         _layout = layout;
+        RestoreLayout();
         _player = player;
         _compiler = compiler;
         _solution = solution;
@@ -164,6 +166,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    /// <summary>The Data tab's name: the open data asset's file without its folder and extension, starred while it is unsaved.</summary>
+    public string DataTitle
+    {
+        get
+        {
+            if (_dataPath is null)
+            {
+                return "Data";
+            }
+
+            string name = Path.GetFileNameWithoutExtension(_dataPath);
+            if (_content.IsUnsaved(_dataPath))
+            {
+                return $"{name} *";
+            }
+
+            return name;
+        }
+    }
+
     public ViewportViewModel Viewport { get; }
 
     public InspectorViewModel Inspector { get; }
@@ -176,6 +198,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     /// <summary>The content folder's files; opening a scene shows it, opening a material shows it in the material editor.</summary>
     public AssetBrowserViewModel Assets { get; }
+
+    /// <summary>The editors opened in place, as tabs over the viewport.</summary>
+    public DocumentTabs Documents { get; } = new();
 
     /// <summary>Runs the project's game on the open scene as it is now, without saving it.</summary>
     [RelayCommand(CanExecute = nameof(CanPlay))]
@@ -371,8 +396,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(HasUnsaved));
         OnPropertyChanged(nameof(HasUnsavedChanges));
         OnPropertyChanged(nameof(Title));
+        RaiseTopBarChanged();
         OnPropertyChanged(nameof(MoodHeading));
         OnPropertyChanged(nameof(DataHeading));
+        OnPropertyChanged(nameof(DataTitle));
         OnPropertyChanged(nameof(CreatorHeading));
         SaveAssetsCommand.NotifyCanExecuteChanged();
         DiscardAssetsCommand.NotifyCanExecuteChanged();
@@ -421,6 +448,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void HandleSceneOpened()
     {
         OnPropertyChanged(nameof(Title));
+        RaiseTopBarChanged();
         ShowSceneMood();
     }
 

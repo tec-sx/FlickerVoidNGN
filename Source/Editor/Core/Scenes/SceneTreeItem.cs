@@ -27,6 +27,11 @@ public sealed partial class SceneTreeItem(string name, string path, string icon,
 
     public bool IsFolder => Entity is null;
 
+    /// <summary>How many items it holds, said beside its name; nothing is said for none.</summary>
+    public int Count => Children.Count;
+
+    public bool HasCount => Children.Count > 0;
+
     /// <summary>Whether the entity is shown under the entity it is nested under.</summary>
     public bool IsNested { get; init; }
 

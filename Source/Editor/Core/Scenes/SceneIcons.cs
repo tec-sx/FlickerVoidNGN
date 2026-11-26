@@ -15,13 +15,19 @@ public static class SceneIcons
         ("characterMover", "Character"),
         ("pointLight", "PointLight"),
         ("spotLight", "SpotLight"),
-        ("irradianceVolume", "Grid"),
+        ("irradianceVolume", "Probe"),
         ("sceneMood", "Mood"),
-        ("sceneEnvironment", "Mood"),
-        ("interactable", "Entity"),
+        ("sceneEnvironment", "Environment"),
+        ("doorSwing", "Door"),
+        ("doorway", "Door"),
+        ("lock", "Lock"),
+        ("pickup", "Item"),
+        ("triggerArea", "Trigger"),
+        ("indoorVolume", "Layers"),
+        ("interactable", "Interact"),
         ("vehicle", "Vehicle"),
         ("meshRenderer", "Model"),
-        ("greybox", "Model"),
+        ("greybox", "Cube"),
     ];
 
     public const string Folder = "Folder";

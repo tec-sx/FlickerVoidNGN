@@ -1,4 +1,8 @@
+using CommunityToolkit.Mvvm.Input;
+
 using FlickerVoid.Editor.Assets;
+using FlickerVoid.Editor.Documents;
+using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Persistence.Layout;
 using FlickerVoid.Editor.Viewports;
 
@@ -17,6 +21,113 @@ public sealed class MainWindowViewModelPanelsTests : IDisposable
     private ViewportViewModel Viewport => _builder.ViewModel.Viewport;
 
     public void Dispose() => _builder.Dispose();
+
+    [Fact]
+    public void TheCommandPaletteListsCommandsWithTheirKeysAndRunsThem()
+    {
+        IReadOnlyList<MenuChoice> choices = ViewModel.PaletteChoices;
+        MenuChoice content = choices.Single(choice => choice.Name == "Open or close the content drawer");
+
+        content.Run();
+
+        content.Gesture.Should().Be("Ctrl+Space");
+        ViewModel.IsContentOpen.Should().BeTrue();
+        choices.Select(choice => choice.Name).Should().Contain(["Play", "Compile", "Save assets", "Undo", "Redo", "Swap the outliner and the context panel"]);
+        choices.Should().OnlyContain(choice => choice.Group != null);
+    }
+
+    [Fact]
+    public void TheCommandPaletteFindsContentFilesAndEntitiesToo()
+    {
+        IReadOnlyList<MenuChoice> choices = ViewModel.PaletteChoices;
+        MenuChoice paper = choices.Single(choice => choice.Group == "Content" && choice.Name == MainWindowViewModelTestsBuilder.Paper);
+        MenuChoice entity = choices.First(choice => choice.Group == "Entities");
+
+        entity.Run();
+
+        paper.SearchOnly.Should().BeTrue();
+        entity.SearchOnly.Should().BeTrue();
+        _builder.Scene.Selection.Selected.Should().NotBeNull();
+        choices.Select(choice => choice.Name).Should().Contain(["Edit the day's light", "Bake light probes"]);
+    }
+
+    [Fact]
+    public void SaveSavesTheDocumentShownInPlaceOfTheViewport()
+    {
+        int saved = 0;
+        RelayCommand save = new(() => saved++);
+        EditorDocument texture = new("Textures/Brick.png", "Brick.png", new object(), () => { }, save);
+        ViewModel.Documents.Show(texture);
+
+        ViewModel.SaveShownCommand.Execute(null);
+
+        saved.Should().Be(1);
+    }
+
+    [Fact]
+    public void TheContentDrawerIsClosedUntilItIsToggled()
+    {
+        bool closed = ViewModel.IsContentOpen;
+
+        ViewModel.ToggleContentCommand.Execute(null);
+        bool opened = ViewModel.IsContentOpen;
+        ViewModel.ToggleContentCommand.Execute(null);
+
+        closed.Should().BeFalse();
+        opened.Should().BeTrue();
+        ViewModel.IsContentOpen.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TheDrawerAndThePanelSizesAreRememberedForTheNextRun()
+    {
+        ViewModel.ToggleContentCommand.Execute(null);
+        ViewModel.ContentHeight = 400;
+        ViewModel.DayDockHeight = 240;
+        ViewModel.SideWidth = new Avalonia.Controls.GridLength(360);
+
+        EditorLayout next = new(_builder.LayoutFile);
+
+        next.ContentOpen.Should().BeTrue();
+        next.ContentHeight.Should().Be(400);
+        next.DayDockHeight.Should().Be(240);
+        next.SideWidth.Should().Be(360);
+    }
+
+    [Fact]
+    public void ThePanelsStartAtTheirDesignedSizes()
+    {
+        ViewModel.ContentHeight.Should().Be(318);
+        ViewModel.DayDockHeight.Should().Be(300);
+        ViewModel.SideWidth.Value.Should().Be(320);
+    }
+
+    [Fact]
+    public void TheTopBarNamesTheLevelAndCountsWhatIsUnsaved()
+    {
+        string name = ViewModel.LevelName;
+        int saved = ViewModel.UnsavedCount;
+        _builder.EditScene();
+        _builder.EditMaterial();
+
+        name.Should().Be("Room");
+        saved.Should().Be(0);
+        ViewModel.IsLevelUnsaved.Should().BeTrue();
+        ViewModel.UnsavedCount.Should().Be(2);
+        ViewModel.UnsavedText.Should().Be("2 unsaved");
+    }
+
+    [Fact]
+    public void TheUnsavedChipSavesEverything()
+    {
+        _builder.EditScene();
+        _builder.EditMaterial();
+
+        ViewModel.SaveEverythingCommand.Execute(null);
+
+        ViewModel.UnsavedCount.Should().Be(0);
+        ViewModel.IsLevelUnsaved.Should().BeFalse();
+    }
 
     [Fact]
     public void TheContextPanelIsEmptyWithNothingSelectedOrOpen()
