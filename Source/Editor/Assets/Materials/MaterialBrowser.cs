@@ -20,13 +20,18 @@ public sealed class MaterialBrowser(IContentManager content)
     /// <summary>The materials whose path holds the text, ignoring case, sorted, with forward slashes.</summary>
     public IReadOnlyList<string> Find(string text)
     {
+        return Find(text, Extension);
+    }
+
+    private List<string> Find(string text, string extension)
+    {
         if (!Directory.Exists(_folder))
         {
             return [];
         }
 
         List<string> found = [];
-        foreach (string fullPath in Directory.EnumerateFiles(_folder, "*" + Extension, SearchOption.AllDirectories))
+        foreach (string fullPath in Directory.EnumerateFiles(_folder, "*" + extension, SearchOption.AllDirectories))
         {
             string relative = Path.GetRelativePath(_folder, fullPath);
             string path = relative.Replace(Path.DirectorySeparatorChar, '/');
@@ -41,16 +46,23 @@ public sealed class MaterialBrowser(IContentManager content)
     }
 
     /// <summary>
-    /// The materials whose path holds the text as a tree: each under its parent (a master is a root, listed when a material
-    /// names it), with the parents of a match kept so it shows where it belongs, and a material whose parent can't be read a root.
+    /// The masters and materials whose path holds the text as a tree: each material under its parent (masters are roots, the
+    /// content's and those materials name), with the parents of a match kept so it shows where it belongs, and a material whose
+    /// parent can't be read a root.
     /// </summary>
     public IReadOnlyList<MaterialTreeNode> FindTree(string text)
     {
-        IReadOnlyList<string> all = Find("");
+        List<string> all = Find("", Extension);
+        List<string> masters = Find("", MasterFile.Extension);
+        all.AddRange(masters);
         Dictionary<string, string?> parents = new(ContentManager.PathComparer);
         foreach (string path in all)
         {
-            parents[path] = ReadParent(path);
+            parents[path] = null;
+            if (!path.EndsWith(MasterFile.Extension, StringComparison.OrdinalIgnoreCase))
+            {
+                parents[path] = ReadParent(path);
+            }
         }
 
         HashSet<string> shown = new(ContentManager.PathComparer);

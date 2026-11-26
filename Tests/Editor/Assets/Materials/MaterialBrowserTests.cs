@@ -63,6 +63,17 @@ public sealed class MaterialBrowserTests : IDisposable
     }
 
     [Fact]
+    public void ListsTheMastersOfTheContentWithoutInstancesToo()
+    {
+        _builder.WithFile("Engine/Rendering/Masters/Painted.fvmaster", """{ "parameters": [] }""");
+        MaterialBrowser browser = _builder.Build();
+
+        IReadOnlyList<MaterialTreeNode> tree = browser.FindTree("");
+
+        tree.Should().ContainSingle().Which.Should().Match<MaterialTreeNode>(node => node.IsMaster && node.Children.Count == 0);
+    }
+
+    [Fact]
     public void KeepsTheParentsOfAMatchInTheTree()
     {
         _builder
