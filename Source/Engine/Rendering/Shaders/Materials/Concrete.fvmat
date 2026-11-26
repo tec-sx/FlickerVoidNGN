@@ -1,0 +1,15 @@
+// Cast concrete: grey, a little rough, grime gathering low down.
+{
+  "parent": "Engine/Rendering/Masters/Surface.fvmaster",
+  "parameters": {
+    "tint": [0.6, 0.6, 0.58],
+    "rampSoftness": 0.6,
+    "specular": 0.1,
+    "glossiness": 0.2,
+    "variation": 0.4,
+    "variationScale": 0.8,
+    "layerTint": [0.3, 0.29, 0.27],
+    "layerAmount": 0.4,
+    "layerHeight": 0.5
+  }
+}

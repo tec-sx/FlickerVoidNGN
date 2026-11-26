@@ -1,0 +1,11 @@
+// Painted gypsum board: pale, matte, the faintest patches.
+{
+  "parent": "Engine/Rendering/Masters/Surface.fvmaster",
+  "parameters": {
+    "tint": [0.86, 0.85, 0.82],
+    "rampSoftness": 0.8,
+    "wrap": 0.2,
+    "variation": 0.15,
+    "variationScale": 1.2
+  }
+}

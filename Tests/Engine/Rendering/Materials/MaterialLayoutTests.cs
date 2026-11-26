@@ -84,4 +84,43 @@ public sealed class MaterialLayoutTests
         byte[] packed = MaterialLayout.Pack(_builder.Parameters, null);
         size.Should().Be(packed.Length).And.Be(24);
     }
+
+    [Fact]
+    public void PacksAnInstanceAsTheSceneShadersThenItsMastersModelThenTheMastersOwn()
+    {
+        MasterFile master = MaterialLayoutTestsBuilder.Master("""
+            { "shadingModel": "Metal", "parameters": [{ "name": "rust", "type": "float", "default": 0 }, { "name": "metalness", "type": "float", "default": 1 }] }
+            """);
+        MaterialFile material = MaterialLayoutTestsBuilder.Material("""{ "parameters": { "metalness": 0.5, "rust": 0.25 } }""");
+
+        byte[] packed = MaterialLayout.PackInstance(_builder.Parameters, master, material);
+
+        float[] values = MemoryMarshal.Cast<byte, float>(packed).ToArray();
+        int model = MaterialLayout.Size(_builder.Parameters) / sizeof(float);
+        BitConverter.SingleToUInt32Bits(values[model]).Should().Be((uint)ShadingModel.Metal);
+        values[(model + 1)..(model + 5)].Should().Equal(0.5f, 0, 0, 0);
+        values[(model + 5)..].Should().Equal(0.25f, 0.5f);
+        packed.Length.Should().Be(MaterialLayout.MasterOffset(_builder.Parameters) + 8);
+    }
+
+    [Fact]
+    public void PacksAMaterialWithoutAMasterAsPainted()
+    {
+        byte[] packed = MaterialLayout.PackInstance(_builder.Parameters, null, null);
+
+        packed.Length.Should().Be(MaterialLayout.MasterOffset(_builder.Parameters));
+        uint model = BitConverter.ToUInt32(packed, MaterialLayout.Size(_builder.Parameters));
+        model.Should().Be((uint)ShadingModel.Painted);
+    }
+
+    [Fact]
+    public void RefusesANameNeitherTheShaderNorTheMasterDeclares()
+    {
+        MasterFile master = MaterialLayoutTestsBuilder.Master("""{ "parameters": [{ "name": "rust", "type": "float", "default": 0 }] }""");
+        MaterialFile material = MaterialLayoutTestsBuilder.Material("""{ "parameters": { "mortar": 1 } }""");
+
+        Action pack = () => MaterialLayout.PackInstance(_builder.Parameters, master, material);
+
+        pack.Should().Throw<InvalidDataException>().WithMessage("*mortar*");
+    }
 }

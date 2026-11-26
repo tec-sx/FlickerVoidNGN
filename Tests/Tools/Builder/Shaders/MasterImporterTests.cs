@@ -67,6 +67,22 @@ public sealed class MasterImporterTests : IDisposable
     }
 
     [Fact]
+    public void BuildsTheMasterAgainWhenTheEngineShadersItIsWrappedInChange()
+    {
+        _files.WithEngineCopy()
+            .WithSource("Masters/Brick.fvmaster", Master)
+            .WithSource("Masters/Brick.hlsl", Surface)
+            .WithSource("Masters/Grime.hlsli", Grime);
+        AssetBuilder builder = _files.Build();
+        _files.BuildAll(builder);
+
+        _files.AppendEngineShader("Geometry.hlsl", "\n// Changed.\n");
+        BuildReport report = _files.BuildAll(builder);
+
+        report.Built.Should().Contain("Masters/Brick.fvmaster");
+    }
+
+    [Fact]
     public void FailsAMasterWhoseSurfaceDoesNotCompile()
     {
         _files.WithSource("Masters/Brick.fvmaster", Master)

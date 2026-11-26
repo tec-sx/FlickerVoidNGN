@@ -1,0 +1,9 @@
+// Paper and card: bright, matte, light passing round its edges.
+{
+  "parent": "Engine/Rendering/Masters/Surface.fvmaster",
+  "parameters": {
+    "tint": [0.92, 0.9, 0.84],
+    "rampSoftness": 1,
+    "wrap": 0.5
+  }
+}

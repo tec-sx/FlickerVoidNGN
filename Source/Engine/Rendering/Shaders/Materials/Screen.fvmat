@@ -1,0 +1,11 @@
+// A screen: a cool glow over what it shows.
+{
+  "parent": "Engine/Rendering/Masters/Glow.fvmaster",
+  "parameters": {
+    "tint": [0.75, 0.85, 1],
+    "glow": 2,
+    "lit": 0.1,
+    "specular": 0.6,
+    "glossiness": 0.9
+  }
+}

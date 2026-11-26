@@ -142,7 +142,8 @@ float3 ShadeHit(FrameData frame, RayHit hit, float3 origin, float3 direction)
     light += SampleProbes(frame, surface.Position, surface.Normal, -direction);
     light += SunOn(frame, material, lightOrigin, surface.Normal);
     light += LampsOn(frame, material, surface.Position, lightOrigin, surface.Normal);
-    return surface.Albedo * light + material.Emissive * material.EmissiveIntensity;
+    float3 shaded = ShadeSurface(material, surface.Albedo, light, 0, light);
+    return shaded + material.Emissive * material.EmissiveIntensity;
 }
 
 [numthreads(GroupSize, 1, 1)]

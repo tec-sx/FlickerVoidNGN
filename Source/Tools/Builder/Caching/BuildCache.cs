@@ -84,9 +84,15 @@ public sealed class BuildCache
         File.WriteAllText(_filePath, json);
     }
 
+    /// <summary>Hashes a file under the source folder by its path there, or one outside it (the engine's shaders) by its full path.</summary>
     private static void AppendFile(IncrementalHash hash, string sourceDirectory, string path)
     {
-        string fullPath = AssetPaths.ToFullPath(sourceDirectory, path);
+        string fullPath = path;
+        if (!Path.IsPathRooted(path))
+        {
+            fullPath = AssetPaths.ToFullPath(sourceDirectory, path);
+        }
+
         if (!File.Exists(fullPath))
         {
             AppendText(hash, $"{path} {MissingFileMarker}");

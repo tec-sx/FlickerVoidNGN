@@ -1,0 +1,14 @@
+// Old lime plaster: warm, soft light, damp rising from the floor.
+{
+  "parent": "Engine/Rendering/Masters/Surface.fvmaster",
+  "parameters": {
+    "tint": [0.82, 0.76, 0.66],
+    "rampSoftness": 0.9,
+    "wrap": 0.3,
+    "variation": 0.35,
+    "variationScale": 0.6,
+    "layerTint": [0.42, 0.38, 0.32],
+    "layerAmount": 0.5,
+    "layerHeight": 0.8
+  }
+}

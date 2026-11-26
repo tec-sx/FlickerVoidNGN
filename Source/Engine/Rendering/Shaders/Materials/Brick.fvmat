@@ -1,0 +1,14 @@
+// Red brick: each patch a shade apart, soot settling on the tops.
+{
+  "parent": "Engine/Rendering/Masters/Surface.fvmaster",
+  "parameters": {
+    "tint": [0.62, 0.3, 0.22],
+    "rampSoftness": 0.6,
+    "wrap": 0.1,
+    "variation": 0.6,
+    "variationScale": 0.25,
+    "layerTint": [0.2, 0.18, 0.17],
+    "layerAmount": 0.3,
+    "layerFacingUp": 0.8
+  }
+}

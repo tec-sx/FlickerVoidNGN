@@ -1,0 +1,10 @@
+// A card of grass blades.
+{
+  "parent": "Engine/Rendering/Masters/Cutout.fvmaster",
+  "parameters": {
+    "cutoff": 0.4,
+    "rampSoftness": 1,
+    "wrap": 0.4,
+    "tint": [0.5, 0.62, 0.32]
+  }
+}

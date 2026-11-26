@@ -10,7 +10,7 @@ namespace FlickerVoid.Engine.Rendering.Materials;
 
 /// <summary>
 /// Packs each material file the first time it is drawn, flattened with its parents, into a GPU buffer of the scene shader's
-/// parameters followed by its master's own (<see cref="MasterFile"/>), if it has one, and keeps it until the file, a parent, its master or a texture it names changes on disk; mesh parts without a material share
+/// parameters, its master's shading model and its master's own parameters (<see cref="MaterialLayout.PackInstance"/>), and keeps it until the file, a parent, its master or a texture it names changes on disk; mesh parts without a material share
 /// one buffer of the shader's defaults.
 /// </summary>
 internal sealed class MaterialLibrary : IDisposable
@@ -29,7 +29,7 @@ internal sealed class MaterialLibrary : IDisposable
         _device = device;
         _content = content;
         _parameters = parameters;
-        byte[] defaults = MaterialLayout.Pack(parameters, null);
+        byte[] defaults = MaterialLayout.PackInstance(parameters, null, null);
         IBuffer buffer = Upload(defaults, "Default material");
         Default = new GpuMaterial(buffer, CutsOut(null));
         _content.Changed += HandleChanged;
@@ -57,16 +57,15 @@ internal sealed class MaterialLibrary : IDisposable
             AddUser(parentPath, fullPath);
             return _content.Load(parentPath, RenderingJsonContext.Default.MaterialFile);
         });
-        IReadOnlyList<ShaderParameter> parameters = _parameters;
         string? master = material.Parent;
+        MasterFile? masterFile = null;
         if (master is not null)
         {
             AddUser(master, fullPath);
-            MasterFile masterFile = _content.Load(master, RenderingJsonContext.Default.MasterFile);
-            parameters = [.. _parameters, .. masterFile.Parameters];
+            masterFile = _content.Load(master, RenderingJsonContext.Default.MasterFile);
         }
 
-        byte[] packed = MaterialLayout.Pack(parameters, material, texturePath =>
+        byte[] packed = MaterialLayout.PackInstance(_parameters, masterFile, material, texturePath =>
         {
             string builtPath = TextureLibrary.GetBuiltPath(texturePath);
             string reliefPath = TextureLibrary.GetReliefPath(texturePath);

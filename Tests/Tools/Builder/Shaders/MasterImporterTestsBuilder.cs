@@ -12,6 +12,31 @@ internal sealed class MasterImporterTestsBuilder : IDisposable
 {
     private readonly AssetBuilderTestsBuilder _files = new();
     private readonly DxcShaderCompiler _compiler = new();
+    private string _engineShaders = MasterImporter.EngineShaders;
+    private string? _engineCopy;
+
+    /// <summary>Builds against a copy of the engine's shaders, which the test may change.</summary>
+    public MasterImporterTestsBuilder WithEngineCopy()
+    {
+        _engineCopy = Path.Combine(Path.GetTempPath(), "FlickerVoidEngineShaders", Guid.NewGuid().ToString("N"));
+        foreach (string file in Directory.EnumerateFiles(MasterImporter.EngineShaders, "*", SearchOption.AllDirectories))
+        {
+            string relative = Path.GetRelativePath(MasterImporter.EngineShaders, file);
+            string target = Path.Combine(_engineCopy, relative);
+            string folder = Path.GetDirectoryName(target)!;
+            Directory.CreateDirectory(folder);
+            File.Copy(file, target);
+        }
+
+        _engineShaders = _engineCopy;
+        return this;
+    }
+
+    public void AppendEngineShader(string name, string text)
+    {
+        string path = Path.Combine(_engineShaders, name);
+        File.AppendAllText(path, text);
+    }
 
     public MasterImporterTestsBuilder WithSource(string path, string text)
     {
@@ -21,7 +46,7 @@ internal sealed class MasterImporterTestsBuilder : IDisposable
 
     public AssetBuilder Build()
     {
-        MasterImporter masters = new(_compiler, MasterImporter.EngineShaders);
+        MasterImporter masters = new(_compiler, _engineShaders);
         SkipImporter sources = new(".hlsl", ".hlsli");
         return new AssetBuilder([masters, sources]);
     }
@@ -44,5 +69,9 @@ internal sealed class MasterImporterTestsBuilder : IDisposable
     {
         _compiler.Dispose();
         _files.Dispose();
+        if (_engineCopy is not null)
+        {
+            Directory.Delete(_engineCopy, true);
+        }
     }
 }

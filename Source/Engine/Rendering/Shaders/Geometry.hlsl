@@ -16,7 +16,7 @@ struct GeometryOutput
 // The geometry pass leaves the surface for lighting, unlit, but where the cutaway cuts it away or a cutout card's paint is
 // thinner than its material's cutoff. The object depth leans from the pixel's own view depth to its box centre's as the draw is
 // small (Draw.Wholeness), and the motion is where the surface stood in the frame before less where it stands now, in pixels.
-GeometryOutput GeometryMain(VertexOutput input)
+GeometryOutput GeometryMain(VertexOutput input, bool front : SV_IsFrontFace)
 {
     FrameData frame = LoadFrame(Scene.Frame);
     Draw draw = LoadDraw(frame, Scene.Draw);
@@ -30,6 +30,12 @@ GeometryOutput GeometryMain(VertexOutput input)
     if (surface.Albedo.a < material.Cutoff)
     {
         discard;
+    }
+
+    // A two-sided master's back faces turn their normal toward the camera; the rest are culled.
+    if (!front)
+    {
+        surface.Normal = -surface.Normal;
     }
 
     GeometryOutput output;

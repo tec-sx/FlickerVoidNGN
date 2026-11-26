@@ -6,6 +6,7 @@ using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Pipeline;
+using FlickerVoid.Engine.Rendering.Serialization;
 using FlickerVoid.Engine.Runtime.Content;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
@@ -13,8 +14,8 @@ namespace FlickerVoid.Engine.Rendering.Meshes;
 /// <summary>
 /// Draws the meshes the view sees into the scene's depth and the <see cref="GBuffer"/>, unlit, cutting away what the cutaway
 /// does, for screen shadows and lighting to read. Each draw reads its record in the frame's data buffer by its number. Materials
-/// with a master are drawn by its geometry pass, made the first time one is drawn and again when the content build changes it,
-/// a master at a time after those without.
+/// with a master are drawn by its geometry pass, made the first time one is drawn and again when the content build changes it or
+/// its file, both sides of the master's surfaces when it is two-sided, a master at a time after those without.
 /// </summary>
 internal sealed class GeometryPass : IRenderPass
 {
@@ -83,12 +84,13 @@ internal sealed class GeometryPass : IRenderPass
         _masters.Clear();
     }
 
-    private IPipeline CreatePipeline(ShaderBytecode pixelShader, string name)
+    private IPipeline CreatePipeline(ShaderBytecode pixelShader, string name, CullMode cull = CullMode.Back)
     {
         GraphicsPipelineDescription description = new()
         {
             VertexShader = _vertexShader,
             PixelShader = pixelShader,
+            CullMode = cull,
             ColorFormats = GBuffer.Formats,
             DepthFormat = SceneRenderer.DepthFormat,
             Depth = new DepthState(Test: true, Write: true),
@@ -108,16 +110,25 @@ internal sealed class GeometryPass : IRenderPass
         string shaderFullPath = _content.GetFullPath(shaderPath);
         byte[] code = File.ReadAllBytes(shaderFullPath);
         ShaderBytecode pixelShader = new(code, MasterFile.GeometryEntryPoint);
-        IPipeline pipeline = CreatePipeline(pixelShader, $"Geometry {master}");
+        MasterFile file = _content.Load(master, RenderingJsonContext.Default.MasterFile);
+        CullMode cull = CullMode.Back;
+        if (file.TwoSided)
+        {
+            cull = CullMode.None;
+        }
+
+        IPipeline pipeline = CreatePipeline(pixelShader, $"Geometry {master}", cull);
         _masters.Add(master, pipeline);
         _masterShaders[shaderFullPath] = master;
+        string masterFullPath = _content.GetFullPath(master);
+        _masterShaders[masterFullPath] = master;
         return pipeline;
     }
 
     // The device destroys a replaced pipeline once the GPU is done with it.
     private void HandleChanged(string fullPath)
     {
-        if (_masterShaders.Remove(fullPath, out string? master) && _masters.Remove(master, out IPipeline? pipeline))
+        if (_masterShaders.TryGetValue(fullPath, out string? master) && _masters.Remove(master, out IPipeline? pipeline))
         {
             pipeline.Dispose();
         }
