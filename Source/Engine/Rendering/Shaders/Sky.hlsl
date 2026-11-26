@@ -2,9 +2,9 @@
 // the mood's: the ground below the horizon (darkening farther down), the horizon's colour and the zenith's overhead, blended
 // across the horizon over its softness. A perspective view shades by where each pixel's view ray points; an orthographic one,
 // whose rays all point the same way, by height on the near plane. The gradient's colours are meant for the screen, so they are
-// turned back through the mood's grade (Grade.hlsl), and it is thin paint (coverage 1, no thickness): over a canvas Post.hlsl
-// lets the canvas's weave through it, so it is painted at the canvas's average brightness times the gradient over the horizon's,
-// a wash the paper shows through. Over it, as light that the grade, bloom and flares take as they take the scene's, the sun's
+// turned back through the mood's grade (Grade.hlsl), and it is the thinnest paint (SkyCoverage): over a canvas Post.hlsl
+// lets the canvas's threads through it whole, and it is painted at the gradient times the canvas's average brightness,
+// a wash the paper shows through, as dark as the sky is. Over it, as light that the grade, bloom and flares take as they take the scene's, the sun's
 // disc and glow, the moon's disc, lit on the side facing the sun, and its corona, and the stars, turning about the pole with
 // the sun and drowned where the sky is bright; the ground hides them below the horizon.
 // A thread a pixel.
@@ -115,8 +115,11 @@ float3 Gradient(SkyData sky, float elevation)
     return lerp(below, above, SkyShare(sky, elevation));
 }
 
-// Over a canvas, the canvas's average brightness (as Post.hlsl weighs it) times the gradient over the horizon's brightness.
-float3 Wash(SkyData sky, float3 gradient)
+// The sky's alpha: paint so thin that the canvas's threads show through it whole.
+static const float SkyCoverage = 1.0 / 64;
+
+// Over a canvas, the gradient times the canvas's average brightness (as Post.hlsl weighs it), so a dark sky stays dark.
+float3 Wash(float3 gradient)
 {
     Texture2D canvas = Textures[Sky.Canvas];
     uint width;
@@ -125,8 +128,7 @@ float3 Wash(SkyData sky, float3 gradient)
     canvas.GetDimensions(0, width, height, levels);
     float3 averageCanvas = canvas.SampleLevel(Samplers[Sky.WrapSampler], 0.5, levels - 1).rgb * Sky.CanvasTint;
     float averageLuminance = max(dot(averageCanvas, ToLuminance), 1e-3);
-    float brightest = max(dot(sky.Horizon, ToLuminance), 1e-4);
-    return saturate(gradient / brightest) * averageLuminance;
+    return gradient * averageLuminance;
 }
 
 // 1 inside a disc of the cosine of its radius, falling to 0 over a soft rim.
@@ -239,7 +241,7 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     float3 screen = Gradient(sky, elevation);
     if (Sky.Canvas != None)
     {
-        screen = Wash(sky, screen);
+        screen = Wash(screen);
     }
 
     float3 light = Ungrade(Sky.Grade, screen);
@@ -252,5 +254,5 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
         light += bodies * SkyShare(sky, elevation);
     }
 
-    RWTextures[Sky.Output][id.xy] = float4(light, 1);
+    RWTextures[Sky.Output][id.xy] = float4(light, SkyCoverage);
 }
