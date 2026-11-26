@@ -85,7 +85,7 @@ public sealed class SkyPassTests : IDisposable
         using SkyPassTestsBuilder night = new();
         _builder.WithPaper(220);
         night.WithPaper(220);
-        night.WithMood(mood => mood with { SkyZenith = mood.SkyZenith * 0.02f, SkyHorizon = mood.SkyHorizon * 0.02f });
+        night.WithMood(mood => mood with { SkyZenith = mood.SkyZenith * 0.02f, SkyHorizon = mood.SkyHorizon * 0.02f, StarIntensity = 0 });
 
         uint[] byDay = _builder.Render();
         uint[] byNight = night.Render();
