@@ -304,6 +304,37 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void ExtrudingTheSelectedFaceEditsTheMeshOnceAndSelectsTheNewFace()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfFace(2, default), additive: false);
+        int points = _builder.FindMesh("body")!.Points.Count;
+
+        bool extruded = mode.ExtrudeMesh(0.5f);
+
+        extruded.Should().BeTrue();
+        _builder.MeshEdits.Should().Equal("body");
+        _builder.FindMesh("body")!.Points.Should().HaveCount(points + 4);
+        mode.MeshSelection!.Faces.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void ExtrudingWithNoFaceSelectedDoesNothing()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+
+        bool extruded = mode.ExtrudeMesh(0.5f);
+
+        extruded.Should().BeFalse();
+        _builder.MeshEdits.Should().BeEmpty();
+    }
+
+    [Fact]
     public void ASelectionOutsideTheMeshModeEditsNothing()
     {
         using CreatorMode mode = _builder.EnterAlone();
