@@ -183,6 +183,14 @@ public sealed record LightingMood
     [Range(0, 1)]
     public float BloomRadius { get; set; } = 0.85f;
 
+    /// <summary>A grey picture of the lens's dirt; where it is bright, the glow shows even with no bloom. None is a clean lens.</summary>
+    [ContentFile(".png", ".jpg", ".jpeg", ".tga", ".bmp")]
+    public string? Dirt { get; set; }
+
+    /// <summary>How strongly the dirt takes the light, from 0 (clean) to 1.</summary>
+    [Range(0, 1)]
+    public float DirtAmount { get; set; } = 1;
+
     /// <summary>Scales the light before grading.</summary>
     [Range(0, 8)]
     public float Exposure { get; set; } = 1;

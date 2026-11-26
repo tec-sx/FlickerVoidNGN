@@ -38,12 +38,12 @@ internal sealed class PostProcessor : IDisposable
     }
 
     /// <summary>Post-processes the lit scene at the output's size (<see cref="ScreenTargets.Lit"/>); leaves the output in the RenderTarget state.</summary>
-    public void Run(ICommandList commands, ScreenTargets targets, ITexture output, LightingMood mood, PostCanvas canvas, ISampler clamp, ISampler wrap)
+    public void Run(ICommandList commands, ScreenTargets targets, ITexture output, LightingMood mood, PostCanvas canvas, ITexture? dirt, ISampler clamp, ISampler wrap)
     {
         ITexture lit = targets.Lit;
         commands.Barrier(lit, ResourceState.ShaderRead);
         uint bloom = GpuLight.None;
-        if (mood.Bloom > 0)
+        if (mood.Bloom > 0 || dirt is not null)
         {
             DrawBloom(commands, targets, clamp, mood.BloomRadius);
             bloom = targets.Bloom[0].BindlessIndex;
@@ -66,9 +66,11 @@ internal sealed class PostProcessor : IDisposable
         PostConstants constants = new(
             Grading.From(mood),
             mood.Bloom,
+            dirt is null ? 0 : mood.DirtAmount,
             canvas.File.Intensity,
             lit.BindlessIndex,
             bloom,
+            dirt?.BindlessIndex ?? GpuLight.None,
             canvasIndex,
             clamp.BindlessIndex,
             wrap.BindlessIndex,

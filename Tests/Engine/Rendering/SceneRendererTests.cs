@@ -887,6 +887,31 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void ShowsTheDirtOnTheLensOnlyWhereThereIsLight()
+    {
+        const string light = """{ "name": "Light", "components": { "transform": { "position": [0, 0, 0.5] }, "pointLight": { "intensity": 3, "range": 2 } } }""";
+        uint white = SceneRendererTestsBuilder.Rgba(255, 255, 255, 255);
+        uint black = SceneRendererTestsBuilder.Rgba(0, 0, 0, 255);
+        _builder.WithTexture("Smudge.png", 1, 1, [white]);
+        _builder.WithTexture("Clean.png", 1, 1, [black]);
+        _builder.WithTargetSize(64);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, light);
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+        uint[] plain = _builder.Render();
+
+        _builder.WithMood(static mood => mood with { Dirt = "Clean.png" });
+        uint[] clean = _builder.Render();
+        _builder.WithMood(static mood => mood with { Dirt = "Smudge.png" });
+        uint[] dirty = _builder.Render();
+
+        clean.Should().Equal(plain, "a clean lens adds nothing, and bloom itself is off");
+        dirty.Should().NotEqual(plain, "the dirt takes the light into the lens");
+        (byte glow, _, _) = SceneRendererTestsBuilder.Channels(dirty[0]);
+        glow.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
     public void GradesTheImage()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
