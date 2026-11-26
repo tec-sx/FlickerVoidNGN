@@ -4,10 +4,13 @@ using Arch.Core;
 
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Meshes;
+using FlickerVoid.Editor.Core.Meshes.Doors;
+using FlickerVoid.Editor.Core.Overlays;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Engine.Creations;
+using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
@@ -33,15 +36,23 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     private readonly EditorCamera _camera;
     private readonly Func<bool> _save;
     private readonly Func<string, SolidMesh?>? _findMesh;
+    private readonly Action<string, SolidMesh>? _applyMesh;
+    private readonly Func<string, bool>? _isMirrored;
+    private readonly Action<string, bool>? _setMirror;
+    private readonly Func<string, int, SolidEdge, DoorOptions, string?>? _hangDoor;
     private SolidMesh? _meshSolid;
     private readonly List<Entity> _marked = [];
 
-    private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh)
+    private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh, Action<string, SolidMesh>? applyMesh, Func<string, bool>? isMirrored, Action<string, bool>? setMirror, Func<string, int, SolidEdge, DoorOptions, string?>? hangDoor)
     {
         _scene = scene;
         _camera = camera;
         _save = save;
         _findMesh = findMesh;
+        _applyMesh = applyMesh;
+        _isMirrored = isMirrored;
+        _setMirror = setMirror;
+        _hangDoor = hangDoor;
         Root = root;
         Placement = placement;
         History = history;
@@ -82,22 +93,22 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// Makes the creation placed in the level, greying the rest of it. <paramref name="findMesh"/> gives the mesh of a part by its id,
     /// for entering the mesh.
     /// </summary>
-    public static CreatorMode InPlace(EditorScene scene, EditorCamera camera, Entity placed, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null)
+    public static CreatorMode InPlace(EditorScene scene, EditorCamera camera, Entity placed, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null, Func<string, bool>? isMirrored = null, Action<string, bool>? setMirror = null, Func<string, int, SolidEdge, DoorOptions, string?>? hangDoor = null)
     {
-        return new CreatorMode(scene, camera, placed, CreatorPlacement.InPlace, history, save, findMesh);
+        return new CreatorMode(scene, camera, placed, CreatorPlacement.InPlace, history, save, findMesh, applyMesh, isMirrored, setMirror, hangDoor);
     }
 
     /// <summary>
     /// Makes a creation alone: places a temporary entity with <paramref name="creation"/>, the component that names its file, at the
     /// origin, outside the scene, and sets the level aside.
     /// </summary>
-    public static CreatorMode Alone<T>(EditorScene scene, EditorCamera camera, T creation, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null)
+    public static CreatorMode Alone<T>(EditorScene scene, EditorCamera camera, T creation, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null, Func<string, bool>? isMirrored = null, Action<string, bool>? setMirror = null, Func<string, int, SolidEdge, DoorOptions, string?>? hangDoor = null)
         where T : struct
     {
         World world = scene.Game.World;
         Entity copy = world.Create(new Transform(), creation);
         scene.Game.Lifecycle.Start(world, copy);
-        return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh);
+        return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh, applyMesh, isMirrored, setMirror, hangDoor);
     }
 
     public bool Save() => _save();
@@ -189,6 +200,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         MeshSelection = null;
         MeshPart = null;
         _meshSolid = null;
+        Hover = null;
         MeshModeChanged?.Invoke();
     }
 
@@ -221,8 +233,277 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         selection.Select(hit, additive);
     }
 
+    /// <summary>Whether the entered part's mirror switch is on: its edits are made on both sides of its centre line.</summary>
+    public bool Mirror => MeshPart is { } id && _isMirrored?.Invoke(id) == true;
+
+    /// <summary>Turns the entered part's mirror switch on or off, kept in its file as one undo step; false outside the mesh.</summary>
+    public bool SetMirror(bool on)
+    {
+        if (MeshSelection is null || MeshPart is not { } id || _setMirror is null)
+        {
+            return false;
+        }
+
+        _setMirror(id, on);
+        MeshModeChanged?.Invoke();
+        return true;
+    }
+
+    /// <summary>Moves the selected points by an offset in the part's own space, as one undo step; false when none is selected.</summary>
+    public bool MoveMesh(Vector3 offset) => EditMesh(solid => MeshEdit.Move(solid, MeshSelection!.Points, offset));
+
+    /// <summary>Turns the selected points about their middle by degrees about the part's X, Y and Z, as one undo step.</summary>
+    public bool RotateMesh(Vector3 degrees) => EditMesh(solid => MeshEdit.Rotate(solid, MeshSelection!.Points, degrees));
+
+    /// <summary>Scales the selected points about their middle by a factor along each of the part's axes, as one undo step.</summary>
+    public bool ScaleMesh(Vector3 factor) => EditMesh(solid => MeshEdit.Scale(solid, MeshSelection!.Points, factor));
+
+    /// <summary>
+    /// Extrudes the selected faces by a distance along their normal as one undo step, leaving the pushed faces selected in face mode;
+    /// false when no face is selected or all are.
+    /// </summary>
+    public bool ExtrudeMesh(float distance) => ReplaceMesh((solid, selected) => MeshExtrude.Faces(solid, GetFaces(solid, selected), distance));
+
+    /// <summary>
+    /// Insets the selected faces by a thickness as one undo step, leaving the inner faces selected in face mode; false when no face
+    /// is selected or all are.
+    /// </summary>
+    public bool InsetMesh(float thickness) => ReplaceMesh((solid, selected) => MeshInset.Faces(solid, GetFaces(solid, selected), thickness));
+
+    /// <summary>
+    /// Hangs a door (D) in the face of the entered mesh under the mouse, hinged on the face's edge nearest it, as one undo step;
+    /// the new door's id, or null when the mouse is over no face or the door can't be made. The door part is left selected.
+    /// </summary>
+    public string? HangDoor(Vector2 pixel, int width, int height, DoorOptions options)
+    {
+        if (MeshSelection is null || MeshPart is not { } id || _hangDoor is null || FindSelectedPart() is not { } part || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return null;
+        }
+
+        Matrix4x4 toWorld = _scene.Game.World.Get<Transform>(part).ToMatrix();
+        MeshPicker picker = new(solid, toWorld, _camera, width, height);
+        if (picker.Pick(MeshElement.Face, pixel) is not { } hit)
+        {
+            return null;
+        }
+
+        string? door = _hangDoor(id, hit.Index, hit.Edge, options);
+        if (door is not null)
+        {
+            LeaveMesh();
+        }
+
+        return door;
+    }
+
+    /// <summary>Opens or shuts the door part of the vehicle at once, to see it swing; false for a part without a joint and toggle.</summary>
+    public bool SwingDoor(string id)
+    {
+        Entity part = _scene.Game.Services.GetService<CreationParts>()!.Find(Root, id);
+        World world = _scene.Game.World;
+        if (!world.IsAlive(part) || !world.Has<PartJoint, Toggle>(part))
+        {
+            return false;
+        }
+
+        Toggle toggle = world.Get<Toggle>(part);
+        toggle.Open = !toggle.Open;
+        world.Set(part, toggle);
+        _scene.Game.Services.GetService<JointSystem>()!.Snap(part, toggle.Open);
+        return true;
+    }
+
+    /// <summary>
+    /// Cuts the selected faces into the solid (C) as one undo step: a pocket to a depth, or through it. The floor of a pocket stays
+    /// selected. False when no face is selected, or a through cut can't be made (no Manifold library, nothing left).
+    /// </summary>
+    public bool CutMesh(float depth, bool through) => ReplaceMesh((solid, selected) => MeshCut.Faces(solid, GetFaces(solid, selected), depth, through));
+
+    /// <summary>
+    /// Bevels the selected edges (Ctrl+B) as one undo step: each becomes a strip of the width on each face, in rows, flat or
+    /// <paramref name="round"/>; the strips stay selected. False when no edge is selected or a point of one can't take it.
+    /// </summary>
+    public bool BevelMesh(float width, int rows, bool round) => ReplaceMesh((solid, selected) => MeshBevel.Edges(solid, GetEdges(solid, selected), width, rows, round));
+
+    /// <summary>
+    /// Cuts loops across the ring of quads through the edge of the face under the mouse nearest it (Ctrl+R), as one undo step,
+    /// leaving the new edges selected; <paramref name="slide"/> (-1 to 1) moves them along the ring. False when the mouse is over no
+    /// face or the ring crosses no quad.
+    /// </summary>
+    public bool LoopCutMesh(Vector2 pixel, int width, int height, int cuts, float slide)
+    {
+        if (MeshSelection is null || MeshPart is not { } id || FindSelectedPart() is not { } part || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return false;
+        }
+
+        Matrix4x4 toWorld = _scene.Game.World.Get<Transform>(part).ToMatrix();
+        MeshPicker picker = new(solid, toWorld, _camera, width, height);
+        MeshHit? hit = picker.Pick(MeshElement.Face, pixel);
+        if (hit is not { } found)
+        {
+            return false;
+        }
+
+        return ReplaceMesh((current, _) => CutLoops(current, found.Edge, cuts, slide));
+    }
+
+    private IReadOnlySet<int> GetFaces(SolidMesh solid, MeshSelection selected)
+    {
+        if (Mirror)
+        {
+            return MeshMirror.ExpandFaces(solid, selected.Faces);
+        }
+
+        return selected.Faces;
+    }
+
+    private IReadOnlySet<SolidEdge> GetEdges(SolidMesh solid, MeshSelection selected)
+    {
+        if (Mirror)
+        {
+            return MeshMirror.ExpandEdges(solid, selected.Edges);
+        }
+
+        return selected.Edges;
+    }
+
+    // With the mirror on, the ring across the centre line from the edge's is cut the same, unless it is the same ring.
+    private MeshResult? CutLoops(SolidMesh solid, SolidEdge edge, int cuts, float slide)
+    {
+        MeshResult? first = MeshLoopCut.Cut(solid, edge, cuts, slide);
+        if (first is null || !Mirror)
+        {
+            return first;
+        }
+
+        int[] twins = MeshMirror.FindTwins(solid);
+        if (twins[edge.A] < 0 || twins[edge.B] < 0)
+        {
+            return first;
+        }
+
+        SolidEdge twin = SolidEdge.Of(twins[edge.A], twins[edge.B]);
+        SolidTopology topology = new(first.Solid);
+        if (twin == edge || !topology.Edges.Contains(twin) || new SolidTopology(solid).GetEdgeRing(edge).Contains(twin))
+        {
+            return first;
+        }
+
+        MeshResult? second = null;
+        foreach (float candidate in new[] { slide, -slide })
+        {
+            MeshResult? tried = MeshLoopCut.Cut(first.Solid, twin, cuts, candidate);
+            if (tried is not null && MeshMirror.FindTwins(tried.Solid).All(point => point >= 0))
+            {
+                second = tried;
+                break;
+            }
+        }
+
+        if (second is null)
+        {
+            return first;
+        }
+
+        return second with { Edges = [.. first.Edges, .. second.Edges] };
+    }
+
+    private bool ReplaceMesh(Func<SolidMesh, MeshSelection, MeshResult?> tool)
+    {
+        if (MeshSelection is not { } selection || MeshPart is not { } id || _applyMesh is null || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return false;
+        }
+
+        MeshResult? result = tool(solid, selection);
+        if (result is null)
+        {
+            return false;
+        }
+
+        MeshSelection next = new(result.Solid);
+        if (result.Edges.Count > 0)
+        {
+            next.SelectEdges(result.Edges);
+        }
+        else
+        {
+            next.SelectFaces(result.Faces);
+        }
+
+        _meshSolid = result.Solid;
+        MeshSelection = next;
+        _applyMesh(id, result.Solid);
+        MeshModeChanged?.Invoke();
+        return true;
+    }
+
+    private bool EditMesh(Func<SolidMesh, SolidMesh> edit)
+    {
+        if (MeshSelection is not { } selection || selection.Points.Count == 0 || MeshPart is not { } id || _applyMesh is null)
+        {
+            return false;
+        }
+
+        if (_findMesh?.Invoke(id) is not { } solid)
+        {
+            return false;
+        }
+
+        SolidMesh edited = edit(solid);
+        if (Mirror)
+        {
+            edited = MeshMirror.Follow(solid, edited, selection.Points);
+        }
+
+        _meshSolid = edited;
+        selection.TryFollow(edited);
+        _applyMesh(id, edited);
+        return true;
+    }
+
+    /// <summary>The point, edge or face of the entered mesh under the mouse, or null.</summary>
+    public MeshHit? Hover { get; private set; }
+
     public void PointerMoved(Vector2 pixel, int width, int height)
     {
+        Hover = FindMeshHit(pixel, width, height);
+    }
+
+    /// <summary>Adds the entered mesh, its selection and the hover to the overlay; nothing outside the mesh.</summary>
+    public void DrawMesh(OverlayBuilder overlay)
+    {
+        if (MeshSelection is not { } selection || MeshPart is not { } id || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return;
+        }
+
+        if (FindSelectedPart() is not { } part)
+        {
+            return;
+        }
+
+        Matrix4x4 toWorld = _scene.Game.World.Get<Transform>(part).ToMatrix();
+        MeshOverlay.Draw(overlay, _camera, solid, toWorld, selection, Hover);
+    }
+
+    private MeshHit? FindMeshHit(Vector2 pixel, int width, int height)
+    {
+        if (MeshSelection is not { } selection || MeshPart is not { } id || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return null;
+        }
+
+        if (FindSelectedPart() is not { } part)
+        {
+            return null;
+        }
+
+        Matrix4x4 toWorld = _scene.Game.World.Get<Transform>(part).ToMatrix();
+        MeshPicker picker = new(solid, toWorld, _camera, width, height);
+        return picker.Pick(selection.Element, pixel);
     }
 
     public void PointerReleased()
@@ -311,6 +592,11 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         else if (solid != _meshSolid && MeshSelection is { } old)
         {
             _meshSolid = solid;
+            if (old.TryFollow(solid))
+            {
+                return;
+            }
+
             MeshSelection selection = new(solid);
             selection.SetElement(old.Element);
             MeshSelection = selection;

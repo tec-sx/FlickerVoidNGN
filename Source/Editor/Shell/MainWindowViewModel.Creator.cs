@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Assets.Vehicles;
 using FlickerVoid.Editor.Core.Creators;
+using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Runtime.Solids;
@@ -124,7 +125,7 @@ public sealed partial class MainWindowViewModel
 
         EditorScene scene = Viewport.Scene;
         UndoHistory history = _content.GetHistory(file);
-        CreatorMode creator = CreatorMode.InPlace(scene, Viewport.Camera, placed, history, () => SaveCreation(file), FindCreatorMesh);
+        CreatorMode creator = CreatorMode.InPlace(scene, Viewport.Camera, placed, history, () => SaveCreation(file), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror, HangCreatorDoor);
         EnterCreator(creator, file, panel);
     }
 
@@ -139,7 +140,7 @@ public sealed partial class MainWindowViewModel
         EditorScene scene = Viewport.Scene;
         UndoHistory history = _content.GetHistory(path);
         Vehicle vehicle = new() { File = path };
-        CreatorMode creator = CreatorMode.Alone(scene, Viewport.Camera, vehicle, history, () => SaveCreation(path), FindCreatorMesh);
+        CreatorMode creator = CreatorMode.Alone(scene, Viewport.Camera, vehicle, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror, HangCreatorDoor);
         EnterCreator(creator, path, panel);
     }
 
@@ -170,6 +171,14 @@ public sealed partial class MainWindowViewModel
     }
 
     private SolidMesh? FindCreatorMesh(string id) => CreatorPanel?.FindMesh(id);
+
+    private string? HangCreatorDoor(string partId, int face, SolidEdge hinge, DoorOptions options) => CreatorPanel?.HangDoor(partId, face, hinge, options);
+
+    private bool IsCreatorMirrored(string id) => CreatorPanel?.FindMirror(id) == true;
+
+    private void SetCreatorMirror(string id, bool mirror) => CreatorPanel?.SetMirror(id, mirror);
+
+    private void ApplyCreatorMesh(string id, SolidMesh mesh) => CreatorPanel?.SetMesh(id, mesh);
 
     private bool SaveCreation(string path)
     {

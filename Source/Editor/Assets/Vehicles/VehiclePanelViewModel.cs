@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
+using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 
@@ -48,6 +49,28 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
 
         return null;
     }
+
+    /// <summary>Whether the part with the id has its mirror switch on; false for an id the vehicle lacks.</summary>
+    public bool FindMirror(string id)
+    {
+        foreach ((string partId, VehiclePart part) in _document.Vehicle.GetParts())
+        {
+            if (partId == id)
+            {
+                return part.Mirror;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Hangs a door in the part's face on the edge; the new door's id, or null.</summary>
+    public string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options) => _document.HangDoor(partId, face, hinge, options);
+
+    public void SetMirror(string id, bool mirror) => _document.SetMirror(id, mirror);
+
+    /// <summary>Gives the part a new solid, held in the file as one undo step.</summary>
+    public void SetMesh(string id, SolidMesh mesh) => _document.SetMesh(id, mesh);
 
     partial void OnTypeChanged(VehicleType value)
     {

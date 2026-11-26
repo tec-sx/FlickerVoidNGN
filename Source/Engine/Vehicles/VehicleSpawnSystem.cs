@@ -1,11 +1,16 @@
+using System.Numerics;
+
 using Arch.Core;
 using Arch.System;
 
 using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Interaction.Toggles;
+using FlickerVoid.Engine.Physics;
+using FlickerVoid.Engine.Physics.Colliders;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
+using FlickerVoid.Engine.Runtime.Solids;
 
 namespace FlickerVoid.Engine.Vehicles;
 
@@ -63,6 +68,13 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
             if (part.Joint is { } joint)
             {
                 data.With(joint);
+                RigidBody door = GetMovingBody(part);
+                data.With(door);
+            }
+            else
+            {
+                StaticBody standing = GetStandingBody(part);
+                data.With(standing);
             }
 
             if (part.Toggle is { } action)
@@ -75,6 +87,23 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
         }
 
         return parts;
+    }
+
+    /// <summary>A standing part's collision is its own triangles, so walls, floors and openings are exact.</summary>
+    private static StaticBody GetStandingBody(VehiclePart part)
+    {
+        SolidTriangles triangles = part.Mesh.Triangulate();
+        Vector3[] positions = [.. triangles.Vertices.Select(vertex => vertex.Position)];
+        int[] indices = [.. triangles.Indices.Select(index => (int)index)];
+        TriangleCollider collider = new() { Positions = positions, Indices = indices };
+        return new StaticBody { Collider = collider };
+    }
+
+    /// <summary>A part that moves is a kinematic hull of its points that paths go around, which follows it as its joint swings it.</summary>
+    private static RigidBody GetMovingBody(VehiclePart part)
+    {
+        HullCollider collider = new() { Points = [.. part.Mesh.Points] };
+        return new RigidBody { Collider = collider, Kinematic = true, Obstacle = true };
     }
 
     private void HandleChanged(string fullPath)

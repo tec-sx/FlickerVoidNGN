@@ -6,6 +6,7 @@ using Arch.Core;
 
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Creators;
+using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Tests.Scenes;
 using FlickerVoid.Editor.Core.Undo;
@@ -61,13 +62,13 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
     public CreatorMode EnterInPlace(string name)
     {
         Entity placed = Find(name);
-        return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save, FindMesh);
+        return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save, FindMesh, ApplyMesh, IsMirrored, SetMirror, HangDoor);
     }
 
     public CreatorMode EnterAlone()
     {
         Vehicle vehicle = new() { File = File };
-        return CreatorMode.Alone(Scene, Camera, vehicle, FileHistory, Save, FindMesh);
+        return CreatorMode.Alone(Scene, Camera, vehicle, FileHistory, Save, FindMesh, ApplyMesh, IsMirrored, SetMirror, HangDoor);
     }
 
     /// <summary>Writes the car file again with the wheel count, as the creator's panel would.</summary>
@@ -101,6 +102,70 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
         }
 
         return null;
+    }
+
+    /// <summary>The mesh edits the creator reports, one per call.</summary>
+    public List<string> MeshEdits { get; } = [];
+
+    /// <summary>Puts the mesh in the car's part and writes the file, as the creator's panel would.</summary>
+    public void ApplyMesh(string id, SolidMesh mesh)
+    {
+        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        {
+            if (partId == id)
+            {
+                part.Mesh = mesh;
+            }
+        }
+
+        MeshEdits.Add(id);
+        string json = Serialize(_car);
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+        Scene.Content.Write(File, bytes);
+    }
+
+    /// <summary>Hangs the door in the car's part and writes the file, as the creator's panel would.</summary>
+    public string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options)
+    {
+        string? id = DoorTool.Hang(_car, partId, face, hinge, options);
+        if (id is not null)
+        {
+            string json = Serialize(_car);
+            byte[] bytes = Encoding.UTF8.GetBytes(json);
+            Scene.Content.Write(File, bytes);
+        }
+
+        return id;
+    }
+
+    /// <summary>Whether the car's part has its mirror switch on.</summary>
+    public bool IsMirrored(string id)
+    {
+        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        {
+            if (partId == id)
+            {
+                return part.Mirror;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Sets the car's part's mirror switch and writes the file, as the creator's panel would.</summary>
+    public void SetMirror(string id, bool on)
+    {
+        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        {
+            if (partId == id)
+            {
+                part.Mirror = on;
+            }
+        }
+
+        string json = Serialize(_car);
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+        Scene.Content.Write(File, bytes);
     }
 
     public Vector2 PixelOf(Vector3 point) => Camera.Project(point, Width, Height);
