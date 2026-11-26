@@ -125,6 +125,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         hours.Value = 9;
         _builder.ViewModel.UnsavedPaths.Should().Equal(MainWindowViewModelTestsBuilder.Lantern);
         _builder.ViewModel.DataHeading.Should().Be("Lantern.fvdata *");
+        _builder.ViewModel.DataTitle.Should().Be("Lantern *");
         _builder.ViewModel.SaveAssets();
         _builder.ReadFile(MainWindowViewModelTestsBuilder.Lantern).Should().Contain("\"hours\": 9").And.Contain("\"type\": \"lantern\"");
     }
@@ -213,6 +214,49 @@ public sealed class MainWindowViewModelTests : IDisposable
         requested!.Hour = 0;
         _builder.ViewModel.Viewport.Hour.Should().Be(0);
         _builder.ViewModel.Viewport.GetDrawnMood().Exposure.Should().BeApproximately(0.2f, 1e-4f);
+    }
+
+    [Fact]
+    public void AnOpenedEnvironmentGoesInTheDayDockUnderTheViewportAndClosingTheDockForgetsIt()
+    {
+        _builder.WriteFile(Dawn, DawnEnvironment);
+
+        _builder.OpenInBrowser(Dawn, AssetTypes.Environment);
+        bool shown = _builder.ViewModel.IsDayDockOpen;
+        Core.Environments.EnvironmentEditorViewModel? docked = _builder.ViewModel.DayDock;
+        _builder.ViewModel.CloseDayDockCommand.Execute(null);
+
+        shown.Should().BeTrue();
+        docked.Should().NotBeNull();
+        _builder.ViewModel.IsDayDockOpen.Should().BeFalse();
+        _builder.ViewModel.DayDock.Should().BeNull();
+        _builder.ViewModel.Viewport.EnvironmentPath.Should().BeNull();
+    }
+
+    [Fact]
+    public void TheDayTabOpensTheDockOnTheScenesEnvironmentAndClosesIt()
+    {
+        _builder.WriteFile(Dawn, DawnEnvironment);
+        _builder.WriteFile("Dawn.fvscene", """{ "entities": [ { "name": "Look", "components": { "sceneEnvironment": { "environment": "Dawn.fvenv", "startHour": 12 } } } ] }""");
+        _builder.Scene.Open("Dawn.fvscene");
+
+        _builder.ViewModel.ToggleDayDockCommand.Execute(null);
+        bool opened = _builder.ViewModel.IsDayDockOpen;
+        string? path = _builder.ViewModel.DayDockPath;
+        _builder.ViewModel.ToggleDayDockCommand.Execute(null);
+
+        opened.Should().BeTrue();
+        path.Should().Be(Dawn);
+        _builder.ViewModel.IsDayDockOpen.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TheDayTabSaysWhenTheSceneNamesNoEnvironment()
+    {
+        _builder.ViewModel.ToggleDayDockCommand.Execute(null);
+
+        _builder.ViewModel.IsDayDockOpen.Should().BeFalse();
+        _builder.ViewModel.Viewport.Status.Should().Contain("no environment");
     }
 
     [Fact]
