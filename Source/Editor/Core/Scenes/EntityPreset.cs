@@ -29,6 +29,7 @@ public sealed record EntityPreset(string Name, IReadOnlyList<string> Components,
         new("Spot Light", ["transform", "spotLight"], "Light") { Icon = "SpotLight" },
         new("Irradiance Volume", ["transform", "irradianceVolume"], "Light") { Icon = "Grid" },
         new("Scene Mood", ["transform", "sceneMood"], "Light") { Icon = "Mood" },
+        new("Scene Environment", ["transform", "sceneEnvironment"], "Light") { Icon = "Mood" },
         new("Camera", ["transform", "camera"], "Camera") { Icon = "Camera" },
     ];
 
