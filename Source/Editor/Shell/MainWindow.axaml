@@ -99,8 +99,8 @@
     </Border>
     <!-- The viewport over the content browser, and the side column beside them: the context panel over the outliner, or under it
          once swapped. Every splitter resizes. -->
-    <Grid ColumnDefinitions="*,2,300">
-      <Grid RowDefinitions="*,2,160">
+    <Grid ColumnDefinitions="*,1,320">
+      <Grid RowDefinitions="*,1,160">
         <Border Classes="well viewport">
         <Panel>
           <viewports:ViewportControl DataContext="{Binding Viewport}"
@@ -123,7 +123,7 @@
         <assets:AssetBrowserView Grid.Row="2" DataContext="{Binding Assets}" />
       </Grid>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-      <Grid Grid.Column="2" RowDefinitions="*,2,*" Classes="sidePanel">
+      <Grid Grid.Column="2" RowDefinitions="*,1,*" Classes="sidePanel">
         <!-- The context panel holds only what is selected or open, the newest in front; empty, it says how to fill it. -->
         <Panel Grid.Row="{Binding ContextRow}">
           <TextBlock Classes="hint" IsVisible="{Binding !HasContext}" TextWrapping="Wrap" Margin="12" VerticalAlignment="Top"
