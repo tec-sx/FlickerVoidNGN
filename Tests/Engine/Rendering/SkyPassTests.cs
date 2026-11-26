@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 
 namespace FlickerVoid.Engine.Rendering.Tests;
@@ -130,6 +131,45 @@ public sealed class SkyPassTests : IDisposable
     }
 
     [Fact]
+    public void ShowsStarsInADarkSky()
+    {
+        using SkyPassTestsBuilder starless = new();
+        _builder.WithMood(static mood => NightSky(mood) with { StarIntensity = 4 });
+        starless.WithMood(static mood => NightSky(mood) with { StarIntensity = 0 });
+
+        int withStars = Brightest(_builder.Render());
+        int withoutStars = Brightest(starless.Render());
+
+        withStars.Should().BeGreaterThan(withoutStars + 60);
+    }
+
+    [Fact]
+    public void HidesTheStarsUnderABrightSky()
+    {
+        using SkyPassTestsBuilder starless = new();
+        _builder.WithMood(static mood => mood with { StarIntensity = 4, SunGlow = 0, SunDiscIntensity = 0, MoonDiscIntensity = 0, MoonCorona = 0 });
+        starless.WithMood(static mood => mood with { StarIntensity = 0, SunGlow = 0, SunDiscIntensity = 0, MoonDiscIntensity = 0, MoonCorona = 0 });
+
+        uint[] stars = _builder.Render();
+        uint[] none = starless.Render();
+
+        stars.Should().Equal(none, "the day's sky drowns them");
+    }
+
+    [Fact]
+    public void TurnsTheStarsWithTheSun()
+    {
+        using SkyPassTestsBuilder later = new();
+        _builder.WithMood(static mood => NightSky(mood) with { StarIntensity = 4, SunDirection = Vector3.Normalize(new Vector3(0.3f, 1, 0)) });
+        later.WithMood(static mood => NightSky(mood) with { StarIntensity = 4, SunDirection = Vector3.Normalize(new Vector3(-0.3f, 1, 0)) });
+
+        uint[] early = _builder.Render();
+        uint[] turned = later.Render();
+
+        early.Should().NotEqual(turned);
+    }
+
+    [Fact]
     public void DrawsNothingWhileTheRendererHasNoSky()
     {
         _builder.Render();
@@ -138,6 +178,23 @@ public sealed class SkyPassTests : IDisposable
         uint[] pixels = _builder.Render();
 
         SkyPassTestsBuilder.Channels(pixels[Centre]).Should().Be(((byte)0, (byte)0, (byte)0));
+    }
+
+    /// <summary>A dark sky without the sun's and moon's light, the sun below the horizon.</summary>
+    private static LightingMood NightSky(LightingMood mood)
+    {
+        Vector3 dark = new(0.002f, 0.002f, 0.004f);
+        return mood with
+        {
+            SkyZenith = dark,
+            SkyHorizon = dark,
+            SkyGround = dark,
+            SunDirection = Vector3.UnitY,
+            SunGlow = 0,
+            SunDiscIntensity = 0,
+            MoonDiscIntensity = 0,
+            MoonCorona = 0,
+        };
     }
 
     private static int Brightest(uint[] pixels)

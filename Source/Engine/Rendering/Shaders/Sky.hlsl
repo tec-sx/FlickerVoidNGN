@@ -5,7 +5,8 @@
 // turned back through the mood's grade (Grade.hlsl), and it is thin paint (coverage 1, no thickness): over a canvas Post.hlsl
 // lets the canvas's weave through it, so it is painted at the canvas's average brightness times the gradient over the horizon's,
 // a wash the paper shows through. Over it, as light that the grade, bloom and flares take as they take the scene's, the sun's
-// disc and glow and the moon's disc, lit on the side facing the sun, and its corona; the ground hides them below the horizon.
+// disc and glow, the moon's disc, lit on the side facing the sun, and its corona, and the stars, turning about the pole with
+// the sun and drowned where the sky is bright; the ground hides them below the horizon.
 // A thread a pixel.
 
 #include "Frame.hlsl"
@@ -44,12 +45,23 @@ struct SkyData
     float MoonDiscIntensity;
     float MoonCorona;
     float MoonDiscRadians;
+    float StarIntensity;
     float Padding0;
+    float3 StarPole;
     float Padding1;
 };
 
 // How much darker the ground is straight down than at the horizon.
 static const float GroundFalloff = 0.14;
+
+// The stars: cells of a grid this many to a unit round the sky, the share of cells holding a star, and the sky's screen
+// brightness at which they are drowned.
+static const float StarCells = 160;
+static const float StarShare = 0.25;
+static const float StarDrowned = 0.02;
+
+// The sine of the height over the horizon below which the stars fade into the air.
+static const float StarHorizon = 0.1;
 
 // The width of a disc's soft rim, as a share of its radius.
 static const float DiscRim = 0.15;
@@ -160,6 +172,52 @@ float3 MoonLight(SkyData sky, float3 direction)
     return light;
 }
 
+// A direction in the stars' own frame, which turns about the pole with the sun, so they wheel through the night with it.
+float3 ToStars(SkyData sky, float3 direction)
+{
+    float3 pole = sky.StarPole;
+    float3 across = sky.TowardSun - pole * dot(sky.TowardSun, pole);
+    if (dot(across, across) < 1e-6)
+    {
+        across = abs(pole.x) < 0.9 ? float3(1, 0, 0) : float3(0, 0, 1);
+        across -= pole * dot(across, pole);
+    }
+
+    across = normalize(across);
+    float3 side = cross(pole, across);
+    return float3(dot(direction, across), dot(direction, side), dot(direction, pole));
+}
+
+// The stars' light along a direction, a pixel's width across, where the screen's sky is as bright as given; they fade into the
+// thicker air toward the horizon.
+float3 StarLight(SkyData sky, float3 direction, float pixelRadians, float3 screen)
+{
+    float drowned = saturate(1 - dot(screen, ToLuminance) / StarDrowned) * smoothstep(0, StarHorizon, direction.y);
+    if (sky.StarIntensity <= 0 || drowned <= 0)
+    {
+        return 0;
+    }
+
+    float3 star = ToStars(sky, direction) * StarCells;
+    float3 cell = floor(star);
+    uint3 key = uint3(int3(cell) + 4096);
+    uint seed = Hash(key.x ^ Hash(key.y ^ Hash(key.z)));
+    if (HashToUnit(seed) > StarShare)
+    {
+        return 0;
+    }
+
+    float3 centre = cell + float3(HashToUnit(Hash(seed + 1)), HashToUnit(Hash(seed + 2)), HashToUnit(Hash(seed + 3)));
+    float3 towardStar = normalize(centre);
+    float angle = acos(clamp(dot(normalize(star), towardStar), -1, 1));
+    float radius = max(pixelRadians * 0.75, 1e-5);
+    float spot = 1 - smoothstep(radius * 0.5, radius, angle);
+    float brightness = pow(HashToUnit(Hash(seed + 4)), 3);
+    float warmth = HashToUnit(Hash(seed + 5));
+    float3 tint = lerp(float3(0.8, 0.85, 1), float3(1, 0.9, 0.75), warmth);
+    return tint * (spot * brightness * sky.StarIntensity * drowned);
+}
+
 [numthreads(8, 8, 1)]
 void ComputeMain(uint3 id : SV_DispatchThreadID)
 {
@@ -188,7 +246,9 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     if (Sky.Orthographic < 0.5)
     {
         float3 direction = ViewRay(frame, pixel);
-        float3 bodies = SunLight(sky, direction) + MoonLight(sky, direction);
+        float3 next = ViewRay(frame, pixel + float2(0, 1));
+        float pixelRadians = acos(clamp(dot(direction, next), -1, 1));
+        float3 bodies = SunLight(sky, direction) + MoonLight(sky, direction) + StarLight(sky, direction, pixelRadians, screen);
         light += bodies * SkyShare(sky, elevation);
     }
 

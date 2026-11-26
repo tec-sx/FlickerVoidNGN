@@ -34,6 +34,8 @@ public static class MoodValues
         new MoodNumber("moonDiscSize", MoodGroup.Sky, Environment, mood => mood.MoonDiscSize, (mood, value) => mood.MoonDiscSize = value),
         new MoodNumber("moonDiscIntensity", MoodGroup.Sky, Environment, mood => mood.MoonDiscIntensity, (mood, value) => mood.MoonDiscIntensity = value),
         new MoodNumber("moonCorona", MoodGroup.Sky, Environment, mood => mood.MoonCorona, (mood, value) => mood.MoonCorona = value),
+        new MoodDirection("starPole", MoodGroup.Sky, Environment, mood => mood.StarPole, (mood, value) => mood.StarPole = value),
+        new MoodNumber("starIntensity", MoodGroup.Sky, Environment, mood => mood.StarIntensity, (mood, value) => mood.StarIntensity = value),
         new MoodNumber("fogDensity", MoodGroup.Fog, Environment, mood => mood.FogDensity, (mood, value) => mood.FogDensity = value),
         new MoodColor("fogColor", MoodGroup.Fog, Environment, mood => mood.FogColor, (mood, value) => mood.FogColor = value),
         new MoodNumber("fogAnisotropy", MoodGroup.Fog, Environment, mood => mood.FogAnisotropy, (mood, value) => mood.FogAnisotropy = value),

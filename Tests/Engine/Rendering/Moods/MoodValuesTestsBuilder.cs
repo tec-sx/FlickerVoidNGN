@@ -34,6 +34,8 @@ internal sealed class MoodValuesTestsBuilder
             MoonDiscSize = 5,
             MoonDiscIntensity = 3,
             MoonCorona = 0.5f,
+            StarPole = Vector3.Normalize(new Vector3(0, 0.5f, -1)),
+            StarIntensity = 2,
             FogDensity = 0.2f,
             FogColor = new Vector3(0.9f, 0.8f, 0.7f),
             FogAnisotropy = -0.2f,

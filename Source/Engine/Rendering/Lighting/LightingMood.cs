@@ -97,6 +97,13 @@ public sealed record LightingMood
     [Range(0, 100)]
     public float MoonCorona { get; set; } = 0.15f;
 
+    /// <summary>The celestial pole the stars turn about, in world space; the sun's path points it north, as high as the latitude.</summary>
+    public Vector3 StarPole { get; set; } = Vector3.UnitY;
+
+    /// <summary>How bright the stars are, as light; they show only where the sky is dark.</summary>
+    [Range(0, 100)]
+    public float StarIntensity { get; set; } = 1;
+
     /// <summary>How much of the light crossing a world unit of fog it absorbs or scatters, at and below <see cref="FogHeight"/>; 0 clears the air.</summary>
     public float FogDensity { get; set; }
 

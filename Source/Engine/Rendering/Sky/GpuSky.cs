@@ -5,7 +5,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 
 namespace FlickerVoid.Engine.Rendering.Sky;
 
-/// <summary>The sky's colors, sun and moon for the sky shader; mirrors SkyData in Sky.hlsl, 112 bytes.</summary>
+/// <summary>The sky's colors, sun, moon and stars for the sky shader; mirrors SkyData in Sky.hlsl, 128 bytes.</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal readonly record struct GpuSky(
     Vector3 Zenith,
@@ -24,7 +24,9 @@ internal readonly record struct GpuSky(
     float MoonDiscIntensity,
     float MoonCorona,
     float MoonDiscRadians,
+    float StarIntensity,
     float Padding0,
+    Vector3 StarPole,
     float Padding1)
 {
     public static GpuSky From(LightingMood mood)
@@ -50,7 +52,9 @@ internal readonly record struct GpuSky(
             mood.MoonDiscIntensity,
             mood.MoonCorona,
             moonRadius,
+            mood.StarIntensity,
             0,
+            Normalized(mood.StarPole),
             0);
     }
 
