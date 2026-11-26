@@ -1,15 +1,23 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:environments="using:FlickerVoid.Editor.Core.Environments"
-        xmlns:shellenvironments="using:FlickerVoid.Editor.Environments"
-        xmlns:curves="using:FlickerVoid.Editor.Curves"
-        xmlns:corecurves="using:FlickerVoid.Editor.Core.Curves"
-        xmlns:inspector="using:FlickerVoid.Editor.Inspector"
-        x:Class="FlickerVoid.Editor.Environments.EnvironmentEditorWindow"
-        x:DataType="environments:EnvironmentEditorViewModel"
-        Title="{Binding Title, StringFormat='{}{0} - Environment'}"
-        Width="1280" Height="720">
-  <Grid ColumnDefinitions="300,4,*">
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:environments="using:FlickerVoid.Editor.Core.Environments"
+             xmlns:shellenvironments="using:FlickerVoid.Editor.Environments"
+             xmlns:curves="using:FlickerVoid.Editor.Curves"
+             xmlns:corecurves="using:FlickerVoid.Editor.Core.Curves"
+             xmlns:inspector="using:FlickerVoid.Editor.Inspector"
+             x:Class="FlickerVoid.Editor.Environments.EnvironmentEditorView"
+             x:DataType="environments:EnvironmentEditorViewModel"
+             Height="260">
+  <!-- The Day dock: the environment's day under the viewport, its title and Close in a strip over it. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Height="24" Background="{DynamicResource EditorPanelBrush}" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,1,0,1">
+      <DockPanel Margin="8,0,2,0">
+        <Button DockPanel.Dock="Right" Classes="viewportIcon" Content="Close" Click="HandleClose" Padding="6,0"
+                ToolTip.Tip="Close the Day dock; its edits stay unsaved until the assets are saved." />
+        <TextBlock Text="{Binding Title, StringFormat='Day  {0}'}" VerticalAlignment="Center" FontWeight="SemiBold" />
+      </DockPanel>
+    </Border>
+  <Grid ColumnDefinitions="300,1,*">
     <!-- The values at the cursor's hour, by group: editing one writes a key there; ticking it shows its curve. -->
     <Border Grid.Column="0" Classes="well">
       <ScrollViewer>
@@ -63,7 +71,7 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="corecurves:ColorTrack">
             <Grid ColumnDefinitions="*" Height="26" Margin="0,1">
-              <curves:ColorStrip x:Name="Strip" Track="{Binding}" Range="{Binding $parent[Window].((environments:EnvironmentEditorViewModel)DataContext).Curves.Range}" />
+              <curves:ColorStrip x:Name="Strip" Track="{Binding}" Range="{Binding $parent[shellenvironments:EnvironmentEditorView].((environments:EnvironmentEditorViewModel)DataContext).Curves.Range}" />
               <TextBlock Text="{Binding Name}" FontSize="10" Margin="4,1" IsHitTestVisible="False" Foreground="#EDE5D8" />
             </Grid>
           </DataTemplate>
@@ -74,4 +82,5 @@
       </Border>
     </DockPanel>
   </Grid>
-</Window>
+  </DockPanel>
+</UserControl>

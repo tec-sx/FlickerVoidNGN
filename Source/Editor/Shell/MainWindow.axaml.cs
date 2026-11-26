@@ -29,7 +29,6 @@ namespace FlickerVoid.Editor;
 public sealed partial class MainWindow : Window
 {
     private readonly Dictionary<string, FlowEditorWindow> _flows = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, EnvironmentEditorWindow> _environments = new(StringComparer.OrdinalIgnoreCase);
     private MaterialEditorWindow? _materials;
     private ProjectSettingsWindow? _projectSettings;
     private bool _closingDecided;
@@ -129,6 +128,8 @@ public sealed partial class MainWindow : Window
             main.MaterialRequested += ShowMaterial;
             main.FlowRequested += ShowFlow;
             main.EnvironmentRequested += ShowEnvironment;
+            EnvironmentEditorView dayDock = this.GetControl<EnvironmentEditorView>("DayDock");
+            dayDock.CloseRequested += main.CloseDayDock;
             main.TextureRequested += ShowTexture;
             AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
             main.AskUnsaved = AskUnsaved;
@@ -265,31 +266,16 @@ public sealed partial class MainWindow : Window
         window.Show(this);
     }
 
-    /// <summary>Shows the environment in its file's editor window, opening one unless the file has one already.</summary>
+    /// <summary>Shows the environment in the Day dock under the viewport, undone through its file's history.</summary>
     private void ShowEnvironment(string path, EnvironmentEditorViewModel editor)
     {
-        if (_environments.TryGetValue(path, out EnvironmentEditorWindow? open))
-        {
-            open.DataContext = editor;
-            editor.Curves.Fit();
-            open.Activate();
-            return;
-        }
-
         if (DataContext is not MainWindowViewModel main)
         {
             return;
         }
 
-        EnvironmentEditorWindow window = new() { DataContext = editor, History = main.GetEnvironmentHistory(path) };
-        window.AddHandler(AssetPickerView.OpenRequestedEvent, HandleOpenAsset);
-        window.Closed += (_, _) =>
-        {
-            _environments.Remove(path);
-            main.CloseEnvironment(path);
-        };
-        _environments.Add(path, window);
-        window.Show(this);
+        EnvironmentEditorView dock = this.GetControl<EnvironmentEditorView>("DayDock");
+        dock.History = main.GetEnvironmentHistory(path);
     }
 
     private void ShowTexture(TextureEditorViewModel editor)

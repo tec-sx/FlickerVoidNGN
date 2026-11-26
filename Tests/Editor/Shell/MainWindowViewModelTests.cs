@@ -216,6 +216,23 @@ public sealed class MainWindowViewModelTests : IDisposable
     }
 
     [Fact]
+    public void AnOpenedEnvironmentGoesInTheDayDockUnderTheViewportAndClosingTheDockForgetsIt()
+    {
+        _builder.WriteFile(Dawn, DawnEnvironment);
+
+        _builder.OpenInBrowser(Dawn, AssetTypes.Environment);
+        bool shown = _builder.ViewModel.IsDayDockOpen;
+        Core.Environments.EnvironmentEditorViewModel? docked = _builder.ViewModel.DayDock;
+        _builder.ViewModel.CloseDayDockCommand.Execute(null);
+
+        shown.Should().BeTrue();
+        docked.Should().NotBeNull();
+        _builder.ViewModel.IsDayDockOpen.Should().BeFalse();
+        _builder.ViewModel.DayDock.Should().BeNull();
+        _builder.ViewModel.Viewport.EnvironmentPath.Should().BeNull();
+    }
+
+    [Fact]
     public void HoldsEnvironmentEditsUnsavedUntilTheyAreSaved()
     {
         Core.Environments.EnvironmentEditorViewModel? requested = null;

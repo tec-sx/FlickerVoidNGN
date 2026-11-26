@@ -9,6 +9,7 @@
         xmlns:scenes="using:FlickerVoid.Editor.Scenes"
         xmlns:controls="using:FlickerVoid.Editor.Controls"
         xmlns:vehicles="using:FlickerVoid.Editor.Vehicles"
+        xmlns:environments="using:FlickerVoid.Editor.Environments"
         x:Class="FlickerVoid.Editor.MainWindow"
         x:DataType="shell:MainWindowViewModel"
         xmlns:chrome="using:Avalonia.Controls.Chrome"
@@ -106,6 +107,7 @@
       <Grid>
         <Grid.RowDefinitions>
           <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
           <RowDefinition Height="{Binding ContentRowHeight}" MinHeight="0" />
         </Grid.RowDefinitions>
         <Border Classes="well viewport">
@@ -126,7 +128,9 @@
           </Border>
         </Panel>
         </Border>
-        <assets:AssetBrowserView Grid.Row="1" DataContext="{Binding Assets}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).IsContentOpen}" />
+        <!-- The Day dock: an opened environment's day, edited under the viewport it lights. -->
+        <environments:EnvironmentEditorView x:Name="DayDock" Grid.Row="1" DataContext="{Binding DayDock}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).IsDayDockOpen}" />
+        <assets:AssetBrowserView Grid.Row="2" DataContext="{Binding Assets}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).IsContentOpen}" />
       </Grid>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
       <Grid Grid.Column="2" RowDefinitions="*,1,*" Classes="sidePanel">

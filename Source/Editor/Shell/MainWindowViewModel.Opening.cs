@@ -3,6 +3,9 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Assets.Data;
 using FlickerVoid.Editor.Assets.Environments;
@@ -232,7 +235,34 @@ public sealed partial class MainWindowViewModel
         editor.PropertyChanged += HandleEnvironmentChanged;
         Viewport.EnvironmentPath = path;
         Viewport.Hour = editor.Hour;
+        DayDockPath = path;
+        DayDock = editor;
         EnvironmentRequested?.Invoke(path, editor);
+    }
+
+    /// <summary>The environment the Day dock under the viewport edits, or null while the dock is closed.</summary>
+    [ObservableProperty]
+    public partial EnvironmentEditorViewModel? DayDock { get; private set; }
+
+    /// <summary>The file of the environment in the Day dock.</summary>
+    public string? DayDockPath { get; private set; }
+
+    /// <summary>Whether the Day dock is open.</summary>
+    public bool IsDayDockOpen => DayDock is not null;
+
+    partial void OnDayDockChanged(EnvironmentEditorViewModel? value) => OnPropertyChanged(nameof(IsDayDockOpen));
+
+    /// <summary>Closes the Day dock; its environment's edits stay held unsaved.</summary>
+    [RelayCommand]
+    public void CloseDayDock()
+    {
+        if (DayDockPath is { } path)
+        {
+            CloseEnvironment(path);
+        }
+
+        DayDockPath = null;
+        DayDock = null;
     }
 
     private void HandleEnvironmentChanged(object? sender, PropertyChangedEventArgs e)
