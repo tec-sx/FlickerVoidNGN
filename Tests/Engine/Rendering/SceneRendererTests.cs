@@ -1004,12 +1004,29 @@ public sealed class SceneRendererTests : IDisposable
         blue.Should().BeGreaterThan(red, "the ghost near the edge takes the edge's blue");
     }
 
-    /// <summary>A small bright quad in the middle of a 64 by 64 view, lit by a strong lamp, drawn with the mood given.</summary>
-    private uint[] RenderBrightMiddle(Func<LightingMood, LightingMood> mood)
+    [Fact]
+    public void DrawsAGlareStarOnABrightPoint()
+    {
+        const string flare = """{ "ghosts": [], "haloIntensity": 0, "glareIntensity": {0}, "glareLength": 0.3, "glareWidth": 0.01, "glareAngle": 0 }""";
+        _builder.WithFile("Plain.fvflare", flare.Replace("{0}", "0", StringComparison.Ordinal));
+        _builder.WithFile("Glare.fvflare", flare.Replace("{0}", "1", StringComparison.Ordinal));
+        uint[] plain = RenderBrightMiddle(static mood => mood with { Flare = "Plain.fvflare", FlareThreshold = 1, FlareThresholdRange = 1 }, 256);
+
+        uint[] glare = RenderBrightMiddle(static mood => mood with { Flare = "Glare.fvflare" }, 256);
+
+        (byte before, _, _) = SceneRendererTestsBuilder.Channels(plain[(128 * 256) + 180]);
+        (byte along, _, _) = SceneRendererTestsBuilder.Channels(glare[(128 * 256) + 180]);
+        (byte aside, _, _) = SceneRendererTestsBuilder.Channels(glare[(76 * 256) + 128]);
+        along.Should().BeGreaterThan(before, "the star's level streak reaches out from the bright point");
+        aside.Should().BeLessThan(along, "straight above the point lies between the star's streaks");
+    }
+
+    /// <summary>A small bright quad in the middle of a square view, 64 pixels wide unless given, lit by a strong lamp, drawn with the mood given.</summary>
+    private uint[] RenderBrightMiddle(Func<LightingMood, LightingMood> mood, int size = 64)
     {
         const string spot = """{ "name": "Spot", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb" } } }""";
         const string lamp = """{ "name": "Lamp", "components": { "transform": { "position": [0, 0, 0.3] }, "pointLight": { "intensity": 60, "range": 1 } } }""";
-        _builder.WithTargetSize(64);
+        _builder.WithTargetSize(size);
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.1f).WithBaseColor(new Vector4(1, 1, 1, 1)));
         _builder.WithScene(Camera, spot, lamp);
         _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
