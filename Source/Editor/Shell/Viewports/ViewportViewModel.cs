@@ -61,6 +61,7 @@ public sealed partial class ViewportViewModel : ObservableObject
         Timeline = new ShotTimelineViewModel(scene);
         SceneMode = new SceneMode(scene, Camera, Gizmo, Icons, Timeline);
         Mode = SceneMode;
+        MeshTools = new MeshToolsViewModel(() => Creator, message => Status = message);
         Selection.Changed += HandleSelectionChanged;
         scene.Content.Changed += HandleContentChanged;
         scene.Opened += HandleSceneOpened;
@@ -88,6 +89,9 @@ public sealed partial class ViewportViewModel : ObservableObject
 
     /// <summary>What clicks and drags work on now: the scene's mode unless another is open.</summary>
     public IViewportMode Mode { get; private set; }
+
+    /// <summary>The tool bar of the creator's mesh mode.</summary>
+    public MeshToolsViewModel MeshTools { get; private set; }
 
     /// <summary>Whether the viewport's renderer turns on the Vulkan validation layer.</summary>
     public bool Validation { get; }
@@ -229,9 +233,14 @@ public sealed partial class ViewportViewModel : ObservableObject
     /// Q, W, E and R switch the gizmo, unless the right button is held, when they fly the camera; G toggles the game view; Escape
     /// leaves the creator.
     /// </summary>
-    public void KeyPressed(ViewportKey key, ViewportButtons held)
+    public void KeyPressed(ViewportKey key, ViewportButtons held, bool ctrl = false)
     {
         if ((held & ViewportButtons.Right) != 0)
+        {
+            return;
+        }
+
+        if (Creator is not null && PressMeshKey(key, ctrl))
         {
             return;
         }
