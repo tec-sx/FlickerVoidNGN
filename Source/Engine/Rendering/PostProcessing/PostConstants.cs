@@ -24,5 +24,5 @@ internal readonly record struct PostConstants(
     float VignetteRoundness,
     float DirtAmount,
     uint Dirt,
-    float Padding,
+    uint Flare,
     Vector3 VignetteColor);

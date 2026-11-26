@@ -1,4 +1,4 @@
-// Turns the lit scene into the final image: mixes in bloom (more where the lens's dirt is bright), then grades it (Grade.hlsl: exposure, contrast, saturation and tint,
+// Turns the lit scene into the final image: mixes in bloom (more where the lens's dirt is bright), adds the lens flare, then grades it (Grade.hlsl: exposure, contrast, saturation and tint,
 // then the tonemapper's curve), then lays it over the canvas. The scene's alpha is how much paint lies there (0 to 1) plus how
 // thick it stands (0 to 1, from a painting's impasto): bare canvas shows only where nothing was painted, and under paint the
 // canvas never changes its colour, it shows as its threads, the more the thinner the paint, so shadows stay shadows. The canvas is flat and moves
@@ -28,7 +28,7 @@ struct PostConstants
     float VignetteRoundness;
     float DirtAmount;
     uint Dirt;
-    float Padding;
+    uint Flare;
     float3 VignetteColor;
 };
 
@@ -69,17 +69,23 @@ float4 PixelMain(float4 position : SV_Position) : SV_Target
     uint height;
     scene.GetDimensions(width, height);
     float2 uv = position.xy / float2(width, height);
+    float dirt = 0;
+    if (Post.Dirt != None)
+    {
+        dirt = Textures[Post.Dirt].SampleLevel(Samplers[Post.ClampSampler], uv, 0).r * Post.DirtAmount;
+    }
+
     if (Post.BloomTexture != None)
     {
         float3 bloom = Textures[Post.BloomTexture].SampleLevel(Samplers[Post.ClampSampler], uv, 0).rgb;
-        float amount = Post.Bloom;
-        if (Post.Dirt != None)
-        {
-            float dirt = Textures[Post.Dirt].SampleLevel(Samplers[Post.ClampSampler], uv, 0).r;
-            amount = saturate(amount + dirt * Post.DirtAmount);
-        }
+        color = lerp(color, bloom, saturate(Post.Bloom + dirt));
+    }
 
-        color = lerp(color, bloom, amount);
+    // The lens flare adds its light, raised where the lens's dirt catches it, so it shows with no bloom at all.
+    if (Post.Flare != None)
+    {
+        float3 flare = Textures[Post.Flare].SampleLevel(Samplers[Post.ClampSampler], uv, 0).rgb;
+        color += flare * (1 + dirt);
     }
 
     color = Grade(Post.Grade, color);

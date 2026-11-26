@@ -9,7 +9,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 
 namespace FlickerVoid.Engine.Rendering.PostProcessing;
 
-/// <summary>Blurs the lit scene into bloom and grades it into the output target over the mood's paper, as the mood says.</summary>
+/// <summary>Blurs the lit scene into bloom and a lens flare and grades it into the output target over the mood's paper, as the mood says.</summary>
 internal sealed class PostProcessor : IDisposable
 {
     private const string BloomShader = "Bloom";
@@ -19,9 +19,11 @@ internal sealed class PostProcessor : IDisposable
     private readonly IPipeline _down;
     private readonly IPipeline _up;
     private readonly IPipeline _composite;
+    private readonly LensFlares _flares;
 
-    public PostProcessor(IGraphicsDevice device, ShaderLibrary shaders, PixelFormat outputFormat)
+    public PostProcessor(IGraphicsDevice device, ShaderLibrary shaders, PixelFormat outputFormat, int framesInFlight)
     {
+        _flares = new LensFlares(device, shaders, framesInFlight);
         ComputePipelineDescription down = new() { ComputeShader = shaders.Load(BloomShader, "DownMain"), Name = "Bloom down" };
         ComputePipelineDescription up = new() { ComputeShader = shaders.Load(BloomShader, "UpMain"), Name = "Bloom up" };
         _down = device.CreateComputePipeline(down);
@@ -38,14 +40,27 @@ internal sealed class PostProcessor : IDisposable
     }
 
     /// <summary>Post-processes the lit scene at the output's size (<see cref="ScreenTargets.Lit"/>); leaves the output in the RenderTarget state.</summary>
-    public void Run(ICommandList commands, ScreenTargets targets, ITexture output, LightingMood mood, PostCanvas canvas, ITexture? dirt, ISampler clamp, ISampler wrap)
+    public void Run(ICommandList commands, ScreenTargets targets, ITexture output, LightingMood mood, PostCanvas canvas, ITexture? dirt, FlareFile? flare, ISampler clamp, ISampler wrap)
     {
         ITexture lit = targets.Lit;
         commands.Barrier(lit, ResourceState.ShaderRead);
         uint bloom = GpuLight.None;
-        if (mood.Bloom > 0 || dirt is not null)
+        uint flareIndex = GpuLight.None;
+        bool blooms = mood.Bloom > 0 || dirt is not null;
+        if (blooms || flare is not null)
         {
-            DrawBloom(commands, targets, clamp, mood.BloomRadius);
+            DrawDown(commands, targets, clamp);
+        }
+
+        if (flare is not null)
+        {
+            _flares.Run(commands, targets, targets.Bloom[0], flare, mood, clamp);
+            flareIndex = targets.Flare.BindlessIndex;
+        }
+
+        if (blooms)
+        {
+            DrawUp(commands, targets, clamp, mood.BloomRadius);
             bloom = targets.Bloom[0].BindlessIndex;
         }
 
@@ -82,7 +97,7 @@ internal sealed class PostProcessor : IDisposable
             mood.VignetteRoundness,
             dirt is null ? 0 : mood.DirtAmount,
             dirt?.BindlessIndex ?? GpuLight.None,
-            0,
+            flareIndex,
             mood.VignetteColor);
         commands.PushConstants(constants);
         commands.Draw(3);
@@ -91,12 +106,13 @@ internal sealed class PostProcessor : IDisposable
 
     public void Dispose()
     {
+        _flares.Dispose();
         _composite.Dispose();
         _up.Dispose();
         _down.Dispose();
     }
 
-    private void DrawBloom(ICommandList commands, ScreenTargets targets, ISampler clamp, float radius)
+    private void DrawDown(ICommandList commands, ScreenTargets targets, ISampler clamp)
     {
         ITexture[] levels = targets.Bloom;
         commands.SetPipeline(_down);
@@ -108,7 +124,11 @@ internal sealed class PostProcessor : IDisposable
             commands.Barrier(level, ResourceState.ShaderRead);
             source = level;
         }
+    }
 
+    private void DrawUp(ICommandList commands, ScreenTargets targets, ISampler clamp, float radius)
+    {
+        ITexture[] levels = targets.Bloom;
         commands.SetPipeline(_up);
         for (int index = levels.Length - 2; index >= 0; index--)
         {
