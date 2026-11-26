@@ -95,7 +95,7 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
         _shotMood = path;
         MoodOverride? loaded = LoadMoodOrNone(path);
         Director.SetLayer(MoodLayer.Shot, loaded, blendSeconds);
-        Director.Update(_game.Clock.Hour, 0);
+        Director.Update(_game.Clock.Day, _game.Clock.Hour, 0);
     }
 
     public override void Update(in GameTime t)
@@ -103,7 +103,7 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
         FollowScene();
         FollowStory();
         float seconds = (float)t.Elapsed.TotalSeconds;
-        Director.Update(_game.Clock.Hour, seconds);
+        Director.Update(_game.Clock.Day, _game.Clock.Hour, seconds);
     }
 
     public override void Dispose()

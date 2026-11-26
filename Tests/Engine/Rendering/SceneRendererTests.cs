@@ -196,6 +196,20 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void LightsMeshesByTheMoonOnceTheSunHasSet()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: Vector3.Normalize(new Vector3(0, 1, 1)), ambient: 0);
+        _builder.WithMood(static mood => mood with { MoonDirection = Vector3.Normalize(new Vector3(0, -0.5f, -1)), MoonColor = Vector3.One, MoonIntensity = 1 });
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[0]);
+        red.Should().BeInRange(20, 250, "the moon, nearly full and up in front of the quad, lights it while the sun is down");
+    }
+
+    [Fact]
     public void LightsMeshesByThePointLightsInRange()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));

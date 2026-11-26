@@ -62,6 +62,18 @@ public sealed class MoodDirectorTests
     }
 
     [Fact]
+    public void MovesTheMoonWithTheDay()
+    {
+        SunPath path = new(45, 0, 0);
+        MoodDirector director = _builder.WithSunPath(path).BuildStarted();
+
+        director.Update(15, 1, 0.1f);
+
+        Vector3 toMoon = path.TowardMoon(15, 1);
+        director.Current.MoonDirection.Y.Should().BeApproximately(-toMoon.Y, Precision);
+    }
+
+    [Fact]
     public void LetsAMoodThatNamesTheSunsDirectionHoldIt()
     {
         MoodDirector director = _builder

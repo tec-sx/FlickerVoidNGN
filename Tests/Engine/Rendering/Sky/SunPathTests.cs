@@ -84,11 +84,58 @@ public sealed class SunPathTests
         SunPath path = _builder.AtLatitude(45).Build();
         LightingMood mood = new();
 
-        path.Apply(9, mood);
+        path.Apply(0, 9, mood);
 
         Vector3 toSun = path.TowardSun(9);
         mood.SunDirection.X.Should().BeApproximately(-toSun.X, Precision);
         mood.SunDirection.Y.Should().BeApproximately(-toSun.Y, Precision);
         mood.SunDirection.Z.Should().BeApproximately(-toSun.Z, Precision);
+    }
+
+    [Fact]
+    public void PutsAFullMoonOppositeTheSun()
+    {
+        SunPath path = _builder.AtLatitude(45).Build();
+        int fullMoonDay = (int)MathF.Round(SunPath.MoonMonthDays / 2);
+
+        Vector3 toMoon = path.TowardMoon(fullMoonDay, 0);
+
+        toMoon.Y.Should().BeGreaterThan(0.6f, "a full moon stands high at midnight");
+        Vector3.Dot(toMoon, path.TowardSun(0)).Should().BeLessThan(-0.99f);
+    }
+
+    [Fact]
+    public void PutsANewMoonBesideTheSun()
+    {
+        SunPath path = _builder.AtLatitude(45).Build();
+
+        Vector3 toMoon = path.TowardMoon(0, 12);
+
+        Vector3.Dot(toMoon, path.TowardSun(12)).Should().BeGreaterThan(0.99f);
+    }
+
+    [Fact]
+    public void RisesLaterEachDay()
+    {
+        SunPath path = _builder.AtLatitude(45).Build();
+
+        Vector3 today = path.TowardMoon(10, 21);
+        Vector3 tomorrow = path.TowardMoon(11, 21);
+
+        tomorrow.X.Should().BeGreaterThan(today.X, "a day later the moon stands farther back toward the east at the same hour");
+    }
+
+    [Fact]
+    public void WritesTheMoonlightsDirectionAwayFromTheMoon()
+    {
+        SunPath path = _builder.AtLatitude(45).Build();
+        LightingMood mood = new();
+
+        path.Apply(15, 1, mood);
+
+        Vector3 toMoon = path.TowardMoon(15, 1);
+        mood.MoonDirection.X.Should().BeApproximately(-toMoon.X, Precision);
+        mood.MoonDirection.Y.Should().BeApproximately(-toMoon.Y, Precision);
+        mood.MoonDirection.Z.Should().BeApproximately(-toMoon.Z, Precision);
     }
 }

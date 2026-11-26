@@ -25,6 +25,9 @@ public sealed partial class ViewportViewModel
     /// <summary>The environment file an editor has open, drawn in place of the scene's own; null draws the scene's.</summary>
     public string? EnvironmentPath { get; set; }
 
+    /// <summary>The day the viewport draws the moon on: a full moon unless changed.</summary>
+    public int Day { get; set; } = (int)MathF.Round(SunPath.MoonMonthDays / 2);
+
     /// <summary>The mood file the View tab edits, whose values the viewport lays over the environment and lens; null for none.</summary>
     public string? MoodPath { get; set; }
 
@@ -41,7 +44,7 @@ public sealed partial class ViewportViewModel
     }
 
     /// <summary>
-    /// The mood built as the game builds it: the defaults, the environment an editor has open or else the scene's, at <see cref="Hour"/>, with the sun on the scene's path, the lens the main
+    /// The mood built as the game builds it: the defaults, the environment an editor has open or else the scene's, at <see cref="Hour"/>, with the sun and moon on the scene's path, the lens the main
     /// camera names, then the values the mood file names, or, when no mood file is open, the values the View tab's
     /// <see cref="Mood"/> changes from the defaults. A file that can't be read is left out.
     /// </summary>
@@ -56,7 +59,7 @@ public sealed partial class ViewportViewModel
         }
 
         SunPath? sunPath = SceneEnvironment.FindSunPath(world);
-        sunPath?.Apply(Hour, layered);
+        sunPath?.Apply(Day, Hour, layered);
 
         string? lensPath = MainCamera.FindLens(world);
         if (Load(lensPath, RenderingJsonContext.Default.CameraLens) is { } lens)
