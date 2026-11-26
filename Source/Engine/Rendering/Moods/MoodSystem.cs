@@ -5,6 +5,7 @@ using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Serialization;
+using FlickerVoid.Engine.Rendering.Sky;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 
@@ -137,6 +138,9 @@ public sealed partial class MoodSystem : BaseSystem<World, GameTime>
             LightingEnvironment? loaded = LoadEnvironment(environment);
             Director.SetEnvironment(loaded, 0);
         }
+
+        SunPath? path = SceneEnvironment.FindSunPath(World);
+        Director.SetSunPath(path);
     }
 
     private void FollowStory()

@@ -80,11 +80,12 @@ struct FrameData
     // The scene's top-level acceleration structure while the frame traces rays, else 0, an empty one; the table of them
     // (t0, space5) exists only on devices with ray queries.
     uint AccelerationStructure;
+    float3 SunLight;
     // The frame buffer's own bindless index, which LoadFrame was given.
     uint Buffer;
 };
 
-static const uint FrameDataSize = 512;
+static const uint FrameDataSize = 528;
 static const uint None = 0xFFFFFFFF;
 
 // PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
@@ -165,6 +166,7 @@ FrameData LoadFrame(uint index)
     frame.GBufferObjectDepth = buffer.Load<uint>(500);
     frame.GBufferMotion = buffer.Load<uint>(504);
     frame.AccelerationStructure = buffer.Load<uint>(508);
+    frame.SunLight = buffer.Load<float3>(512);
     frame.Buffer = index;
     return frame;
 }

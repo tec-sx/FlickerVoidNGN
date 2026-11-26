@@ -180,6 +180,22 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void LightsMeshesByTheSunsColorAndIntensity()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: -Vector3.UnitZ, ambient: 0);
+        _builder.WithMood(static mood => mood with { SunColor = new Vector3(0.5f, 1, 1) });
+        uint[] dimmed = _builder.Render();
+        _builder.WithMood(static mood => mood with { SunColor = Vector3.One, SunIntensity = 0 });
+        uint[] dark = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(dimmed[0]);
+        red.Should().BeInRange(100, 200, "the sun's red is halved, on the way to the screen's curve");
+        dark.Should().AllBeEquivalentTo(BlackPixel, "a sun of no intensity lights nothing");
+    }
+
+    [Fact]
     public void LightsMeshesByThePointLightsInRange()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));

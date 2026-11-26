@@ -18,6 +18,8 @@ public static class MoodValues
         new MoodNumber("ambient", MoodGroup.Sky, Environment, mood => mood.Ambient, (mood, value) => mood.Ambient = value),
         new MoodNumber("sunShadowDistance", MoodGroup.Sun, Environment, mood => mood.SunShadowDistance, (mood, value) => mood.SunShadowDistance = value),
         new MoodNumber("sunAngle", MoodGroup.Sun, Environment, mood => mood.SunAngle, (mood, value) => mood.SunAngle = value),
+        new MoodColor("sunColor", MoodGroup.Sun, Environment, mood => mood.SunColor, (mood, value) => mood.SunColor = value),
+        new MoodNumber("sunIntensity", MoodGroup.Sun, Environment, mood => mood.SunIntensity, (mood, value) => mood.SunIntensity = value),
         new MoodNumber("fogDensity", MoodGroup.Fog, Environment, mood => mood.FogDensity, (mood, value) => mood.FogDensity = value),
         new MoodColor("fogColor", MoodGroup.Fog, Environment, mood => mood.FogColor, (mood, value) => mood.FogColor = value),
         new MoodNumber("fogAnisotropy", MoodGroup.Fog, Environment, mood => mood.FogAnisotropy, (mood, value) => mood.FogAnisotropy = value),

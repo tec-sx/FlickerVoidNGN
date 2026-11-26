@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Rendering.Serialization;
+using FlickerVoid.Engine.Rendering.Sky;
 
 namespace FlickerVoid.Engine.Rendering.Tests.Moods;
 
@@ -29,6 +30,12 @@ internal sealed class MoodDirectorTestsBuilder
     {
         LightingEnvironment environment = Environment(json);
         _director.SetEnvironment(environment, 0);
+        return this;
+    }
+
+    public MoodDirectorTestsBuilder WithSunPath(SunPath path)
+    {
+        _director.SetSunPath(path);
         return this;
     }
 
