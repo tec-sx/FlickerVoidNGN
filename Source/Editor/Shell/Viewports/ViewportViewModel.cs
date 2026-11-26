@@ -108,6 +108,10 @@ public sealed partial class ViewportViewModel : ObservableObject
 
     partial void OnIsGameViewChanged(bool value) => SceneMode.IsGameView = value;
 
+    /// <summary>Draws the canvas the scene is painted on; off shows the scene without it, in the viewport only.</summary>
+    [ObservableProperty]
+    public partial bool ShowCanvas { get; set; } = true;
+
     /// <summary>Draws the main camera's depth fade, in the viewport and the camera preview.</summary>
     [ObservableProperty]
     public partial bool ShowDepthFade { get; set; } = true;
