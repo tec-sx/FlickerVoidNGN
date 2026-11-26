@@ -232,4 +232,64 @@ public sealed class VehicleFileTests
         properties["body"]!["properties"]!["mesh"]!["required"]!.AsArray().Should().HaveCount(2);
         properties["wheels"]!["type"]!.ToString().Should().Contain("array");
     }
+
+    [Fact]
+    public void ADoorsJointAndToggleAreSavedWithItsPart()
+    {
+        VehicleFile car = VehicleFileTestsBuilder.WithDoor();
+
+        string json = VehicleFileTestsBuilder.Write(car);
+        VehicleFile read = VehicleFileTestsBuilder.Read(json);
+
+        VehiclePart door = read.Doors.Should().ContainSingle().Subject;
+        door.Joint.Should().Be(car.Doors[0].Joint);
+        door.Toggle.Should().Be(car.Doors[0].Toggle);
+        json.Should().Contain("\"joint\"").And.Contain("\"toggle\":\"Interaction.Action.Toggle\"");
+    }
+
+    [Fact]
+    public void ThePartsMirrorSwitchIsSavedOnlyWhenOn()
+    {
+        VehicleFile car = VehicleFile.Create(VehicleType.Car);
+        string plain = VehicleFileTestsBuilder.Write(car);
+        car.Body.Mirror = true;
+
+        string json = VehicleFileTestsBuilder.Write(car);
+
+        plain.Should().NotContain("mirror");
+        json.Should().Contain("\"mirror\":true");
+        VehicleFileTestsBuilder.Read(json).Body.Mirror.Should().BeTrue();
+        VehicleFileTestsBuilder.Read(json).Wheels[0].Mirror.Should().BeFalse();
+    }
+
+    [Fact]
+    public void PartsWithoutAJointOrToggleWriteNeither()
+    {
+        string json = VehicleFileTestsBuilder.Write(VehicleFile.Create(VehicleType.Car));
+
+        json.Should().NotContain("\"joint\"").And.NotContain("\"toggle\"");
+    }
+
+    [Fact]
+    public void DoorsComeAfterTheWheelsAndKeepTheirIds()
+    {
+        VehicleFile car = VehicleFileTestsBuilder.WithDoor();
+        VehiclePart second = new() { Mesh = SolidMesh.Box(Vector3.One) };
+        car.Doors.Add(second);
+
+        car.GetParts().Select(part => part.Id).Should().EndWith(["door.1", "door.2"]);
+        car.GetParts()[^1].Part.Should().BeSameAs(second);
+    }
+
+    [Fact]
+    public void ChangingTheWheelsLeavesTheDoorsAlone()
+    {
+        VehicleFile car = VehicleFileTestsBuilder.WithDoor();
+        VehiclePart door = car.Doors[0];
+
+        car.SetWheelCount(6);
+        car.SetType(VehicleType.Motorcycle);
+
+        car.Doors.Should().ContainSingle().Which.Should().BeSameAs(door);
+    }
 }

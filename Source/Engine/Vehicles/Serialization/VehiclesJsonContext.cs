@@ -13,7 +13,7 @@ namespace FlickerVoid.Engine.Vehicles.Serialization;
     UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     RespectNullableAnnotations = true,
     UseStringEnumConverter = true,
-    Converters = [typeof(Vector3JsonConverter), typeof(QuaternionJsonConverter)])]
+    Converters = [typeof(Vector3JsonConverter), typeof(QuaternionJsonConverter), typeof(TagJsonConverter)])]
 [JsonSerializable(typeof(VehicleFile))]
 [JsonSerializable(typeof(Vehicle))]
 public sealed partial class VehiclesJsonContext : JsonSerializerContext;
