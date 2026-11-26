@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Numerics;
 using System.Text.Json.Serialization;
 
+using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Serialization;
 
 namespace FlickerVoid.Engine.Rendering.PostProcessing;
@@ -40,4 +41,28 @@ public sealed record FlareFile
     /// <summary>How much of the screen, from each edge in, a ghost fades over as it leaves the image.</summary>
     [Range(0.01, 0.5)]
     public float EdgeFade { get; set; } = 0.1f;
+
+    /// <summary>How far from the middle, in screen heights, the halo's ring lies.</summary>
+    [Range(0, 1)]
+    public float HaloRadius { get; set; } = 0.45f;
+
+    /// <summary>How wide the halo's ring is, in screen heights.</summary>
+    [Range(0.001, 0.5)]
+    public float HaloWidth { get; set; } = 0.05f;
+
+    /// <summary>How strongly the halo shows; 0 draws none.</summary>
+    [Range(0, 4)]
+    public float HaloIntensity { get; set; } = 0.1f;
+
+    /// <summary>How far, in screen heights, the halo's red and blue rings part from its green one.</summary>
+    [Range(0, 0.1)]
+    public float HaloChroma { get; set; } = 0.01f;
+
+    /// <summary>The flare's colour in the middle of the screen.</summary>
+    [Color]
+    public Vector3 CenterColor { get; set; } = Vector3.One;
+
+    /// <summary>The flare's colour at the screen's edge, blended from the middle's.</summary>
+    [Color]
+    public Vector3 EdgeColor { get; set; } = Vector3.One;
 }

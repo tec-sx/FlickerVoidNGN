@@ -21,6 +21,7 @@ internal sealed class LensFlares : IDisposable
     private readonly IPipeline _threshold;
     private readonly IPipeline _blur;
     private readonly IPipeline _ghosts;
+    private readonly IPipeline _finish;
     private readonly FrameBufferRing _ghostData;
 
     public LensFlares(IGraphicsDevice device, ShaderLibrary shaders, int framesInFlight)
@@ -28,6 +29,7 @@ internal sealed class LensFlares : IDisposable
         _threshold = Create(device, shaders, "ThresholdMain", "Flare threshold");
         _blur = Create(device, shaders, "BlurMain", "Flare blur");
         _ghosts = Create(device, shaders, "GhostsMain", "Flare ghosts");
+        _finish = Create(device, shaders, "FinishMain", "Flare finish");
         _ghostData = new FrameBufferRing(device, framesInFlight);
     }
 
@@ -58,15 +60,24 @@ internal sealed class LensFlares : IDisposable
             mood.FlareThresholdRange,
             mood.FlareIntensity,
             file.ChromaShift,
-            file.EdgeFade);
-        Dispatch(commands, _threshold, halfScene, targets.FlareThreshold, settings);
-        Dispatch(commands, _blur, targets.FlareThreshold, targets.FlareBlur, settings);
-        Dispatch(commands, _ghosts, targets.FlareBlur, targets.Flare, settings);
+            file.EdgeFade,
+            file.HaloRadius,
+            file.HaloWidth,
+            file.CenterColor,
+            file.HaloIntensity,
+            file.EdgeColor,
+            file.HaloChroma,
+            (float)targets.Flare.Description.Width / targets.Flare.Description.Height);
+        Dispatch(commands, _threshold, halfScene, targets.FlarePing, settings);
+        Dispatch(commands, _blur, targets.FlarePing, targets.FlarePong, settings);
+        Dispatch(commands, _ghosts, targets.FlarePong, targets.FlarePing, settings);
+        Dispatch(commands, _finish, targets.FlarePing, targets.Flare, settings);
     }
 
     public void Dispose()
     {
         _ghostData.Dispose();
+        _finish.Dispose();
         _ghosts.Dispose();
         _blur.Dispose();
         _threshold.Dispose();

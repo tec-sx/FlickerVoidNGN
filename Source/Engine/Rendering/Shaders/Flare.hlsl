@@ -1,6 +1,8 @@
 // Lens flares after Froyok's: the half-size scene goes to quarter size through the bloom's 13-tap filter with a soft threshold
-// (ThresholdMain), one Dual Kawase blur steadies it (BlurMain), and the ghosts copy it scaled about the middle, negative ones
-// mirrored, their colours split along the line from the middle and faded at their rims and the screen's edge (GhostsMain).
+// (ThresholdMain), one Dual Kawase blur steadies it (BlurMain), the ghosts copy it scaled about the middle, negative ones
+// mirrored, their colours split along the line from the middle and faded at their rims and the screen's edge, and John
+// Chapman's halo rings the middle with what lies near it (GhostsMain); a last blur tints it from the middle to the edge and
+// scales it by its intensity (FinishMain).
 
 Texture2D Textures[] : register(t0, space1);
 ByteAddressBuffer Buffers[] : register(t0, space2);
@@ -21,6 +23,13 @@ struct FlareConstants
     float Intensity;
     float ChromaShift;
     float EdgeFade;
+    float HaloRadius;
+    float HaloWidth;
+    float3 CenterColor;
+    float HaloIntensity;
+    float3 EdgeColor;
+    float HaloChroma;
+    float Aspect;
 };
 
 [[vk::push_constant]] ConstantBuffer<FlareConstants> Pass : register(b0, space0);
@@ -89,6 +98,28 @@ float GhostMask(float2 uv)
     return rim * edges.x * edges.y;
 }
 
+// One colour of the halo at this uv: the light lying the ring's radius back toward the middle, the more the nearer that is to
+// the middle, on a ring of the halo's width. Measured in screen heights, so the ring is round.
+float HaloSample(float2 uv, float radius, uint channel)
+{
+    float2 aspect = float2(Pass.Aspect, 1);
+    float2 fromMiddle = (uv - 0.5) * aspect;
+    float distanceFromMiddle = length(fromMiddle);
+    float ring = 1 - smoothstep(0, Pass.HaloWidth, abs(distanceFromMiddle - radius));
+    float2 back = fromMiddle / max(distanceFromMiddle, 1e-5) * radius;
+    float2 sampleUv = (fromMiddle - back) / aspect + 0.5;
+    float near = 1 - saturate(length((sampleUv - 0.5) * aspect) * 2);
+    return Fetch(sampleUv)[channel] * ring * near * near;
+}
+
+float3 Halo(float2 uv)
+{
+    float red = HaloSample(uv, Pass.HaloRadius + Pass.HaloChroma, 0);
+    float green = HaloSample(uv, Pass.HaloRadius, 1);
+    float blue = HaloSample(uv, Pass.HaloRadius - Pass.HaloChroma, 2);
+    return float3(red, green, blue);
+}
+
 [numthreads(8, 8, 1)]
 void GhostsMain(uint3 id : SV_DispatchThreadID)
 {
@@ -110,5 +141,23 @@ void GhostsMain(uint3 id : SV_DispatchThreadID)
         light += float3(red, green, blue) * ghost.rgb * GhostMask(ghostUv);
     }
 
-    RWTextures[Pass.Destination][id.xy] = float4(light * Pass.Intensity, 1);
+    light += Halo(uv) * Pass.HaloIntensity;
+    RWTextures[Pass.Destination][id.xy] = float4(light, 1);
+}
+
+[numthreads(8, 8, 1)]
+void FinishMain(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy >= (uint2)Pass.DestinationSize))
+    {
+        return;
+    }
+
+    float2 uv = (id.xy + 0.5) / Pass.DestinationSize;
+    float2 t = Pass.SourceTexel;
+    float3 color = Fetch(uv) * 4;
+    color += Fetch(uv + t * float2(-1, -1)) + Fetch(uv + t * float2(1, -1)) + Fetch(uv + t * float2(-1, 1)) + Fetch(uv + t * float2(1, 1));
+    float edge = saturate(length(uv * 2 - 1));
+    float3 tint = lerp(Pass.CenterColor, Pass.EdgeColor, edge);
+    RWTextures[Pass.Destination][id.xy] = float4(color / 8 * tint * Pass.Intensity, 1);
 }

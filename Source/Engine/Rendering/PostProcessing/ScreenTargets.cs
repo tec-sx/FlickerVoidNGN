@@ -58,11 +58,11 @@ internal sealed class ScreenTargets : IDisposable
     /// <summary>Half the output's size, then halving again; the first ends up holding the whole glow.</summary>
     public ITexture[] Bloom { get; private set; } = [];
 
-    /// <summary>The bright light a lens flare starts from, at a quarter of the output's size.</summary>
-    public ITexture FlareThreshold { get; private set; } = null!;
+    /// <summary>One of the two quarter-size textures the lens flare's passes write in turn before its last.</summary>
+    public ITexture FlarePing { get; private set; } = null!;
 
-    /// <summary>The flare's threshold blurred once.</summary>
-    public ITexture FlareBlur { get; private set; } = null!;
+    /// <summary>The other of the lens flare's working textures.</summary>
+    public ITexture FlarePong { get; private set; } = null!;
 
     /// <summary>The lens flare, at a quarter of the output's size, added to the image.</summary>
     public ITexture Flare { get; private set; } = null!;
@@ -110,9 +110,9 @@ internal sealed class ScreenTargets : IDisposable
 
         int flareWidth = Math.Max(1, outputWidth >> 2);
         int flareHeight = Math.Max(1, outputHeight >> 2);
-        TextureDescription flare = new(flareWidth, flareHeight, HdrFormat, readWrite) { Name = "Flare threshold" };
-        FlareThreshold = _device.CreateTexture(flare);
-        FlareBlur = _device.CreateTexture(flare with { Name = "Flare blur" });
+        TextureDescription flare = new(flareWidth, flareHeight, HdrFormat, readWrite) { Name = "Flare ping" };
+        FlarePing = _device.CreateTexture(flare);
+        FlarePong = _device.CreateTexture(flare with { Name = "Flare pong" });
         Flare = _device.CreateTexture(flare with { Name = "Flare" });
         return true;
     }
@@ -120,8 +120,8 @@ internal sealed class ScreenTargets : IDisposable
     public void Dispose()
     {
         Flare?.Dispose();
-        FlareBlur?.Dispose();
-        FlareThreshold?.Dispose();
+        FlarePong?.Dispose();
+        FlarePing?.Dispose();
         foreach (ITexture level in Bloom)
         {
             level.Dispose();

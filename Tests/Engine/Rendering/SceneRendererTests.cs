@@ -976,6 +976,63 @@ public sealed class SceneRendererTests : IDisposable
         flared.Should().Equal(plain, "no light is bright enough to flare");
     }
 
+    [Fact]
+    public void RingsALightInTheMiddleWithAHalo()
+    {
+        const string flare = """{ "ghosts": [], "haloRadius": 0.3, "haloWidth": 0.1, "haloIntensity": {0}, "haloChroma": 0 }""";
+        _builder.WithFile("Plain.fvflare", flare.Replace("{0}", "0", StringComparison.Ordinal));
+        _builder.WithFile("Halo.fvflare", flare.Replace("{0}", "1", StringComparison.Ordinal));
+        uint[] plain = RenderBrightMiddle(static mood => mood with { Flare = "Plain.fvflare", FlareThreshold = 1, FlareThresholdRange = 1 });
+
+        uint[] halo = RenderBrightMiddle(static mood => mood with { Flare = "Halo.fvflare" });
+
+        (byte before, _, _) = SceneRendererTestsBuilder.Channels(plain[(32 * 64) + 52]);
+        (byte after, _, _) = SceneRendererTestsBuilder.Channels(halo[(32 * 64) + 52]);
+        after.Should().BeGreaterThan(before, "the halo rings the bright middle at its radius");
+    }
+
+    [Fact]
+    public void TintsTheFlareFromTheMiddleToTheEdge()
+    {
+        _builder.WithFile("Lens.fvflare", """{ "ghosts": [ { "scale": -1, "color": [1, 1, 1] } ], "chromaShift": 0, "haloIntensity": 0, "centerColor": [1, 1, 1], "edgeColor": [0, 0, 1] }""");
+        uint[] plain = RenderBrightCorner(static mood => mood);
+
+        uint[] flared = RenderBrightCorner(static mood => mood with { Flare = "Lens.fvflare", FlareThreshold = 1, FlareThresholdRange = 1 });
+
+        long red = SumRed(flared, 40, 60) - SumRed(plain, 40, 60);
+        long blue = SumBlue(flared, 40, 60) - SumBlue(plain, 40, 60);
+        blue.Should().BeGreaterThan(red, "the ghost near the edge takes the edge's blue");
+    }
+
+    /// <summary>A small bright quad in the middle of a 64 by 64 view, lit by a strong lamp, drawn with the mood given.</summary>
+    private uint[] RenderBrightMiddle(Func<LightingMood, LightingMood> mood)
+    {
+        const string spot = """{ "name": "Spot", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb" } } }""";
+        const string lamp = """{ "name": "Lamp", "components": { "transform": { "position": [0, 0, 0.3] }, "pointLight": { "intensity": 60, "range": 1 } } }""";
+        _builder.WithTargetSize(64);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.1f).WithBaseColor(new Vector4(1, 1, 1, 1)));
+        _builder.WithScene(Camera, spot, lamp);
+        _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0);
+        _builder.WithMood(mood);
+        return _builder.Render();
+    }
+
+    /// <summary>The blue of the square of pixels from <paramref name="from"/> to <paramref name="to"/> on both axes of a 64 by 64 image.</summary>
+    private static long SumBlue(uint[] pixels, int from, int to)
+    {
+        long sum = 0;
+        for (int y = from; y < to; y++)
+        {
+            for (int x = from; x < to; x++)
+            {
+                (_, _, byte blue) = SceneRendererTestsBuilder.Channels(pixels[(y * 64) + x]);
+                sum += blue;
+            }
+        }
+
+        return sum;
+    }
+
     /// <summary>A small bright quad near the top-left corner of a 64 by 64 view, lit by a strong lamp, drawn with the mood given.</summary>
     private uint[] RenderBrightCorner(Func<LightingMood, LightingMood> mood)
     {
