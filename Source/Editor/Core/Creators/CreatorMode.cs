@@ -4,11 +4,13 @@ using Arch.Core;
 
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Meshes;
+using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Editor.Core.Overlays;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Engine.Creations;
+using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
@@ -37,10 +39,11 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     private readonly Action<string, SolidMesh>? _applyMesh;
     private readonly Func<string, bool>? _isMirrored;
     private readonly Action<string, bool>? _setMirror;
+    private readonly Func<string, int, SolidEdge, DoorOptions, string?>? _hangDoor;
     private SolidMesh? _meshSolid;
     private readonly List<Entity> _marked = [];
 
-    private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh, Action<string, SolidMesh>? applyMesh, Func<string, bool>? isMirrored, Action<string, bool>? setMirror)
+    private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh, Action<string, SolidMesh>? applyMesh, Func<string, bool>? isMirrored, Action<string, bool>? setMirror, Func<string, int, SolidEdge, DoorOptions, string?>? hangDoor)
     {
         _scene = scene;
         _camera = camera;
@@ -49,6 +52,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         _applyMesh = applyMesh;
         _isMirrored = isMirrored;
         _setMirror = setMirror;
+        _hangDoor = hangDoor;
         Root = root;
         Placement = placement;
         History = history;
@@ -89,22 +93,22 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// Makes the creation placed in the level, greying the rest of it. <paramref name="findMesh"/> gives the mesh of a part by its id,
     /// for entering the mesh.
     /// </summary>
-    public static CreatorMode InPlace(EditorScene scene, EditorCamera camera, Entity placed, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null, Func<string, bool>? isMirrored = null, Action<string, bool>? setMirror = null)
+    public static CreatorMode InPlace(EditorScene scene, EditorCamera camera, Entity placed, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null, Func<string, bool>? isMirrored = null, Action<string, bool>? setMirror = null, Func<string, int, SolidEdge, DoorOptions, string?>? hangDoor = null)
     {
-        return new CreatorMode(scene, camera, placed, CreatorPlacement.InPlace, history, save, findMesh, applyMesh, isMirrored, setMirror);
+        return new CreatorMode(scene, camera, placed, CreatorPlacement.InPlace, history, save, findMesh, applyMesh, isMirrored, setMirror, hangDoor);
     }
 
     /// <summary>
     /// Makes a creation alone: places a temporary entity with <paramref name="creation"/>, the component that names its file, at the
     /// origin, outside the scene, and sets the level aside.
     /// </summary>
-    public static CreatorMode Alone<T>(EditorScene scene, EditorCamera camera, T creation, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null, Func<string, bool>? isMirrored = null, Action<string, bool>? setMirror = null)
+    public static CreatorMode Alone<T>(EditorScene scene, EditorCamera camera, T creation, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null, Func<string, bool>? isMirrored = null, Action<string, bool>? setMirror = null, Func<string, int, SolidEdge, DoorOptions, string?>? hangDoor = null)
         where T : struct
     {
         World world = scene.Game.World;
         Entity copy = world.Create(new Transform(), creation);
         scene.Game.Lifecycle.Start(world, copy);
-        return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh, applyMesh, isMirrored, setMirror);
+        return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh, applyMesh, isMirrored, setMirror, hangDoor);
     }
 
     public bool Save() => _save();
@@ -265,6 +269,50 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// is selected or all are.
     /// </summary>
     public bool InsetMesh(float thickness) => ReplaceMesh((solid, selected) => MeshInset.Faces(solid, GetFaces(solid, selected), thickness));
+
+    /// <summary>
+    /// Hangs a door (D) in the face of the entered mesh under the mouse, hinged on the face's edge nearest it, as one undo step;
+    /// the new door's id, or null when the mouse is over no face or the door can't be made. The door part is left selected.
+    /// </summary>
+    public string? HangDoor(Vector2 pixel, int width, int height, DoorOptions options)
+    {
+        if (MeshSelection is null || MeshPart is not { } id || _hangDoor is null || FindSelectedPart() is not { } part || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return null;
+        }
+
+        Matrix4x4 toWorld = _scene.Game.World.Get<Transform>(part).ToMatrix();
+        MeshPicker picker = new(solid, toWorld, _camera, width, height);
+        if (picker.Pick(MeshElement.Face, pixel) is not { } hit)
+        {
+            return null;
+        }
+
+        string? door = _hangDoor(id, hit.Index, hit.Edge, options);
+        if (door is not null)
+        {
+            LeaveMesh();
+        }
+
+        return door;
+    }
+
+    /// <summary>Opens or shuts the door part of the vehicle at once, to see it swing; false for a part without a joint and toggle.</summary>
+    public bool SwingDoor(string id)
+    {
+        Entity part = _scene.Game.Services.GetService<CreationParts>()!.Find(Root, id);
+        World world = _scene.Game.World;
+        if (!world.IsAlive(part) || !world.Has<PartJoint, Toggle>(part))
+        {
+            return false;
+        }
+
+        Toggle toggle = world.Get<Toggle>(part);
+        toggle.Open = !toggle.Open;
+        world.Set(part, toggle);
+        _scene.Game.Services.GetService<JointSystem>()!.Snap(part, toggle.Open);
+        return true;
+    }
 
     /// <summary>
     /// Cuts the selected faces into the solid (C) as one undo step: a pocket to a depth, or through it. The floor of a pocket stays
