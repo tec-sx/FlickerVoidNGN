@@ -31,6 +31,7 @@ internal sealed class FrameDataWriter : IDisposable
     private readonly List<GpuDraw> _draws = [];
     private Matrix4x4 _previousViewProjection;
     private Vector2 _previousJitter;
+    private Vector4 _previousDepthAxis;
     private uint _number;
 
     public FrameDataWriter(IGraphicsDevice device, ProbeCache probes, int framesInFlight)
@@ -113,10 +114,13 @@ internal sealed class FrameDataWriter : IDisposable
         {
             _previousViewProjection = view.ViewProjection;
             _previousJitter = context.Jitter;
+            _previousDepthAxis = depthAxis;
         }
 
         Matrix4x4 previousViewProjection = _previousViewProjection;
         Vector2 previousJitter = _previousJitter;
+        Vector4 previousDepthAxis = _previousDepthAxis;
+        _previousDepthAxis = depthAxis;
         _previousViewProjection = view.ViewProjection;
         _previousJitter = context.Jitter;
         DirectionalLight directional = DirectionalLight.Of(mood);
@@ -140,6 +144,14 @@ internal sealed class FrameDataWriter : IDisposable
         {
             rayOcclusion = tracedOcclusion.BindlessIndex;
         }
+
+        uint fogVolume = GpuLight.None;
+        if (context.FogVolume is { } volumeBuffer)
+        {
+            fogVolume = volumeBuffer.BindlessIndex;
+        }
+
+        Vector3 hazeColor = Vector3.Lerp(mood.HazeColor, mood.SkyHorizon, mood.HazeFromSky);
 
         // Ray Reconstruction asks for samples that hold no pattern, so a denoised frame's noise is drawn afresh by its number.
         uint noiseFrame = GpuLight.None;
@@ -190,7 +202,8 @@ internal sealed class FrameDataWriter : IDisposable
             fade.NearStart,
             fade.NearEnd,
             fade.NearAmount,
-            fade.FarColor,
+            fade.NearBurn,
+            Vector2.Zero,
             fade.FarStart,
             fade.FarEnd,
             fade.FarAmount,
@@ -213,7 +226,17 @@ internal sealed class FrameDataWriter : IDisposable
             gBuffer.Motion.BindlessIndex,
             accelerationStructure,
             sunLight,
-            0);
+            0,
+            hazeColor,
+            mood.HazeDensity,
+            mood.HazeStart,
+            mood.HazeMax,
+            mood.HazeHeight,
+            mood.HazeHeightFalloff,
+            previousDepthAxis,
+            mood.FogRange,
+            fogVolume,
+            Vector2.Zero);
 
         IBuffer frame = _frames.Get(size);
         ReadOnlySpan<FrameData> header = new(in data);
