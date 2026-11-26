@@ -58,6 +58,22 @@ public sealed class InspectorViewModelTests : IDisposable
     }
 
     [Fact]
+    public void FilteringShowsOnlyTheComponentsWhoseNameOrFieldsMatch()
+    {
+        _builder.Select("Lamp", new Transform(), new PointLight());
+
+        _builder.ViewModel.FilterText = "intens";
+        string[] byField = [.. _builder.ViewModel.VisibleComponents.Select(component => component.Title)];
+        _builder.ViewModel.FilterText = "transf";
+        string[] byName = [.. _builder.ViewModel.VisibleComponents.Select(component => component.Title)];
+        _builder.ViewModel.FilterText = "";
+
+        byField.Should().Equal("Point Light");
+        byName.Should().Equal("Transform");
+        _builder.ViewModel.VisibleComponents.Should().HaveCount(2);
+    }
+
+    [Fact]
     public void AddsAndRemovesComponents()
     {
         Entity lamp = _builder.Select("Lamp", new Transform(), new PointLight());

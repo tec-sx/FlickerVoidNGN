@@ -45,6 +45,32 @@ public sealed partial class InspectorViewModel : ObservableObject
     public partial IReadOnlyList<ComponentViewModel> Components { get; set; } = [];
 
     /// <summary>The registered components the selected entity doesn't have yet.</summary>
+    /// <summary>Text the components are filtered by: a component stays when its name or one of its fields' labels contains it.</summary>
+    [ObservableProperty]
+    public partial string FilterText { get; set; } = "";
+
+    /// <summary>The components that match <see cref="FilterText"/>.</summary>
+    public IReadOnlyList<ComponentViewModel> VisibleComponents => [.. Components.Where(MatchesFilter)];
+
+    partial void OnFilterTextChanged(string value) => OnPropertyChanged(nameof(VisibleComponents));
+
+    partial void OnComponentsChanged(IReadOnlyList<ComponentViewModel> value) => OnPropertyChanged(nameof(VisibleComponents));
+
+    private bool MatchesFilter(ComponentViewModel component)
+    {
+        if (string.IsNullOrWhiteSpace(FilterText))
+        {
+            return true;
+        }
+
+        if (component.Title.Contains(FilterText, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return component.Fields.Any(field => field.Label.Contains(FilterText, StringComparison.OrdinalIgnoreCase));
+    }
+
     [ObservableProperty]
     public partial IReadOnlyList<SceneComponent> AddableComponents { get; set; } = [];
 
