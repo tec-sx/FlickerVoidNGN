@@ -2,9 +2,10 @@
 // keeps a beam on each seed of a 16 by 16 grid laid on the world around the focus, a thread a seed: the seed's slot follows its
 // cell round the grid, so a seed keeps its beam while it stays in reach and the beams stand still as the focus moves. Each seed
 // finds the ground with a ray straight down from a little above the focus, so it lands on the floor under a roof, not on the
-// roof; from points on a disk round it, rays go toward the sun, and the share of them blocked sets how much of a beam stands
-// there (none in full sun or full shade, most at half) and the distance to what blocks them how tall it is, both eased toward
-// over the frames. DrawMain adds the beams to the lit scene, a thread a pixel: each beam is a soft column from the ground toward
+// roof. A beam stands only where light comes through a gap: the seed itself must see the sun while most of a ring of points two
+// seeds out round it doesn't (a patch of sun on a floor under a window, a broken roof or leaves), so the edge of an open
+// shadow, half lit, draws none. The share of the ring in shade sets the beam's strength and the distance to what shades it
+// how tall the beam is, both eased toward over the frames. DrawMain adds the beams to the lit scene, a thread a pixel: each beam is a soft column from the ground toward
 // the sun, brightest along its axis and thinning to nothing at its edge and its top, fading where it passes behind the scene,
 // in the sun's light times the mood's beam colour and intensity. Each 8 by 8 tile first gathers the beams near it.
 
@@ -41,7 +42,9 @@ static const uint SunRays = 16;
 // How far below the lift the ground ray looks, and how far toward the sun a blocker can stand.
 static const float GroundReach = 20;
 static const float SunReach = 40;
-static const float GoldenAngle = 2.39996323;
+static const float TwoPi = 6.28318531;
+// How far out the ring round a seed lies, in seeds.
+static const float RingSeeds = 2;
 
 // The cell a slot holds: the one within half the grid of the focus's cell that the slot's place round the grid falls on.
 int SlotCell(int slot, int focusCell)
@@ -50,10 +53,11 @@ int SlotCell(int slot, int focusCell)
     return first + ((slot - first) % GridSize + GridSize) % GridSize;
 }
 
-// How much of a beam stands where the given share of the sun's rays is blocked: none at none or all, most at half.
-float BeamStrength(float blocked)
+// How much of a beam stands on a lit seed where the given share of the ring round it is in shade: none up to half, which the
+// straight edge of an open shadow gives, full once nearly all of it is.
+float BeamStrength(float shaded)
 {
-    return saturate(4 * blocked * (1 - blocked));
+    return smoothstep(0.5, 0.9, shaded);
 }
 
 [numthreads(64, 1, 1)]
@@ -79,14 +83,14 @@ void UpdateMain(uint3 id : SV_DispatchThreadID)
     if (ground.Hit && toSun.y > 0.02)
     {
         groundPoint = above - float3(0, ground.Distance - 0.02, 0);
-        float radius = Pass.Spacing * 0.75;
+        RayHit seedHit = TraceClosest(frame, groundPoint, toSun, SunReach);
+        float radius = Pass.Spacing * RingSeeds;
         uint blocked = 0;
         float blockerDistance = 0;
-        for (uint ray = 0; ray < SunRays; ray++)
+        for (uint ray = 0; ray < SunRays && !seedHit.Hit; ray++)
         {
-            float angle = ray * GoldenAngle;
-            float reach = radius * sqrt((ray + 0.5) / SunRays);
-            float3 origin = groundPoint + float3(cos(angle), 0, sin(angle)) * reach;
+            float angle = (ray + 0.5) * TwoPi / SunRays;
+            float3 origin = groundPoint + float3(cos(angle), 0, sin(angle)) * radius;
             RayHit hit = TraceClosest(frame, origin, toSun, SunReach);
             if (hit.Hit)
             {
@@ -95,8 +99,12 @@ void UpdateMain(uint3 id : SV_DispatchThreadID)
             }
         }
 
-        float share = float(blocked) / SunRays;
-        target = BeamStrength(share);
+        if (!seedHit.Hit)
+        {
+            float share = float(blocked) / SunRays;
+            target = BeamStrength(share);
+        }
+
         if (blocked > 0)
         {
             height = blockerDistance / blocked;
