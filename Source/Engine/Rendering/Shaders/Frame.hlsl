@@ -96,6 +96,8 @@ struct FrameData
     // How far the fog is lit along the view, and the integrated fog volume's bindless index (Lighting.hlsl), None without fog.
     float FogRange;
     uint FogVolume;
+    // How hard it rains, from 0 to 1 (LightingMood.Rain), which wets outdoor surfaces.
+    float Rain;
     // The lit scene before glass was drawn over it (TransparentPass), which glass bends and blurs.
     uint Behind;
     // The world glossy surfaces reflect (LightingMood.Reflection), an equirectangular image with its mips, else None; the sampler
@@ -196,6 +198,7 @@ FrameData LoadFrame(uint index)
     frame.PreviousDepthAxis = buffer.Load<float4>(560);
     frame.FogRange = buffer.Load<float>(576);
     frame.FogVolume = buffer.Load<uint>(580);
+    frame.Rain = buffer.Load<float>(584);
     frame.Behind = buffer.Load<uint>(592);
     frame.Reflection = buffer.Load<uint>(596);
     frame.ReflectionSampler = buffer.Load<uint>(600);
@@ -272,6 +275,24 @@ float3 MuteOutside(FrameData frame, float3 color, float3 worldPosition)
 static const uint IndoorSize = 32;
 
 // The share of the mood's ambient light at a point: the least of the indoor volumes it stands in, else all of it.
+// Whether the point stands inside any indoor volume.
+bool IsIndoors(FrameData frame, float3 worldPosition)
+{
+    ByteAddressBuffer buffer = Buffers[frame.Buffer];
+    for (uint index = 0; index < frame.IndoorCount; index++)
+    {
+        uint offset = frame.IndoorsOffset + index * IndoorSize;
+        float3 boxMin = buffer.Load<float3>(offset);
+        float3 boxMax = buffer.Load<float3>(offset + 16);
+        if (IsInBox(worldPosition, boxMin, boxMax))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 float IndoorAmbient(FrameData frame, float3 worldPosition)
 {
     ByteAddressBuffer buffer = Buffers[frame.Buffer];

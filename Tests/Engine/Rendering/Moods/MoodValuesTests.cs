@@ -47,6 +47,14 @@ public sealed class MoodValuesTests
     }
 
     [Fact]
+    public void GroupsRainAndDustAsTheWeather()
+    {
+        IEnumerable<string> weather = MoodValues.All.Where(value => value.Group == MoodGroup.Weather).Select(value => value.Name);
+
+        weather.Should().Equal("rain", "dust");
+    }
+
+    [Fact]
     public void GivesTheLensTheGlowTheFinishTheSkysViewAndTheDepthFadeAndTheEnvironmentTheRest()
     {
         IEnumerable<string> lens = MoodValues.All.Where(value => value.Owner == MoodOwner.Lens).Select(value => value.Name);

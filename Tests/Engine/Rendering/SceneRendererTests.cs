@@ -469,6 +469,95 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void RainDarkensOutdoorSurfaces()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+
+        uint[] dry = _builder.Render();
+        _builder.WithMood(static mood => mood with { Rain = 1 });
+        uint[] wet = _builder.Render();
+
+        (byte dryRed, _, _) = SceneRendererTestsBuilder.Channels(dry[5]);
+        (byte wetRed, _, _) = SceneRendererTestsBuilder.Channels(wet[5]);
+        wetRed.Should().BeLessThan((byte)(dryRed * 0.8f), "wet paint darkens");
+    }
+
+    [Fact]
+    public void RainGivesWetSurfacesAHighlight()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithLight(sunDirection: Down, ambient: 0.25f);
+        _builder.WithMood(static mood => mood with { Rain = 1 });
+
+        uint[] pixels = _builder.Render();
+
+        (_, byte green, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        green.Should().BeGreaterThan(20, "the matte red quad catches a white highlight once wet");
+    }
+
+    [Fact]
+    public void RainLeavesSurfacesIndoorsDry()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Room", "components": { "transform": { "position": [0, -2, 0] }, "indoorVolume": { "size": [4, 4, 4], "ambient": 1 } } }""");
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+
+        uint[] dry = _builder.Render();
+        _builder.WithMood(static mood => mood with { Rain = 1 });
+        uint[] wet = _builder.Render();
+
+        wet[5].Should().Be(dry[5], "rain doesn't reach inside the indoor volume");
+    }
+
+    [Fact]
+    public void DrawsRainStreaksAsHeavyAsTheRain()
+    {
+        _builder.WithTargetSize(64);
+        _builder.WithScene(Camera);
+        _builder.WithLight(sunDirection: Down, ambient: 0.25f);
+
+        uint[] dry = _builder.Render();
+        _builder.WithMood(static mood => mood with { Rain = 1 });
+        uint[] raining = _builder.Render();
+
+        CountLit(dry).Should().Be(0);
+        CountLit(raining).Should().BeGreaterThan(20, "streaks fall through the view");
+    }
+
+    [Fact]
+    public void DrawsNoRainInsideIndoorVolumes()
+    {
+        _builder.WithTargetSize(64);
+        _builder.WithScene(Camera, """{ "name": "Hall", "components": { "transform": { "position": [0, -50, 0] }, "indoorVolume": { "size": [100, 100, 100], "ambient": 1 } } }""");
+        _builder.WithLight(sunDirection: Down, ambient: 0.25f);
+
+        uint[] dry = _builder.Render();
+        _builder.WithMood(static mood => mood with { Rain = 1 });
+        uint[] pixels = _builder.Render();
+
+        pixels.Should().Equal(dry);
+    }
+
+    [Fact]
+    public void LightsDustOnlyWhereLightReachesIt()
+    {
+        _builder.WithTargetSize(64);
+        _builder.WithScene(Camera);
+        _builder.WithMood(static mood => mood with { Dust = 1 });
+
+        _builder.WithLight(sunDirection: Down, ambient: 1);
+        uint[] shaded = _builder.Render();
+        _builder.WithLight(sunDirection: Down, ambient: 0.25f);
+        uint[] sunlit = _builder.Render();
+
+        CountLit(shaded).Should().Be(0, "ambient light alone leaves the motes unseen");
+        CountLit(sunlit).Should().BeGreaterThan(5, "the sun lights the motes it reaches");
+    }
+
+    [Fact]
     public void ShadowOnlyMeshesCastShadowsUnseen()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
@@ -2591,5 +2680,11 @@ public sealed class SceneRendererTests : IDisposable
         Span<Instance> written = batch.Rewrite(copies.Length);
         copies.CopyTo(written);
         return batch;
+    }
+
+    /// <summary>How many pixels show any colour.</summary>
+    private static int CountLit(uint[] pixels)
+    {
+        return pixels.Count(pixel => (pixel & 0xFFFFFF) != 0);
     }
 }

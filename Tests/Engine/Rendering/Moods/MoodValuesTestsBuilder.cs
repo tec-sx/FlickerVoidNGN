@@ -52,6 +52,8 @@ internal sealed class MoodValuesTestsBuilder
             BeamWidth = 0.8f,
             BeamReach = 20,
             BeamColor = new Vector3(1, 0.9f, 0.7f),
+            Rain = 0.6f,
+            Dust = 0.4f,
             HazeDensity = 0.07f,
             HazeStart = 3,
             HazeMax = 0.6f,
