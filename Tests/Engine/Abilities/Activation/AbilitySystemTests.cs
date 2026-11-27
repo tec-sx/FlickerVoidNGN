@@ -61,7 +61,7 @@ public sealed class AbilitySystemTests : IDisposable
         _builder.Attributes.GetValue(_builder.Hero, B.Stamina).Should().Be(1);
         AbilityFailedEvent failure = failed.Should().ContainSingle().Subject;
         failure.Reason.Should().Be(AbilityFailure.Cost);
-        failure.Message.Should().Be("Too tired to sneak.");
+        failure.Message.Text.Should().Be("Too tired to sneak.");
     }
 
     [Fact]

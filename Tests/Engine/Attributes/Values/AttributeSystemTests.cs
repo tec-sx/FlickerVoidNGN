@@ -173,7 +173,7 @@ public sealed class AttributeSystemTests : IDisposable
         AttributeDefinition stealth = _builder.Attributes.FindDefinition(Stealth)!;
         ModifierDefinition plain = _builder.Load<ModifierDefinition>("Rules.fvdata");
 
-        stealth.Display.Name.Should().Be("Stealth");
+        stealth.Display.Name.Text.Should().Be("Stealth");
         stealth.Category.Should().Be(new Tag("Attribute.Skill"));
         stealth.Clamp(4.6f).Should().Be(5);
         plain.Changes.Should().ContainSingle().Which.Operation.Should().Be(ModifierOperation.Add);

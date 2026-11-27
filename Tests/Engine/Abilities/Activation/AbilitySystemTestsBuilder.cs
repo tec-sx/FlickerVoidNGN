@@ -39,7 +39,7 @@ internal sealed class AbilitySystemTestsBuilder : IDisposable
             { "type": "ability", "id": "Ability.Sneak", "tags": [ "Ability.Movement" ], "policy": "WhileInputHeld",
               "ownedTagsWhileActive": [ "Status.Sneaking" ],
               "costs": [ { "$type": "attributeCost", "attribute": "Attribute.Stamina", "amount": 2 } ],
-              "failureMessages": [ { "reason": "Ability.Failure.Cost", "text": "Too tired to sneak." } ] }
+              "failureMessages": [ { "reason": "Ability.Failure.Cost", "text": { "key": "Test.TooTiredToSneak", "text": "Too tired to sneak." } } ] }
             """);
         WithFile("Abilities/Talk.fvdata", """
             { "type": "ability", "id": "Ability.Talk", "tags": [ "Ability.Social" ], "group": "ExclusiveReplace", "blockedTags": [ "Status.Sneaking" ] }

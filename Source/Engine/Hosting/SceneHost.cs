@@ -47,6 +47,7 @@ public sealed partial class SceneHost : IDisposable
         Device = new VulkanGraphicsDevice(deviceOptions, loggerFactory);
         Game = new Game(loggerFactory);
         Game.Services.AddService<IContentManager>(Content);
+        Game.Localization.Load(Content);
         Game.AddRendering();
         Window = new GameWindow(Game, title, 1280, 720);
         Game.AddInput();

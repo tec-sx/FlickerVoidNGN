@@ -17,7 +17,7 @@ public sealed class InteractionSystemTests : IDisposable
             {
               "input": "Input.Use",
               "action": "Interaction.Action.Pull",
-              "display": { "name": "Pull" },
+              "display": { "name": { "key": "Test.Pull", "text": "Pull" } },
               "effects": { "effects": [ { "$type": "fact", "fact": "World.Lever.Pulled", "value": 1 } ] }
             }
           ]
@@ -59,7 +59,7 @@ public sealed class InteractionSystemTests : IDisposable
                 { "input": "Input.Look", "action": "Interaction.Action.Look", "weight": 1 },
                 { "input": "Input.Use", "action": "Interaction.Action.Open", "weight": 5,
                   "conditions": { "conditions": [ { "$type": "fact", "fact": "Has.Key" } ],
-                                  "failurePresentation": "ShowLockedWithReason", "failureReason": "Needs a key" } },
+                                  "failurePresentation": "ShowLockedWithReason", "failureReason": { "key": "Test.NeedsAKey", "text": "Needs a key" } } },
                 { "input": "Input.Steal", "action": "Interaction.Action.Steal",
                   "conditions": { "conditions": [ { "$type": "fact", "fact": "Is.Thief" } ] } }
               ]
@@ -72,7 +72,7 @@ public sealed class InteractionSystemTests : IDisposable
 
         offers.Select(offer => offer.Input.Name).Should().Equal("Input.Use", "Input.Look");
         offers[0].Available.Should().BeFalse();
-        offers[0].LockedReason.Should().Be("Needs a key");
+        offers[0].LockedReason.Text.Should().Be("Needs a key");
         offers[1].CanExecute.Should().BeTrue();
     }
 

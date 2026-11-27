@@ -1,4 +1,5 @@
 using FlickerVoid.Engine.Gameplay.Definitions;
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Gameplay.Scales;
 using FlickerVoid.Engine.Gameplay.Tags;
 
@@ -40,7 +41,7 @@ internal sealed class ScaleDefinitionTestsBuilder
 
     public ScaleDefinition Build()
     {
-        DisplayInfo display = new() { Name = _name };
+        DisplayInfo display = new() { Name = new LocalizedText("", _name) };
         return new ScaleDefinition { Id = _fact, Display = display, Bands = [.. _bands], Links = [.. _links] };
     }
 }

@@ -1,5 +1,6 @@
 using Arch.Core;
 
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Gameplay.Tags;
 
 namespace FlickerVoid.Engine.Dialogue.Conversations;
@@ -15,7 +16,7 @@ public sealed record DialogueLine
     /// <summary>The entity that speaks it; <see cref="Entity.Null"/> when no participant is that speaker.</summary>
     public Entity SpeakerEntity { get; init; } = Entity.Null;
 
-    public string Text { get; init; } = "";
+    public LocalizedText Text { get; init; } = new();
 
     public Tag Mood { get; init; }
 

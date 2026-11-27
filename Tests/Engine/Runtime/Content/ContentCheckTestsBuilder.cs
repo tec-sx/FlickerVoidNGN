@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Loop;
 
@@ -30,6 +31,14 @@ internal sealed class ContentCheckTestsBuilder : IDisposable
         string folder = Path.GetDirectoryName(fullPath)!;
         Directory.CreateDirectory(folder);
         File.WriteAllText(fullPath, json);
+        return this;
+    }
+
+    /// <summary>A text the game writes in code.</summary>
+    public ContentCheckTestsBuilder WithDeclaredText(string key, string text)
+    {
+        LocalizedText declared = new(key, text);
+        _game.Localization.Declare(declared);
         return this;
     }
 

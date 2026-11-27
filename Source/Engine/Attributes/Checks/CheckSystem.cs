@@ -2,6 +2,7 @@ using Arch.Core;
 
 using FlickerVoid.Engine.Attributes.Values;
 using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Entities;
 
@@ -10,7 +11,8 @@ namespace FlickerVoid.Engine.Attributes.Checks;
 /// <summary>Rolls and previews skill checks for the context's instigator, and tells the chance of success.</summary>
 public sealed class CheckSystem(AttributeSystem attributes, Random random)
 {
-    public const string RollLabel = "Roll";
+    /// <summary>The roll's line of a breakdown; a game translates it by listing its key in a table of texts as written.</summary>
+    public static LocalizedText RollLabel { get; } = new("Check.Roll", "Roll", "The dice's part of a skill check's total.");
 
     /// <summary>The check with its roll: the attribute, every bonus whose conditions pass and the dice.</summary>
     public CheckResult Roll(CheckDefinition check, ConditionContext context, int difficulty) => Build(check, context, difficulty, roll: true);
@@ -72,7 +74,7 @@ public sealed class CheckSystem(AttributeSystem attributes, Random random)
         {
             float value = attributes.GetValue(instigator.Entity, check.Attribute);
             int rounded = (int)MathF.Round(value, MidpointRounding.AwayFromZero);
-            string label = GetLabel(check.Attribute);
+            LocalizedText label = GetLabel(check.Attribute);
             total += rounded;
             breakdown.Add(new CheckLine(label, rounded));
         }
@@ -96,17 +98,17 @@ public sealed class CheckSystem(AttributeSystem attributes, Random random)
         return new CheckResult(total >= difficulty, total, difficulty, breakdown);
     }
 
-    private string GetLabel(Tag attribute)
+    private LocalizedText GetLabel(Tag attribute)
     {
         AttributeDefinition? definition = attributes.FindDefinition(attribute);
-        if (definition is not null && definition.Display.Name.Length > 0)
+        if (definition is not null && !definition.Display.Name.IsEmpty)
         {
             return definition.Display.Name;
         }
 
         string name = attribute.Name;
         int dot = name.LastIndexOf('.');
-        return name[(dot + 1)..];
+        return new LocalizedText("", name[(dot + 1)..]);
     }
 
     private int RollDice(CheckRoll roll)

@@ -82,7 +82,7 @@ internal sealed class MapSystemTestsBuilder : IDisposable
         string json = $$"""
             { "name": "{{kind}}", "components": { "transform": { "position": [{{position.X}}, {{position.Y}}, {{position.Z}}] },
               "saveable": { "id": "{{kind}}{{label}}" },
-              "mapMarker": { "definition": "Markers/{{kind}}.fvdata", "label": "{{label}}", "discoveredFact": "{{discoveredFact}}" } } }
+              "mapMarker": { "definition": "Markers/{{kind}}.fvdata", "label": { "key": "Test.{{label}}", "text": "{{label}}" }, "discoveredFact": "{{discoveredFact}}" } } }
             """;
         return Spawn(json);
     }

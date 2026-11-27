@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Components;
 
@@ -14,7 +15,7 @@ public struct MapMarker
     public string Definition { get; set; } = string.Empty;
 
     /// <summary>The name of this place, such as the inn's; empty uses the definition's name.</summary>
-    public string Label { get; set; } = string.Empty;
+    public LocalizedText Label { get; set; } = new();
 
     /// <summary>Set to 1 once the place is discovered; needed by markers with a discovery fragment to keep it.</summary>
     public Tag DiscoveredFact { get; set; }

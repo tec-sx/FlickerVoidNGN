@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Runtime.Tests.Content;
@@ -21,6 +22,8 @@ public struct Signpost
 /// <summary>A data asset naming content files deep in polymorphic values.</summary>
 public sealed class Journey
 {
+    public LocalizedText Title { get; set; } = new();
+
     public List<Leg> Legs { get; set; } = [];
 }
 

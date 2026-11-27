@@ -28,7 +28,7 @@ internal sealed class CheckSystemTestsBuilder : IDisposable
         _folder = Path.Combine(tempPath, folderName);
         Directory.CreateDirectory(_folder);
         WithFile("Attributes/Stealth.fvdata", """
-            { "type": "attribute", "id": "Attribute.Skill.Stealth", "display": { "name": "Stealth" }, "max": 10, "integer": true }
+            { "type": "attribute", "id": "Attribute.Skill.Stealth", "display": { "name": { "key": "Test.Stealth", "text": "Stealth" } }, "max": 10, "integer": true }
             """);
     }
 

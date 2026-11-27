@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 
+using FlickerVoid.Engine.Gameplay.Localization;
+
 namespace FlickerVoid.Engine.Gameplay.Conditions;
 
 /// <summary>Conditions that must all hold, or any one of them, with how the player sees what they guard while they fail.</summary>
@@ -12,7 +14,7 @@ public sealed class ConditionSet
     public ConditionFailurePresentation FailurePresentation { get; set; } = ConditionFailurePresentation.Hidden;
 
     /// <summary>Shown with ShowLockedWithReason.</summary>
-    public string FailureReason { get; set; } = string.Empty;
+    public LocalizedText FailureReason { get; set; } = new();
 
     [JsonIgnore]
     public bool IsEmpty => Conditions.Count == 0;
