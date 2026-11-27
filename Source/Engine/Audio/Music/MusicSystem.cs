@@ -77,7 +77,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
             return;
         }
 
-        List<CueState> stack = GetStack(definition.Bus);
+        List<CueState> stack = GetStackState(definition.Bus);
         if (stack.Count > 0 && IsCue(stack[0], cue))
         {
             return;
@@ -107,7 +107,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
 
     public void Stop(AudioBus bus = AudioBus.Music)
     {
-        List<CueState> stack = GetStack(bus);
+        List<CueState> stack = GetStackState(bus);
         if (stack.Count == 0)
         {
             return;
@@ -127,7 +127,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
             return;
         }
 
-        List<CueState> stack = GetStack(definition.Bus);
+        List<CueState> stack = GetStackState(definition.Bus);
         if (definition.TempoFromBelow && stack.Count > 0)
         {
             definition = definition.WithGridOf(stack[^1].Cue);
@@ -157,7 +157,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
 
     public void Pop(AudioBus bus = AudioBus.Music)
     {
-        List<CueState> stack = GetStack(bus);
+        List<CueState> stack = GetStackState(bus);
         if (stack.Count < 2)
         {
             Stop(bus);
@@ -214,7 +214,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         }
 
         long at = Mixer.Position + LookaheadFrames;
-        List<CueState> stack = GetStack(AudioBus.Music);
+        List<CueState> stack = GetStackState(AudioBus.Music);
         if (stack.Count > 0)
         {
             CueState top = stack[^1];
@@ -227,13 +227,31 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
 
     public string? GetCurrent(AudioBus bus = AudioBus.Music)
     {
-        List<CueState> stack = GetStack(bus);
+        List<CueState> stack = GetStackState(bus);
         return stack.Count == 0 ? null : stack[^1].Name;
+    }
+
+    /// <summary>The cues of a bus's stack, the one heard first.</summary>
+    public IReadOnlyList<MusicStackEntry> GetStack(AudioBus bus)
+    {
+        List<CueState> stack = GetStackState(bus);
+        List<MusicStackEntry> entries = [];
+        for (int index = stack.Count - 1; index >= 0; index--)
+        {
+            CueState state = stack[index];
+            double barFrames = BarFrames(state.Cue);
+            double played = state.Held ? state.HeldFrames : Mixer.Position - state.Start;
+            double bars = barFrames > 0 ? Math.Max(0, played) / barFrames : 0;
+            int layers = state.Tracks.Count(track => track.On);
+            entries.Add(new MusicStackEntry(state.Name, state.Held, state.Held ? bars : 0, bars, layers));
+        }
+
+        return entries;
     }
 
     public MusicPosition GetPosition(AudioBus bus = AudioBus.Music)
     {
-        List<CueState> stack = GetStack(bus);
+        List<CueState> stack = GetStackState(bus);
         if (stack.Count == 0)
         {
             return new MusicPosition(1, 1, 0);
@@ -257,7 +275,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
 
     public bool IsLayerOn(string layer, AudioBus bus = AudioBus.Music)
     {
-        List<CueState> stack = GetStack(bus);
+        List<CueState> stack = GetStackState(bus);
         if (stack.Count == 0)
         {
             return false;
@@ -277,7 +295,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
     /// <summary>The mixer frame a bar of the cue heard on a bus begins on, the bars counted from 1 with fractions; -1 without a cue or a tempo.</summary>
     public long GetFrameOfBar(double bar, AudioBus bus = AudioBus.Music)
     {
-        List<CueState> stack = GetStack(bus);
+        List<CueState> stack = GetStackState(bus);
         if (stack.Count == 0)
         {
             return -1;
@@ -306,12 +324,12 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         double behind = Math.Max(0, bar - 1) * BarFrames(cue);
         state.Start = at - (long)Math.Round(behind);
         state.ActiveFrom = at;
-        GetStack(cue.Bus).Add(state);
+        GetStackState(cue.Bus).Add(state);
     }
 
     public void Seek(double bar, AudioBus bus = AudioBus.Music)
     {
-        List<CueState> stack = GetStack(bus);
+        List<CueState> stack = GetStackState(bus);
         if (stack.Count == 0)
         {
             return;
@@ -337,7 +355,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
 
     public void StopNow(AudioBus bus = AudioBus.Music)
     {
-        List<CueState> stack = GetStack(bus);
+        List<CueState> stack = GetStackState(bus);
         long now = Mixer.Position;
         foreach (CueState cue in stack)
         {
@@ -387,7 +405,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
 
     public float TakeLayerLevel(string layer, AudioBus bus = AudioBus.Music)
     {
-        List<CueState> stack = GetStack(bus);
+        List<CueState> stack = GetStackState(bus);
         if (stack.Count == 0)
         {
             return 0;
@@ -529,7 +547,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         return NextLine(cue, earliest, MusicQuantize.Bar);
     }
 
-    private List<CueState> GetStack(AudioBus bus)
+    private List<CueState> GetStackState(AudioBus bus)
     {
         if (!_stacks.TryGetValue(bus, out List<CueState>? stack))
         {
@@ -979,7 +997,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
                 continue;
             }
 
-            List<CueState> stack = GetStack(saved.Bus);
+            List<CueState> stack = GetStackState(saved.Bus);
             if (stack.Count > 0)
             {
                 stack[^1].Held = true;

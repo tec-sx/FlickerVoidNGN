@@ -233,6 +233,23 @@ public sealed class MusicSystemTests : IDisposable
     }
 
     [Fact]
+    public void DescribesTheStackFromTheTopDownWithWhatHoldsBelow()
+    {
+        string street = _builder.WithCue("Street", """{ "name": "Lead", "loop": "TwoBars.wav" }""");
+        string hub = _builder.WithCue("Hub", """{ "name": "Song", "loop": "TwoBars.wav" }""");
+        Start(street);
+        _builder.PlayUntilBar(2.5);
+        _builder.Music.Push(hub);
+        _builder.PlayFor(MusicSystemTestsBuilder.BarFrames * 3);
+
+        IReadOnlyList<MusicStackEntry> stack = _builder.Music.GetStack(AudioBus.Music);
+
+        stack.Select(entry => entry.Cue).Should().Equal(hub, street);
+        stack.Select(entry => entry.IsHeld).Should().Equal(false, true);
+        stack[1].HeldBars.Should().BeGreaterThanOrEqualTo(2);
+    }
+
+    [Fact]
     public void ContinuesACueBelowAtItsNextContinuePointInsteadOfWhereItStopped()
     {
         string street = _builder.WithCue("Street", """{ "name": "Lead", "loop": "TwoBars.wav" }""", "\"tempo\": 480, \"continuePoints\": [ { \"name\": \"Start\", \"bar\": 1 } ]");
