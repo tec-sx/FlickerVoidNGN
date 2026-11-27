@@ -8,8 +8,8 @@ using FlickerVoid.Engine.Vehicles;
 namespace FlickerVoid.Editor.Assets.Vehicles;
 
 /// <summary>
-/// The vehicle creator's panel: the vehicle's type, its wheel count among those the type takes, and its parts, each choice written
-/// to the file through the document; and its look from Blender: Open in Blender, the switch between look and greyboxes, and what
+/// The vehicle creator's panel: the vehicle's type, its wheel count among those the type takes, its parts and how it drives, each choice
+/// written to the file through the document; and its look from Blender: Open in Blender, the switch between look and greyboxes, and what
 /// the look covers.
 /// </summary>
 public sealed partial class VehiclePanelViewModel : ObservableObject
@@ -113,6 +113,40 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
     [ObservableProperty]
     public partial int WheelCount { get; set; }
 
+    public IReadOnlyList<DrivenAxles> DrivenChoices { get; } = Enum.GetValues<DrivenAxles>();
+
+    /// <summary>The vehicle's weight, in kilograms.</summary>
+    [ObservableProperty]
+    public partial float Mass { get; set; }
+
+    /// <summary>The engine's greatest torque, in newton metres.</summary>
+    [ObservableProperty]
+    public partial float EngineTorque { get; set; }
+
+    /// <summary>The brakes' greatest torque on each wheel, in newton metres.</summary>
+    [ObservableProperty]
+    public partial float BrakeTorque { get; set; }
+
+    /// <summary>Which axles the engine turns.</summary>
+    [ObservableProperty]
+    public partial DrivenAxles Driven { get; set; }
+
+    /// <summary>How far the front wheels turn at full steering, in degrees.</summary>
+    [ObservableProperty]
+    public partial float Steer { get; set; }
+
+    /// <summary>How far each wheel travels on its suspension, in metres.</summary>
+    [ObservableProperty]
+    public partial float SuspensionTravel { get; set; }
+
+    /// <summary>How fast the suspension springs back, in cycles a second.</summary>
+    [ObservableProperty]
+    public partial float SuspensionFrequency { get; set; }
+
+    /// <summary>How quickly the suspension stops bouncing, from 0 to 1.</summary>
+    [ObservableProperty]
+    public partial float SuspensionDamping { get; set; }
+
     /// <summary>The ids of the vehicle's parts: its body, then its wheels from the front.</summary>
     [ObservableProperty]
     public partial IReadOnlyList<string> Parts { get; private set; } = [];
@@ -174,6 +208,51 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
         Show();
     }
 
+    partial void OnMassChanged(float value) => WriteDrive();
+
+    partial void OnEngineTorqueChanged(float value) => WriteDrive();
+
+    partial void OnBrakeTorqueChanged(float value) => WriteDrive();
+
+    partial void OnDrivenChanged(DrivenAxles value) => WriteDrive();
+
+    partial void OnSteerChanged(float value) => WriteDrive();
+
+    partial void OnSuspensionTravelChanged(float value) => WriteDrive();
+
+    partial void OnSuspensionFrequencyChanged(float value) => WriteDrive();
+
+    partial void OnSuspensionDampingChanged(float value) => WriteDrive();
+
+    /// <summary>Writes the drive the panel shows to the file; values a vehicle can't drive with are put back.</summary>
+    private void WriteDrive()
+    {
+        if (_showing)
+        {
+            return;
+        }
+
+        bool drives = Mass > 0 && EngineTorque >= 0 && BrakeTorque >= 0 && Steer is >= 0 and <= 80 && SuspensionTravel > 0
+            && SuspensionFrequency > 0 && SuspensionDamping is >= 0 and <= 1;
+        if (drives)
+        {
+            VehicleDrive drive = new()
+            {
+                Mass = Mass,
+                EngineTorque = EngineTorque,
+                BrakeTorque = BrakeTorque,
+                Driven = Driven,
+                Steer = Steer,
+                SuspensionTravel = SuspensionTravel,
+                SuspensionFrequency = SuspensionFrequency,
+                SuspensionDamping = SuspensionDamping,
+            };
+            _document.SetDrive(drive);
+        }
+
+        Show();
+    }
+
     private void Show()
     {
         if (_showing)
@@ -188,6 +267,15 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
         WheelCount = vehicle.Wheels.Count;
         IReadOnlyList<(string Id, VehiclePart Part)> parts = vehicle.GetParts();
         Parts = [.. parts.Select(static part => part.Id)];
+        VehicleDrive drive = vehicle.GetDrive();
+        Mass = drive.Mass;
+        EngineTorque = drive.EngineTorque;
+        BrakeTorque = drive.BrakeTorque;
+        Driven = drive.Driven;
+        Steer = drive.Steer;
+        SuspensionTravel = drive.SuspensionTravel;
+        SuspensionFrequency = drive.SuspensionFrequency;
+        SuspensionDamping = drive.SuspensionDamping;
         _showing = false;
     }
 }

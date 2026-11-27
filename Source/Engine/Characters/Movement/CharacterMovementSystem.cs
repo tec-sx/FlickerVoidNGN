@@ -5,6 +5,7 @@ using Arch.System;
 
 using FlickerVoid.Engine.Physics;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Events;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -32,7 +33,7 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
     private static readonly QueryDescription Walking = new QueryDescription().WithAll<CharacterMover, Destination, Transform>();
     private static readonly QueryDescription Turning = new QueryDescription().WithAll<CharacterMover, Facing, Transform>();
     private static readonly QueryDescription Steered = new QueryDescription().WithAll<CharacterMover, Heading, Transform>();
-    private static readonly QueryDescription Standing = new QueryDescription().WithAll<CharacterMover, Transform>().WithNone<Destination, Heading>();
+    private static readonly QueryDescription Standing = new QueryDescription().WithAll<CharacterMover, Transform>().WithNone<Destination, Heading, NestedUnder>();
 
     private readonly EventBus _events;
     private readonly IPhysicsSystem? _physics;

@@ -50,6 +50,46 @@ public sealed class VehiclePanelViewModelTests : IDisposable
     }
 
     [Fact]
+    public void ShowsTheDriveAVehicleOfItsTypeStartsWith()
+    {
+        VehiclePanelViewModel panel = _builder.Build();
+
+        panel.Mass.Should().Be(1500);
+        panel.EngineTorque.Should().Be(500);
+        panel.Driven.Should().Be(DrivenAxles.Rear);
+        panel.Steer.Should().Be(35);
+        panel.DrivenChoices.Should().Equal(DrivenAxles.Rear, DrivenAxles.Front, DrivenAxles.All);
+        _builder.Content.IsUnsaved("Van.fvvehicle").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ChangingADriveValueWritesTheDriveToTheFile()
+    {
+        VehiclePanelViewModel panel = _builder.Build();
+
+        panel.Mass = 900;
+        panel.Driven = DrivenAxles.All;
+
+        VehicleDrive drive = _builder.Load().GetDrive();
+        drive.Mass.Should().Be(900);
+        drive.Driven.Should().Be(DrivenAxles.All);
+        drive.EngineTorque.Should().Be(500, "the values left alone are kept");
+    }
+
+    [Fact]
+    public void PutsBackADriveValueAVehicleCantDriveWith()
+    {
+        VehiclePanelViewModel panel = _builder.Build();
+
+        panel.Mass = 0;
+        panel.SuspensionDamping = 2;
+
+        panel.Mass.Should().Be(1500);
+        panel.SuspensionDamping.Should().Be(0.5f);
+        _builder.Content.IsUnsaved("Van.fvvehicle").Should().BeFalse();
+    }
+
+    [Fact]
     public void RefusesAWheelCountTheTypeDoesNotTake()
     {
         VehiclePanelViewModel panel = _builder.Build();

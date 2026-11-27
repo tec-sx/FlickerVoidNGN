@@ -37,13 +37,13 @@ Each module's behaviour, API and decisions are in `Docs/Modules`; read the one y
 - `Scenes.md`: greyboxes and solids, entity templates and classes, data assets and tables, scene travel, names and references, the game loop.
 - `Input.md`: input maps, actions, contexts and captures.
 - `Characters.md`: point and click movement, bodies, paths and perception.
-- `Physics.md`: the physics interface, bodies and colliders, and the move to Jolt.
+- `Physics.md`: the physics interface, bodies and colliders, wheeled bodies, and the move to Jolt.
 - `Cameras.md`: shots, the director, layers, triggers, cues, scripting, the depth fade and cutaways.
 - `Environment.md`: curves of numbers and colors over time, the mood's values, mood overrides, environment files, the world clock, and the mood director and system that build the mood on screen from layers, and lens files.
 - `Interaction.md`, `Maps.md`, `Inventory.md`, `Attributes.md` (attributes and abilities), `Flow.md`, `Story.md` (quests, knowledge and dialogue), `Saves.md` and `Ui.md` (the game's interface and stages).
 - `Creations.md`: the parts of creations: kinds, spawning under a placed entity and patching by part id.
 - `Projects.md`: users' projects, the solutions, `.fvproject` files, the editor's project picker and splash, Compile and Play, and the template.
-- `Vehicles.md`: vehicle files, their parts and the wheel rules, vehicles placed in levels, and their looks from Blender (the round trip).
+- `Vehicles.md`: vehicle files, their parts and the wheel rules, vehicles placed in levels, their looks from Blender (the round trip), and driving.
 
 ## Porting from Unreal
 

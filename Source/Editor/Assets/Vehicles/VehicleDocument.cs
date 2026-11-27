@@ -28,6 +28,13 @@ public sealed class VehicleDocument(UnsavedContent content, string path)
         Hold();
     }
 
+    /// <summary>Sets how the vehicle drives, held in the file as one undo step.</summary>
+    public void SetDrive(VehicleDrive drive)
+    {
+        Vehicle.Drive = drive;
+        Hold();
+    }
+
     /// <summary>Gives the part with the id a new solid, such as one a mesh tool made; throws for an id the vehicle lacks.</summary>
     public void SetMesh(string id, SolidMesh mesh)
     {
