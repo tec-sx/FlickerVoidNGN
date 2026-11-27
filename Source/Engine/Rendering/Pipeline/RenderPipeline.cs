@@ -1,6 +1,11 @@
+using System.Diagnostics;
+
 namespace FlickerVoid.Engine.Rendering.Pipeline;
 
-/// <summary>The ordered render passes that draw a frame; owns them and disposes them with itself.</summary>
+/// <summary>
+/// The ordered render passes that draw a frame; owns them and disposes them with itself. While the frame has a profile, it times
+/// each pass on the CPU and wraps its GPU work in a timer named after it.
+/// </summary>
 public sealed class RenderPipeline : IDisposable
 {
     private readonly List<IRenderPass> _passes = [];
@@ -55,17 +60,37 @@ public sealed class RenderPipeline : IDisposable
 
     public void Prepare(RenderContext context)
     {
+        RenderProfile? profile = context.Profile;
         foreach (IRenderPass pass in _passes)
         {
+            long start = Stopwatch.GetTimestamp();
             pass.Prepare(context);
+            if (profile is not null)
+            {
+                TimeSpan elapsed = Stopwatch.GetElapsedTime(start);
+                profile.AddCpu(pass.Name, elapsed.TotalMilliseconds);
+            }
         }
     }
 
     public void Execute(RenderContext context)
     {
+        RenderProfile? profile = context.Profile;
         foreach (IRenderPass pass in _passes)
         {
+            if (profile is null)
+            {
+                pass.Execute(context);
+                continue;
+            }
+
+            string name = pass.Name;
+            long start = Stopwatch.GetTimestamp();
+            context.Commands.BeginTimer(name);
             pass.Execute(context);
+            context.Commands.EndTimer();
+            TimeSpan elapsed = Stopwatch.GetElapsedTime(start);
+            profile.AddCpu(name, elapsed.TotalMilliseconds);
         }
     }
 

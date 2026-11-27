@@ -6,6 +6,9 @@ namespace FlickerVoid.Engine.Rendering.Pipeline;
 /// </summary>
 public interface IRenderPass : IDisposable
 {
+    /// <summary>Names the pass in timings: its type's name by default.</summary>
+    string Name => GetType().Name;
+
     /// <summary>Works out what the pass needs this frame, before the frame's data is uploaded.</summary>
     void Prepare(RenderContext context);
 

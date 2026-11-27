@@ -19,12 +19,17 @@ public static class EngineDebugWindows
         ui.Windows.Add(console);
     }
 
-    /// <summary>Adds Rendering (features, through the game's <see cref="RenderingSettings"/> when given, and lighting mood) and Lights to the Rendering menu.</summary>
+    /// <summary>
+    /// Adds Rendering (features, through the game's <see cref="RenderingSettings"/> when given, and lighting mood), Profiler (time
+    /// per render pass) and Lights to the Rendering menu.
+    /// </summary>
     public static void AddRenderingWindows(this DebugUi ui, SceneRenderer renderer, World world, RenderingSettings? settings = null)
     {
         RenderingWindow rendering = new(renderer, settings);
+        ProfilerWindow profiler = new(renderer);
         LightsWindow lights = new(world);
         ui.Windows.Add(rendering);
+        ui.Windows.Add(profiler);
         ui.Windows.Add(lights);
     }
 }

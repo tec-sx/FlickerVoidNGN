@@ -41,6 +41,8 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     private readonly Game _game;
     private IGraphicsDevice? _device;
     private SceneRenderer? _renderer;
+    // One command list for every frame, as a window's are reused, so each frame can read the GPU timers of the one before.
+    private ICommandList? _commands;
     private Vector3 _sunDirection = -Vector3.UnitZ;
     private float _ambient = 1;
     private float _fogDensity;
@@ -257,7 +259,8 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
         int pitch = PixelFormat.Rgba8UNorm.GetCopyRowPitch(_targetSize);
         BufferDescription readbackDescription = new(pitch * _targetSize, BufferUsage.CopyDestination, MemoryLocation.Readback);
         using IBuffer readback = device.CreateBuffer(readbackDescription);
-        using ICommandList commands = device.CreateCommandList();
+        _commands ??= device.CreateCommandList();
+        ICommandList commands = _commands;
 
         commands.Begin();
         renderer.Render(commands, _game.World, color);
@@ -375,6 +378,11 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     /// <summary>What the last <see cref="Render"/> drew and culled.</summary>
     public RenderStatistics Statistics => _renderer!.Statistics;
 
+    public RenderProfile Profile => _renderer!.Profile;
+
+    /// <summary>Whether the device under test writes timestamps, so frames are timed on the GPU too.</summary>
+    public bool HasTimestamps => _device!.Features.HasFlag(GraphicsFeatures.Timestamps);
+
     /// <summary>A pixel as Rgba8UNorm bytes read back little-endian.</summary>
     /// <summary>The next mip level of RGBA8 texels: each texel the average of the two by two below it.</summary>
     private static uint[] HalveLevel(uint[] texels, int width, int height)
@@ -419,6 +427,7 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     public void Dispose()
     {
         _renderer?.Dispose();
+        _commands?.Dispose();
         _device?.Dispose();
         _game.Dispose();
         _loggerFactory.Dispose();

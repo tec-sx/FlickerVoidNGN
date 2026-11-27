@@ -224,6 +224,7 @@ public sealed unsafe class DebugUi : IFrameOverlay, IPointerCapture, IKeyboardCa
             }
 
             bool open = true;
+            ImGui.SetNextWindowSize(window.DefaultSize, ImGuiCond.FirstUseEver);
             if (ImGui.Begin(window.Title, ref open))
             {
                 window.Render();

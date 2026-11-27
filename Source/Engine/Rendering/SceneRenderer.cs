@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 
 using Arch.Core;
@@ -188,20 +189,30 @@ public sealed class SceneRenderer : IDisposable
     /// <summary>What the last frame drew and culled.</summary>
     public RenderStatistics Statistics => _context.Statistics;
 
+    /// <summary>
+    /// Whether it times its frames into <see cref="Profile"/>: each pass on the CPU and, in a timer named after it, on the GPU,
+    /// with the extraction from the world. Off by default; the debug interface's Profiler turns it on. The GPU times are read
+    /// from the command list it draws with, so it should be the only renderer profiling on that list.
+    /// </summary>
+    public bool Profiling { get; set; }
+
+    /// <summary>The CPU and GPU time per pass, averaged over about a second, while <see cref="Profiling"/> is on.</summary>
+    public RenderProfile Profile { get; } = new();
+
     /// <summary>The pass that finds the frame's probes and traces them live, which the baker bakes through.</summary>
     internal ProbePass ProbePass => _probePass;
 
     /// <summary>Draws the world from its first camera into the color target, or clears it without one; leaves it in the RenderTarget state.</summary>
     public void Render(ICommandList commands, World world, ITexture colorTarget)
     {
-        Extractor.Extract(world, _scene);
+        Extract(world);
         Render(commands, _scene, colorTarget);
     }
 
     /// <summary>Draws the world through the given camera into the color target; leaves it in the RenderTarget state.</summary>
     public void Render(ICommandList commands, World world, ITexture colorTarget, in Camera camera, in Transform cameraTransform)
     {
-        Extractor.Extract(world, _scene);
+        Extract(world);
         RenderView(commands, colorTarget, camera, cameraTransform);
     }
 
@@ -251,8 +262,27 @@ public sealed class SceneRenderer : IDisposable
         _white.Dispose();
     }
 
+    /// <summary>Fills the render scene from the world, timed while profiling.</summary>
+    private void Extract(World world)
+    {
+        long start = Stopwatch.GetTimestamp();
+        Extractor.Extract(world, _scene);
+        if (Profiling)
+        {
+            TimeSpan elapsed = Stopwatch.GetElapsedTime(start);
+            Profile.AddCpu("Extract", elapsed.TotalMilliseconds);
+        }
+    }
+
     private void RenderView(ICommandList commands, ITexture colorTarget, in Camera camera, in Transform cameraTransform)
     {
+        RenderProfile? profile = null;
+        if (Profiling)
+        {
+            profile = Profile;
+            profile.AddGpu(commands.Timings);
+        }
+
         int width = colorTarget.Description.Width;
         int height = colorTarget.Description.Height;
         bool rayTracing = RayTracing && Device.Features.HasFlag(GraphicsFeatures.RayQueries);
@@ -317,10 +347,20 @@ public sealed class SceneRenderer : IDisposable
         context.Meshes = Meshes;
         context.FrameSlot = _frameData.Advance();
 
+        context.Profile = profile;
+
         Pipeline.Prepare(context);
+        long writeStart = Stopwatch.GetTimestamp();
         IBuffer frame = _frameData.Write(context);
         context.FrameBuffer = frame.BindlessIndex;
+        if (profile is not null)
+        {
+            TimeSpan writeElapsed = Stopwatch.GetElapsedTime(writeStart);
+            profile.AddCpu("FrameData", writeElapsed.TotalMilliseconds);
+        }
+
         Pipeline.Execute(context);
+        profile?.EndFrame();
     }
 
     /// <summary>

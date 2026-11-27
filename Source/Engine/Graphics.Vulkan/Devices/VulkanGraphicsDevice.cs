@@ -92,6 +92,14 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         Vk.GetPhysicalDeviceProperties(PhysicalDevice, out PhysicalDeviceProperties properties);
         AdapterName = SilkMarshal.PtrToString((nint)properties.DeviceName) ?? "Vulkan device";
         Vk.GetPhysicalDeviceMemoryProperties(PhysicalDevice, out _memoryProperties);
+        uint timestampBits = GetTimestampBits(PhysicalDevice, QueueFamily);
+        if (timestampBits > 0 && properties.Limits.TimestampPeriod > 0)
+        {
+            Features |= GraphicsFeatures.Timestamps;
+            TimestampPeriod = properties.Limits.TimestampPeriod;
+            TimestampMask = ulong.MaxValue >> (64 - (int)Math.Min(timestampBits, 64));
+        }
+
         if (options.Features.HasFlag(GraphicsFeatures.RayQueries) && HasRayQueries(PhysicalDevice))
         {
             Features |= GraphicsFeatures.RayQueries;
@@ -158,6 +166,12 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
     /// <summary>The alignment of the scratch memory acceleration structure builds take; 0 without ray queries.</summary>
     internal uint ScratchAlignment { get; }
+
+    /// <summary>Nanoseconds per timestamp tick; 0 without <see cref="GraphicsFeatures.Timestamps"/>.</summary>
+    internal float TimestampPeriod { get; }
+
+    /// <summary>The bits of a timestamp the queue writes; the rest are undefined.</summary>
+    internal ulong TimestampMask { get; }
 
     public IBuffer CreateBuffer(in BufferDescription description, ReadOnlySpan<byte> initialData = default)
     {
@@ -742,6 +756,20 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
         }
 
         return TryFindGraphicsQueue(device, out queueFamily);
+    }
+
+    /// <summary>How many bits of the timestamps the queue family writes are valid; 0 when it writes none.</summary>
+    private uint GetTimestampBits(PhysicalDevice device, uint queueFamily)
+    {
+        uint count = 0;
+        Vk.GetPhysicalDeviceQueueFamilyProperties(device, &count, null);
+        QueueFamilyProperties[] families = new QueueFamilyProperties[count];
+        fixed (QueueFamilyProperties* pointer = families)
+        {
+            Vk.GetPhysicalDeviceQueueFamilyProperties(device, &count, pointer);
+        }
+
+        return families[queueFamily].TimestampValidBits;
     }
 
     private bool TryFindGraphicsQueue(PhysicalDevice device, out uint queueFamily)

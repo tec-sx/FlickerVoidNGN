@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace FlickerVoid.Engine.Debug;
 
 /// <summary>
@@ -19,6 +21,9 @@ public abstract class DebugWindow
     public string Category { get; }
 
     public bool IsOpen { get; set; }
+
+    /// <summary>The size the window opens at the first time it is shown, before the layout remembers it; zero fits its contents.</summary>
+    public virtual Vector2 DefaultSize => Vector2.Zero;
 
     /// <summary>Draws the contents inside the window while it is open.</summary>
     public abstract void Render();

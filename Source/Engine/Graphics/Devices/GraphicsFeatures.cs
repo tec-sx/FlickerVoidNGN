@@ -18,4 +18,10 @@ public enum GraphicsFeatures
     /// runtime is beside the program too.
     /// </summary>
     RayReconstruction = 4,
+
+    /// <summary>
+    /// The GPU writes timestamps, so command lists time their work (<see cref="Commands.ICommandList.BeginTimer"/>); found, not
+    /// asked for. Without it timers record nothing.
+    /// </summary>
+    Timestamps = 8,
 }
