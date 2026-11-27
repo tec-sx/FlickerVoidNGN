@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Meshes;
+using FlickerVoid.Editor.Core.Meshes.Booleans;
 using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Editor.Core.Menus;
 
@@ -38,8 +39,11 @@ public sealed partial class MeshToolsViewModel : ObservableObject
     /// <summary>Whether a tool waits for Apply or Cancel: a dragged mesh tool or the door.</summary>
     public bool IsConfirming => IsDragging || IsDoorTool;
 
-    /// <summary>Whether the door tool can start in this creation.</summary>
-    public bool CanDoor => _creator()?.CanPlaceDoor == true;
+    /// <summary>What to do when a tool needs Manifold's library and it is not built.</summary>
+    public const string ManifoldMissing = "needs Manifold's library: run Source/Native/Manifold/build.ps1 once (CMake and Visual Studio's C++ tools), then restart the editor.";
+
+    /// <summary>Whether the rail offers the door tool in this creation; it says what it lacks when it can't start.</summary>
+    public bool HasDoorTool => _creator()?.HasDoorTool == true;
 
     /// <summary>Starts the door tool (D), or ends it when it is in hand.</summary>
     [RelayCommand]
@@ -58,7 +62,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
         if (!creator.BeginDoor())
         {
-            _report("Doors need Manifold's library, built by Source/Native/Manifold.");
+            _report($"The door tool {ManifoldMissing}");
             return;
         }
 
@@ -198,7 +202,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
         OnPropertyChanged(nameof(ActiveTool));
         OnPropertyChanged(nameof(IsDoorTool));
         OnPropertyChanged(nameof(IsConfirming));
-        OnPropertyChanged(nameof(CanDoor));
+        OnPropertyChanged(nameof(HasDoorTool));
         Door.Refresh();
         OnPropertyChanged(nameof(HasToolOptions));
         OnPropertyChanged(nameof(ToolName));
@@ -264,6 +268,12 @@ public sealed partial class MeshToolsViewModel : ObservableObject
             return;
         }
 
+        if (tool == MeshDragTool.Hollow && !SolidBoolean.IsAvailable)
+        {
+            _report($"Hollow {ManifoldMissing}");
+            return;
+        }
+
         MeshDragOptions options = new((int)Rows, Round);
         if (!creator.BeginMeshDrag(tool, options))
         {
@@ -274,6 +284,16 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
         _dragFrom = _pointer;
         _dragSettled = false;
+        if (tool == MeshDragTool.Hollow)
+        {
+            // A wall is a number, not a distance the mouse finds: it shows at once at the Tool tab's thickness.
+            _dragSettled = true;
+            creator.DragMesh((float)Thickness);
+            _report("Hollow: set the wall in the Tool tab; selected faces stay open. Enter or Apply keeps it, Escape cancels.");
+            Refresh();
+            return;
+        }
+
         _report($"{tool}: move the mouse up or down and click to set it, then tune it in the Tool tab; Enter applies, Escape cancels.");
         Refresh();
     }

@@ -147,7 +147,7 @@ public sealed partial class ViewportViewModel
             return true;
         }
 
-        if (key == ViewportKey.D && MeshTools.CanDoor && !MeshTools.IsDragging)
+        if (key == ViewportKey.D && MeshTools.HasDoorTool && !MeshTools.IsDragging)
         {
             MeshTools.ToggleDoor();
             return true;

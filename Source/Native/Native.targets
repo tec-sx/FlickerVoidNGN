@@ -1,0 +1,33 @@
+<Project>
+  <!--
+    Builds a native library of the engine's with its own script the first time a project needing it builds, so a fresh clone builds
+    and runs with F5 in Visual Studio or one dotnet build. Set before importing: NativeLibraryName (the script's folder under
+    Source/Native) and NativeLibraryFile (the file the script makes, without its extension or lib prefix). Skipped where the file is
+    there already, on CI (which runs the scripts first) and with FlickerVoidBuildNative=false; a failed script only says so, since
+    the engine runs without its native libraries.
+  -->
+  <PropertyGroup>
+    <NativeFolder Condition="$([MSBuild]::IsOSPlatform('Windows'))">win-x64</NativeFolder>
+    <NativeFolder Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux-x64</NativeFolder>
+    <NativeOutput>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'artifacts', 'native', '$(NativeFolder)'))</NativeOutput>
+    <NativeScripts>$(MSBuildThisFileDirectory)$(NativeLibraryName)/</NativeScripts>
+    <NativeLibraryPath Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(NativeOutput)$(NativeLibraryFile).dll</NativeLibraryPath>
+    <NativeLibraryPath Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(NativeOutput)lib$(NativeLibraryFile).so</NativeLibraryPath>
+  </PropertyGroup>
+
+  <Target Name="BuildNativeLibrary" BeforeTargets="BeforeBuild"
+          Condition="'$(FlickerVoidBuildNative)' != 'false' AND '$(CI)' != 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(NativeFolder)' != '' AND !Exists('$(NativeLibraryPath)')">
+    <Message Importance="high" Text="Building the $(NativeLibraryName) library once into $(NativeOutput) (git, CMake and a C++ compiler; it takes a few minutes)..." />
+    <!-- Windows PowerShell, as pwsh may be missing; MSBuildSDKsPath from Visual Studio would mislead any dotnet the script starts. -->
+    <Exec Condition="$([MSBuild]::IsOSPlatform('Windows'))"
+          Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(NativeScripts)build.ps1&quot;"
+          EnvironmentVariables="MSBuildSDKsPath=" IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="NativeExitCode" />
+    </Exec>
+    <Exec Condition="$([MSBuild]::IsOSPlatform('Linux'))" Command="bash &quot;$(NativeScripts)build.sh&quot;" IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="NativeExitCode" />
+    </Exec>
+    <Message Importance="high" Condition="'$(NativeExitCode)' != '0'"
+             Text="The $(NativeLibraryName) library could not be built (see above); the engine runs without it. Build it later with Source/Native/$(NativeLibraryName)/build.ps1 or build.sh." />
+  </Target>
+</Project>
