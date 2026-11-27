@@ -11,6 +11,7 @@ using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Greyboxes;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Props;
 using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Vehicles;
 
@@ -75,6 +76,10 @@ public sealed partial class ViewportViewModel
         {
             CreationRequested?.Invoke(picked, building.File);
         }
+        else if (world.TryGet(picked, out Prop prop) && !string.IsNullOrEmpty(prop.File))
+        {
+            CreationRequested?.Invoke(picked, prop.File);
+        }
         else if (world.TryGet(picked, out Plant plant) && !string.IsNullOrEmpty(plant.File))
         {
             CreationRequested?.Invoke(picked, plant.File);
@@ -98,6 +103,7 @@ public sealed partial class ViewportViewModel
         Mode = creator;
         creator.Gizmo = Gizmo;
         creator.MeshModeChanged += MeshTools.Refresh;
+        creator.DoorChanged += MeshTools.Refresh;
         CreatorFile = file;
         NotifyCreator();
         FrameSelected();
@@ -114,6 +120,7 @@ public sealed partial class ViewportViewModel
 
         Mode = SceneMode;
         creator.MeshModeChanged -= MeshTools.Refresh;
+        creator.DoorChanged -= MeshTools.Refresh;
         CreatorFile = null;
         creator.Dispose();
         NotifyCreator();
@@ -121,19 +128,43 @@ public sealed partial class ViewportViewModel
 
     /// <summary>
     /// The mesh keys of the creator: Tab enters and leaves the mesh, then 1, 2 and 3 pick points, edges or faces, X extrudes, I
-    /// insets, C cuts and B bevels by an amount the mouse then sets (any key keeps it, Escape cancels it), L (or Ctrl+R) cuts a loop and D hangs a door where the mouse is. Escape leaves the mesh before the
+    /// insets, C cuts and B bevels by an amount the mouse then sets (any key keeps it, Escape cancels it), L (or Ctrl+R) cuts a loop and D places a door. Escape leaves the mesh before the
     /// creator. True when the key was taken.
     /// </summary>
     private bool PressMeshKey(ViewportKey key, bool ctrl)
     {
-        if (MeshTools.IsDragging)
+        if (MeshTools.IsDoorTool && key is ViewportKey.Escape or ViewportKey.Enter)
         {
             if (key == ViewportKey.Escape)
             {
-                return MeshTools.CancelDrag();
+                MeshTools.Cancel();
+            }
+            else
+            {
+                MeshTools.Apply();
             }
 
-            MeshTools.ConfirmDrag();
+            return true;
+        }
+
+        if (key == ViewportKey.D && MeshTools.CanDoor && !MeshTools.IsDragging)
+        {
+            MeshTools.ToggleDoor();
+            return true;
+        }
+
+        if (MeshTools.IsDragging)
+        {
+            switch (key)
+            {
+                case ViewportKey.Escape:
+                    return MeshTools.CancelDrag();
+                case ViewportKey.Enter:
+                    return MeshTools.ConfirmDrag();
+                default:
+                    // A pending tool waits for Apply or Cancel; other keys go to the view (its camera keys still move it).
+                    return false;
+            }
         }
 
         if (key == ViewportKey.Tab)
@@ -170,14 +201,14 @@ public sealed partial class ViewportViewModel
             case ViewportKey.B:
                 MeshTools.DragBevel();
                 break;
+            case ViewportKey.H:
+                MeshTools.DragHollow();
+                break;
             case ViewportKey.M:
                 MeshTools.Mirror = !MeshTools.Mirror;
                 break;
             case ViewportKey.R when ctrl:
                 MeshTools.LoopCut();
-                break;
-            case ViewportKey.D:
-                MeshTools.HangDoor();
                 break;
             case ViewportKey.Escape:
                 MeshTools.Leave();

@@ -9,6 +9,7 @@ using Avalonia.Media;
 
 using FlickerVoid.Editor.Assets.Blender;
 using FlickerVoid.Editor.Assets.Buildings;
+using FlickerVoid.Editor.Assets.Props;
 using FlickerVoid.Editor.Assets.Creators;
 using FlickerVoid.Editor.Assets.Foliage;
 using FlickerVoid.Editor.Assets.Vehicles;
@@ -17,6 +18,7 @@ using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Props;
 using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Solids;
@@ -47,6 +49,11 @@ public sealed partial class MainWindowViewModel
             if (CreatorPanel is FoliagePanelViewModel)
             {
                 return LucideIcons.Tree;
+            }
+
+            if (CreatorPanel is PropPanelViewModel)
+            {
+                return LucideIcons.Prop;
             }
 
             if (Viewport.Creator?.Placement == CreatorPlacement.Piece)
@@ -150,6 +157,11 @@ public sealed partial class MainWindowViewModel
             Building building = new() { File = copy };
             Viewport.Scene.SetComponent(placed, building);
         }
+        else if (IsProp(copy))
+        {
+            Prop prop = new() { File = copy };
+            Viewport.Scene.SetComponent(placed, prop);
+        }
         else if (IsFoliage(copy))
         {
             Plant plant = new() { File = copy };
@@ -187,6 +199,8 @@ public sealed partial class MainWindowViewModel
 
     private static bool IsFoliage(string file) => file.EndsWith(FoliageFile.Extension, StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsProp(string file) => file.EndsWith(PropFile.Extension, StringComparison.OrdinalIgnoreCase);
+
     private static bool IsBuilding(string file) => file.EndsWith(BuildingFile.Extension, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Makes the placed creation in place, as a double-click on it asks; a file that can't be read is reported.</summary>
@@ -199,7 +213,7 @@ public sealed partial class MainWindowViewModel
 
         EditorScene scene = Viewport.Scene;
         UndoHistory history = _content.GetHistory(file);
-        CreatorMode creator = CreatorMode.InPlace(scene, Viewport.Camera, placed, history, () => SaveCreation(file), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror, HangCreatorDoor);
+        CreatorMode creator = CreatorMode.InPlace(scene, Viewport.Camera, placed, history, () => SaveCreation(file), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror);
         EnterCreator(creator, file, panel);
     }
 
@@ -217,17 +231,22 @@ public sealed partial class MainWindowViewModel
         if (IsBuilding(path))
         {
             Building building = new() { File = path };
-            creator = CreatorMode.Alone(scene, Viewport.Camera, building, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror, HangCreatorDoor);
+            creator = CreatorMode.Alone(scene, Viewport.Camera, building, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror);
+        }
+        else if (IsProp(path))
+        {
+            Prop prop = new() { File = path };
+            creator = CreatorMode.Alone(scene, Viewport.Camera, prop, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror);
         }
         else if (IsFoliage(path))
         {
             Plant plant = new() { File = path };
-            creator = CreatorMode.Alone(scene, Viewport.Camera, plant, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror, HangCreatorDoor);
+            creator = CreatorMode.Alone(scene, Viewport.Camera, plant, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror);
         }
         else
         {
             Vehicle vehicle = new() { File = path };
-            creator = CreatorMode.Alone(scene, Viewport.Camera, vehicle, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror, HangCreatorDoor);
+            creator = CreatorMode.Alone(scene, Viewport.Camera, vehicle, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror);
         }
 
         EnterCreator(creator, path, panel);
@@ -235,10 +254,11 @@ public sealed partial class MainWindowViewModel
 
     private void EnterCreator(CreatorMode creator, string file, CreatorPanelViewModel panel)
     {
+        creator.Doors = new CreationDoors(() => CreatorPanel?.Creation);
+        CreatorPanel = panel;
         Viewport.EnterCreator(creator, file);
         creator.PartSelected += () => OnPropertyChanged(nameof(CreatorPart));
         creator.MeshModeChanged += ShowGreyboxesInTheMesh;
-        CreatorPanel = panel;
         ShowContext(CreatorTab);
         OutlinerTab = PartsTab;
         Viewport.Status = $"Making {file}. Escape, or a double-click beside it, goes back to the level.";
@@ -252,6 +272,12 @@ public sealed partial class MainWindowViewModel
             {
                 BuildingDocument building = new(_content, path);
                 return new BuildingPanelViewModel(building);
+            }
+
+            if (IsProp(path))
+            {
+                PropDocument prop = new(_content, path);
+                return new PropPanelViewModel(prop);
             }
 
             if (IsFoliage(path))
@@ -308,8 +334,6 @@ public sealed partial class MainWindowViewModel
     }
 
     private SolidMesh? FindCreatorMesh(string id) => CreatorPanel?.FindMesh(id);
-
-    private string? HangCreatorDoor(string partId, int face, SolidEdge hinge, DoorOptions options) => CreatorPanel?.HangDoor(partId, face, hinge, options);
 
     private bool IsCreatorMirrored(string id) => CreatorPanel?.FindMirror(id) == true;
 

@@ -74,6 +74,9 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
     /// <summary>Whether the listener stood in an indoor volume at the last update.</summary>
     public bool IsIndoors => _indoors;
 
+    /// <summary>Where the ears were at the last update.</summary>
+    public Vector3 Listener => _listener;
+
     public SoundHandle Play(string sound) => Start(sound, null, Entity.Null);
 
     public SoundHandle Play(string sound, Vector3 position) => Start(sound, position, Entity.Null);
@@ -278,7 +281,15 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
         }
     }
 
-    private SoundClip? LoadClip(string file)
+    /// <summary>The next voice id, for whoever else plays through the mixer.</summary>
+    internal int TakeVoiceId()
+    {
+        _lastId++;
+        return _lastId;
+    }
+
+    /// <summary>The clip of a sound file in the content folder; null, with a warning, when it can't be read.</summary>
+    internal SoundClip? LoadClip(string file)
     {
         if (_library is null)
         {

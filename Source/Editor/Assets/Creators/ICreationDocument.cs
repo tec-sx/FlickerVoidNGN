@@ -15,5 +15,13 @@ public interface ICreationDocument
 
     void SetMirror(string id, bool mirror);
 
-    string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options);
+    bool IsDoorWall(string partId);
+
+    DoorFit? FindDoorFit(string doorId);
+
+    string? PlaceDoor(DoorFit fit);
+
+    bool ReplaceDoor(string doorId, DoorFit fit);
+
+    bool RemoveDoor(string doorId);
 }

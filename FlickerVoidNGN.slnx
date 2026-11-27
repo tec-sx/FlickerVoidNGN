@@ -35,6 +35,7 @@
     <Project Path="Source/Engine/Ui/FlickerVoid.Engine.Ui.csproj" />
     <Project Path="Source/Engine/Vehicles/FlickerVoid.Engine.Vehicles.csproj" />
     <Project Path="Source/Engine/Buildings/FlickerVoid.Engine.Buildings.csproj" />
+    <Project Path="Source/Engine/Props/FlickerVoid.Engine.Props.csproj" />
     <Project Path="Source/Engine/Foliage/FlickerVoid.Engine.Foliage.csproj" />
   </Folder>
   <Folder Name="/Source/Tools/">
@@ -74,6 +75,7 @@
     <Project Path="Tests/Engine/Ui/FlickerVoid.Engine.Ui.Tests.csproj" />
     <Project Path="Tests/Engine/Vehicles/FlickerVoid.Engine.Vehicles.Tests.csproj" />
     <Project Path="Tests/Engine/Buildings/FlickerVoid.Engine.Buildings.Tests.csproj" />
+    <Project Path="Tests/Engine/Props/FlickerVoid.Engine.Props.Tests.csproj" />
     <Project Path="Tests/Engine/Foliage/FlickerVoid.Engine.Foliage.Tests.csproj" />
   </Folder>
   <Folder Name="/Tests/Tools/">

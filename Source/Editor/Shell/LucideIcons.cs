@@ -16,6 +16,8 @@ public static class LucideIcons
     public static Geometry Bevel { get; } = Parse("M20.34 17.52a10 10 0 1 0-2.82 2.82 M17 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0z M13.41 13.41L17.59 17.59 M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0z");
     public static Geometry LoopCut { get; } = Parse("M12 2v20 M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3 M8 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3");
     public static Geometry Cut { get; } = Parse("M11 16.586V19a1 1 0 0 1-1 1H2L18.37 3.63a1 1 0 1 1 3 3l-9.663 9.663a1 1 0 0 1-1.414 0L8 14");
+    public static Geometry Hollow { get; } = Parse("M12 22v-9 M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13 M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z");
+
     public static Geometry Mirror { get; } = Parse("M10 12H8 M16 12h-2 M22 12h-2 M4 12H2 M7.298 20.288A1 1 0 0 0 8 22h8a1 1 0 0 0 .703-1.712l-3.991-3.99a1 1 0 0 0-1.424-.001z M7.298 3.712A1 1 0 0 1 8 2h8a1 1 0 0 1 .703 1.712l-3.991 3.99a1 1 0 0 1-1.424.001z");
     public static Geometry Select { get; } = Parse("M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z");
     public static Geometry Move { get; } = Parse("M12 2v20 M15 19l-3 3-3-3 M19 9l3 3-3 3 M2 12h20 M5 9l-3 3 3 3 M9 5l3-3 3 3");
@@ -115,6 +117,8 @@ public static class LucideIcons
     public static Geometry Door { get; } = Parse("M10 21H2 M10 3H7a2 2 0 00-2 2v16 M14 12h.01 M19 21V5a2 2 0 00-1.675-1.974l-6.163-1.013A1 1 0 0010 3v18a1 1 0 001.124.992z M22 21h-3");
     public static Geometry Zone { get; } = Parse("M5 3a2 2 0 0 0-2 2 M19 3a2 2 0 0 1 2 2 M21 19a2 2 0 0 1-2 2 M5 21a2 2 0 0 1-2-2 M9 3h1 M9 21h1 M14 3h1 M14 21h1 M3 9v1 M21 9v1 M3 14v1 M21 14v1");
     public static Geometry Pin { get; } = Parse("M12 17v5 M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z");
+    public static Geometry Prop { get; } = Parse("M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z M12 22V12 M3.29 7 12 12l8.71-5 M7.5 4.27l9 5.15");
+
     public static Geometry Cube { get; } = Parse("M10 22v-8 M2.336 8.89 10 14l11.715-7.029 M22 14a2 2 0 0 1-.971 1.715l-10 6a2 2 0 0 1-2.138-.05l-6-4A2 2 0 0 1 2 16v-6a2 2 0 0 1 .971-1.715l10-6a2 2 0 0 1 2.138.05l6 4A2 2 0 0 1 22 8z");
     public static Geometry Sphere { get; } = Parse("M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0z");
     public static Geometry Interact { get; } = Parse("M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2 M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2 M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8 M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15");
@@ -237,6 +241,8 @@ public static class LucideIcons
         [nameof(Bevel)] = Bevel,
         [nameof(LoopCut)] = LoopCut,
         [nameof(Cut)] = Cut,
+        [nameof(Hollow)] = Hollow,
+        [nameof(Prop)] = Prop,
         [nameof(Mirror)] = Mirror,
         [nameof(Zone)] = Zone,
         [nameof(Pin)] = Pin,
