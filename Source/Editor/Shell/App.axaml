@@ -6,6 +6,7 @@
              xmlns:shellInspector="using:FlickerVoid.Editor.Inspector"
              xmlns:shell="using:FlickerVoid.Editor"
              xmlns:controls="using:FlickerVoid.Editor.Controls"
+             xmlns:tags="using:FlickerVoid.Editor.Tags"
              RequestedThemeVariant="Dark">
   <!-- One template per kind of field, picked by the field's type, for the inspector, the data forms and the material editor
        alike: components, data assets and materials need no editor code of their own. -->
@@ -78,6 +79,9 @@
     </DataTemplate>
     <DataTemplate DataType="inspector:TextFieldViewModel">
       <TextBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsReadOnly}" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:TagsFieldViewModel">
+      <tags:TagChipsView />
     </DataTemplate>
     <DataTemplate DataType="inspector:AssetFieldViewModel">
       <Panel IsEnabled="{Binding !IsReadOnly}">

@@ -877,6 +877,122 @@
   <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="#FFB955" />
   </Style>
+  <!-- Tags (owner, 2026-11-27, as Unreal's): a value's tags as chips with an x, a dashed "+ Tag" chip that opens the picker, and
+       the picker: the project's tags as a tree with checkboxes, a search, a footer to add one, and add, rename and remove on a
+       hovered row. -->
+  <Style Selector="Border.tagChip">
+    <Setter Property="Height" Value="20" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="7,0,3,0" />
+    <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Border.tagChip TextBlock">
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.tagChip PathIcon.tag">
+    <Setter Property="Width" Value="11" />
+    <Setter Property="Height" Value="11" />
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="Button.tagRemove">
+    <Setter Property="Width" Value="14" />
+    <Setter Property="Height" Value="14" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="Button.tagRemove PathIcon">
+    <Setter Property="Width" Value="11" />
+    <Setter Property="Height" Value="11" />
+  </Style>
+  <Style Selector="Button.tagAdd">
+    <Setter Property="Height" Value="20" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="6,0,8,0" />
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="Button.tagAdd PathIcon">
+    <Setter Property="Width" Value="11" />
+    <Setter Property="Height" Value="11" />
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="Border.tagPicker">
+    <Setter Property="Width" Value="300" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorHintBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Border.tagPickerBar">
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Padding" Value="9,0" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+  </Style>
+  <Style Selector="Border.tagRow">
+    <Setter Property="Height" Value="23" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0,0,8,0" />
+  </Style>
+  <Style Selector="Border.tagRow:pointerover">
+    <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
+  </Style>
+  <Style Selector="Border.tagRow StackPanel.tagActions">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Border.tagRow:pointerover StackPanel.tagActions">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="Border.tagCheck">
+    <Setter Property="Width" Value="13" />
+    <Setter Property="Height" Value="13" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorHintBrush}" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.tagCheck.part">
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="Border.tagCheck.on">
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+    <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="Border.tagCheck PathIcon">
+    <Setter Property="Width" Value="10" />
+    <Setter Property="Height" Value="10" />
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentInkBrush}" />
+  </Style>
+  <Style Selector="Border.tagCheck Rectangle">
+    <Setter Property="Width" Value="7" />
+    <Setter Property="Height" Value="2" />
+    <Setter Property="Fill" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="Button.tagAction">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <Style Selector="Button.tagAction PathIcon">
+    <Setter Property="Width" Value="12" />
+    <Setter Property="Height" Value="12" />
+  </Style>
+  <Style Selector="TextBox.tagRename">
+    <Setter Property="Height" Value="19" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="4,0" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
   <Style Selector="Button.delete">
     <Setter Property="Foreground" Value="{StaticResource EditorDeleteBrush}" />
   </Style>
