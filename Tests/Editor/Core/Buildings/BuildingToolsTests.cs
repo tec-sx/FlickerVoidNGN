@@ -88,6 +88,20 @@ public sealed class BuildingToolsTests
     }
 
     [Fact]
+    public void CornerPillarsStandOnlyWhereTheOutsideWallsTurn()
+    {
+        BuildingFile building = new BuildingToolsTestsBuilder().Build();
+        BuildingStorey ground = BuildingToolsTestsBuilder.Ground(building);
+        PlanEdits.AddWall(ground, new Vector2(0, -2.85f), new Vector2(0, 2.85f), outside: false);
+        ground.CornerPillars = true;
+
+        BuildingMaker.Make(building, null);
+
+        string[] corners = [.. ground.Parts.Keys.Where(static id => id.StartsWith("corner.", StringComparison.Ordinal))];
+        corners.Should().BeEquivalentTo(["corner.1", "corner.2", "corner.3", "corner.4"], "where the inside wall meets the front and back, the outside walls run straight on");
+    }
+
+    [Fact]
     public void AnElevatorStopsAtEveryStoreyAndHasACallButtonOnEach()
     {
         BuildingFile building = new BuildingToolsTestsBuilder().WithStoreys(3).WithCellar().Build();

@@ -174,6 +174,30 @@ public sealed class CharacterMovementSystemTests : IDisposable
         arrived.Should().ContainSingle().Which.Point.Should().Be(new Vector3(4, 0, 2));
     }
 
+    [Theory]
+    [InlineData(false, 3)]
+    [InlineData(true, 4)]
+    public void FinishesStraightOntoAPointPathsStopShortOfOnlyWhenAskedTo(bool onto, float reached)
+    {
+        IPathFinder paths = Substitute.For<IPathFinder>();
+        Vector3 platform = new(4, 0, 0);
+        paths.TryFindPath(Arg.Any<Vector3>(), platform, Arg.Any<List<Vector3>>()).Returns(call =>
+        {
+            call.ArgAt<List<Vector3>>(2).Add(new Vector3(3, 0, 0));
+            return true;
+        });
+        _builder.WithPathFinder(paths).Build();
+        Entity hero = _builder.Spawn(Walker)[0];
+        List<ArrivedEvent> arrived = [];
+        _builder.Game.Events.Handle((in ArrivedEvent sent) => arrived.Add(sent));
+
+        _builder.Game.Events.Send(new MoveCommand(hero, platform, onto));
+        _builder.Run(3);
+
+        _builder.Game.World.Get<Transform>(hero).Position.X.Should().BeApproximately(reached, 0.06f);
+        arrived.Should().ContainSingle();
+    }
+
     [Fact]
     public void StaysWhereItIsWhenThePathFinderFindsNoWay()
     {

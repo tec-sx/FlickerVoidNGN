@@ -17,8 +17,8 @@ public static class BuildingMaker
 {
     public const float PlatformThickness = 0.1f;
 
-    /// <summary>How far a shaft's opening reaches past its platform on every side.</summary>
-    public const float ShaftClearance = 0.1f;
+    /// <summary>How far a shaft's opening reaches past its platform on every side: a hairline, so walkers step across it onto the platform.</summary>
+    public const float ShaftClearance = 0.02f;
 
     private const float HoleReach = 0.1f;
     private const int RoundSides = 16;
@@ -257,7 +257,7 @@ public static class BuildingMaker
         {
             foreach (PlanCorner corner in storey.Corners)
             {
-                if (!PlanGeometry.GetWallsAt(storey, corner.Id).Exists(static wall => wall.Outside))
+                if (!IsOutsideCorner(storey, corner))
                 {
                     continue;
                 }
@@ -275,7 +275,34 @@ public static class BuildingMaker
         storey.Parts = parts;
     }
 
-    private static void MakeOpening(BuildingFile file, BuildingStorey storey, PlanOpening opening, Dictionary<string, SolidPart> parts, Dictionary<string, SolidPart> old, in Transform wallPlace)
+    /// <summary>Whether outside walls turn at the corner: two of them meet there and do not run straight on.</summary>
+    private static bool IsOutsideCorner(BuildingStorey storey, PlanCorner corner)
+    {
+        Vector2 point = PlanGeometry.GetPoint(corner);
+        List<Vector2> ways = [];
+        foreach (PlanWall wall in PlanGeometry.GetWallsAt(storey, corner.Id))
+        {
+            if (!wall.Outside)
+            {
+                continue;
+            }
+
+            int otherId = wall.From == corner.Id ? wall.To : wall.From;
+            PlanCorner other = PlanGeometry.FindCorner(storey, otherId)!;
+            Vector2 away = PlanGeometry.GetPoint(other) - point;
+            ways.Add(Vector2.Normalize(away));
+        }
+
+        if (ways.Count != 2)
+        {
+            return ways.Count > 2;
+        }
+
+        float straight = Vector2.Dot(ways[0], ways[1]);
+        return straight > -0.99f;
+    }
+
+        private static void MakeOpening(BuildingFile file, BuildingStorey storey, PlanOpening opening, Dictionary<string, SolidPart> parts, Dictionary<string, SolidPart> old, in Transform wallPlace)
     {
         if (opening.Kind == OpeningKind.Floor || !OpeningShape.Fits(file, storey, opening) || !OpeningShape.TryGetFrame(file, storey, opening, out OpeningFrame frame))
         {

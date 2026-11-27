@@ -116,6 +116,23 @@ public sealed class PlanGeometryTests
     }
 
     [Theory]
+    [InlineData(StairsKind.Straight)]
+    [InlineData(StairsKind.L)]
+    [InlineData(StairsKind.U)]
+    public void TheOpeningInTheFloorAboveEndsWhereTheStairsArrive(StairsKind kind)
+    {
+        BuildingStairs stairs = new() { Kind = kind, Margin = 0.05f };
+
+        StairsLayout layout = StairsLayout.Create(stairs, 3, 0.2f);
+
+        (Vector2 Low, Vector2 High, float Top) top = layout.Blocks.MaxBy(block => block.Top);
+        (Vector2 Low, Vector2 High) arrival = layout.Openings[^1];
+        bool flush = MathF.Abs(arrival.High.Y - top.High.Y) < 1e-4f || MathF.Abs(arrival.Low.Y - top.Low.Y) < 1e-4f
+            || MathF.Abs(arrival.High.X - top.High.X) < 1e-4f || MathF.Abs(arrival.Low.X - top.Low.X) < 1e-4f;
+        flush.Should().BeTrue("the floor above meets the top step with no gap to fall through");
+    }
+
+    [Theory]
     [InlineData(StairsKind.L)]
     [InlineData(StairsKind.U)]
     public void TurningStairsHaveALandingAndClimbTheSameHeight(StairsKind kind)

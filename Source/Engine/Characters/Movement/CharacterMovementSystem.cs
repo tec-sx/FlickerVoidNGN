@@ -30,6 +30,9 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
     /// <summary>How far below its feet a character looks for ground to fall onto.</summary>
     private const float GroundSearch = 100;
 
+    /// <summary>How near the paths' end must come to a point walked onto for the last straight stretch to be left out.</summary>
+    private const float OntoSlack = 0.05f;
+
     private static readonly QueryDescription Walking = new QueryDescription().WithAll<CharacterMover, Destination, Transform>();
     private static readonly QueryDescription Turning = new QueryDescription().WithAll<CharacterMover, Facing, Transform>();
     private static readonly QueryDescription Steered = new QueryDescription().WithAll<CharacterMover, Heading, Transform>();
@@ -265,6 +268,11 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
                 Stop(character);
                 return;
             }
+
+            if (command.Onto && Vector2.Distance(Flat(corners[^1]), Flat(command.Point)) > OntoSlack)
+            {
+                corners.Add(command.Point);
+            }
         }
 
         if (World.Has<Facing>(character))
@@ -283,6 +291,8 @@ public sealed class CharacterMovementSystem : BaseSystem<World, GameTime>
             World.Add(character, destination);
         }
     }
+
+    private static Vector2 Flat(Vector3 point) => new(point.X, point.Z);
 
     /// <summary>Steers the character along the direction flattened onto the ground, replacing where it was going; a zero direction ends the steering.</summary>
     private void Steer(in SteerCommand command)

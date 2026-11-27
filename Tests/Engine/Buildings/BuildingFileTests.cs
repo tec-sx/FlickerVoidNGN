@@ -75,4 +75,19 @@ public sealed class BuildingFileTests
 
         act.Should().Throw<JsonException>().WithMessage("*follow one another*");
     }
+
+    [Fact]
+    public void AFileWrittenBeforeRoofsHadShapesKeepsItsRoofsSolid()
+    {
+        const string Json = """
+            { "size": [8, 3, 6], "storeys": [ { "level": 0, "shell": { "mesh": { "points": [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], "faces": [[0, 1, 2], [0, 2, 3], [0, 3, 1], [1, 3, 2]] } } } ],
+              "roof": { "place": { "position": [0, 3, 0] }, "mesh": { "points": [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], "faces": [[0, 1, 2], [0, 2, 3], [0, 3, 1], [1, 3, 2]] } } }
+            """;
+
+        BuildingFile read = BuildingFileTestsBuilder.Read(Json);
+
+        read.Roof.Part.Should().NotBeNull();
+        read.Roof.Part!.Place.Position.Y.Should().Be(3);
+        read.Roof.Part.Mesh.Points.Should().HaveCount(4);
+    }
 }

@@ -52,6 +52,35 @@ public sealed class BuildingWalkSessionTests : IDisposable
     }
 
     [Fact]
+    public void AClickOnThePlatformWalksOntoItAndRidesItUpEvenFromAStopOverTheShaft()
+    {
+        Assert.SkipUnless(SolidBoolean.IsAvailable, "The Booleans' native library is not here.");
+        BuildingFile building = BuildingFile.Create();
+        building.Storeys[0].Openings[0].Kind = OpeningKind.Doorway;
+        BuildingTools.SetStoreys(building, 3, false);
+        Vector2 shaft = BuildingTools.GetElevatorPlace(building);
+        BuildingTools.AddElevator(building, shaft, 270);
+        BuildingTools.Rebuild(building);
+        BuildingWalk walk = _builder.Build(building);
+        Vector3 platform = new(shaft.X, 0, shaft.Y);
+        float first = building.GetFloorHeight(1);
+        float second = building.GetFloorHeight(2);
+
+        walk.Click(BuildingWalkSessionTestsBuilder.Down(new Vector3(0, 0.2f, -1)));
+        walk.Run(6);
+        walk.Click(BuildingWalkSessionTestsBuilder.Down(platform));
+        walk.Run(8);
+        float ridden = _builder.PlaceOf(walk).Y;
+        walk.Click(BuildingWalkSessionTestsBuilder.Down(new Vector3(0, first, 0)));
+        walk.Run(5);
+        walk.Click(BuildingWalkSessionTestsBuilder.Down(platform));
+        walk.Run(8);
+
+        ridden.Should().BeApproximately(first, 0.15f, "the walker stepped onto the platform at the ground floor and rode it up");
+        _builder.PlaceOf(walk).Y.Should().BeApproximately(second, 0.15f, "on the first floor the platform stands in the shaft, off the paths, and is still boarded");
+    }
+
+    [Fact]
     public void TheHallsShotGoesLiveWhenTheWalkerEntersTheHall()
     {
         Assert.SkipUnless(SolidBoolean.IsAvailable, "The Booleans' native library is not here.");

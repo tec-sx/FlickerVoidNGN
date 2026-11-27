@@ -14,6 +14,7 @@ using FlickerVoid.Engine.Characters;
 using FlickerVoid.Engine.Characters.Movement;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Interaction;
+using FlickerVoid.Engine.Interaction.Interactables;
 using FlickerVoid.Engine.Interaction.Interactors;
 using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Physics;
@@ -43,6 +44,9 @@ public sealed class BuildingWalk : IDisposable
     private const float StartDistance = 2;
     private const float RayLength = 500;
     private const float ButtonReach = 0.4f;
+
+    /// <summary>How near a platform's middle the walker stands before riding it.</summary>
+    private const float OnIt = 0.25f;
     private const int MaxUnseen = 8;
     private const float Step = 0.001f;
 
@@ -125,7 +129,8 @@ public sealed class BuildingWalk : IDisposable
         {
             _using = target;
             Vector3 point = InteractionSystem.GetUsePoint(World, target);
-            Game.Events.Send(new MoveCommand(Walker, point));
+            bool onto = IsStoodOn(target);
+            Game.Events.Send(new MoveCommand(Walker, point, onto));
             return;
         }
 
@@ -150,7 +155,13 @@ public sealed class BuildingWalk : IDisposable
         Vector3 at = World.Get<Transform>(Walker).Position;
         Vector3 point = InteractionSystem.GetUsePoint(World, _using);
         Vector2 apart = new(at.X - point.X, at.Z - point.Z);
-        if (apart.Length() <= Reach && MathF.Abs(at.Y - point.Y) < 1.5f)
+        float reach = Reach;
+        if (IsStoodOn(_using))
+        {
+            reach = OnIt;
+        }
+
+        if (apart.Length() <= reach && MathF.Abs(at.Y - point.Y) < 1.5f)
         {
             Game.Events.Send(new InteractionActionEvent(Walker, _using, ToggleAction));
             _using = Entity.Null;
@@ -168,6 +179,8 @@ public sealed class BuildingWalk : IDisposable
     }
 
     public void Dispose() => Game.Dispose();
+
+    private bool IsStoodOn(Entity target) => World.TryGet(target, out UsePoint use) && use.StandOn;
 
     /// <summary>Outside the ground floor's first door, facing it; outside the front wall's middle when the building has no door.</summary>
     public static Vector3 GetStart(BuildingFile building)

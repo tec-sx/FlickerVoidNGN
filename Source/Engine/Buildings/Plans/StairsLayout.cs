@@ -51,14 +51,14 @@ public sealed class StairsLayout
 
         if (stairs.Kind == StairsKind.Straight)
         {
-            layout.AddRun(Vector2.Zero, Vector2.UnitY, half, 0, blocks, rise, tread, clearance, margin, out _);
+            layout.AddRun(Vector2.Zero, Vector2.UnitY, half, 0, blocks, rise, tread, clearance, margin, true, out _);
             layout.AddRails();
             return layout;
         }
 
         int first = Math.Clamp((int)MathF.Round(stairs.FirstRun / tread), 1, Math.Max(1, blocks - 2));
         int second = Math.Max(0, blocks - first - 1);
-        layout.AddRun(Vector2.Zero, Vector2.UnitY, half, 0, first, rise, tread, clearance, margin, out float end);
+        layout.AddRun(Vector2.Zero, Vector2.UnitY, half, 0, first, rise, tread, clearance, margin, false, out float end);
         float landingTop = (first + 1) * rise;
         float depth = Math.Max(stairs.Landing, stairs.Width);
         if (stairs.Kind == StairsKind.L)
@@ -68,7 +68,7 @@ public sealed class StairsLayout
             Vector2 high = new(half, end + depth);
             layout.AddBlock(low, high, landingTop, clearance, margin);
             Vector2 start = new(side * half, end + (depth / 2));
-            layout.AddRun(start, new Vector2(side, 0), stairs.Width / 2, first + 1, second, rise, tread, clearance, margin, out _);
+            layout.AddRun(start, new Vector2(side, 0), stairs.Width / 2, first + 1, second, rise, tread, clearance, margin, true, out _);
         }
         else
         {
@@ -77,7 +77,7 @@ public sealed class StairsLayout
             float right = Math.Max(half, half + (side * across));
             layout.AddBlock(new Vector2(left, end), new Vector2(right, end + depth), landingTop, clearance, margin);
             Vector2 start = new(side * across, end);
-            layout.AddRun(start, -Vector2.UnitY, half, first + 1, second, rise, tread, clearance, margin, out _);
+            layout.AddRun(start, -Vector2.UnitY, half, first + 1, second, rise, tread, clearance, margin, true, out _);
         }
 
         layout.AddOpeningRails(margin);
@@ -139,7 +139,11 @@ public sealed class StairsLayout
         return Polygons.Prism(square, bottom, top);
     }
 
-    private void AddRun(Vector2 start, Vector2 direction, float half, int firstStep, int count, float rise, float tread, float clearance, float margin, out float end)
+    /// <summary>
+    /// Adds a run of steps, and the opening over those that rise into the floor above, wider by the margin all round but where the run
+    /// <paramref name="arrives"/> at that floor, which meets its top step.
+    /// </summary>
+    private void AddRun(Vector2 start, Vector2 direction, float half, int firstStep, int count, float rise, float tread, float clearance, float margin, bool arrives, out float end)
     {
         Vector2 across = new(direction.Y, -direction.X);
         float firstOpen = -1;
@@ -171,10 +175,40 @@ public sealed class StairsLayout
 
         if (firstOpen >= 0)
         {
-            Openings.Add((openLow - new Vector2(margin), openHigh + new Vector2(margin)));
+            Vector2 low = openLow - new Vector2(margin);
+            Vector2 high = openHigh + new Vector2(margin);
+            if (arrives)
+            {
+                (low, high) = KeepArrival(low, high, openLow, openHigh, direction);
+            }
+
+            Openings.Add((low, high));
         }
 
         end = (start + (direction * (count * tread))).Y;
+    }
+
+    /// <summary>The opening with its side in the run's direction drawn back to the steps' own edge.</summary>
+    private static (Vector2 Low, Vector2 High) KeepArrival(Vector2 low, Vector2 high, Vector2 stepsLow, Vector2 stepsHigh, Vector2 direction)
+    {
+        if (direction.X > 0.5f)
+        {
+            high.X = stepsHigh.X;
+        }
+        else if (direction.X < -0.5f)
+        {
+            low.X = stepsLow.X;
+        }
+        else if (direction.Y > 0.5f)
+        {
+            high.Y = stepsHigh.Y;
+        }
+        else if (direction.Y < -0.5f)
+        {
+            low.Y = stepsLow.Y;
+        }
+
+        return (low, high);
     }
 
     private void AddBlock(Vector2 low, Vector2 high, float top, float clearance, float margin)
