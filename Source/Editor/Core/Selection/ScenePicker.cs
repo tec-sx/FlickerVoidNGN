@@ -150,7 +150,7 @@ public sealed class ScenePicker : IDisposable
         return true;
     }
 
-    /// <summary>The mesh or greybox the ray hits first, among the parts of <paramref name="creation"/> when one is given.</summary>
+    /// <summary>The mesh or greybox the ray hits first, among the parts of <paramref name="creation"/> (or the creation itself, for a greybox being shaped) when one is given.</summary>
     private Entity? FindNearest(World world, Ray ray, Entity? creation, out float distance)
     {
         Entity? nearest = null;
@@ -183,7 +183,7 @@ public sealed class ScenePicker : IDisposable
             return true;
         }
 
-        return world.TryGet(entity, out CreationPart part) && part.Root == root;
+        return entity == root || (world.TryGet(entity, out CreationPart part) && part.Root == root);
     }
 
     private static bool TryGetMesh(World world, Entity entity, [NotNullWhen(true)] out string? mesh)
@@ -261,7 +261,7 @@ public sealed class ScenePicker : IDisposable
     /// <summary>The model a greybox shows: the swap in its place, or its box.</summary>
     private static string GetMesh(in Greybox greybox)
     {
-        return greybox.GetShownSwap() ?? GreyboxMesh.GetName(greybox.Size);
+        return GreyboxMesh.GetName(greybox);
     }
 
     private PickModel? Load(string mesh)

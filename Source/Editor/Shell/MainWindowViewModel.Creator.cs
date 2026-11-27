@@ -16,6 +16,7 @@ using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 
@@ -39,6 +40,11 @@ public sealed partial class MainWindowViewModel
             if (CreatorPanel is BuildingPanelViewModel)
             {
                 return LucideIcons.Building;
+            }
+
+            if (Viewport.Creator?.Placement == CreatorPlacement.Piece)
+            {
+                return LucideIcons.Cube;
             }
 
             return LucideIcons.Vehicle;
@@ -147,6 +153,25 @@ public sealed partial class MainWindowViewModel
     }
 
     private bool CanDuplicateAndEdit() => Viewport.Creator?.Placement == CreatorPlacement.InPlace;
+
+    /// <summary>
+    /// Shapes a greybox of the level in place, as a double-click on it asks: the rest of the level greys, its mesh is entered at
+    /// once, and undo, redo and save stay the level's.
+    /// </summary>
+    private void ShapePiece(Entity piece)
+    {
+        EditorScene scene = Viewport.Scene;
+        string name = "Greybox";
+        if (scene.Game.World.TryGet(piece, out EntityName named))
+        {
+            name = named.Value;
+        }
+
+        CreatorMode creator = CreatorMode.Piece(scene, Viewport.Camera, piece);
+        Viewport.EnterCreator(creator, name);
+        creator.EnterMesh();
+        Viewport.Status = $"Shaping {name}: 1, 2 and 3 pick points, edges or faces, E extrudes, I insets, Ctrl+B bevels, Ctrl+R cuts a loop. Escape goes back to the level.";
+    }
 
     private static bool IsBuilding(string file) => file.EndsWith(BuildingFile.Extension, StringComparison.OrdinalIgnoreCase);
 
@@ -311,6 +336,7 @@ public sealed partial class MainWindowViewModel
         }
 
         OnPropertyChanged(nameof(CreatorHeading));
+        OnPropertyChanged(nameof(CreatorIcon));
         OnPropertyChanged(nameof(CreatorPart));
         DuplicateAndEditCommand.NotifyCanExecuteChanged();
         WatchHistory();

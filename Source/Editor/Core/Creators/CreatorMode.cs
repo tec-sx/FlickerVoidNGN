@@ -64,12 +64,21 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         History = history;
         World world = scene.Game.World;
         WorkLight = world.Create(new Transform(), new PointLight());
+        if (placement == CreatorPlacement.Piece)
+        {
+            SelectedPart = PieceId;
+            scene.Edited += RefreshMesh;
+        }
+
         Update();
         Mark();
         scene.Content.Changed += HandleChanged;
     }
 
-    /// <summary>The creation being made: the one placed in the level, or the temporary copy.</summary>
+    /// <summary>The part id of a level's greybox being shaped, which is its own only part.</summary>
+    public const string PieceId = "piece";
+
+    /// <summary>The creation being made: the one placed in the level, the temporary copy, or the greybox being shaped.</summary>
     public Entity Root { get; }
 
     public CreatorPlacement Placement { get; }
@@ -117,6 +126,16 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh, applyMesh, isMirrored, setMirror, hangDoor);
     }
 
+    /// <summary>
+    /// Shapes a greybox of the level in place, greying the rest: its only part is itself (<see cref="PieceId"/>), always selected, its
+    /// mesh is kept on the greybox, and undo, redo and save are the level's.
+    /// </summary>
+    public static CreatorMode Piece(EditorScene scene, EditorCamera camera, Entity greybox)
+    {
+        PieceShape shape = new(scene, greybox);
+        return new CreatorMode(scene, camera, greybox, CreatorPlacement.Piece, scene.History, scene.Save, _ => shape.Find(), (_, mesh) => shape.Apply(mesh), null, null, null);
+    }
+
     public bool Save() => _save();
 
     /// <summary>Selects the part of the creation under the mouse, whatever is in front of it, or none.</summary>
@@ -125,6 +144,11 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         if (MeshSelection is not null)
         {
             PressMesh(pixel, width, height, additive: false, loop: false);
+            return;
+        }
+
+        if (Placement == CreatorPlacement.Piece)
+        {
             return;
         }
 
@@ -143,7 +167,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>Selects the creation's part with the id, or none, as a click on it does; another part leaves the mesh.</summary>
     public void SelectPart(string? id)
     {
-        if (id == SelectedPart)
+        if (id == SelectedPart || Placement == CreatorPlacement.Piece)
         {
             return;
         }
@@ -157,6 +181,11 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>The entity of the selected part, or null when none is selected or the creation no longer has it.</summary>
     public Entity? FindSelectedPart()
     {
+        if (Placement == CreatorPlacement.Piece)
+        {
+            return _scene.Game.World.IsAlive(Root) ? Root : null;
+        }
+
         CreationParts? parts = _scene.Game.Services.GetService<CreationParts>();
         if (SelectedPart is not { } id || parts is null)
         {
@@ -308,6 +337,11 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>Opens or shuts the door part of the vehicle at once, to see it swing; false for a part without a joint and toggle.</summary>
     public bool SwingDoor(string id)
     {
+        if (Placement == CreatorPlacement.Piece)
+        {
+            return false;
+        }
+
         Entity part = _scene.Game.Services.GetService<CreationParts>()!.Find(Root, id);
         World world = _scene.Game.World;
         if (!world.IsAlive(part) || !world.Has<PartJoint, Toggle>(part))
@@ -682,6 +716,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     public void Dispose()
     {
         LeaveMesh();
+        _scene.Edited -= RefreshMesh;
         _scene.Content.Changed -= HandleChanged;
         World world = _scene.Game.World;
         foreach (Entity entity in _marked)
@@ -721,13 +756,13 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         });
         foreach (Entity entity in others)
         {
-            if (Placement == CreatorPlacement.InPlace)
+            if (Placement == CreatorPlacement.Alone)
             {
-                world.Add<Greyed>(entity);
+                world.Add<Undrawn>(entity);
             }
             else
             {
-                world.Add<Undrawn>(entity);
+                world.Add<Greyed>(entity);
             }
 
             _marked.Add(entity);
@@ -763,23 +798,23 @@ public sealed class CreatorMode : IViewportMode, IDisposable
 
     private bool IsMarked(World world, Entity entity)
     {
-        if (Placement == CreatorPlacement.InPlace)
+        if (Placement == CreatorPlacement.Alone)
         {
-            return world.Has<Greyed>(entity);
+            return world.Has<Undrawn>(entity);
         }
 
-        return world.Has<Undrawn>(entity);
+        return world.Has<Greyed>(entity);
     }
 
     private void Unmark(World world, Entity entity)
     {
-        if (Placement == CreatorPlacement.InPlace)
+        if (Placement == CreatorPlacement.Alone)
         {
-            world.Remove<Greyed>(entity);
+            world.Remove<Undrawn>(entity);
         }
         else
         {
-            world.Remove<Undrawn>(entity);
+            world.Remove<Greyed>(entity);
         }
     }
 

@@ -6,6 +6,7 @@ using Arch.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Gizmos;
 using FlickerVoid.Editor.Core.Overlays;
@@ -464,11 +465,11 @@ public sealed partial class ViewportViewModel : ObservableObject
         return SceneMode.DescribeMany(Scene.Game.World, verb, entities);
     }
 
-    /// <summary>Saves the world into its scene file, or in the creator the creation's file.</summary>
+    /// <summary>Saves the world into its scene file (a greybox being shaped is part of it), or in the creator the creation's file.</summary>
     [RelayCommand]
     public void Save()
     {
-        if (CreatorFile is { } file)
+        if (CreatorFile is { } file && Creator?.Placement != CreatorPlacement.Piece)
         {
             Mode.Save();
             Status = $"Saved {file}.";
@@ -521,5 +522,6 @@ public sealed partial class ViewportViewModel : ObservableObject
     private void HandleSelectionChanged()
     {
         OnPropertyChanged(nameof(SelectionText));
+        NotifyPieces();
     }
 }
