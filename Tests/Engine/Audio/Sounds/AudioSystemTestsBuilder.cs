@@ -41,6 +41,7 @@ internal sealed class AudioSystemTestsBuilder : IDisposable
         Game.AddRendering();
         Game.AddCameras();
         Audio = Game.AddAudio();
+        Audio.SteamAudio = null;
         Music = Game.Services.GetService<MusicSystem>()!;
         Device = new NullAudioDevice(Audio.Mixer);
         Game.Lifecycle.Play(Game.World);
@@ -76,6 +77,20 @@ internal sealed class AudioSystemTestsBuilder : IDisposable
         string more = settings.Length > 0 ? ", " + settings : string.Empty;
         string json = $$"""{ "type": "sound", "files": [ {{list}} ]{{more}} }""";
         return WithSoundJson(name, json);
+    }
+
+    /// <summary>A second of noise as a sound at a place a listener can tell the direction of, and returns its content path.</summary>
+    public string WithNoise(string name)
+    {
+        Random random = new(3);
+        float[] samples = new float[48000];
+        for (int index = 0; index < samples.Length; index++)
+        {
+            samples[index] = ((random.NextSingle() * 2) - 1) * 0.5f;
+        }
+
+        Write($"{name}0.wav", WavFile.Pcm16(1, 48000, samples));
+        return WithSoundJson(name, $$"""{ "type": "sound", "files": [ "{{name}}0.wav" ], "loop": true }""");
     }
 
     /// <summary>Writes a sound data asset as given and returns its content path.</summary>
@@ -122,6 +137,28 @@ internal sealed class AudioSystemTestsBuilder : IDisposable
     {
         float[] heard = Device.Render(frames);
         return (heard[^2], heard[^1]);
+    }
+
+    /// <summary>Turns Steam Audio on for the sounds played from now on; false when its library is not built here.</summary>
+    public bool UseSteamAudio()
+    {
+        Audio.SteamAudio = FlickerVoid.Engine.Audio.Spatial.SteamAudio.TryCreate();
+        return Audio.SteamAudio is not null;
+    }
+
+    /// <summary>The summed loudness at each ear over a stretch of frames.</summary>
+    public (double Left, double Right) HearEnergy(int frames = AudioFormat.BlockFrames * 8)
+    {
+        float[] heard = Device.Render(frames);
+        double left = 0;
+        double right = 0;
+        for (int index = 0; index < heard.Length; index += 2)
+        {
+            left += Math.Abs(heard[index]);
+            right += Math.Abs(heard[index + 1]);
+        }
+
+        return (left, right);
     }
 
     public void Dispose()

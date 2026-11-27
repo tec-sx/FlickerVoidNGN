@@ -38,6 +38,10 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Windows" ]; then pwsh -File Source/Native/Dlss/build.ps1; else bash Source/Native/Dlss/build.sh; fi
+      - name: Fetch Steam Audio
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then pwsh -File Source/Native/SteamAudio/build.ps1; else bash Source/Native/SteamAudio/build.sh; fi
       # The editor's mesh Booleans: its tests need the library, so they fail here when it is missing instead of skipping.
       - name: Build Manifold, the mesh Boolean library
         shell: bash

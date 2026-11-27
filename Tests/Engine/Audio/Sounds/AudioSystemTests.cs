@@ -43,6 +43,19 @@ public sealed class AudioSystemTests : IDisposable
     }
 
     [Fact]
+    public void GivesASoundItsHeadRelatedDirectionThroughSteamAudio()
+    {
+        Assert.SkipUnless(_builder.UseSteamAudio(), "Steam Audio's library is not built here.");
+        _builder.SpawnListener();
+        string sound = _builder.WithNoise("Hiss");
+
+        _builder.Audio.Play(sound, new Vector3(3, 0, 0));
+
+        (double left, double right) = _builder.HearEnergy();
+        right.Should().BeGreaterThan(left * 1.5);
+    }
+
+    [Fact]
     public void TurnsTheEarsWithTheCamera()
     {
         _builder.SpawnListener();
