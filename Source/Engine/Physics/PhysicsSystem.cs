@@ -16,7 +16,7 @@ namespace FlickerVoid.Engine.Physics;
 /// Runs the physics simulation on Jolt each fixed step: creates bodies for new rigid and static bodies, removes those whose entity or component
 /// is gone, moves kinematic and static bodies to transforms that moved, steps, and copies awake dynamic bodies' poses to their transforms.
 /// </summary>
-public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
+public sealed partial class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
 {
     private const uint MaxBodies = 65536;
     private const uint MaxBodyPairs = 65536;
@@ -66,6 +66,8 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         : base(world)
     {
         ArrayRegistry.Add<SimulatedBody>();
+        ArrayRegistry.Add<WheeledBody>();
+        ArrayRegistry.Add<DriveInput>();
         _layerPairs = new Jolt.ObjectLayerPairFilterTable(2);
         _layerPairs.EnableCollision(StaticLayer, MovingLayer);
         _layerPairs.EnableCollision(MovingLayer, MovingLayer);
@@ -106,6 +108,16 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         return _ids.TryGetValue(entity, out (Jolt.BodyID Id, bool Static) body) && _bodies.IsActive(body.Id);
     }
 
+    public Vector3 GetVelocity(Entity entity)
+    {
+        if (!_ids.TryGetValue(entity, out (Jolt.BodyID Id, bool Static) body) || body.Static)
+        {
+            return Vector3.Zero;
+        }
+
+        return _bodies.GetLinearVelocity(body.Id);
+    }
+
     public override void Update(in GameTime t)
     {
         float dt = (float)t.Elapsed.TotalSeconds;
@@ -113,7 +125,9 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         RemoveDepartedBodies();
         AddRigidBodies();
         AddStaticBodies();
+        AddWheeledBodies();
         FollowKinematicBodies(dt);
+        DriveWheeledBodies();
         FollowStaticBodies();
         if (_added > OptimizeAfter)
         {
@@ -126,6 +140,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
         }
 
         CopyPosesToTransforms();
+        CopyWheeledPosesToTransforms();
     }
 
     public bool RayCast(Ray ray, float maxDistance, out RayHit hit)
@@ -146,6 +161,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
 
     public override void Dispose()
     {
+        DisposeWheeledBodies();
         _system.Dispose();
         _jobs.Dispose();
         _ignored.Dispose();
@@ -196,6 +212,7 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
                 continue;
             }
 
+            RemoveWheels(entity);
             _bodies.RemoveAndDestroyBody(body.Id);
             if (alive)
             {
@@ -209,6 +226,11 @@ public sealed class PhysicsSystem : BaseSystem<World, GameTime>, IPhysicsSystem
 
     private bool HasBodyComponent(Entity entity, bool isStatic)
     {
+        if (_vehicles.ContainsKey(entity))
+        {
+            return World.Has<WheeledBody>(entity);
+        }
+
         if (isStatic)
         {
             return World.Has<StaticBody>(entity);

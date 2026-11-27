@@ -37,4 +37,10 @@ public interface IContentManager
 
     /// <summary>Resolves a content path against the root; paths that lead outside the root throw.</summary>
     string GetFullPath(string path);
+
+    /// <summary>
+    /// The full path of the source file the content at <paramref name="path"/> is built from, in a development build whose
+    /// <see cref="ContentBuildManifest"/> names a source folder that holds it; its own full path otherwise.
+    /// </summary>
+    string GetSourcePath(string path);
 }

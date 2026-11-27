@@ -16,4 +16,5 @@ namespace FlickerVoid.Engine.Physics;
     Converters = [typeof(Vector3JsonConverter)])]
 [JsonSerializable(typeof(RigidBody))]
 [JsonSerializable(typeof(StaticBody))]
+[JsonSerializable(typeof(WheeledBody))]
 public sealed partial class PhysicsJsonContext : JsonSerializerContext;

@@ -89,4 +89,20 @@ public sealed class UndoHistoryTests
         _builder.History.Undo().Should().BeTrue();
         _builder.Value.Should().Be(1);
     }
+
+    [Fact]
+    public void ACancelledGroupPutsEverythingBackAndRecordsNothing()
+    {
+        _builder.Set(1);
+        _builder.History.BeginGroup("Drag");
+        _builder.Set(2);
+        _builder.Set(3);
+
+        _builder.History.CancelGroup();
+
+        _builder.Value.Should().Be(1);
+        _builder.History.CanRedo.Should().BeFalse();
+        _builder.History.Undo();
+        _builder.Value.Should().Be(0);
+    }
 }

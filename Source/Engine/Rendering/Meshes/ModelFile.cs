@@ -14,7 +14,7 @@ namespace FlickerVoid.Engine.Rendering.Meshes;
 public static class ModelFile
 {
     private const uint Magic = 0x444D5646;
-    private const int Version = 1;
+    private const int Version = 2;
 
     public static void Write(ModelData model, Stream stream)
     {
@@ -33,6 +33,11 @@ public static class ModelFile
             }
 
             WriteMaterial(writer, part.Material);
+            writer.Write(part.Nodes.Count);
+            foreach (string node in part.Nodes)
+            {
+                writer.Write(node);
+            }
         }
 
         writer.Write(model.Animations.Count);
@@ -72,7 +77,13 @@ public static class ModelFile
             }
 
             MaterialData material = ReadMaterial(reader);
-            MeshPart part = new(vertices, indices, material) { Skin = skin };
+            string[] nodes = new string[reader.ReadInt32()];
+            for (int node = 0; node < nodes.Length; node++)
+            {
+                nodes[node] = reader.ReadString();
+            }
+
+            MeshPart part = new(vertices, indices, material) { Skin = skin, Nodes = nodes };
             parts.Add(part);
         }
 

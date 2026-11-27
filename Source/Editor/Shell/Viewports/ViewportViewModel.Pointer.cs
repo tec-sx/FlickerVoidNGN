@@ -7,9 +7,14 @@ public sealed partial class ViewportViewModel
     /// <summary>A left click without Alt, which the open mode takes.</summary>
     public void PointerPressed(Vector2 pixel, int width, int height) => Mode.PointerPressed(pixel, width, height);
 
-    /// <summary>A left click in the creator's mesh: Shift adds to the selection, Ctrl selects the loop through what is hit.</summary>
+    /// <summary>A left click in the creator's mesh keeps a dragged tool's work, else selects: Shift adds to the selection, Ctrl selects the loop through what is hit.</summary>
     public void PointerPressed(Vector2 pixel, int width, int height, bool additive, bool loop)
     {
+        if (MeshTools.ConfirmDrag())
+        {
+            return;
+        }
+
         if (Creator is { MeshSelection: not null } creator)
         {
             creator.PressMesh(pixel, width, height, additive, loop);

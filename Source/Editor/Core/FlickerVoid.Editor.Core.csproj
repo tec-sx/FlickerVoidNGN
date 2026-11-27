@@ -12,6 +12,7 @@
     <ProjectReference Include="../../Engine/Platform/FlickerVoid.Engine.Platform.csproj" />
     <ProjectReference Include="../../Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
     <ProjectReference Include="../../Engine/Vehicles/FlickerVoid.Engine.Vehicles.csproj" />
+    <ProjectReference Include="../../Engine/Buildings/FlickerVoid.Engine.Buildings.csproj" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="FlickerVoid.Editor" />

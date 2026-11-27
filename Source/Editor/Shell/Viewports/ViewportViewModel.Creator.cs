@@ -9,6 +9,7 @@ using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Engine.Runtime.Geometry;
+using FlickerVoid.Engine.Buildings;
 using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Viewports;
@@ -56,6 +57,10 @@ public sealed partial class ViewportViewModel
         {
             CreationRequested?.Invoke(picked, vehicle.File);
         }
+        else if (world.TryGet(picked, out Building building) && !string.IsNullOrEmpty(building.File))
+        {
+            CreationRequested?.Invoke(picked, building.File);
+        }
     }
 
     /// <summary>Makes the creation in the viewport: clicks go to it, the selection is cleared and the view frames it.</summary>
@@ -89,22 +94,24 @@ public sealed partial class ViewportViewModel
 
     /// <summary>
     /// The mesh keys of the creator: Tab enters and leaves the mesh, then 1, 2 and 3 pick points, edges or faces, E extrudes, I
-    /// insets, C cuts, Ctrl+B bevels, Ctrl+R cuts a loop and D hangs a door where the mouse is. Escape leaves the mesh before the
+    /// insets, C cuts and Ctrl+B bevels by an amount the mouse then sets (any key keeps it, Escape cancels it), Ctrl+R cuts a loop and D hangs a door where the mouse is. Escape leaves the mesh before the
     /// creator. True when the key was taken.
     /// </summary>
     private bool PressMeshKey(ViewportKey key, bool ctrl)
     {
-        if (key == ViewportKey.Tab)
+        if (MeshTools.IsDragging)
         {
-            if (MeshTools.IsMeshMode)
+            if (key == ViewportKey.Escape)
             {
-                MeshTools.Leave();
-            }
-            else
-            {
-                MeshTools.Enter();
+                return MeshTools.CancelDrag();
             }
 
+            MeshTools.ConfirmDrag();
+        }
+
+        if (key == ViewportKey.Tab)
+        {
+            MeshTools.ToggleMesh();
             return true;
         }
 
@@ -125,16 +132,16 @@ public sealed partial class ViewportViewModel
                 MeshTools.Element = MeshElement.Face;
                 break;
             case ViewportKey.E:
-                MeshTools.Extrude();
+                MeshTools.DragExtrude();
                 break;
             case ViewportKey.I:
-                MeshTools.Inset();
+                MeshTools.DragInset();
                 break;
             case ViewportKey.C:
-                MeshTools.Cut();
+                MeshTools.DragCut();
                 break;
             case ViewportKey.B when ctrl:
-                MeshTools.Bevel();
+                MeshTools.DragBevel();
                 break;
             case ViewportKey.R when ctrl:
                 MeshTools.LoopCut();
@@ -158,5 +165,6 @@ public sealed partial class ViewportViewModel
         OnPropertyChanged(nameof(Mode));
         OnPropertyChanged(nameof(IsCreating));
         OnPropertyChanged(nameof(CreatorFile));
+        MeshTools.Refresh();
     }
 }

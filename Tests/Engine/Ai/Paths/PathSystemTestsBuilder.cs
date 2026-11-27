@@ -6,10 +6,12 @@ using Arch.Core;
 using FlickerVoid.Engine.Ai.Paths;
 using FlickerVoid.Engine.Characters;
 using FlickerVoid.Engine.Physics;
+using FlickerVoid.Engine.Physics.Colliders;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
+using FlickerVoid.Engine.Runtime.Solids;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -72,6 +74,29 @@ internal sealed class PathSystemTestsBuilder : IDisposable
     public Entity AddStaticBody(string name, Vector3 position, string bodyJson)
     {
         return SpawnPlaying(name, position, Quaternion.Identity, $$""" "staticBody": {{bodyJson}} """);
+    }
+
+    /// <summary>A playing static body whose collision is the triangles of a box of the size standing on the position.</summary>
+    public Entity AddTriangleBox(Vector3 position, Vector3 size)
+    {
+        SolidTriangles triangles = SolidMesh.Box(size).Triangulate();
+        Vector3[] positions = [.. triangles.Vertices.Select(vertex => vertex.Position)];
+        int[] indices = [.. triangles.Indices.Select(index => (int)index)];
+        TriangleCollider collider = new() { Positions = positions, Indices = indices };
+        Transform place = new() { Position = position };
+        Entity entity = Game.World.Create(place, new StaticBody { Collider = collider });
+        Game.Lifecycle.Start(Game.World, entity);
+        return entity;
+    }
+
+    /// <summary>A playing kinematic obstacle whose collision is the hull of a box of the size standing on the position.</summary>
+    public Entity AddHullBox(Vector3 position, Vector3 size)
+    {
+        HullCollider collider = new() { Points = [.. SolidMesh.Box(size).Points] };
+        Transform place = new() { Position = position };
+        Entity entity = Game.World.Create(place, new RigidBody { Collider = collider, Kinematic = true, Obstacle = true });
+        Game.Lifecycle.Start(Game.World, entity);
+        return entity;
     }
 
     public void Place(Entity entity, Vector3 position, Quaternion rotation)

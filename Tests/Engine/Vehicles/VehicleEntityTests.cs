@@ -3,8 +3,14 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Engine.Creations;
+using FlickerVoid.Engine.Gameplay.Tags;
+using FlickerVoid.Engine.Interaction;
+using FlickerVoid.Engine.Interaction.Interactables;
+using FlickerVoid.Engine.Interaction.Interactors;
+using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Physics;
 using FlickerVoid.Engine.Physics.Colliders;
+using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -49,6 +55,57 @@ public sealed class VehicleEntityTests : IDisposable
         wheel!.File.Should().Be(Van);
         wheel.Model.Parts.Should().ContainSingle().Which.Indices.Should().NotBeEmpty();
         missing.Should().BeNull();
+    }
+
+    [Fact]
+    public void APartWithALookIsDrawnAsItsLookAndTheRestAsGreyboxes()
+    {
+        _builder.WithVehicle(Van, VehicleFile.Create(VehicleType.Car)).Build();
+        _builder.WriteLook(Van, ["body"], ["Mirror", "body"]);
+        MeshSources meshes = _builder.Game.Services.GetService<MeshSources>()!;
+
+        MadeMesh? body = meshes.Make($"{Van}#body", _builder.Content);
+        MadeMesh? wheel = meshes.Make($"{Van}#wheel.1L", _builder.Content);
+
+        body!.Model.Parts.Should().HaveCount(2, "the look's two objects of the body");
+        body.OtherFiles.Should().Contain(VehicleLook.GetBuiltPath(Van), "a look built again draws again");
+        wheel!.Model.Parts.Should().ContainSingle().Which.Nodes.Should().BeEmpty("it keeps its greybox");
+        wheel.OtherFiles.Should().Contain(VehicleLook.GetBuiltPath(Van), "a look that gains the wheel draws it");
+    }
+
+    [Fact]
+    public void ShowingGreyboxesDrawsEveryPartAsItsSolidAgain()
+    {
+        _builder.WithVehicle(Van, VehicleFile.Create(VehicleType.Car)).Build();
+        _builder.WriteLook(Van, ["body"], ["Mirror", "body"]);
+        Entity van = _builder.Place(Van);
+        VehicleLooks looks = _builder.Game.Services.GetService<VehicleLooks>()!;
+        MeshSources meshes = _builder.Game.Services.GetService<MeshSources>()!;
+        World world = _builder.Game.World;
+
+        looks.ShowGreyboxes = true;
+
+        Entity part = _builder.Parts.Find(van, "body");
+        string mesh = world.Get<MeshRenderer>(part).Mesh;
+        mesh.Should().NotBe($"{Van}#body");
+        meshes.Make(mesh, _builder.Content)!.Model.Parts.Should().ContainSingle("the greybox is one solid");
+        looks.ShowGreyboxes = false;
+        world.Get<MeshRenderer>(part).Mesh.Should().Be($"{Van}#body");
+    }
+
+    [Fact]
+    public void TheLooksReportSaysWhatMatchedNothingAndWhatHasNoObject()
+    {
+        _builder.WithVehicle(Van, VehicleFile.Create(VehicleType.Car)).Build();
+        _builder.WriteLook(Van, ["body"], ["Antenna.001"]);
+        VehicleLooks looks = _builder.Game.Services.GetService<VehicleLooks>()!;
+
+        VehicleLook? look = looks.Find(_builder.Content, Van);
+        VehicleLook? none = looks.Find(_builder.Content, "Vans/Other.fvvehicle");
+
+        look!.Unmatched.Should().Equal("Antenna.001");
+        look.Greyboxed.Should().Equal("wheel.1L", "wheel.1R", "wheel.2L", "wheel.2R");
+        none.Should().BeNull();
     }
 
     [Fact]
@@ -144,6 +201,31 @@ public sealed class VehicleEntityTests : IDisposable
         HullCollider hull = moving.Collider.Should().BeOfType<HullCollider>().Subject;
         hull.Points.Should().Equal(car.Doors[0].Mesh.Points);
         world.Has<StaticBody>(door).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AnInteractorBesideADoorOpensItWithTheUseInput()
+    {
+        VehicleFile car = VehicleFileTestsBuilder.WithDoor();
+        _builder.WithVehicle(Van, car).Build();
+        _builder.Game.AddInteraction();
+        Entity van = _builder.Place(Van);
+        World world = _builder.Game.World;
+        _builder.Game.Lifecycle.Play(world);
+        Entity door = _builder.Parts.Find(van, "door.1");
+        Vector3 middle = InteractionSystem.GetUsePoint(world, door);
+        Transform beside = new() { Position = middle + new Vector3(1, 0, 0) };
+        Entity fox = world.Create(beside, new Interactor { Reach = 1.5f });
+        Tag use = new("Input.Use");
+
+        _builder.Game.Events.Send(new FocusCommand(fox, door));
+        _builder.Game.Events.Send(new InteractionInput(fox, use, InputPhase.Pressed));
+        _builder.Game.Tick(TimeSpan.FromSeconds(0.1));
+        _builder.Game.Events.Send(new InteractionInput(fox, use, InputPhase.Released));
+        _builder.Game.Tick(TimeSpan.FromSeconds(0.1));
+
+        middle.Should().Be(new Vector3(0, 0.5f, 0), "the door's box stands on its pivot");
+        world.Get<Toggle>(door).Open.Should().BeTrue();
     }
 
     [Fact]
