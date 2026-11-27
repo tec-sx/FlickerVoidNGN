@@ -62,7 +62,7 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
     public CreatorMode EnterInPlace(string name)
     {
         Entity placed = Find(name);
-        return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save, FindMesh, ApplyMesh, IsMirrored, SetMirror, HangDoor);
+        return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save, FindMesh, ApplyMesh, IsMirrored, SetMirror);
     }
 
     public CreatorMode EnterPiece(string name)
@@ -74,7 +74,9 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
     public CreatorMode EnterAlone()
     {
         Vehicle vehicle = new() { File = File };
-        return CreatorMode.Alone(Scene, Camera, vehicle, FileHistory, Save, FindMesh, ApplyMesh, IsMirrored, SetMirror, HangDoor);
+        CreatorMode mode = CreatorMode.Alone(Scene, Camera, vehicle, FileHistory, Save, FindMesh, ApplyMesh, IsMirrored, SetMirror);
+        mode.Doors = new CarDoors(this);
+        return mode;
     }
 
     /// <summary>Writes the car file again with the wheel count, as the creator's panel would.</summary>
@@ -130,18 +132,62 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
         Scene.Content.Write(File, bytes);
     }
 
-    /// <summary>Hangs the door in the car's part and writes the file, as the creator's panel would.</summary>
-    public string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options)
+    /// <summary>The door tool's view of the car, writing the file after each change as the creator's panel would.</summary>
+    public sealed class CarDoors(CreatorModeTestsBuilder builder) : IDoorHost
     {
-        string? id = DoorTool.Hang(_car, partId, face, hinge, options);
-        if (id is not null)
+        public bool IsAvailable => DoorFitter.IsAvailable;
+
+        public bool IsWall(string partId) => builder.Find(partId, out SolidPart part) && part.Joint is null && part.Fit is null;
+
+        public DoorFit? FindFit(string doorId) => builder.Find(doorId, out SolidPart part) ? part.Fit : null;
+
+        public string? Place(DoorFit fit)
         {
-            string json = Serialize(_car);
-            byte[] bytes = Encoding.UTF8.GetBytes(json);
-            Scene.Content.Write(File, bytes);
+            string? id = DoorFitter.Place(builder._car, fit);
+            builder.Write();
+            return id;
         }
 
-        return id;
+        public bool Replace(string doorId, DoorFit fit)
+        {
+            builder.Find(doorId, out SolidPart part);
+            part.Fit = fit;
+            bool done = DoorFitter.Rebuild(builder._car);
+            builder.Write();
+            return done;
+        }
+
+        public bool Remove(string doorId)
+        {
+            bool done = DoorFitter.Remove(builder._car, doorId);
+            builder.Write();
+            return done;
+        }
+    }
+
+    /// <summary>The car, for the door tests.</summary>
+    public VehicleFile Car => _car;
+
+    private bool Find(string id, out SolidPart found)
+    {
+        foreach ((string partId, SolidPart part) in _car.GetParts())
+        {
+            if (partId == id)
+            {
+                found = part;
+                return true;
+            }
+        }
+
+        found = null!;
+        return false;
+    }
+
+    private void Write()
+    {
+        string json = Serialize(_car);
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+        Scene.Content.Write(File, bytes);
     }
 
     /// <summary>Whether the car's part has its mirror switch on.</summary>

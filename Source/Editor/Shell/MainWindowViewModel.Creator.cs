@@ -199,7 +199,7 @@ public sealed partial class MainWindowViewModel
 
         EditorScene scene = Viewport.Scene;
         UndoHistory history = _content.GetHistory(file);
-        CreatorMode creator = CreatorMode.InPlace(scene, Viewport.Camera, placed, history, () => SaveCreation(file), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror, HangCreatorDoor);
+        CreatorMode creator = CreatorMode.InPlace(scene, Viewport.Camera, placed, history, () => SaveCreation(file), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror);
         EnterCreator(creator, file, panel);
     }
 
@@ -217,17 +217,17 @@ public sealed partial class MainWindowViewModel
         if (IsBuilding(path))
         {
             Building building = new() { File = path };
-            creator = CreatorMode.Alone(scene, Viewport.Camera, building, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror, HangCreatorDoor);
+            creator = CreatorMode.Alone(scene, Viewport.Camera, building, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror);
         }
         else if (IsFoliage(path))
         {
             Plant plant = new() { File = path };
-            creator = CreatorMode.Alone(scene, Viewport.Camera, plant, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror, HangCreatorDoor);
+            creator = CreatorMode.Alone(scene, Viewport.Camera, plant, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror);
         }
         else
         {
             Vehicle vehicle = new() { File = path };
-            creator = CreatorMode.Alone(scene, Viewport.Camera, vehicle, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror, HangCreatorDoor);
+            creator = CreatorMode.Alone(scene, Viewport.Camera, vehicle, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror);
         }
 
         EnterCreator(creator, path, panel);
@@ -235,6 +235,7 @@ public sealed partial class MainWindowViewModel
 
     private void EnterCreator(CreatorMode creator, string file, CreatorPanelViewModel panel)
     {
+        creator.Doors = new CreationDoors(() => CreatorPanel?.Creation);
         Viewport.EnterCreator(creator, file);
         creator.PartSelected += () => OnPropertyChanged(nameof(CreatorPart));
         creator.MeshModeChanged += ShowGreyboxesInTheMesh;
@@ -308,8 +309,6 @@ public sealed partial class MainWindowViewModel
     }
 
     private SolidMesh? FindCreatorMesh(string id) => CreatorPanel?.FindMesh(id);
-
-    private string? HangCreatorDoor(string partId, int face, SolidEdge hinge, DoorOptions options) => CreatorPanel?.HangDoor(partId, face, hinge, options);
 
     private bool IsCreatorMirrored(string id) => CreatorPanel?.FindMirror(id) == true;
 

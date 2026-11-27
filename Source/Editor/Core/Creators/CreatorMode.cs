@@ -26,7 +26,7 @@ namespace FlickerVoid.Editor.Core.Creators;
 /// marks, the light and a temporary copy away again. A selected part's mesh can be entered (Tab): clicks then select its points,
 /// edges or faces, and the part can't change until the mesh is left.
 /// </summary>
-public sealed class CreatorMode : IViewportMode, IDisposable
+public sealed partial class CreatorMode : IViewportMode, IDisposable
 {
     /// <summary>How far the work light reaches past the view's pivot.</summary>
     private const float WorkLightReach = 5;
@@ -40,7 +40,6 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     private readonly Action<string, SolidMesh>? _applyMesh;
     private readonly Func<string, bool>? _isMirrored;
     private readonly Action<string, bool>? _setMirror;
-    private readonly Func<string, int, SolidEdge, DoorOptions, string?>? _hangDoor;
     private SolidMesh? _meshSolid;
     private SolidMesh? _dragSolid;
     private MeshElement _dragElement;
@@ -50,7 +49,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     private bool _dragShown;
     private readonly List<Entity> _marked = [];
 
-    private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh, Action<string, SolidMesh>? applyMesh, Func<string, bool>? isMirrored, Action<string, bool>? setMirror, Func<string, int, SolidEdge, DoorOptions, string?>? hangDoor)
+    private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh, Action<string, SolidMesh>? applyMesh, Func<string, bool>? isMirrored, Action<string, bool>? setMirror)
     {
         _scene = scene;
         _camera = camera;
@@ -59,7 +58,6 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         _applyMesh = applyMesh;
         _isMirrored = isMirrored;
         _setMirror = setMirror;
-        _hangDoor = hangDoor;
         Root = root;
         Placement = placement;
         History = history;
@@ -109,22 +107,22 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// Makes the creation placed in the level, greying the rest of it. <paramref name="findMesh"/> gives the mesh of a part by its id,
     /// for entering the mesh.
     /// </summary>
-    public static CreatorMode InPlace(EditorScene scene, EditorCamera camera, Entity placed, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null, Func<string, bool>? isMirrored = null, Action<string, bool>? setMirror = null, Func<string, int, SolidEdge, DoorOptions, string?>? hangDoor = null)
+    public static CreatorMode InPlace(EditorScene scene, EditorCamera camera, Entity placed, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null, Func<string, bool>? isMirrored = null, Action<string, bool>? setMirror = null)
     {
-        return new CreatorMode(scene, camera, placed, CreatorPlacement.InPlace, history, save, findMesh, applyMesh, isMirrored, setMirror, hangDoor);
+        return new CreatorMode(scene, camera, placed, CreatorPlacement.InPlace, history, save, findMesh, applyMesh, isMirrored, setMirror);
     }
 
     /// <summary>
     /// Makes a creation alone: places a temporary entity with <paramref name="creation"/>, the component that names its file, at the
     /// origin, outside the scene, and sets the level aside.
     /// </summary>
-    public static CreatorMode Alone<T>(EditorScene scene, EditorCamera camera, T creation, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null, Func<string, bool>? isMirrored = null, Action<string, bool>? setMirror = null, Func<string, int, SolidEdge, DoorOptions, string?>? hangDoor = null)
+    public static CreatorMode Alone<T>(EditorScene scene, EditorCamera camera, T creation, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh = null, Action<string, SolidMesh>? applyMesh = null, Func<string, bool>? isMirrored = null, Action<string, bool>? setMirror = null)
         where T : struct
     {
         World world = scene.Game.World;
         Entity copy = world.Create(new Transform(), creation);
         scene.Game.Lifecycle.Start(world, copy);
-        return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh, applyMesh, isMirrored, setMirror, hangDoor);
+        return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh, applyMesh, isMirrored, setMirror);
     }
 
     /// <summary>
@@ -134,7 +132,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     public static CreatorMode Piece(EditorScene scene, EditorCamera camera, Entity greybox)
     {
         PieceShape shape = new(scene, greybox);
-        return new CreatorMode(scene, camera, greybox, CreatorPlacement.Piece, scene.History, scene.Save, _ => shape.Find(), (_, mesh) => shape.Apply(mesh), null, null, null);
+        return new CreatorMode(scene, camera, greybox, CreatorPlacement.Piece, scene.History, scene.Save, _ => shape.Find(), (_, mesh) => shape.Apply(mesh), null, null);
     }
 
     public bool Save() => _save();
@@ -142,6 +140,11 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>Selects the part of the creation under the mouse, whatever is in front of it, or none.</summary>
     public void PointerPressed(Vector2 pixel, int width, int height)
     {
+        if (PressDoor(pixel, width, height))
+        {
+            return;
+        }
+
         if (MeshSelection is not null)
         {
             if (!BeginGizmoDrag(pixel, width, height))
@@ -172,14 +175,30 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>Selects the creation's part with the id, or none, as a click on it does; another part leaves the mesh.</summary>
     public void SelectPart(string? id)
     {
-        if (id == SelectedPart || Placement == CreatorPlacement.Piece)
+        if (Placement == CreatorPlacement.Piece)
         {
             return;
         }
 
+        if (id == SelectedPart)
+        {
+            if (id is not null && Door is null)
+            {
+                EditDoor(id);
+            }
+
+            return;
+        }
+
         LeaveMesh();
+        CancelDoor();
 
         SelectedPart = id;
+        if (id is not null)
+        {
+            EditDoor(id);
+        }
+
         PartSelected?.Invoke();
     }
 
@@ -311,33 +330,6 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// is selected or all are.
     /// </summary>
     public bool InsetMesh(float thickness) => ReplaceMesh((solid, selected) => MeshInset.Faces(solid, GetFaces(solid, selected), thickness));
-
-    /// <summary>
-    /// Hangs a door (D) in the face of the entered mesh under the mouse, hinged on the face's edge nearest it, as one undo step;
-    /// the new door's id, or null when the mouse is over no face or the door can't be made. The door part is left selected.
-    /// </summary>
-    public string? HangDoor(Vector2 pixel, int width, int height, DoorOptions options)
-    {
-        if (MeshSelection is null || MeshPart is not { } id || _hangDoor is null || FindSelectedPart() is not { } part || _findMesh?.Invoke(id) is not { } solid)
-        {
-            return null;
-        }
-
-        Matrix4x4 toWorld = _scene.Game.World.Get<Transform>(part).ToMatrix();
-        MeshPicker picker = new(solid, toWorld, _camera, width, height);
-        if (picker.Pick(MeshElement.Face, pixel) is not { } hit)
-        {
-            return null;
-        }
-
-        string? door = _hangDoor(id, hit.Index, hit.Edge, options);
-        if (door is not null)
-        {
-            LeaveMesh();
-        }
-
-        return door;
-    }
 
     /// <summary>Opens or shuts the door part of the vehicle at once, to see it swing; false for a part without a joint and toggle.</summary>
     public bool SwingDoor(string id)
@@ -666,6 +658,12 @@ public sealed class CreatorMode : IViewportMode, IDisposable
 
     public void PointerMoved(Vector2 pixel, int width, int height)
     {
+        if (Door is not null)
+        {
+            MoveDoor(pixel, width, height);
+            return;
+        }
+
         if (Gizmo is { IsDragging: true })
         {
             DragGizmo(pixel, width, height);
@@ -809,6 +807,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
 
     public void PointerReleased()
     {
+        Door?.EndDrag();
         if (Gizmo is { IsDragging: true } gizmo)
         {
             gizmo.EndDrag();
@@ -830,6 +829,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>Leaves the creator: takes the marks off the level and removes the work light and a temporary copy with its parts.</summary>
     public void Dispose()
     {
+        CancelDoor();
         LeaveMesh();
         _scene.Edited -= RefreshMesh;
         _scene.Content.Changed -= HandleChanged;

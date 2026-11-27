@@ -60,9 +60,13 @@ public sealed partial class ToolRailViewModel : ObservableObject
             ], true));
             groups.Add(new ToolGroup(
             [
-                new ToolItem("Door", "D", nameof(LucideIcons.Door), tools.HangDoor, false),
                 new ToolItem("Mirror", "M", nameof(LucideIcons.Mirror), () => tools.Mirror = !tools.Mirror, tools.Mirror),
             ], true));
+        }
+
+        if (tools.CanDoor)
+        {
+            groups.Add(new ToolGroup([new ToolItem("Door", "D", nameof(LucideIcons.Door), tools.ToggleDoor, tools.IsDoorTool)], true));
         }
 
         return groups;
@@ -78,7 +82,7 @@ public sealed partial class ToolRailViewModel : ObservableObject
 
     private void HandleToolsChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MeshToolsViewModel.IsMeshMode) or nameof(MeshToolsViewModel.ActiveTool) or nameof(MeshToolsViewModel.Mirror))
+        if (e.PropertyName is nameof(MeshToolsViewModel.IsMeshMode) or nameof(MeshToolsViewModel.ActiveTool) or nameof(MeshToolsViewModel.Mirror) or nameof(MeshToolsViewModel.IsDoorTool) or nameof(MeshToolsViewModel.CanDoor))
         {
             Refresh();
         }
