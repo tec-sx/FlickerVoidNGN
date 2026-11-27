@@ -35,7 +35,7 @@
           <Button x:Name="AddButton" Classes="tagAdd" ToolTip.Tip="Pick tags from the project's tags, or add one"
                   IsVisible="{Binding CanAdd}">
             <Button.Flyout>
-              <Flyout Placement="BottomEdgeAlignedLeft" Opening="HandlePickerOpening">
+              <Flyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="bare" Opening="HandlePickerOpening">
                 <tags:TagPickerView />
               </Flyout>
             </Button.Flyout>

@@ -45,6 +45,8 @@ public sealed class TagViewsTests
                 _builder.Find<TextBlock>().Select(text => text.Text).Should().Contain("1 picked").And.Contain("Hats").And.Contain("Ambience");
                 _builder.Find<Border>().Count(border => border.Classes.Contains("tagRow")).Should().Be(5, "Ambience is folded: Ambience, Music, Drums, Inn, Hats");
 
+                _builder.Find<StackPanel>().Should().NotContain(panel => panel.Classes.Contains("tagActions"), "a row shows add, rename and remove only while hovered");
+
                 TextBlock hats = _builder.Find<TextBlock>().First(text => text.Text == "Hats");
                 _builder.Click(hats);
 

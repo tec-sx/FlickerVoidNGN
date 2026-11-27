@@ -924,6 +924,12 @@
     <Setter Property="Height" Value="11" />
     <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
   </Style>
+  <Style Selector="FlyoutPresenter.bare">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="MaxWidth" Value="320" />
+  </Style>
   <Style Selector="Border.tagPicker">
     <Setter Property="Width" Value="300" />
     <Setter Property="CornerRadius" Value="7" />

@@ -57,7 +57,8 @@
                       <PathIcon Data="{x:Static shell:LucideIcons.Expand}" IsVisible="{Binding !IsFolded}" />
                     </Panel>
                   </Button>
-                  <StackPanel DockPanel.Dock="Right" Classes="tagActions" Orientation="Horizontal" Spacing="4" IsVisible="{Binding !IsRenaming}">
+                  <Panel DockPanel.Dock="Right" IsVisible="{Binding !IsRenaming}">
+                  <StackPanel Classes="tagActions" Orientation="Horizontal" Spacing="4">
                     <Button Classes="icon tagAction" ToolTip.Tip="Add a tag below it"
                             Command="{Binding $parent[tags:TagPickerView].((tagModels:TagPickerViewModel)DataContext).AddBelowCommand}" CommandParameter="{Binding}"
                             Click="HandleAddBelow">
@@ -72,6 +73,7 @@
                       <PathIcon Data="{x:Static shell:LucideIcons.Delete}" />
                     </Button>
                   </StackPanel>
+                  </Panel>
                   <Panel>
                     <Button Classes="quiet" Padding="0" Background="Transparent" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             IsVisible="{Binding !IsRenaming}" ToolTip.Tip="{Binding Path}"
