@@ -46,6 +46,48 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     }
 
     [Fact]
+    public void TheEditMeshButtonShowsInTheCreatorAndEntersTheSelectedPartsMesh()
+    {
+        MeshToolsViewModel tools = Viewport.MeshTools;
+        bool shownInTheScene = tools.IsCreating;
+        _builder.DoubleClick(_builder.MiddleOf("Van"));
+        ViewModel.CreatorPart = "body";
+
+        tools.ToggleMesh();
+
+        shownInTheScene.Should().BeFalse();
+        tools.IsCreating.Should().BeTrue();
+        tools.IsMeshMode.Should().BeTrue();
+        Viewport.Creator!.MeshPart.Should().Be("body");
+        tools.ToggleMesh();
+        tools.IsMeshMode.Should().BeFalse("pressing it again leaves the mesh");
+    }
+
+    [Fact]
+    public void TabEntersAndLeavesTheSelectedPartsMesh()
+    {
+        _builder.DoubleClick(_builder.MiddleOf("Van"));
+        ViewModel.CreatorPart = "body";
+
+        Viewport.KeyPressed(ViewportKey.Tab, ViewportButtons.None);
+
+        Viewport.MeshTools.IsMeshMode.Should().BeTrue();
+        Viewport.KeyPressed(ViewportKey.Tab, ViewportButtons.None);
+        Viewport.MeshTools.IsMeshMode.Should().BeFalse();
+    }
+
+    [Fact]
+    public void EditingTheMeshWithNoPartSelectedSaysWhatToClick()
+    {
+        _builder.DoubleClick(_builder.MiddleOf("Van"));
+
+        Viewport.MeshTools.ToggleMesh();
+
+        Viewport.MeshTools.IsMeshMode.Should().BeFalse();
+        Viewport.Status.Should().Contain("Click a part");
+    }
+
+    [Fact]
     public void EnteringClearsTheSelectionSoNoGizmoShows()
     {
         _builder.DoubleClick(_builder.MiddleOf("Van"));

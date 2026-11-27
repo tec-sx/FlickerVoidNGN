@@ -96,15 +96,7 @@ public sealed partial class ViewportViewModel
     {
         if (key == ViewportKey.Tab)
         {
-            if (MeshTools.IsMeshMode)
-            {
-                MeshTools.Leave();
-            }
-            else
-            {
-                MeshTools.Enter();
-            }
-
+            MeshTools.ToggleMesh();
             return true;
         }
 
@@ -158,5 +150,6 @@ public sealed partial class ViewportViewModel
         OnPropertyChanged(nameof(Mode));
         OnPropertyChanged(nameof(IsCreating));
         OnPropertyChanged(nameof(CreatorFile));
+        MeshTools.Refresh();
     }
 }

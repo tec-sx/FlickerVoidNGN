@@ -79,6 +79,9 @@ public sealed partial class MeshToolsViewModel : ObservableObject
         }
     }
 
+    /// <summary>Whether a creator is open, which shows the Edit mesh button.</summary>
+    public bool IsCreating => _creator() is not null;
+
     public bool IsMeshMode => _creator()?.MeshSelection is not null;
 
     public MeshElement Element
@@ -123,6 +126,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
     public void Refresh()
     {
+        OnPropertyChanged(nameof(IsCreating));
         OnPropertyChanged(nameof(IsMeshMode));
         OnPropertyChanged(nameof(Element));
         OnPropertyChanged(nameof(IsPoint));
@@ -148,12 +152,28 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
         if (!creator.EnterMesh())
         {
-            _report("Select a part with a mesh first.");
+            _report("Click a part of the creation first (the body, say), then Edit mesh or Tab.");
         }
     }
 
     [RelayCommand]
     public void Leave() => _creator()?.LeaveMesh();
+
+    /// <summary>The Edit mesh button: enters the selected part's mesh, or leaves the mesh being edited (Tab).</summary>
+    [RelayCommand]
+    public void ToggleMesh()
+    {
+        if (IsMeshMode)
+        {
+            Leave();
+        }
+        else
+        {
+            Enter();
+        }
+
+        Refresh();
+    }
 
     [RelayCommand]
     public void Extrude() => Run(creator => creator.ExtrudeMesh((float)Amount), "Select faces to extrude.");
