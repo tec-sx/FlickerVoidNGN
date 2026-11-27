@@ -49,6 +49,21 @@ public sealed class ModelFileTests
     }
 
     [Fact]
+    public void ReadsTheNodesEachPartWasReadFrom()
+    {
+        ModelData built = new TestModelBuilder().WithQuad(1).Build();
+        MeshPart named = built.Parts[0] with { Nodes = ["Handle.001", "door.1"] };
+        ModelData model = new([named], []);
+        using MemoryStream stream = new();
+
+        ModelFile.Write(model, stream);
+        stream.Position = 0;
+        ModelData read = ModelFile.Read(stream);
+
+        read.Parts[0].Nodes.Should().Equal("Handle.001", "door.1");
+    }
+
+    [Fact]
     public void AFileThatIsNotAModelThrows()
     {
         using MemoryStream stream = new([1, 2, 3, 4, 5, 6, 7, 8]);
