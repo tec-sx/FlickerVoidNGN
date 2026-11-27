@@ -22,6 +22,8 @@ using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Foliage;
+using FlickerVoid.Engine.Foliage.Serialization;
 using FlickerVoid.Engine.Vehicles;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
@@ -389,14 +391,14 @@ public sealed partial class ViewportViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Adds an entity for a file where it is dropped, a vehicle or a building for its file and else a mesh entity drawing a model: on the mesh
+    /// Adds an entity for a file where it is dropped, a vehicle, a building or foliage for its file (a tree as one plant, a bush as a scatter) and else a mesh entity drawing a model: on the mesh
     /// under the mouse, else on the ground, else where the mouse's ray crosses the plane of the camera's pivot; then selects it.
     /// </summary>
     public void DropAsset(string path, Vector2 pixel, int width, int height)
     {
         if (Scene.ScenePath is null)
         {
-            Status = "Open a scene before adding models, vehicles or buildings: double-click one in the content browser.";
+            Status = "Open a scene before adding models, vehicles, buildings or foliage: double-click one in the content browser.";
             return;
         }
 
@@ -425,11 +427,30 @@ public sealed partial class ViewportViewModel : ObservableObject
         {
             preset = EntityPreset.ForBuilding(path);
         }
+        else if (path.EndsWith(FoliageFile.Extension, StringComparison.OrdinalIgnoreCase))
+        {
+            bool scattered = IsBush(path);
+            preset = EntityPreset.ForFoliage(path, scattered);
+        }
 
         EntityData data = preset.Create(world, Scene.Entities, position);
         Entity entity = Scene.AddEntity(data);
         Selection.Select(entity);
         Status = $"Added {data.Name}.";
+    }
+
+    /// <summary>Whether the foliage file grows a bush, which is dropped as a scatter; a file that can't be read is not.</summary>
+    private bool IsBush(string path)
+    {
+        try
+        {
+            FoliageFile foliage = Scene.Content.Load(path, FoliageJsonContext.Default.FoliageFile);
+            return foliage.Kind == FoliageKind.Bush;
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or System.Text.Json.JsonException)
+        {
+            return false;
+        }
     }
 
     /// <summary>Destroys the selected entities; the next save leaves them out of the scene file. The creator never edits the level.</summary>

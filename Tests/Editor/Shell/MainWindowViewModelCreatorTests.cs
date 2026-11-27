@@ -5,11 +5,13 @@ using Arch.Core;
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Assets.Buildings;
+using FlickerVoid.Editor.Assets.Foliage;
 using FlickerVoid.Editor.Assets.Vehicles;
 using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Editor.Viewports;
+using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Greyboxes;
 using FlickerVoid.Engine.Vehicles;
@@ -387,6 +389,63 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         panel.Storeys = 2;
         ViewModel.CreatorParts.Should().Equal("storey.0", "storey.1", "roof");
         ViewModel.CreatorHeading.Should().Be($"{MainWindowViewModelTestsBuilder.House} *");
+    }
+
+    [Fact]
+    public void OpeningATreeInTheBrowserMakesItWithItsOwnPanel()
+    {
+        _builder.WriteShrub(FoliageKind.Tree);
+
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.Shrub, AssetTypes.Foliage);
+
+        Viewport.Creator!.Placement.Should().Be(CreatorPlacement.Alone);
+        ViewModel.CreatorKind.Should().Be("Foliage");
+        FoliagePanelViewModel panel = ViewModel.CreatorPanel.Should().BeOfType<FoliagePanelViewModel>().Subject;
+        ViewModel.CreatorParts.Should().HaveCount(10);
+        panel.Limbs = 1;
+        ViewModel.CreatorParts.Should().HaveCount(7);
+        ViewModel.CreatorHeading.Should().Be($"{MainWindowViewModelTestsBuilder.Shrub} *");
+    }
+
+    [Fact]
+    public void DoubleClickingAPlacedPlantMakesItInPlace()
+    {
+        _builder.WriteShrub(FoliageKind.Bush);
+        _builder.PlaceFoliage("Shrub", "foliage", $$"""{ "file": "{{MainWindowViewModelTestsBuilder.Shrub}}" }""");
+
+        _builder.DoubleClick(_builder.MiddleOf("Shrub"));
+
+        Viewport.Creator!.Placement.Should().Be(CreatorPlacement.InPlace);
+        ViewModel.CreatorPanel.Should().BeOfType<FoliagePanelViewModel>();
+        ViewModel.CreatorParts.Should().Equal("crown.1", "crown.2", "crown.3");
+    }
+
+    [Fact]
+    public void DoubleClickingScatteredFoliageMakesItsFileAlone()
+    {
+        _builder.WriteShrub(FoliageKind.Bush);
+        _builder.PlaceFoliage("Patch", "foliageScatter", $$"""{ "file": "{{MainWindowViewModelTestsBuilder.Shrub}}", "count": 1, "radius": 0 }""");
+
+        _builder.DoubleClick(_builder.MiddleOf("Patch"));
+
+        Viewport.Creator!.Placement.Should().Be(CreatorPlacement.Alone);
+        Viewport.CreatorFile.Should().Be(MainWindowViewModelTestsBuilder.Shrub);
+        ViewModel.CreatorParts.Should().Equal("crown.1", "crown.2", "crown.3");
+    }
+
+    [Theory]
+    [InlineData(FoliageKind.Tree, false)]
+    [InlineData(FoliageKind.Bush, true)]
+    public void DroppingATreePlacesOnePlantAndABushAScatter(FoliageKind kind, bool scattered)
+    {
+        _builder.WriteShrub(kind);
+        Vector2 corner = new(600, 440);
+
+        Viewport.DropAsset(MainWindowViewModelTestsBuilder.Shrub, corner, MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
+
+        Entity dropped = _builder.Find("Shrub");
+        _builder.Scene.Game.World.Has<FoliageScatter>(dropped).Should().Be(scattered);
+        _builder.Scene.Game.World.Has<Plant>(dropped).Should().Be(!scattered);
     }
 
     [Fact]

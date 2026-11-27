@@ -17,6 +17,8 @@ using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Buildings;
 using FlickerVoid.Engine.Buildings.Serialization;
+using FlickerVoid.Engine.Foliage;
+using FlickerVoid.Engine.Foliage.Serialization;
 using FlickerVoid.Engine.Vehicles;
 using FlickerVoid.Engine.Vehicles.Serialization;
 
@@ -41,6 +43,7 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
     public const string Street = "Street.fvscene";
     public const string Van = "Vans/Van.fvvehicle";
     public const string House = "Houses/House.fvbuilding";
+    public const string Shrub = "Plants/Shrub.fvfoliage";
     public const string Program = "/game/Game.dll";
     public const int Width = 640;
     public const int Height = 480;
@@ -211,6 +214,29 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         string json = JsonSerializer.Serialize(house, BuildingsJsonContext.Default.BuildingFile);
         WriteFile(House, json);
         ViewModel.Assets.Refresh();
+    }
+
+    /// <summary>Writes a new plant's file and lists it in the asset browser.</summary>
+    public void WriteShrub(FoliageKind kind)
+    {
+        string folder = Path.Combine(_contentFolder, "Plants");
+        Directory.CreateDirectory(folder);
+        FoliageFile shrub = FoliageFile.Create(kind);
+        string json = JsonSerializer.Serialize(shrub, FoliageJsonContext.Default.FoliageFile);
+        WriteFile(Shrub, json);
+        ViewModel.Assets.Refresh();
+    }
+
+    /// <summary>Places an entity with the foliage component given as JSON four metres beside the van, and looks at it.</summary>
+    public Entity PlaceFoliage(string name, string component, string json)
+    {
+        Dictionary<string, string> values = new() { [component] = json };
+        EntityPreset preset = new(name, ["transform", component]) { Values = values };
+        Vector3 position = new(4, 0, 6);
+        FlickerVoid.Engine.Runtime.Scenes.EntityData data = preset.Create(_scene.Game.World, _scene.Entities, position);
+        Entity entity = _scene.AddEntity(data);
+        ViewModel.Viewport.Camera.LookAt(position, yaw: 0.6f, pitch: -0.4f, distance: 6);
+        return entity;
     }
 
     /// <summary>Opens the file as the asset browser would, as a scene unless another type is given.</summary>

@@ -12,6 +12,8 @@
         xmlns:vehicleModels="using:FlickerVoid.Editor.Assets.Vehicles"
         xmlns:buildings="using:FlickerVoid.Editor.Buildings"
         xmlns:buildingModels="using:FlickerVoid.Editor.Assets.Buildings"
+        xmlns:foliage="using:FlickerVoid.Editor.Foliage"
+        xmlns:foliageModels="using:FlickerVoid.Editor.Assets.Foliage"
         xmlns:environments="using:FlickerVoid.Editor.Environments"
         xmlns:documents="using:FlickerVoid.Editor.Documents"
         x:Class="FlickerVoid.Editor.MainWindow"
@@ -225,7 +227,7 @@
         <!-- The context panel holds only what is selected or open, the newest in front; empty, it says how to fill it. -->
         <Panel Grid.Row="{Binding ContextRow}">
           <TextBlock Classes="hint" IsVisible="{Binding !HasContext}" TextWrapping="Wrap" Margin="12" VerticalAlignment="Top"
-                     Text="Select an entity, or open a data asset, a vehicle or a building in the content drawer, to edit it here." />
+                     Text="Select an entity, or open a data asset, a vehicle, a building or a tree in the content drawer, to edit it here." />
           <TabControl x:Name="SidePanel" SelectedIndex="{Binding SideTab}" IsVisible="{Binding HasContext}">
             <TabItem IsVisible="{Binding ShowsInspector}">
               <TabItem.Header>
@@ -259,6 +261,7 @@
                 <ContentControl.DataTemplates>
                   <DataTemplate DataType="vehicleModels:VehiclePanelViewModel"><vehicles:VehiclePanelView /></DataTemplate>
                   <DataTemplate DataType="buildingModels:BuildingPanelViewModel"><buildings:BuildingPanelView /></DataTemplate>
+                  <DataTemplate DataType="foliageModels:FoliagePanelViewModel"><foliage:FoliagePanelView /></DataTemplate>
                 </ContentControl.DataTemplates>
               </ContentControl>
             </TabItem>

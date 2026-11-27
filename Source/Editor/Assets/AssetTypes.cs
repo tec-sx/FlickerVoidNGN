@@ -7,6 +7,8 @@ using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Editor.Core.Buildings;
 using FlickerVoid.Engine.Buildings;
 using FlickerVoid.Engine.Buildings.Serialization;
+using FlickerVoid.Engine.Foliage;
+using FlickerVoid.Engine.Foliage.Serialization;
 using FlickerVoid.Engine.Vehicles;
 using FlickerVoid.Engine.Vehicles.Serialization;
 
@@ -41,6 +43,13 @@ public static class AssetTypes
     public static AssetType Building { get; } = new("Building", "Building", "#C9A36B", BuildingFile.Extension)
     {
         New = new AssetNew("Building", "New Building", "building", WriteBuilding),
+        IsCreation = true,
+    };
+
+    /// <summary>A foliage creation: New makes a tree grown from a seed, which its creator can turn into a bush.</summary>
+    public static AssetType Foliage { get; } = new("Foliage", "Tree", "#7FB069", FoliageFile.Extension)
+    {
+        New = new AssetNew("Tree", "New Tree", "foliage", WriteFoliage),
         IsCreation = true,
     };
 
@@ -89,13 +98,13 @@ public static class AssetTypes
     public static AssetType Code { get; } = new("Code", "Code", "#6FC2B0", ".cs");
 
     /// <summary>Every type a file can have, in the order the browser's filter and New menu list them.</summary>
-    public static IReadOnlyList<AssetType> Files { get; } = [Other, Scene, Vehicle, Building, Model, Material, Texture, Mood, Environment, Lens, Canvas, Shader, Data, Table, Flow, Code];
+    public static IReadOnlyList<AssetType> Files { get; } = [Other, Scene, Vehicle, Building, Foliage, Model, Material, Texture, Mood, Environment, Lens, Canvas, Shader, Data, Table, Flow, Code];
 
     /// <summary>The content drawer's filter chips (rule R11, categories before long lists): everything, then five kinds of work.</summary>
     public static IReadOnlyList<AssetFilter> Filters { get; } =
     [
         new("All", []),
-        new("Scenes", [Scene, Vehicle, Building], Scene.Color),
+        new("Scenes", [Scene, Vehicle, Building, Foliage], Scene.Color),
         new("Art", [Model, Material, Texture, Canvas, Shader], Model.Color),
         new("Light", [Mood, Environment, Lens], Mood.Color),
         new("Data", [Data, Table, Flow], Flow.Color),
@@ -114,6 +123,20 @@ public static class AssetTypes
         }
 
         return Other;
+    }
+
+    private static string WriteFoliage(string schemaPath)
+    {
+        FoliageFile tree = FoliageFile.Create(FoliageKind.Tree);
+        tree.Schema = schemaPath;
+        using MemoryStream stream = new();
+        using (Utf8JsonWriter writer = new(stream, WriterOptions))
+        {
+            JsonSerializer.Serialize(writer, tree, FoliageJsonContext.Default.FoliageFile);
+        }
+
+        byte[] written = stream.ToArray();
+        return Encoding.UTF8.GetString(written) + "\n";
     }
 
     private static string WriteBuilding(string schemaPath)

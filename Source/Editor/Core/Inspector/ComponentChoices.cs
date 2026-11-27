@@ -26,6 +26,8 @@ public static class ComponentChoices
         ["outline"] = "Outline",
         ["vehicle"] = "Vehicle",
         ["building"] = "Building",
+        ["foliage"] = "Tree",
+        ["foliageScatter"] = "Tree",
     };
 
     private static readonly Dictionary<string, string> ByModule = new()
@@ -47,6 +49,7 @@ public static class ComponentChoices
         ["Runtime"] = "Transform",
         ["Vehicles"] = "Vehicle",
         ["Buildings"] = "Building",
+        ["Foliage"] = "Tree",
         ["Creations"] = "Cube",
     };
 

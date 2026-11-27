@@ -9,7 +9,7 @@ namespace FlickerVoid.Editor.Assets.Creators;
 /// <summary>What every creator's panel gives the creator, whatever it makes: the creation's parts, and the mesh tools' way to its file.</summary>
 public abstract partial class CreatorPanelViewModel(ICreationDocument document) : ObservableObject
 {
-    /// <summary>What the creation is called in the editor: Vehicle, Building.</summary>
+    /// <summary>What the creation is called in the editor: Vehicle, Building, Foliage.</summary>
     public abstract string Kind { get; }
 
     /// <summary>The ids of the creation's parts, in its file's order.</summary>

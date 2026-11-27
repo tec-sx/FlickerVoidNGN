@@ -12,6 +12,7 @@ using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Settings;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Vehicles;
 
 using Microsoft.Extensions.Logging;
@@ -212,7 +213,7 @@ public sealed partial class EditorScene : IDisposable
         Picker.Dispose();
     }
 
-    /// <summary>A game over the content with what the editor shows (rendering, flows, input, vehicles and buildings), then the project's modules.</summary>
+    /// <summary>A game over the content with what the editor shows (rendering, flows, input, vehicles, buildings and foliage), then the project's modules.</summary>
     private static Game CreateGame(ILoggerFactory loggerFactory, IContentManager content, IReadOnlyList<IGameModule> modules)
     {
         Game game = new(loggerFactory);
@@ -224,6 +225,7 @@ public sealed partial class EditorScene : IDisposable
             game.AddInput();
             game.AddVehicles();
             game.AddBuildings();
+            game.AddFoliage();
             foreach (IGameModule module in modules)
             {
                 module.Add(game);
