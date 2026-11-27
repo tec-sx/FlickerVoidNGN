@@ -18,7 +18,7 @@ public interface IGameWindow
     /// <summary>The OS handles of the window, which graphics devices create swapchains for.</summary>
     INativeWindow Native { get; }
 
-    /// <summary>Runs until the window closes: each frame handles the window's events, ticks the game with the real time since the last frame, then ends the input frame.</summary>
+    /// <summary>Runs until the window closes: each frame handles the window's events, ticks the game with the real time since the last frame, then ends the input frame. It never sleeps: the renderer's FIFO swapchain paces frames.</summary>
     void Run();
 
     void Close();

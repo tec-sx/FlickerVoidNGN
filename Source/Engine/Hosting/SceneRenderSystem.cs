@@ -59,6 +59,13 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
 
     public IFrameOverlay? Overlay => _overlay;
 
+    /// <summary>Whether the window's frames wait for the display's refresh (<see cref="ISwapchain.VSync"/>).</summary>
+    public bool VSync
+    {
+        get => _swapchain.VSync;
+        set => _swapchain.VSync = value;
+    }
+
     public int Frames { get; private set; }
 
     /// <summary>

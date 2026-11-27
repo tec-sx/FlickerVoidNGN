@@ -7,5 +7,8 @@ public readonly record struct SwapchainDescription(INativeWindow Window, int Wid
 {
     /// <summary>Shown in debuggers and validation messages.</summary>
     public string? Name { get; init; }
+
+    /// <summary>Whether presenting waits for the display's refresh at first (<see cref="ISwapchain.VSync"/>).</summary>
+    public bool VSync { get; init; }
 }
 

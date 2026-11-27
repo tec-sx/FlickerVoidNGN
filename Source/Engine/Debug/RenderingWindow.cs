@@ -45,6 +45,7 @@ public sealed class RenderingWindow : DebugWindow
         RenderSwitch(_settings.Probes, "Irradiance probes");
         RenderSwitch(_settings.RayTracing, "Ray tracing (where the GPU has ray queries)");
         RenderSwitch(_settings.LiveProbes, "Live probes (with ray tracing)");
+        RenderSwitch(_settings.VSync, "VSync (caps the frame rate at the refresh rate)");
         RenderUpscaling(statistics);
         int view = (int)_settings.DebugView.Value;
         if (ImGui.Combo("View", ref view, ViewNames, ViewNames.Length))

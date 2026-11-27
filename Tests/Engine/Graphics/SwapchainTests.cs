@@ -61,6 +61,24 @@ public sealed class SwapchainTests : IDisposable
     }
 
     [Fact]
+    public void PresentsWithVSyncSwitchedOnAndOff()
+    {
+        using IGraphicsDevice device = CreateDevice();
+        using ISwapchain swapchain = _builder!.CreateSwapchain(device);
+        bool startsOff = swapchain.VSync;
+
+        swapchain.VSync = true;
+        uint[] synced = _builder.RenderFrame(device, swapchain, Vector4.One);
+        swapchain.VSync = false;
+        uint[] unsynced = _builder.RenderFrame(device, swapchain, Vector4.UnitX);
+
+        startsOff.Should().BeFalse("vsync is off unless asked for");
+        swapchain.VSync.Should().BeFalse();
+        synced.Should().AllBeEquivalentTo(SwapchainTestsBuilder.Bgra(Vector4.One));
+        unsynced.Should().AllBeEquivalentTo(SwapchainTestsBuilder.Bgra(Vector4.UnitX));
+    }
+
+    [Fact]
     public void RefusesToPresentABackBufferThatIsNotInThePresentState()
     {
         using IGraphicsDevice device = CreateDevice();
