@@ -29,6 +29,9 @@ public sealed class SceneRendererTests : IDisposable
     /// <summary>A card 0.8 wide a unit above the floor, from 0.1 to 0.9 right of its centre, in the cutout material.</summary>
     private const string Card = """{ "name": "Card", "components": { "transform": { "position": [0.5, 0, 1], "scale": [0.4, 0.4, 1] }, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Card.fvmat"] } } }""";
 
+    // An indoor volume over the space between the camera and the floor, so no rain streak falls in front of the floor.
+    private const string StreakCover = """{ "name": "Cover", "components": { "transform": { "position": [0, -50, 20.05] }, "indoorVolume": { "size": [100, 100, 39.9] } } }""";
+
     private static readonly Vector3 Down = -Vector3.UnitZ;
     private static readonly Vector4 Red = new(1, 0, 0, 1);
     private static readonly uint RedPixel = SceneRendererTestsBuilder.Rgba(255, 0, 0, 255);
@@ -472,7 +475,7 @@ public sealed class SceneRendererTests : IDisposable
     public void RainDarkensOutdoorSurfaces()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
-        _builder.WithScene(Camera, Quad);
+        _builder.WithScene(Camera, Quad, StreakCover);
         _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
 
         uint[] dry = _builder.Render();
@@ -502,7 +505,7 @@ public sealed class SceneRendererTests : IDisposable
     public void RainLeavesSurfacesIndoorsDry()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
-        _builder.WithScene(Camera, Quad, """{ "name": "Room", "components": { "transform": { "position": [0, -2, 0] }, "indoorVolume": { "size": [4, 4, 4], "ambient": 1 } } }""");
+        _builder.WithScene(Camera, Quad, """{ "name": "Room", "components": { "transform": { "position": [0, -50, 0] }, "indoorVolume": { "size": [100, 100, 100], "ambient": 1 } } }""");
         _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
 
         uint[] dry = _builder.Render();
@@ -510,6 +513,25 @@ public sealed class SceneRendererTests : IDisposable
         uint[] wet = _builder.Render();
 
         wet[5].Should().Be(dry[5], "rain doesn't reach inside the indoor volume");
+    }
+
+    [Fact]
+    public void RainGathersPuddlesOnFlatGround()
+    {
+        const string ground = """{ "name": "Ground", "components": { "transform": { "rotation": [-0.57357645, 0, 0, 0.81915206], "scale": [8, 8, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""";
+        _builder.WithTargetSize(32);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, ground);
+        _builder.WithLight(sunDirection: new Vector3(-1, -1, -1), ambient: 0.5f);
+
+        uint[] dry = _builder.Render();
+        _builder.WithMood(static mood => mood with { Rain = 1 });
+        uint[] wet = _builder.Render();
+
+        (byte dryDarkest, byte dryBrightest) = RedRange(dry);
+        (byte wetDarkest, byte wetBrightest) = RedRange(wet);
+        (dryBrightest - dryDarkest).Should().BeLessThan(10, "dry ground is one colour");
+        wetDarkest.Should().BeLessThan((byte)(wetBrightest * 0.8f), "puddles lie darker in patches of the wet ground");
     }
 
     [Fact]
@@ -524,7 +546,8 @@ public sealed class SceneRendererTests : IDisposable
         uint[] raining = _builder.Render();
 
         CountLit(dry).Should().Be(0);
-        CountLit(raining).Should().BeGreaterThan(20, "streaks fall through the view");
+        CountLit(raining).Should().BeGreaterThan(150, "full rain draws streaks across the view");
+        Brightest(raining).Should().BeGreaterThan(40, "a streak stands out against the dark");
     }
 
     [Fact]
@@ -554,7 +577,8 @@ public sealed class SceneRendererTests : IDisposable
         uint[] sunlit = _builder.Render();
 
         CountLit(shaded).Should().Be(0, "ambient light alone leaves the motes unseen");
-        CountLit(sunlit).Should().BeGreaterThan(5, "the sun lights the motes it reaches");
+        CountLit(sunlit).Should().BeGreaterThan(60, "the sun lights the motes it reaches");
+        Brightest(sunlit).Should().BeGreaterThan(60, "a lit mote stands out against the dark");
     }
 
     [Fact]
@@ -2853,5 +2877,16 @@ public sealed class SceneRendererTests : IDisposable
     private static int CountLit(uint[] pixels)
     {
         return pixels.Count(pixel => (pixel & 0xFFFFFF) != 0);
+    }
+
+    private static byte Brightest(uint[] pixels)
+    {
+        return pixels.Max(pixel => (byte)(pixel & 0xFF));
+    }
+
+    private static (byte Darkest, byte Brightest) RedRange(uint[] pixels)
+    {
+        byte[] reds = pixels.Select(pixel => (byte)(pixel & 0xFF)).ToArray();
+        return (reds.Min(), reds.Max());
     }
 }
