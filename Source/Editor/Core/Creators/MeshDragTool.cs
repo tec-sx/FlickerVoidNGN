@@ -7,4 +7,5 @@ public enum MeshDragTool
     Inset,
     Cut,
     Bevel,
+    Hollow,
 }

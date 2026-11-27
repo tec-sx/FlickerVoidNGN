@@ -22,6 +22,7 @@ using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Props;
 using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Foliage.Serialization;
 using FlickerVoid.Engine.Vehicles;
@@ -430,6 +431,10 @@ public sealed partial class ViewportViewModel : ObservableObject
         else if (path.EndsWith(BuildingFile.Extension, StringComparison.OrdinalIgnoreCase))
         {
             preset = EntityPreset.ForBuilding(path);
+        }
+        else if (path.EndsWith(PropFile.Extension, StringComparison.OrdinalIgnoreCase))
+        {
+            preset = EntityPreset.ForProp(path);
         }
         else if (path.EndsWith(FoliageFile.Extension, StringComparison.OrdinalIgnoreCase))
         {

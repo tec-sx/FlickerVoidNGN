@@ -46,6 +46,7 @@ public sealed partial class CreatorMode : IViewportMode, IDisposable
     private int[] _dragFaces = [];
     private SolidEdge[] _dragEdges = [];
     private MeshDragOptions _dragOptions;
+    private float _dragAmount;
     private bool _dragShown;
     private readonly List<Entity> _marked = [];
 
@@ -405,7 +406,8 @@ public sealed partial class CreatorMode : IViewportMode, IDisposable
         }
 
         bool bevel = tool == MeshDragTool.Bevel;
-        if ((bevel && selection.Edges.Count == 0) || (!bevel && selection.Faces.Count == 0))
+        bool hollow = tool == MeshDragTool.Hollow;
+        if ((bevel && selection.Edges.Count == 0) || (!bevel && !hollow && selection.Faces.Count == 0))
         {
             return false;
         }
@@ -415,6 +417,7 @@ public sealed partial class CreatorMode : IViewportMode, IDisposable
         _dragFaces = [.. selection.Faces];
         _dragEdges = [.. selection.Edges];
         _dragOptions = options;
+        _dragAmount = 0;
         _dragShown = false;
         MeshDrag = tool;
         History.BeginGroup(tool.ToString());
@@ -429,6 +432,7 @@ public sealed partial class CreatorMode : IViewportMode, IDisposable
             return false;
         }
 
+        _dragAmount = amount;
         MeshSelection selection = StartOfDrag(start);
         MeshResult? result = null;
         if (amount > 0 || (tool == MeshDragTool.Extrude && amount < 0))
@@ -464,6 +468,18 @@ public sealed partial class CreatorMode : IViewportMode, IDisposable
         MeshSelection = next;
         _applyMesh!(id, result.Solid);
         return true;
+    }
+
+    /// <summary>Gives the pending tool new options (a bevel's rows and roundness) and shows its work again at the same amount.</summary>
+    public bool SetMeshDragOptions(MeshDragOptions options)
+    {
+        if (MeshDrag is null)
+        {
+            return false;
+        }
+
+        _dragOptions = options;
+        return DragMesh(_dragAmount);
     }
 
     /// <summary>Ends the drag: keeps what it shows as one undo step, or puts the mesh and its selection back.</summary>
@@ -533,6 +549,8 @@ public sealed partial class CreatorMode : IViewportMode, IDisposable
                 return MeshInset.Faces(solid, GetFaces(solid, selection), amount);
             case MeshDragTool.Cut:
                 return MeshCut.Faces(solid, GetFaces(solid, selection), amount, through: false);
+            case MeshDragTool.Hollow:
+                return MeshHollow.Shell(solid, amount, GetFaces(solid, selection));
             default:
                 return MeshBevel.Edges(solid, GetEdges(solid, selection), amount, _dragOptions.Rows, _dragOptions.Round);
         }

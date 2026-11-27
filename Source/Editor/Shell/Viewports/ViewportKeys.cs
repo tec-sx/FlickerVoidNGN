@@ -26,6 +26,7 @@ public static class ViewportKeys
         Key.D2 => ViewportKey.Two,
         Key.D3 => ViewportKey.Three,
         Key.I => ViewportKey.I,
+        Key.H => ViewportKey.H,
         Key.C => ViewportKey.C,
         Key.B => ViewportKey.B,
         Key.X => ViewportKey.X,

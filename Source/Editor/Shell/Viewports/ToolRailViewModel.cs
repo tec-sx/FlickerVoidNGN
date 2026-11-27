@@ -57,6 +57,7 @@ public sealed partial class ToolRailViewModel : ObservableObject
                 new ToolItem("Bevel", "B", nameof(LucideIcons.Bevel), tools.DragBevel, active == MeshDragTool.Bevel),
                 new ToolItem("Loop cut", "L", nameof(LucideIcons.LoopCut), tools.LoopCut, false),
                 new ToolItem("Cut", "C", nameof(LucideIcons.Cut), tools.DragCut, active == MeshDragTool.Cut),
+                new ToolItem("Hollow", "H", nameof(LucideIcons.Hollow), tools.DragHollow, active == MeshDragTool.Hollow),
             ], true));
             groups.Add(new ToolGroup(
             [

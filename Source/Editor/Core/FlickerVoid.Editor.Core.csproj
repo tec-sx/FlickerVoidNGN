@@ -13,6 +13,7 @@
     <ProjectReference Include="../../Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
     <ProjectReference Include="../../Engine/Vehicles/FlickerVoid.Engine.Vehicles.csproj" />
     <ProjectReference Include="../../Engine/Buildings/FlickerVoid.Engine.Buildings.csproj" />
+    <ProjectReference Include="../../Engine/Props/FlickerVoid.Engine.Props.csproj" />
     <ProjectReference Include="../../Engine/Foliage/FlickerVoid.Engine.Foliage.csproj" />
   </ItemGroup>
   <ItemGroup>

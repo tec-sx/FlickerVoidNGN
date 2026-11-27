@@ -25,7 +25,7 @@ public static class AssetDrag
     public static string? GetPlaceable(IDataTransfer transfer)
     {
         AssetEntry? asset = transfer.TryGetValue(Format);
-        if (asset is null || (asset.Type != AssetTypes.Model && asset.Type != AssetTypes.Vehicle && asset.Type != AssetTypes.Building && asset.Type != AssetTypes.Foliage))
+        if (asset is null || (asset.Type != AssetTypes.Model && asset.Type != AssetTypes.Vehicle && asset.Type != AssetTypes.Building && asset.Type != AssetTypes.Prop && asset.Type != AssetTypes.Foliage))
         {
             return null;
         }
