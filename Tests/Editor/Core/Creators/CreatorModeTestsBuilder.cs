@@ -65,6 +65,12 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
         return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save, FindMesh, ApplyMesh, IsMirrored, SetMirror, HangDoor);
     }
 
+    public CreatorMode EnterPiece(string name)
+    {
+        Entity piece = Find(name);
+        return CreatorMode.Piece(Scene, Camera, piece);
+    }
+
     public CreatorMode EnterAlone()
     {
         Vehicle vehicle = new() { File = File };
