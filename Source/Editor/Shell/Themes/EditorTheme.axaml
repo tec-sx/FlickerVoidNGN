@@ -37,6 +37,9 @@
     <SolidColorBrush x:Key="EditorHintBrush" Color="#8F8372" />
     <!-- The one accent: selection, focus, unsaved work and the single primary action; its ink, its wash and its line. -->
     <SolidColorBrush x:Key="EditorAccentBrush" Color="#F5A639" />
+    <SolidColorBrush x:Key="EditorMeterBrush" Color="#9BCB3C" />
+    <SolidColorBrush x:Key="EditorMeterWarnBrush" Color="#E0C02C" />
+    <SolidColorBrush x:Key="EditorMeterPeakBrush" Color="#E0553D" />
     <SolidColorBrush x:Key="EditorAccentInkBrush" Color="#211201" />
     <SolidColorBrush x:Key="EditorAccentSoftBrush" Color="#422F17" />
     <SolidColorBrush x:Key="EditorAccentLineBrush" Color="#946527" />
