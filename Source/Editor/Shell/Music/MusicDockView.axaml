@@ -19,6 +19,9 @@
           <ToggleButton Classes="stripTab" IsChecked="{Binding DockTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=1, Mode=OneWay}" Command="{Binding ShowClipCommand}">
             <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Waveform}" /><TextBlock Text="Clip" /></StackPanel>
           </ToggleButton>
+          <ToggleButton Classes="stripTab" IsChecked="{Binding DockTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=2, Mode=OneWay}" Command="{Binding ShowLiveCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Music}" /><TextBlock Text="Live" /></StackPanel>
+          </ToggleButton>
           <TextBlock Text="{Binding Status}" Classes="hint small" VerticalAlignment="Center" Margin="12,0" />
         </StackPanel>
       </DockPanel>
@@ -120,5 +123,22 @@
         <music:ClipWave Editor="{Binding}" />
       </Border>
     </Grid>
+    <ScrollViewer IsVisible="{Binding DockTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=2}">
+      <StackPanel Margin="12,8" Spacing="2">
+        <TextBlock Text="{Binding LayersText}" Classes="hint small" Margin="0,0,0,4" />
+        <ItemsControl ItemsSource="{Binding LiveRows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="coremusic:LiveRowViewModel">
+              <Grid ColumnDefinitions="18,200,*" Margin="0,3">
+                <Ellipse Grid.Column="0" Width="9" Height="9" HorizontalAlignment="Left" Stroke="{DynamicResource EditorAccentBrush}" StrokeThickness="1.5" Fill="{DynamicResource EditorAccentBrush}" Opacity="{Binding IsOn, Converter={x:Static music:LiveDotConverter.Instance}}" />
+                <TextBlock Grid.Column="1" Text="{Binding Name}" />
+                <TextBlock Grid.Column="2" Text="{Binding State}" Classes="hint" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Classes="hint small" TextWrapping="Wrap" Margin="0,8,0,0" Text="What each layer is doing right now: sounding, waiting for an area or for its hours, or asked by a script. Click the ruler to jump to a bar and play to hear the fills." />
+      </StackPanel>
+    </ScrollViewer>
   </DockPanel>
 </UserControl>

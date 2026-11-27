@@ -247,6 +247,27 @@ public sealed class MusicEditorViewModelTests
         }
     }
 
+    [Fact]
+    public void WordsWhatEachTrackIsWaitingForInTheLiveRows()
+    {
+        MusicCue cue = new()
+        {
+            Tracks =
+            [
+                new MusicTrack { Name = "Bass" },
+                new MusicTrack { Name = "Drums", ByRequest = true },
+                new MusicTrack { Name = "Voice", ByRequest = true },
+            ],
+        };
+        MusicEditorServices services = new() { Areas = () => [new RehearsalSource("Inn Room Cue", ["Drums"])] };
+
+        MusicEditorViewModel editor = Build(cue, services);
+
+        editor.LiveRows.Select(row => row.Name).Should().Equal("Bass", "Drums", "Voice");
+        editor.LiveRows.Select(row => row.State).Should().Equal("plays always", "in Inn Room Cue", "asked by script");
+        editor.LiveRows.Select(row => row.IsOn).Should().OnlyContain(on => !on);
+    }
+
     private static void Pump(MusicEditorViewModel editor, int ticks)
     {
         for (int tick = 0; tick < ticks; tick++)

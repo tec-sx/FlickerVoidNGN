@@ -123,6 +123,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         }
 
         StackEntries = [];
+        LiveRows = [];
         Rows = [];
         MixStates = [];
         Buses = [];
@@ -158,6 +159,50 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
 
     /// <summary>The cues the preview keeps on the stack, the one heard first.</summary>
     public ObservableCollection<StackEntryViewModel> StackEntries { get; }
+
+    /// <summary>The Live dock's rows: each track with whether it sounds and what it plays on or waits for.</summary>
+    public ObservableCollection<LiveRowViewModel> LiveRows { get; }
+
+    private void RefreshLive()
+    {
+        bool same = LiveRows.Count == Tracks.Count && LiveRows.Select(row => row.Name).SequenceEqual(Tracks.Select(track => track.Track.Name));
+        if (!same)
+        {
+            LiveRows.Clear();
+            foreach (MusicTrackViewModel track in Tracks)
+            {
+                LiveRows.Add(new LiveRowViewModel(track.Track.Name));
+            }
+        }
+
+        for (int index = 0; index < Tracks.Count; index++)
+        {
+            MusicTrackViewModel track = Tracks[index];
+            bool on = IsPlaying && IsLayerOn(track);
+            LiveRows[index].IsOn = on;
+            LiveRows[index].State = on ? "sounding" : DescribeWait(track);
+        }
+    }
+
+    private string DescribeWait(MusicTrackViewModel track)
+    {
+        if (track.Track.ByRequest)
+        {
+            List<string> areas = Rows.Where(row => row.IsArea && row.Layers.Any(layer => string.Equals(layer, track.Track.Name, StringComparison.OrdinalIgnoreCase))).Select(row => row.Label.Replace("Rehearsal · ", string.Empty)).ToList();
+            return areas.Count > 0 ? $"in {string.Join(", ", areas)}" : "asked by script";
+        }
+
+        if (!track.Track.When.IsEmpty)
+        {
+            IReadOnlyList<RehearsalSpan> hours = MusicArrangement.GetHours(track.Track.When);
+            if (hours.Count > 0 && !(hours.Count == 1 && hours[0].On == 0 && hours[0].Off >= MusicArrangement.DayHours))
+            {
+                return $"waits for {(int)hours[0].On:00}:00";
+            }
+        }
+
+        return IsPlaying ? "waits" : "plays always";
+    }
 
     /// <summary>The sections laid one after the other from the start of the cue.</summary>
     public IReadOnlyList<SectionBand> SectionBands
@@ -512,6 +557,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(PositionText));
         OnPropertyChanged(nameof(TimeText));
         OnPropertyChanged(nameof(LayersText));
+        RefreshLive();
     }
 
     private IReadOnlyList<RehearsalSpan> SpansFor(MusicTrackViewModel track, IReadOnlyList<RehearsalSpan> all)
@@ -744,6 +790,13 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private void ShowLive()
+    {
+        DockTab = 2;
+        DockOpen = true;
+    }
+
+    [RelayCommand]
     private void ShowClip()
     {
         DockTab = 1;
@@ -967,6 +1020,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         if (IsPlaying)
         {
             FollowStack();
+            RefreshLive();
             if (!IsHours && _preview.Music.GetCurrent(_cue.Bus) is not null)
             {
                 MusicStackEntry? own = _preview.Music.GetStack(_cue.Bus).Cast<MusicStackEntry?>().FirstOrDefault(entry => entry!.Value.Cue == _path);

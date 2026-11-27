@@ -38,3 +38,20 @@ public sealed class DockTabConverter : IValueConverter
         throw new NotSupportedException();
     }
 }
+
+/// <summary>Makes a lit dot of a live row bright and an unlit one faint.</summary>
+public sealed class LiveDotConverter : IValueConverter
+{
+    public static LiveDotConverter Instance { get; } = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+    {
+        bool on = value is true;
+        return on ? 1.0 : 0.25;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+    {
+        throw new NotSupportedException();
+    }
+}
