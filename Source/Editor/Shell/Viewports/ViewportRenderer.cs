@@ -55,7 +55,6 @@ internal sealed class ViewportRenderer : IDisposable
     private SceneRenderer? _previewScene;
     private ITexture? _preview;
     private ITexture? _frame;
-    private FlickerVoid.Engine.Graphics.Buffers.IBuffer? _readback;
 
     /// <summary>Creates the device with what the settings need as the editor starts: ray queries, and DLSS when the viewport upscales.</summary>
     public ViewportRenderer(ILoggerFactory loggerFactory, IContentManager content, bool validation, RenderingSettings settings)
@@ -127,62 +126,6 @@ internal sealed class ViewportRenderer : IDisposable
         _frame?.Dispose();
         _frame = null;
         return true;
-    }
-
-    /// <summary>Recreates the view texture and its readback buffer at the new size, for a viewport shown without GPU interop.</summary>
-    public bool ResizeReadback(int width, int height)
-    {
-        if (_view is not null && _view.Description.Width == width && _view.Description.Height == height)
-        {
-            return false;
-        }
-
-        _device.WaitIdle();
-        _view?.Dispose();
-        _readback?.Dispose();
-        TextureDescription view = new(width, height, ViewFormat, TextureUsage.RenderTarget | TextureUsage.CopySource | TextureUsage.CopyDestination) { Name = "Viewport view" };
-        _view = _device.CreateTexture(view);
-        int pitch = ViewFormat.GetCopyRowPitch(width);
-        FlickerVoid.Engine.Graphics.Buffers.BufferDescription readback = new(pitch * height, FlickerVoid.Engine.Graphics.Buffers.BufferUsage.CopyDestination, FlickerVoid.Engine.Graphics.Buffers.MemoryLocation.Readback);
-        _readback = _device.CreateBuffer(readback);
-        _preview?.Dispose();
-        _preview = null;
-        _frame?.Dispose();
-        _frame = null;
-        return true;
-    }
-
-    /// <summary>Renders a frame and reads its pixels back, as sRGB bytes row by row; call <see cref="ResizeReadback"/> first.</summary>
-    public byte[] RenderPixels(World world, RenderingSettings settings, in Camera camera, in Transform cameraTransform, RenderCamera? preview, in ViewportDepthFade depthFade)
-    {
-        settings.ApplyToViewport(_scene);
-        _scene.DepthFade = depthFade.View;
-        _scene.Focus = depthFade.Focus;
-        ITexture view = _view!;
-        _commands.Begin();
-        _scene.Render(_commands, world, view, camera, cameraTransform);
-        if (preview is { } previewCamera)
-        {
-            RenderPreview(world, view, previewCamera, depthFade);
-        }
-
-        _commands.Barrier(view, ResourceState.CopySource);
-        _commands.CopyTextureToBuffer(view, _readback!, 0);
-        _commands.End();
-        _device.Submit(_commands);
-        _device.WaitIdle();
-        int width = view.Description.Width;
-        int height = view.Description.Height;
-        int pitch = ViewFormat.GetCopyRowPitch(width);
-        int rowBytes = width * 4;
-        byte[] pixels = new byte[rowBytes * height];
-        for (int y = 0; y < height; y++)
-        {
-            Span<byte> row = pixels.AsSpan(y * rowBytes, rowBytes);
-            _readback!.Read(row, (long)y * pitch);
-        }
-
-        return pixels;
     }
 
     /// <summary>
@@ -264,7 +207,6 @@ internal sealed class ViewportRenderer : IDisposable
         _previewScene?.Dispose();
         Target?.Dispose();
         _view?.Dispose();
-        _readback?.Dispose();
         _scene.Dispose();
         _device.Dispose();
     }
