@@ -673,6 +673,69 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void DrawsABeamWhereTheSunBreaksPastAnEdge()
+    {
+        WithBeamScene(roofHeight: 2.5f);
+
+        uint[] pixels = _builder.Render();
+
+        uint[] row = BeamRow(pixels, 8);
+        row.Max().Should().BeGreaterThan(10, "the seeds beside the roof's edge are half in the sun");
+        Array.IndexOf(row, row.Max()).Should().BeInRange(5, 10, "the beam stands at the roof's edge");
+        row[1].Should().BeLessThan(3, "under the roof the seeds are in full shade");
+        row[14].Should().BeLessThan(3, "beyond the roof the seeds are in full sun");
+    }
+
+    [Fact]
+    public void ReachesUpToWhatCastsTheBeam()
+    {
+        WithBeamScene(roofHeight: 0);
+
+        uint[] pixels = _builder.Render();
+
+        uint[] below = BeamRow(pixels, 12);
+        int column = Array.IndexOf(below, below.Max());
+        below[column].Should().BeGreaterThan(10, "the beam rises from the floor");
+        BeamRow(pixels, 3)[column].Should().BeLessThan(3, "it ends at the roof that casts it");
+    }
+
+    [Fact]
+    public void DrawsNoBeamsWithoutRayTracing()
+    {
+        WithBeamScene(roofHeight: 2.5f);
+        _builder.WithRenderer(static renderer => renderer.RayTracing = false);
+
+        uint[] pixels = _builder.Render();
+
+        BeamRow(pixels, 8).Max().Should().BeLessThan(3, "beams need the ray traced tier");
+    }
+
+    [Fact]
+    public void DrawsNoBeamsWithoutTheirIntensity()
+    {
+        WithBeamScene(roofHeight: 2.5f);
+        _builder.WithMood(static mood => mood with { BeamIntensity = 0 });
+
+        uint[] pixels = _builder.Render();
+
+        BeamRow(pixels, 8).Max().Should().BeLessThan(3, "the mood turns beams off");
+    }
+
+    [Fact]
+    public void EasesABeamOutWhenWhatCastsItGoes()
+    {
+        WithBeamScene(roofHeight: 2.5f);
+        uint[] before = BeamRow(_builder.Render(), 8);
+        _builder.WithPosition("Roof", new Vector3(-100, 2.5f, 0));
+
+        uint[] after = BeamRow(_builder.Render(), 8);
+
+        int column = Array.IndexOf(before, before.Max());
+        after[column].Should().BeGreaterThan(3, "the beam fades rather than vanishing");
+        after[column].Should().BeLessThan(before[column], "with the roof gone the seeds are in full sun");
+    }
+
+    [Fact]
     public void LeavesSurfacesClearWithoutFog()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
@@ -2306,5 +2369,34 @@ public sealed class SceneRendererTests : IDisposable
         string softnessText = System.FormattableString.Invariant($"{softness}");
         string noiseText = System.FormattableString.Invariant($"{noise}");
         return $$"""{ "name": "Fog", "components": { "transform": { "position": {{position}} }, "fogVolume": { "shape": "{{shape}}", "size": {{size}}, "density": 0.1, "edgeSoftness": {{softnessText}}, "noise": {{noiseText}} } } }""";
+    }
+
+    /// <summary>
+    /// A floor seen edge on under a sun straight overhead, with a roof over its left half at the given height, before a camera
+    /// eight units high, and beams a unit wide.
+    /// </summary>
+    private void WithBeamScene(float roofHeight)
+    {
+        const string wideCamera = """{ "name": "Camera", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 8 } } }""";
+        const string floor = """{ "name": "Floor", "components": { "transform": { "position": [0, -3, 0] }, "greybox": { "size": [20, 0.1, 4] } } }""";
+        string height = System.FormattableString.Invariant($"{roofHeight}");
+        string roof = $$"""{ "name": "Roof", "components": { "transform": { "position": [-5, {{height}}, 0] }, "greybox": { "size": [10, 0.1, 12] } } }""";
+        _builder.WithRayQueries();
+        _builder.WithTargetSize(16);
+        _builder.WithScene(wideCamera, floor, roof);
+        _builder.WithLight(sunDirection: -Vector3.UnitY, ambient: 0);
+        _builder.WithMood(static mood => mood with { BeamIntensity = 0.3f, BeamWidth = 1, BeamReach = 8 });
+        _builder.WithRenderer(static renderer => renderer.RayTracing = true);
+    }
+
+    private static uint[] BeamRow(uint[] pixels, int row)
+    {
+        uint[] reds = new uint[16];
+        for (int column = 0; column < 16; column++)
+        {
+            reds[column] = SceneRendererTestsBuilder.Channels(pixels[(row * 16) + column]).Red;
+        }
+
+        return reds;
     }
 }
