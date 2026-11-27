@@ -4,6 +4,7 @@ using System.Text.Json.Serialization.Metadata;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Assets;
@@ -14,7 +15,7 @@ namespace FlickerVoid.Editor.Assets;
 /// </summary>
 public sealed class UnsavedContent : IContentManager
 {
-    private static readonly string[] TrackedExtensions = [".fvmat", ".fvmood", ".fvenv", ".fvlens", ".fvcanvas", ".fvtexture", ".fvdata", ".fvtable", ".fvflow", VehicleFile.Extension, BuildingFile.Extension];
+    private static readonly string[] TrackedExtensions = [".fvmat", ".fvmood", ".fvenv", ".fvlens", ".fvcanvas", ".fvtexture", ".fvdata", ".fvtable", ".fvflow", VehicleFile.Extension, BuildingFile.Extension, FoliageFile.Extension];
 
     private readonly IContentManager _disk;
     private readonly Dictionary<string, byte[]> _unsaved = new(ContentManager.PathComparer);

@@ -21,11 +21,11 @@ public static class AssetDrag
         return transfer.TryGetValue(Format);
     }
 
-    /// <summary>The content path of the model, vehicle or building being dragged, which the viewport places, or null when the drag holds none.</summary>
+    /// <summary>The content path of the model, vehicle, building or foliage being dragged, which the viewport places, or null when the drag holds none.</summary>
     public static string? GetPlaceable(IDataTransfer transfer)
     {
         AssetEntry? asset = transfer.TryGetValue(Format);
-        if (asset is null || (asset.Type != AssetTypes.Model && asset.Type != AssetTypes.Vehicle && asset.Type != AssetTypes.Building))
+        if (asset is null || (asset.Type != AssetTypes.Model && asset.Type != AssetTypes.Vehicle && asset.Type != AssetTypes.Building && asset.Type != AssetTypes.Foliage))
         {
             return null;
         }

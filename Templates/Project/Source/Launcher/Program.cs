@@ -1,4 +1,5 @@
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Hosting;
 using FlickerVoid.Engine.Vehicles;
 
@@ -21,5 +22,6 @@ using ILoggerFactory loggerFactory = LoggerFactory.Create(static logging => logg
 using SceneHost host = new(options, loggerFactory, "FlickerVoidGame");
 host.Game.AddVehicles();
 host.Game.AddBuildings();
+host.Game.AddFoliage();
 host.Run();
 return 0;

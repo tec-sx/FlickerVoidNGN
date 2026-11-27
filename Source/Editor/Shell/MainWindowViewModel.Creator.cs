@@ -10,12 +10,14 @@ using Avalonia.Media;
 using FlickerVoid.Editor.Assets.Blender;
 using FlickerVoid.Editor.Assets.Buildings;
 using FlickerVoid.Editor.Assets.Creators;
+using FlickerVoid.Editor.Assets.Foliage;
 using FlickerVoid.Editor.Assets.Vehicles;
 using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
@@ -24,13 +26,13 @@ namespace FlickerVoid.Editor;
 
 public sealed partial class MainWindowViewModel
 {
-    /// <summary>The creator's panel while a vehicle or a building is made, else null.</summary>
+    /// <summary>The creator's panel while a vehicle, a building or foliage is made, else null.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CreatorKind))]
     [NotifyPropertyChangedFor(nameof(CreatorIcon))]
     public partial CreatorPanelViewModel? CreatorPanel { get; private set; }
 
-    /// <summary>What is being made, as the context panel's tab names it: Vehicle, Building.</summary>
+    /// <summary>What is being made, as the context panel's tab names it: Vehicle, Building, Foliage.</summary>
     public string CreatorKind => CreatorPanel?.Kind ?? "";
 
     public Geometry CreatorIcon
@@ -40,6 +42,11 @@ public sealed partial class MainWindowViewModel
             if (CreatorPanel is BuildingPanelViewModel)
             {
                 return LucideIcons.Building;
+            }
+
+            if (CreatorPanel is FoliagePanelViewModel)
+            {
+                return LucideIcons.Tree;
             }
 
             if (Viewport.Creator?.Placement == CreatorPlacement.Piece)
@@ -143,6 +150,11 @@ public sealed partial class MainWindowViewModel
             Building building = new() { File = copy };
             Viewport.Scene.SetComponent(placed, building);
         }
+        else if (IsFoliage(copy))
+        {
+            Plant plant = new() { File = copy };
+            Viewport.Scene.SetComponent(placed, plant);
+        }
         else
         {
             Vehicle vehicle = new() { File = copy };
@@ -173,6 +185,8 @@ public sealed partial class MainWindowViewModel
         Viewport.Status = $"Shaping {name}: 1, 2 and 3 pick points, edges or faces, E extrudes, I insets, Ctrl+B bevels, Ctrl+R cuts a loop. Escape goes back to the level.";
     }
 
+    private static bool IsFoliage(string file) => file.EndsWith(FoliageFile.Extension, StringComparison.OrdinalIgnoreCase);
+
     private static bool IsBuilding(string file) => file.EndsWith(BuildingFile.Extension, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Makes the placed creation in place, as a double-click on it asks; a file that can't be read is reported.</summary>
@@ -189,7 +203,7 @@ public sealed partial class MainWindowViewModel
         EnterCreator(creator, file, panel);
     }
 
-    /// <summary>Makes the vehicle or building opened in the content browser alone, set apart from the level.</summary>
+    /// <summary>Makes the vehicle, building or foliage opened in the content browser alone, set apart from the level.</summary>
     private void OpenCreation(string path)
     {
         if (OpenCreatorPanel(path) is not { } panel)
@@ -204,6 +218,11 @@ public sealed partial class MainWindowViewModel
         {
             Building building = new() { File = path };
             creator = CreatorMode.Alone(scene, Viewport.Camera, building, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror, HangCreatorDoor);
+        }
+        else if (IsFoliage(path))
+        {
+            Plant plant = new() { File = path };
+            creator = CreatorMode.Alone(scene, Viewport.Camera, plant, history, () => SaveCreation(path), FindCreatorMesh, ApplyCreatorMesh, IsCreatorMirrored, SetCreatorMirror, HangCreatorDoor);
         }
         else
         {
@@ -233,6 +252,12 @@ public sealed partial class MainWindowViewModel
             {
                 BuildingDocument building = new(_content, path);
                 return new BuildingPanelViewModel(building);
+            }
+
+            if (IsFoliage(path))
+            {
+                FoliageDocument foliage = new(_content, path);
+                return new FoliagePanelViewModel(foliage);
             }
 
             VehicleDocument document = new(_content, path);

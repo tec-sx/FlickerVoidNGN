@@ -11,6 +11,7 @@ using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Greyboxes;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Viewports;
@@ -33,6 +34,9 @@ public sealed partial class ViewportViewModel
 
     /// <summary>Raised when a greybox of the level is double-clicked, with its entity, to shape it in place.</summary>
     public event Action<Entity>? PieceRequested;
+
+    /// <summary>Raised with the file of a creation to make alone, as a double-click on scattered foliage asks: its copies are not made in place.</summary>
+    public event Action<string>? CreationFileRequested;
 
     /// <summary>
     /// A double-click: on a placed creation it asks to make it in place, and on a greybox of the level to shape it; in the creator, one that misses the creation leaves it. The
@@ -64,6 +68,14 @@ public sealed partial class ViewportViewModel
         else if (world.TryGet(picked, out Building building) && !string.IsNullOrEmpty(building.File))
         {
             CreationRequested?.Invoke(picked, building.File);
+        }
+        else if (world.TryGet(picked, out Plant plant) && !string.IsNullOrEmpty(plant.File))
+        {
+            CreationRequested?.Invoke(picked, plant.File);
+        }
+        else if (world.TryGet(picked, out FoliageScatter scatter) && !string.IsNullOrEmpty(scatter.File))
+        {
+            CreationFileRequested?.Invoke(scatter.File);
         }
         else if (world.TryGet(picked, out Greybox greybox) && greybox.GetShownSwap() is null)
         {

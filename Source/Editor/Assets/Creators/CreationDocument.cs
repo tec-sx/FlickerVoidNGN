@@ -33,7 +33,7 @@ public abstract class CreationDocument<TFile>(UnsavedContent content, string pat
     }
 
     /// <summary>Hangs a door in the face of the part, hinged on the edge, held in the file as one undo step; the new door's id, or null when it can't be made.</summary>
-    public string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options)
+    public virtual string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options)
     {
         string? id = DoorTool.Hang(Value, partId, face, hinge, options);
         if (id is not null)

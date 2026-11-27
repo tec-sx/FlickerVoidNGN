@@ -78,6 +78,24 @@ public sealed record EntityPreset(string Name, IReadOnlyList<string> Components,
         return new EntityPreset(name, ["transform", "building"]) { Values = values, Icon = "Building" };
     }
 
+    /// <summary>
+    /// An entity named after a foliage file in the content folder: one plant whose parts it spawns, or, <paramref name="scattered"/>,
+    /// copies of it scattered over the ground around the entity.
+    /// </summary>
+    public static EntityPreset ForFoliage(string path, bool scattered)
+    {
+        string name = Path.GetFileNameWithoutExtension(path);
+        JsonEncodedText file = JsonEncodedText.Encode(path);
+        string component = "foliage";
+        if (scattered)
+        {
+            component = "foliageScatter";
+        }
+
+        Dictionary<string, string> values = new() { [component] = $$"""{ "file": "{{file}}" }""" };
+        return new EntityPreset(name, ["transform", component]) { Values = values, Icon = "Tree" };
+    }
+
     /// <summary>The scene data of a new entity at <paramref name="position"/>, named apart from the entities in <paramref name="world"/>.</summary>
     public EntityData Create(World world, IEnumerable<Entity> entities, Vector3 position)
     {

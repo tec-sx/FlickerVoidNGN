@@ -109,6 +109,7 @@ public sealed partial class MainWindowViewModel
             [AssetTypes.Code] = OpenCode,
             [AssetTypes.Vehicle] = asset => OpenCreation(asset.Path),
             [AssetTypes.Building] = asset => OpenCreation(asset.Path),
+            [AssetTypes.Foliage] = asset => OpenCreation(asset.Path),
         };
     }
 

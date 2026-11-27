@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:foliage="using:FlickerVoid.Editor.Assets.Foliage"
+             x:Class="FlickerVoid.Editor.Foliage.FoliagePanelView"
+             x:DataType="foliage:FoliagePanelViewModel">
+  <!-- A tree or a bush and the seed it is grown from, then the numbers of its shape; its parts are listed in the outliner. -->
+  <StackPanel Margin="4,2">
+    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+      <TextBlock Text="Type" VerticalAlignment="Center" />
+      <ComboBox Grid.Column="1" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" ItemsSource="{Binding Types}" SelectedItem="{Binding Type}"
+                ToolTip.Tip="A tree, or a bush without a trunk; changing it starts from that type's shape." />
+      <TextBlock Grid.Row="1" Text="Seed" VerticalAlignment="Center" />
+      <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Seed}"
+               ToolTip.Tip="The number the plant's chances are drawn from: the same seed and shape grow the same plant." />
+      <Button Grid.Row="1" Grid.Column="2" Content="New" Command="{Binding NewSeedCommand}"
+              ToolTip.Tip="Grow another plant of the same shape." />
+    </Grid>
+    <!-- Growing again replaces every part, and with it what the mesh tools made of them. -->
+    <TextBlock Classes="muted" Text="Shape" Margin="0,8,0,2" />
+    <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+      <TextBlock Text="Height" VerticalAlignment="Center" />
+      <TextBox Grid.Column="1" Text="{Binding Height}" ToolTip.Tip="How tall the plant stands, in metres." />
+      <TextBlock Grid.Column="2" Text="Crown" VerticalAlignment="Center" />
+      <TextBox Grid.Column="3" Text="{Binding CrownRadius}" ToolTip.Tip="How far the leaves reach from the middle, in metres." />
+      <TextBlock Grid.Row="1" Text="Leaves" VerticalAlignment="Center" />
+      <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Crowns}" ToolTip.Tip="How many rounded masses of leaves, from 1 to 16." />
+      <TextBlock Grid.Row="1" Grid.Column="2" Text="Limbs" VerticalAlignment="Center" IsVisible="{Binding IsTree}" />
+      <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding Limbs}" IsVisible="{Binding IsTree}" ToolTip.Tip="How many limbs leave the trunk, up to 12." />
+      <TextBlock Grid.Row="2" Text="Trunk" VerticalAlignment="Center" IsVisible="{Binding IsTree}" />
+      <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding TrunkRadius}" IsVisible="{Binding IsTree}" ToolTip.Tip="The trunk's radius at its foot, in metres." />
+    </Grid>
+    <TextBlock Classes="muted" TextWrapping="Wrap" Margin="0,6,0,0"
+               Text="Changing the type, seed or shape grows the plant anew and replaces what the mesh tools made." />
+  </StackPanel>
+</UserControl>

@@ -97,6 +97,8 @@ public static class LucideIcons
     public static Geometry Unsaved { get; } = Parse("M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0z M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0z");
     public static Geometry Minimize { get; } = Parse("M5 12h14");
     public static Geometry Restore { get; } = Parse("M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z");
+    public static Geometry Tree { get; } = Parse("M8 19a4 4 0 0 1-2.24-7.32A3.5 3.5 0 0 1 9 6.03V6a3 3 0 1 1 6 0v.04a3.5 3.5 0 0 1 3.24 5.65A4 4 0 0 1 16 19Z M12 19v3");
+
     public static Geometry Building { get; } = Parse("M10 12h4 M10 8h4 M14 21v-3a2 2 0 0 0-4 0v3 M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2 M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16");
     public static Geometry Roof { get; } = Parse("M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z");
     public static Geometry Item { get; } = Parse("M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z M12 22V12 M3.29 7L12 12L20.71 7 M7.5 4.27l9 5.15");
@@ -218,6 +220,7 @@ public static class LucideIcons
         [nameof(Minimize)] = Minimize,
         [nameof(Restore)] = Restore,
         [nameof(Building)] = Building,
+        [nameof(Tree)] = Tree,
         [nameof(Roof)] = Roof,
         [nameof(Item)] = Item,
         [nameof(Key)] = Key,
