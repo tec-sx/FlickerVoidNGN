@@ -154,7 +154,7 @@ public sealed class EditorSceneVehicleTests : IDisposable
     {
         Vector3 min = new(float.PositiveInfinity);
         Vector3 max = new(float.NegativeInfinity);
-        foreach ((string _, VehiclePart part) in vehicle.GetParts())
+        foreach ((string _, SolidPart part) in vehicle.GetParts())
         {
             Matrix4x4 place = part.Place.ToMatrix();
             foreach (Vector3 point in part.Mesh.Points)

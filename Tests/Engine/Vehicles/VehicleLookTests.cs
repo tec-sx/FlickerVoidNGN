@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Rendering.Meshes;
 
 namespace FlickerVoid.Engine.Vehicles.Tests;
@@ -63,7 +64,7 @@ public sealed class VehicleLookTests
     [Fact]
     public void EachPartsLookIsInItsPivotsSpaceWhereverBlenderPutTheOrigin()
     {
-        VehiclePart wheel = _builder.Vehicle.Wheels[0];
+        SolidPart wheel = _builder.Vehicle.Wheels[0];
         Vector3 pivot = wheel.Place.Position;
 
         VehicleLook look = _builder.WithObject(pivot + Vector3.UnitY, "wheel.1L").Build();
@@ -77,7 +78,7 @@ public sealed class VehicleLookTests
     [Fact]
     public void ATurnedPivotTurnsTheLookBackIntoItsSpace()
     {
-        VehiclePart door = _builder.Vehicle.Doors[0];
+        SolidPart door = _builder.Vehicle.Doors[0];
         door.Place = door.Place with { Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2) };
         Vector3 inVehicle = door.Place.Position + Vector3.Transform(Vector3.UnitX, door.Place.Rotation);
 

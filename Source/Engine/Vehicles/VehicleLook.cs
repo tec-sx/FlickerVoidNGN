@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Text.RegularExpressions;
 
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Rendering.Meshes;
 
 namespace FlickerVoid.Engine.Vehicles;
@@ -40,8 +41,8 @@ public sealed partial class VehicleLook
 
     public static VehicleLook Bind(VehicleFile vehicle, ModelData look)
     {
-        IReadOnlyList<(string Id, VehiclePart Part)> parts = vehicle.GetParts();
-        Dictionary<string, VehiclePart> byId = parts.ToDictionary(part => part.Id, part => part.Part);
+        IReadOnlyList<(string Id, SolidPart Part)> parts = vehicle.GetParts();
+        Dictionary<string, SolidPart> byId = parts.ToDictionary(part => part.Id, part => part.Part);
         Dictionary<string, List<MeshPart>> meshes = [];
         List<string> unmatched = [];
         foreach (MeshPart mesh in look.Parts)
@@ -71,7 +72,7 @@ public sealed partial class VehicleLook
     }
 
     /// <summary>The first of the nodes, innermost first, that names a part, or null.</summary>
-    private static string? Match(IReadOnlyList<string> nodes, Dictionary<string, VehiclePart> parts)
+    private static string? Match(IReadOnlyList<string> nodes, Dictionary<string, SolidPart> parts)
     {
         foreach (string node in nodes)
         {

@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
 
@@ -45,7 +46,7 @@ internal sealed class VehicleMeshSource(VehicleFiles files, VehicleLooks looks) 
             return null;
         }
 
-        foreach ((string partId, VehiclePart part) in file.GetParts())
+        foreach ((string partId, SolidPart part) in file.GetParts())
         {
             if (partId != id)
             {

@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Physics;
 using FlickerVoid.Engine.Physics.Colliders;
 
@@ -18,7 +19,7 @@ internal static class VehicleWheels
         BodyWheel[] wheels = new BodyWheel[file.Wheels.Count];
         for (int index = 0; index < wheels.Length; index++)
         {
-            VehiclePart part = file.Wheels[index];
+            SolidPart part = file.Wheels[index];
             bool first = part.Place.Position.Z == front;
             wheels[index] = CreateWheel(part, drive, first);
         }
@@ -38,7 +39,7 @@ internal static class VehicleWheels
     }
 
     /// <summary>A wheel as round and as wide as the part's mesh about its pivot; the first axle steers, and the rest hold the hand brake.</summary>
-    private static BodyWheel CreateWheel(VehiclePart part, VehicleDrive drive, bool first)
+    private static BodyWheel CreateWheel(SolidPart part, VehicleDrive drive, bool first)
     {
         Matrix4x4 toVehicle = part.Place.ToMatrix();
         float radius = 0;

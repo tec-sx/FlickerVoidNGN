@@ -1,4 +1,5 @@
 using FlickerVoid.Editor.Core.Meshes.Doors;
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 using FlickerVoid.Engine.Vehicles.Serialization;
@@ -38,7 +39,7 @@ public sealed class VehicleDocument(UnsavedContent content, string path)
     /// <summary>Gives the part with the id a new solid, such as one a mesh tool made; throws for an id the vehicle lacks.</summary>
     public void SetMesh(string id, SolidMesh mesh)
     {
-        foreach ((string partId, VehiclePart part) in Vehicle.GetParts())
+        foreach ((string partId, SolidPart part) in Vehicle.GetParts())
         {
             if (partId == id)
             {
@@ -54,7 +55,7 @@ public sealed class VehicleDocument(UnsavedContent content, string path)
     /// <summary>Turns the part's mirror switch on or off, held in the file as one undo step; throws for an id the vehicle lacks.</summary>
     public void SetMirror(string id, bool mirror)
     {
-        foreach ((string partId, VehiclePart part) in Vehicle.GetParts())
+        foreach ((string partId, SolidPart part) in Vehicle.GetParts())
         {
             if (partId == id)
             {

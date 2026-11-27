@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Core.Meshes.Doors;
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 
@@ -154,7 +155,7 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
     /// <summary>The solid of the part with the id as the file holds it, or null when the vehicle has no such part.</summary>
     public SolidMesh? FindMesh(string id)
     {
-        foreach ((string partId, VehiclePart part) in _document.Vehicle.GetParts())
+        foreach ((string partId, SolidPart part) in _document.Vehicle.GetParts())
         {
             if (partId == id)
             {
@@ -168,7 +169,7 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
     /// <summary>Whether the part with the id has its mirror switch on; false for an id the vehicle lacks.</summary>
     public bool FindMirror(string id)
     {
-        foreach ((string partId, VehiclePart part) in _document.Vehicle.GetParts())
+        foreach ((string partId, SolidPart part) in _document.Vehicle.GetParts())
         {
             if (partId == id)
             {
@@ -265,7 +266,7 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
         Type = vehicle.Type;
         WheelCounts = VehicleFile.GetWheelCounts(vehicle.Type);
         WheelCount = vehicle.Wheels.Count;
-        IReadOnlyList<(string Id, VehiclePart Part)> parts = vehicle.GetParts();
+        IReadOnlyList<(string Id, SolidPart Part)> parts = vehicle.GetParts();
         Parts = [.. parts.Select(static part => part.Id)];
         VehicleDrive drive = vehicle.GetDrive();
         Mass = drive.Mass;
