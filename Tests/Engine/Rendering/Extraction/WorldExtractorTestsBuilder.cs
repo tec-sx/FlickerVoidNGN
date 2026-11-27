@@ -87,6 +87,12 @@ internal sealed class WorldExtractorTestsBuilder : IDisposable
         return this;
     }
 
+    public WorldExtractorTestsBuilder WithFogVolume(FogVolume volume, Transform transform)
+    {
+        _world.Create(volume, transform);
+        return this;
+    }
+
     public WorldExtractorTestsBuilder WithVolume(IrradianceVolume volume, Vector3 center)
     {
         Transform transform = new() { Position = center };

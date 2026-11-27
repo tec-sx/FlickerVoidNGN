@@ -135,6 +135,40 @@ public sealed record LightingMood
     [Range(1, 500)]
     public float FogRange { get; set; } = 60;
 
+    /// <summary>How far a slow drifting noise breaks the fog up: 0 keeps it even, 1 tears it into wisps. Fog volumes add their own share.</summary>
+    [Range(0, 1)]
+    public float FogNoise { get; set; }
+
+    /// <summary>The size of the noise's wisps, in world units.</summary>
+    [Range(0.1f, 50)]
+    public float FogNoiseScale { get; set; } = 4;
+
+    /// <summary>The way the fog's noise drifts.</summary>
+    public Vector3 FogWind { get; set; } = Vector3.Normalize(new Vector3(1, 0, 0.3f));
+
+    /// <summary>How fast the fog's noise drifts, in world units a second.</summary>
+    [Range(0, 20)]
+    public float FogWindSpeed { get; set; } = 0.4f;
+
+    /// <summary>
+    /// How bright the light beams are that the renderer stands where sunlight breaks through a gap (between leaves, past an eave,
+    /// through a window), as a share of the sun's light; 0 draws none. Beams need the ray traced tier.
+    /// </summary>
+    [Range(0, 4)]
+    public float BeamIntensity { get; set; }
+
+    /// <summary>How wide a light beam is, in world units.</summary>
+    [Range(0.05f, 4)]
+    public float BeamWidth { get; set; } = 0.5f;
+
+    /// <summary>How far from the focus, in world units, light beams are looked for.</summary>
+    [Range(1, 60)]
+    public float BeamReach { get; set; } = 12;
+
+    /// <summary>Tints the light beams, times the sun's colour; white leaves the sun's.</summary>
+    [Color]
+    public Vector3 BeamColor { get; set; } = Vector3.One;
+
     /// <summary>
     /// How fast the haze thickens with the distance beyond its start, as a share of the light it takes per world unit; 0 leaves no haze.
     /// The haze melts what lies far from the view's focus into <see cref="HazeColor"/>, cheaply, and the sky takes it at the horizon.

@@ -15,12 +15,13 @@ struct LightingConstants
     uint Frame;
     uint Output;
     // The fog volume kernels': the volume lit this frame, the one before's, the integrated volume, whether the one before's is
-    // kept, and the frame's number.
+    // kept, the frame's number, and the fog's own data: its noise and fog volumes (FogVolumePass.cs, GpuFog).
     uint Lit;
     uint History;
     uint Integrated;
     uint KeepsHistory;
     uint Number;
+    uint Fog;
 };
 
 [[vk::push_constant]] ConstantBuffer<LightingConstants> Pass : register(b0, space0);
@@ -29,6 +30,122 @@ RWByteAddressBuffer RWBuffers[] : register(u0, space2);
 
 // How much of the fog's lighting a froxel takes from the frame now, the rest it keeps from the frames before.
 static const float FogHistoryBlend = 0.1;
+
+// The fog's own data (GpuFogHeader.cs, then GpuFogVolume.cs records): the bytes of its header and of a fog volume.
+static const uint FogHeaderSize = 32;
+static const uint FogVolumeSize = 96;
+
+// How far the noise moves a fog's density at a share of 1, each way.
+static const float FogNoiseReach = 2;
+
+// A value between 0 and 1 for a corner of the noise's grid.
+float FogNoiseCorner(int3 corner)
+{
+    return HashToUnit(Hash(uint(corner.x) + Hash(uint(corner.y) + Hash(uint(corner.z)))));
+}
+
+// Smooth value noise between 0 and 1 over a grid of unit cells.
+float FogValueNoise(float3 position)
+{
+    float3 cell = floor(position);
+    float3 fraction = position - cell;
+    float3 blend = fraction * fraction * (3 - 2 * fraction);
+    int3 corner = int3(cell);
+    float x00 = lerp(FogNoiseCorner(corner), FogNoiseCorner(corner + int3(1, 0, 0)), blend.x);
+    float x10 = lerp(FogNoiseCorner(corner + int3(0, 1, 0)), FogNoiseCorner(corner + int3(1, 1, 0)), blend.x);
+    float x01 = lerp(FogNoiseCorner(corner + int3(0, 0, 1)), FogNoiseCorner(corner + int3(1, 0, 1)), blend.x);
+    float x11 = lerp(FogNoiseCorner(corner + int3(0, 1, 1)), FogNoiseCorner(corner + int3(1, 1, 1)), blend.x);
+    float y0 = lerp(x00, x10, blend.y);
+    float y1 = lerp(x01, x11, blend.y);
+    return lerp(y0, y1, blend.z);
+}
+
+// What a share of noise does to a density at a point: 1 where the noise is middling, more or less round it, never below 0.
+float FogNoiseFactor(float noise, float share)
+{
+    return max(0, 1 + share * (noise * 2 - 1) * FogNoiseReach);
+}
+
+// The density a fog volume adds at a point: its own, thinned over its soft edge and upward by its falloff.
+float FogVolumeDensity(ByteAddressBuffer fog, uint offset, float3 position, out float3 color, out float noiseShare)
+{
+    float4 centerDensity = fog.Load<float4>(offset);
+    float4 axisX = fog.Load<float4>(offset + 16);
+    float4 axisY = fog.Load<float4>(offset + 32);
+    float4 axisZ = fog.Load<float4>(offset + 48);
+    float4 colorSoftness = fog.Load<float4>(offset + 64);
+    float4 falloffNoiseShape = fog.Load<float4>(offset + 80);
+    color = colorSoftness.rgb;
+    noiseShare = falloffNoiseShape.y;
+    float3 offsetFromCenter = position - centerDensity.xyz;
+    float3 local = float3(dot(offsetFromCenter, axisX.xyz), dot(offsetFromCenter, axisY.xyz), dot(offsetFromCenter, axisZ.xyz));
+    float3 halfSize = max(float3(axisX.w, axisY.w, axisZ.w), 1e-4);
+    float3 scaled = local / halfSize;
+    float edge = max(abs(scaled.x), max(abs(scaled.y), abs(scaled.z)));
+    if (asuint(falloffNoiseShape.z) == 1)
+    {
+        edge = length(scaled);
+    }
+
+    if (edge >= 1)
+    {
+        return 0;
+    }
+
+    float softness = colorSoftness.a;
+    float fade = 1;
+    if (softness > 0)
+    {
+        fade = saturate((1 - edge) / softness);
+    }
+
+    float above = local.y + halfSize.y;
+    return centerDensity.w * fade * exp(-above * falloffNoiseShape.x);
+}
+
+// The fog at a point: its colour, the mood's and its volumes' weighted by their density, and its density, broken up by the
+// drifting noise as the mood and each volume say.
+float4 FogMediumAt(FrameData frame, uint fogBuffer, float3 position)
+{
+    ByteAddressBuffer fog = Buffers[fogBuffer];
+    uint count = fog.Load(0);
+    float moodNoise = fog.Load<float>(4);
+    float scale = max(fog.Load<float>(8), 1e-3);
+    float3 drift = fog.Load<float3>(16);
+    float noise = 0.5;
+    bool needsNoise = moodNoise > 0;
+    for (uint check = 0; check < count && !needsNoise; check++)
+    {
+        needsNoise = fog.Load<float>(FogHeaderSize + check * FogVolumeSize + 84) > 0;
+    }
+
+    if (needsNoise)
+    {
+        float3 place = (position - drift) / scale;
+        noise = 0.65 * FogValueNoise(place) + 0.35 * FogValueNoise(place * 2.03 + 17.1);
+    }
+
+    float moodDensity = FogDensityAt(frame, position) * FogNoiseFactor(noise, moodNoise);
+    float density = moodDensity;
+    float3 colorSum = frame.FogColor * moodDensity;
+    for (uint index = 0; index < count; index++)
+    {
+        float3 color;
+        float noiseShare;
+        float volumeDensity = FogVolumeDensity(fog, FogHeaderSize + index * FogVolumeSize, position, color, noiseShare);
+        volumeDensity *= FogNoiseFactor(noise, noiseShare);
+        density += volumeDensity;
+        colorSum += color * volumeDensity;
+    }
+
+    float3 medium = frame.FogColor;
+    if (density > 0)
+    {
+        medium = colorSum / density;
+    }
+
+    return float4(medium, density);
+}
 
 // The light a froxel lit this frame holds: the fog's color times the light scattered at its centre, and its density, mixed with
 // the frame before's at the same place in the world, reprojected, unless the history is not kept or the place was out of sight.
@@ -47,11 +164,12 @@ void FogLightMain(uint3 id : SV_DispatchThreadID)
     float depth = FogSliceDepth(frame, id.z + jitter);
     float3 direction;
     float3 position = FogPosition(frame, pixel, depth, direction);
-    float density = FogDensityAt(frame, position);
+    float4 medium = FogMediumAt(frame, Pass.Fog, position);
+    float density = medium.a;
     float4 current = float4(0, 0, 0, density);
     if (density > 0)
     {
-        current.rgb = FogLight(frame, pixel, position, -direction) * frame.FogColor;
+        current.rgb = FogLight(frame, pixel, position, -direction) * medium.rgb;
     }
 
     if (Pass.KeepsHistory != 0)

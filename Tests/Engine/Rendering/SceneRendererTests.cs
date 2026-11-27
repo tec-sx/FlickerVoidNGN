@@ -589,6 +589,90 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void LightsAFogVolumeWithoutTheMoodsFog()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0, 0, 0, 1)));
+        _builder.WithScene(Camera, Quad, FogBox(size: "[2, 2, 2]", position: "[0, -1, 1]"));
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, byte green, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(40, 52, "two units of white fog of density 0.1 scatter 1 - exp(-0.2) of the ambient light");
+        green.Should().Be(red);
+        blue.Should().Be(red);
+    }
+
+    [Fact]
+    public void KeepsAFogVolumesFogInsideIt()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0, 0, 0, 1)));
+        _builder.WithScene(Camera, Quad, FogBox(size: "[1, 2, 2]", position: "[-0.5, -1, 1]"));
+
+        uint[] pixels = _builder.Render();
+
+        (byte inside, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        (byte outside, _, _) = SceneRendererTestsBuilder.Channels(pixels[6]);
+        inside.Should().BeGreaterThan(30, "the box covers the left half of the view");
+        outside.Should().BeLessThan(4, "the right half sees no fog");
+    }
+
+    [Fact]
+    public void ThinsAFogVolumeOverItsSoftEdge()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0, 0, 0, 1)));
+        _builder.WithScene(Camera, Quad, FogBox(size: "[2, 2, 2]", position: "[0, -1, 1]", softness: 1));
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        red.Should().BeInRange(4, 36, "the fog thins from the middle of the box to nothing at its sides");
+    }
+
+    [Fact]
+    public void LeavesTheCornersOfAFogBallClear()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0, 0, 0, 1)));
+        _builder.WithScene(Camera, Quad, FogBox(size: "[2, 2, 2]", position: "[0, -1, 1]", shape: "ball"));
+
+        uint[] pixels = _builder.Render();
+
+        (byte corner, _, _) = SceneRendererTestsBuilder.Channels(pixels[0]);
+        (byte middle, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        corner.Should().BeLessThan(4, "the view's corner lies outside the ball");
+        middle.Should().BeGreaterThan(30, "the middle of the view looks through it");
+    }
+
+    [Fact]
+    public void BreaksAFogVolumeUpWithNoise()
+    {
+        _builder.WithTargetSize(8);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(4).WithBaseColor(new Vector4(0, 0, 0, 1)));
+        _builder.WithScene(Camera, Quad, FogBox(size: "[4, 4, 20]", position: "[0, -2, 0]", noise: 1));
+        _builder.WithMood(static mood => mood with { FogNoiseScale = 0.3f, FogWindSpeed = 0 });
+
+        uint[] pixels = _builder.Render();
+
+        uint[] reds = [.. pixels.Select(static pixel => (uint)SceneRendererTestsBuilder.Channels(pixel).Red)];
+        uint spread = reds.Max() - reds.Min();
+        spread.Should().BeGreaterThan(10, "the noise thickens the fog in some places and thins it in others");
+    }
+
+    [Fact]
+    public void KeepsAFogVolumeEvenWithoutNoise()
+    {
+        _builder.WithTargetSize(8);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(4).WithBaseColor(new Vector4(0, 0, 0, 1)));
+        _builder.WithScene(Camera, Quad, FogBox(size: "[4, 4, 20]", position: "[0, -2, 0]"));
+        _builder.WithMood(static mood => mood with { FogNoiseScale = 0.3f, FogWindSpeed = 0 });
+
+        uint[] pixels = _builder.Render();
+
+        uint[] reds = [.. pixels.Select(static pixel => (uint)SceneRendererTestsBuilder.Channels(pixel).Red)];
+        uint spread = reds.Max() - reds.Min();
+        spread.Should().BeLessThan(3, "without noise the fog is the same everywhere inside the box");
+    }
+
+    [Fact]
     public void LeavesSurfacesClearWithoutFog()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
@@ -2215,5 +2299,12 @@ public sealed class SceneRendererTests : IDisposable
         builder.WithMood(static mood => mood with { Canvas = "Paper.fvcanvas" });
         builder.WithScene(entities);
         return builder.Render();
+    }
+
+    private static string FogBox(string size, string position, float softness = 0, string shape = "box", float noise = 0)
+    {
+        string softnessText = System.FormattableString.Invariant($"{softness}");
+        string noiseText = System.FormattableString.Invariant($"{noise}");
+        return $$"""{ "name": "Fog", "components": { "transform": { "position": {{position}} }, "fogVolume": { "shape": "{{shape}}", "size": {{size}}, "density": 0.1, "edgeSoftness": {{softnessText}}, "noise": {{noiseText}} } } }""";
     }
 }
