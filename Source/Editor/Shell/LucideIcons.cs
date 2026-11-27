@@ -56,6 +56,12 @@ public static class LucideIcons
     public static Geometry Shader { get; } = Parse("M18 16l4-4-4-4 M6 8l-4 4 4 4 M14.5 4l-5 16");
     public static Geometry Data { get; } = Parse("M15 12h-5 M15 8h-5 M19 17V5a2 2 0 0 0-2-2H4 M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3");
     public static Geometry Table { get; } = Parse("M12 3v18 M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z M3 9h18 M3 15h18");
+    public static Geometry Repeat { get; } = Parse("m17 2 4 4-4 4 M3 11v-1a4 4 0 0 1 4-4h14 m7 22-4-4 4-4 M21 13v1a4 4 0 0 1-4 4H3");
+    public static Geometry ZoomIn { get; } = Parse("M21 21l-4.34-4.34 M11 8v6 M8 11h6 M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0z");
+    public static Geometry ZoomOut { get; } = Parse("M21 21l-4.34-4.34 M8 11h6 M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0z");
+    public static Geometry Mixer { get; } = Parse("M10 8h4 M12 21v-9 M12 8V3 M17 16h4 M19 12V3 M19 21v-5 M3 14h4 M5 12V3 M5 21v-7");
+    public static Geometry Waveform { get; } = Parse("M2 10v3 M6 6v11 M10 3v18 M14 8v7 M18 5v13 M22 10v3");
+    public static Geometry Bell { get; } = Parse("M10.268 21a2 2 0 0 0 3.464 0 M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326");
     public static Geometry Music { get; } = Parse("M9 18V5l12-2v13 M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0z M21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z");
     public static Geometry Flow { get; } = Parse("M5 3h4a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2z M7 11v4a2 2 0 0 0 2 2h4 M15 13h4a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2z");
     public static Geometry File { get; } = Parse("M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z M14 2v5a1 1 0 0 0 1 1h5");
@@ -185,6 +191,12 @@ public static class LucideIcons
         [nameof(Table)] = Table,
         [nameof(Flow)] = Flow,
         [nameof(Music)] = Music,
+        [nameof(Repeat)] = Repeat,
+        [nameof(ZoomIn)] = ZoomIn,
+        [nameof(ZoomOut)] = ZoomOut,
+        [nameof(Mixer)] = Mixer,
+        [nameof(Waveform)] = Waveform,
+        [nameof(Bell)] = Bell,
         [nameof(File)] = File,
         [nameof(Logo)] = Logo,
         [nameof(Search)] = Search,

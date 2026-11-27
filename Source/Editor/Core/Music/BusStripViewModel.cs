@@ -23,11 +23,23 @@ public sealed partial class BusStripViewModel(AudioBus bus, Action changed) : Ob
     [ObservableProperty]
     private double _level;
 
+    /// <summary>The fader in decibels, from -60 (silent) to +6; the volume it makes is capped at 1, as the settings' are.</summary>
+    public double Decibels
+    {
+        get => MusicTrackViewModel.ToDecibels((float)Volume);
+        set
+        {
+            float volume = MusicTrackViewModel.FromDecibels(Math.Clamp(value, -60, 0));
+            Volume = volume;
+        }
+    }
+
     public string VolumeText => $"{MusicTrackViewModel.ToDecibels((float)Volume):0.0}";
 
     partial void OnVolumeChanged(double value)
     {
         OnPropertyChanged(nameof(VolumeText));
+        OnPropertyChanged(nameof(Decibels));
         changed();
     }
 

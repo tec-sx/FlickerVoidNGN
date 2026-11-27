@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.Globalization;
+
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -8,8 +11,10 @@ using FlickerVoid.Editor.Core.Music;
 namespace FlickerVoid.Editor.Music;
 
 /// <summary>
-/// The lanes of a music cue: the bar ruler, the rehearsal's span (drag its body or its edges to move when the game asks for
-/// tracks), and a row per track with its clips, drawn with waveforms; waits are dashed, fills hatched and scatter marks dots.
+/// The lanes of a music cue: the bar ruler with the playhead (click or drag it to jump), a row of the rehearsal for each music
+/// area (drag its span to walk the fox in and out), the notifiers row, and a lane per track with its clips drawn as waveforms:
+/// fills are hatched, waits dashed, scatter marks dots. A loop clip's right edge drags its length, its top corners drag the fades,
+/// and sounds dropped on a lane become its clip.
 /// </summary>
 public sealed class MusicLanes : Control
 {
@@ -17,16 +22,29 @@ public sealed class MusicLanes : Control
         AvaloniaProperty.Register<MusicLanes, MusicEditorViewModel?>(nameof(Editor));
 
     private const double EdgeGrab = 6;
+    private const double Handle = 12;
 
-    private enum Drag { None, Move, On, Off }
+    private enum Drag { None, Seek, SpanMove, SpanOn, SpanOff, Notifier, LoopSize, FadeIn, FadeOut }
 
     private Drag _drag;
     private double _grabOffset;
+    private RehearsalRow? _row;
+    private MusicTrackViewModel? _track;
+    private ArrangementClip _clip;
+    private NotifierViewModel? _notifier;
     private MusicEditorViewModel? _watched;
 
     static MusicLanes()
     {
         AffectsRender<MusicLanes>(EditorProperty);
+        FocusableProperty.OverrideDefaultValue<MusicLanes>(true);
+    }
+
+    public MusicLanes()
+    {
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DragOverEvent, HandleDragOver);
+        AddHandler(DragDrop.DropEvent, HandleDrop);
     }
 
     public MusicEditorViewModel? Editor
@@ -35,18 +53,18 @@ public sealed class MusicLanes : Control
         set => SetValue(EditorProperty, value);
     }
 
-    public double ContentWidth => (Editor?.TotalBars ?? 0) * (Editor?.BarWidth ?? MusicLayout.DefaultBarWidth);
+    /// <summary>The top of the rehearsal rows.</summary>
+    private static double RowsTop => MusicLayout.RulerHeight;
 
-    public double ContentHeight
-    {
-        get
-        {
-            int tracks = Editor?.Tracks.Count ?? 0;
-            return MusicLayout.RulerHeight + MusicLayout.RehearsalHeight + (tracks * MusicLayout.TrackHeight);
-        }
-    }
+    private double NotifierTop => RowsTop + ((Editor?.Rows.Count ?? 0) * MusicLayout.RehearsalHeight);
 
-    protected override Size MeasureOverride(Size availableSize) => new(ContentWidth, ContentHeight);
+    private double TracksTop => NotifierTop + MusicLayout.NotifierHeight;
+
+    public double ContentWidth => ((Editor?.TotalBars ?? 0) * (Editor?.BarWidth ?? MusicLayout.DefaultBarWidth)) + 40;
+
+    public double ContentHeight => TracksTop + (((Editor?.Tracks.Count ?? 0) + 1) * MusicLayout.TrackHeight);
+
+    protected override Size MeasureOverride(Size availableSize) => new(ContentWidth, Math.Max(ContentHeight, availableSize.Height is double.PositiveInfinity ? 0 : availableSize.Height));
 
     private Color Tint(int index)
     {
@@ -59,14 +77,11 @@ public sealed class MusicLanes : Control
         return Colors.Gray;
     }
 
-    private IBrush Brush(string key)
-    {
-        if (this.TryFindResource(key, ActualThemeVariant, out object? value) && value is IBrush brush)
-        {
-            return brush;
-        }
+    private IBrush Brush(string key) => DecibelScale.Brush(this, key, Brushes.Gray);
 
-        return Brushes.Gray;
+    private static FormattedText Label(string text, IBrush brush, double size = 11)
+    {
+        return new FormattedText(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Typeface.Default, size, brush);
     }
 
     public override void Render(DrawingContext context)
@@ -78,28 +93,15 @@ public sealed class MusicLanes : Control
 
         double bar = editor.BarWidth;
         double width = Bounds.Width;
+        double barsEnd = editor.TotalBars * bar;
         IBrush line = Brush("EditorLineBrush");
         IBrush text = Brush("EditorMutedTextBrush");
         Pen linePen = new(line, 1);
         context.FillRectangle(Brush("EditorDeepBrush"), new Rect(0, 0, width, Bounds.Height));
-
-        for (int index = 0; index <= editor.TotalBars; index++)
-        {
-            double x = index * bar;
-            bool major = index % editor.PhraseBars == 0;
-            Pen pen = major ? linePen : new Pen(Brush("EditorPanelBrush"), 1);
-            context.DrawLine(pen, new Point(x, major ? 0 : MusicLayout.RulerHeight), new Point(x, Bounds.Height));
-            if (index < editor.TotalBars)
-            {
-                FormattedText label = new((index + 1).ToString(), System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Typeface.Default, 11, major ? Brush("EditorTextBrush") : text);
-                context.DrawText(label, new Point(x + 4, 5));
-            }
-        }
-
-        double top = MusicLayout.RulerHeight;
-        context.DrawLine(linePen, new Point(0, top), new Point(width, top));
-        DrawRehearsal(context, editor, top);
-        top += MusicLayout.RehearsalHeight;
+        DrawGrid(context, editor, bar, barsEnd, linePen, text);
+        DrawRows(context, editor, linePen);
+        DrawNotifiers(context, editor, linePen);
+        double top = TracksTop;
         context.DrawLine(linePen, new Point(0, top), new Point(width, top));
         for (int index = 0; index < editor.Tracks.Count; index++)
         {
@@ -107,23 +109,94 @@ public sealed class MusicLanes : Control
             top += MusicLayout.TrackHeight;
             context.DrawLine(linePen, new Point(0, top), new Point(width, top));
         }
+
+        DrawPlayhead(context, editor, bar);
     }
 
-    private void DrawRehearsal(DrawingContext context, MusicEditorViewModel editor, double top)
+    private void DrawGrid(DrawingContext context, MusicEditorViewModel editor, double bar, double barsEnd, Pen linePen, IBrush text)
     {
-        if (!editor.HasRehearsal || editor.Spans.Count == 0)
+        Pen faint = new(Brush("EditorPanelBrush"), 1);
+        int phrase = Math.Max(1, (int)editor.PhraseBars);
+        for (int index = 0; index <= editor.TotalBars; index++)
         {
-            return;
+            double x = index * bar;
+            bool major = index % phrase == 0;
+            Pen pen = major ? linePen : faint;
+            context.DrawLine(pen, new Point(x, major ? 0 : MusicLayout.RulerHeight), new Point(x, Bounds.Height));
+            if (index < editor.TotalBars && (bar >= 18 || major))
+            {
+                IBrush brush = major ? Brush("EditorTextBrush") : text;
+                context.DrawText(Label((index + 1).ToString(CultureInfo.InvariantCulture), brush), new Point(x + 4, 5));
+            }
         }
 
-        RehearsalSpan span = editor.Spans[0];
-        Rect rect = new(span.On * editor.BarWidth, top + 3, (span.Off - span.On) * editor.BarWidth, MusicLayout.RehearsalHeight - 6);
-        context.DrawRectangle(Brush("EditorFillBrush"), new Pen(Brush("EditorAccentLineBrush"), 1), rect, 3, 3);
-        FormattedText label = new("the fox is in the area", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Typeface.Default, 11, Brush("EditorTextBrush"));
-        using (context.PushClip(rect))
+        context.DrawLine(linePen, new Point(0, MusicLayout.RulerHeight), new Point(Bounds.Width, MusicLayout.RulerHeight));
+        context.FillRectangle(Brush("EditorFrameBrush"), new Rect(barsEnd, 0, Math.Max(0, Bounds.Width - barsEnd), Bounds.Height));
+    }
+
+    private void DrawRows(DrawingContext context, MusicEditorViewModel editor, Pen linePen)
+    {
+        double top = RowsTop;
+        foreach (RehearsalRow row in editor.Rows)
         {
-            context.DrawText(label, new Point(rect.X + 6, rect.Y + 2));
+            RehearsalSpan span = row.Span;
+            Rect rect = new(span.On * editor.BarWidth, top + 3, (span.Off - span.On) * editor.BarWidth, MusicLayout.RehearsalHeight - 6);
+            IBrush fill = row.Asking ? Brush("EditorAccentSoftBrush") : Brush("EditorFillBrush");
+            context.DrawRectangle(fill, new Pen(Brush("EditorAccentLineBrush"), 1), rect, 3, 3);
+            using (context.PushClip(rect))
+            {
+                context.DrawText(Label(row.Hint, Brush("EditorTextBrush")), new Point(rect.X + 6, rect.Y + 2));
+            }
+
+            top += MusicLayout.RehearsalHeight;
+            context.DrawLine(linePen, new Point(0, top), new Point(Bounds.Width, top));
         }
+    }
+
+    private void DrawNotifiers(DrawingContext context, MusicEditorViewModel editor, Pen linePen)
+    {
+        double top = NotifierTop;
+        double middle = top + (MusicLayout.NotifierHeight / 2);
+        IBrush accent = Brush("EditorAccentBrush");
+        IBrush faint = Brush("EditorHintBrush");
+        int phrase = Math.Max(1, (int)editor.PhraseBars);
+        foreach (NotifierViewModel notifier in editor.Notifiers)
+        {
+            double offset = notifier.Notify.Bar - 1;
+            for (double at = offset; at < editor.TotalBars; at += phrase)
+            {
+                bool first = at < phrase;
+                double x = at * editor.BarWidth;
+                StreamGeometry diamond = new();
+                using (StreamGeometryContext shape = diamond.Open())
+                {
+                    shape.BeginFigure(new Point(x, middle - 6), true);
+                    shape.LineTo(new Point(x + 5, middle));
+                    shape.LineTo(new Point(x, middle + 6));
+                    shape.LineTo(new Point(x - 5, middle));
+                    shape.EndFigure(true);
+                }
+
+                context.DrawGeometry(first ? accent : faint, null, diamond);
+                if (first)
+                {
+                    context.DrawText(Label(notifier.Name, Brush("EditorTextBrush"), 10), new Point(x + 8, top + 4));
+                }
+            }
+        }
+
+        context.DrawLine(linePen, new Point(0, top + MusicLayout.NotifierHeight), new Point(Bounds.Width, top + MusicLayout.NotifierHeight));
+    }
+
+    private void DrawPlayhead(DrawingContext context, MusicEditorViewModel editor, double bar)
+    {
+        double x = editor.Playhead * bar;
+        IBrush accent = Brush("EditorAccentBrush");
+        context.DrawLine(new Pen(accent, 1.5), new Point(x, 0), new Point(x, Bounds.Height));
+        FormattedText label = Label(editor.PositionText, Brush("EditorAccentInkBrush"), 10.5);
+        Rect chip = new(x - 2, 3, label.Width + 10, 17);
+        context.DrawRectangle(accent, null, chip, 3, 3);
+        context.DrawText(label, new Point(chip.X + 5, chip.Y + 2));
     }
 
     private void DrawTrack(DrawingContext context, MusicEditorViewModel editor, MusicTrackViewModel track, Color tint, double top, double bar)
@@ -136,27 +209,117 @@ public sealed class MusicLanes : Control
             context.FillRectangle(Brush("EditorRowHoverBrush"), new Rect(0, top, Bounds.Width, MusicLayout.TrackHeight));
         }
 
-        foreach (ArrangementClip clip in track.Clips)
+        double mute = track.Muted ? 0.35 : 1;
+        using (context.PushOpacity(mute))
         {
-            double x = clip.Start * bar;
-            if (clip.Kind == ArrangementKind.Scatter)
+            foreach (ArrangementClip clip in track.Clips)
             {
-                context.DrawEllipse(new SolidColorBrush(tint), null, new Point(x, y + (height / 2)), 4, 4);
-                continue;
+                DrawClip(context, editor, track, clip, tint, y, height, bar);
+            }
+        }
+
+        if (selected)
+        {
+            DrawHandles(context, track, y, bar);
+        }
+    }
+
+    private void DrawClip(DrawingContext context, MusicEditorViewModel editor, MusicTrackViewModel track, ArrangementClip clip, Color tint, double y, double height, double bar)
+    {
+        double x = clip.Start * bar;
+        if (clip.Kind == ArrangementKind.Scatter)
+        {
+            context.DrawEllipse(new SolidColorBrush(tint), null, new Point(x, y + (height / 2)), 4, 4);
+            return;
+        }
+
+        Rect rect = new(x, y, Math.Max(2, (clip.Length * bar) - 1), height);
+        if (clip.Kind == ArrangementKind.Wait)
+        {
+            Pen dashed = new(Brush("EditorHintBrush"), 1, new DashStyle([3, 3], 0));
+            context.DrawRectangle(null, dashed, rect.Deflate(0.5));
+            if (rect.Width > 34)
+            {
+                context.DrawText(Label("waits", Brush("EditorHintBrush"), 10), new Point(rect.X + 4, rect.Bottom - 15));
             }
 
-            Rect rect = new(x, y, Math.Max(2, clip.Length * bar - 1), height);
-            if (clip.Kind == ArrangementKind.Wait)
+            return;
+        }
+
+        bool fill = clip.Kind != ArrangementKind.Loop;
+        Color body = Color.FromArgb(fill ? (byte)0x88 : (byte)0x55, tint.R, tint.G, tint.B);
+        bool picked = editor.SelectedClip is { } chosen && chosen.Track == track && chosen.Clip == clip;
+        Pen outline = picked ? new Pen(Brush("EditorTextBrush"), 2) : new Pen(new SolidColorBrush(tint), 1);
+        context.DrawRectangle(new SolidColorBrush(body), outline, rect, 3, 3);
+        DrawWave(context, editor, track, clip, rect, tint);
+        if (fill)
+        {
+            DrawHatch(context, rect, tint);
+        }
+
+        if (clip.Kind == ArrangementKind.Loop)
+        {
+            DrawFades(context, editor, track, clip, rect);
+        }
+
+        DrawClipName(context, editor, track, clip, rect);
+    }
+
+    private static void DrawHatch(DrawingContext context, Rect rect, Color tint)
+    {
+        Pen pen = new(new SolidColorBrush(Color.FromArgb(0x55, tint.R, tint.G, tint.B)), 1);
+        using (context.PushClip(rect))
+        {
+            for (double offset = -rect.Height; offset < rect.Width; offset += 7)
             {
-                Pen dashed = new(Brush("EditorHintBrush"), 1, new DashStyle([3, 3], 0));
-                context.DrawRectangle(null, dashed, rect.Deflate(0.5));
-                continue;
+                context.DrawLine(pen, new Point(rect.X + offset, rect.Bottom), new Point(rect.X + offset + rect.Height, rect.Y));
+            }
+        }
+    }
+
+    private void DrawFades(DrawingContext context, MusicEditorViewModel editor, MusicTrackViewModel track, ArrangementClip clip, Rect rect)
+    {
+        Pen pen = new(Brush("EditorTextBrush"), 1);
+        bool run = IsRunStart(track, clip);
+        if (run && track.Track.FadeIn > 0)
+        {
+            double wide = Math.Min(rect.Width, track.Track.FadeIn / editor.BarSeconds * editor.BarWidth);
+            context.DrawLine(pen, new Point(rect.X, rect.Bottom), new Point(rect.X + wide, rect.Y));
+        }
+
+        if (IsRunEnd(track, clip) && track.Track.FadeOut > 0)
+        {
+            double wide = Math.Min(rect.Width, track.Track.FadeOut / editor.BarSeconds * editor.BarWidth);
+            context.DrawLine(pen, new Point(rect.Right - wide, rect.Y), new Point(rect.Right, rect.Bottom));
+        }
+    }
+
+    private static bool IsRunStart(MusicTrackViewModel track, ArrangementClip clip)
+    {
+        return !track.Clips.Any(other => other.Kind == ArrangementKind.Loop && Math.Abs(other.Start + other.Length - clip.Start) < 0.001);
+    }
+
+    private static bool IsRunEnd(MusicTrackViewModel track, ArrangementClip clip)
+    {
+        return !track.Clips.Any(other => other.Kind == ArrangementKind.Loop && Math.Abs(other.Start - (clip.Start + clip.Length)) < 0.001);
+    }
+
+    private void DrawHandles(DrawingContext context, MusicTrackViewModel track, double y, double bar)
+    {
+        IBrush brush = Brush("EditorTextBrush");
+        foreach (ArrangementClip clip in track.Clips.Where(clip => clip.Kind == ArrangementKind.Loop))
+        {
+            double left = clip.Start * bar;
+            double right = (clip.Start + clip.Length) * bar;
+            if (IsRunStart(track, clip))
+            {
+                context.DrawRectangle(brush, null, new Rect(left + 1, y + 1, 7, 7), 1, 1);
             }
 
-            Color fill = Color.FromArgb(clip.Kind == ArrangementKind.Loop ? (byte)0x55 : (byte)0x88, tint.R, tint.G, tint.B);
-            context.DrawRectangle(new SolidColorBrush(fill), new Pen(new SolidColorBrush(tint), 1), rect, 3, 3);
-            DrawWave(context, editor, track, clip, rect, tint);
-            DrawClipName(context, track, clip, rect);
+            if (IsRunEnd(track, clip))
+            {
+                context.DrawRectangle(brush, null, new Rect(right - 9, y + 1, 7, 7), 1, 1);
+            }
         }
     }
 
@@ -190,7 +353,7 @@ public sealed class MusicLanes : Control
         }
     }
 
-    private void DrawClipName(DrawingContext context, MusicTrackViewModel track, ArrangementClip clip, Rect rect)
+    private void DrawClipName(DrawingContext context, MusicEditorViewModel editor, MusicTrackViewModel track, ArrangementClip clip, Rect rect)
     {
         string name;
         switch (clip.Kind)
@@ -207,95 +370,286 @@ public sealed class MusicLanes : Control
                     return;
                 }
 
-                name = System.IO.Path.GetFileNameWithoutExtension(track.Track.Loop);
+                name = $"{System.IO.Path.GetFileNameWithoutExtension(track.Track.Loop)} · {track.Lengths.LoopBars:0} bars";
+                if (track.IsStretched)
+                {
+                    name += $" · {track.Track.Tempo:0.#} → {editor.Tempo:0}";
+                }
+
                 break;
         }
 
-        FormattedText label = new(name, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Typeface.Default, 11, Brush("EditorTextBrush"));
         using (context.PushClip(rect))
         {
-            context.DrawText(label, new Point(rect.X + 5, rect.Y + 3));
+            context.DrawText(Label(name, Brush("EditorTextBrush")), new Point(rect.X + 14, rect.Y + 3));
         }
     }
+
+    private double BarAt(double x) => Math.Max(0, x / (Editor?.BarWidth ?? MusicLayout.DefaultBarWidth));
 
     protected override void OnPointerPressed(PointerPressedEventArgs args)
     {
         base.OnPointerPressed(args);
+        Focus();
         if (Editor is not { } editor)
         {
             return;
         }
 
         Point point = args.GetPosition(this);
-        if (point.Y >= MusicLayout.RulerHeight + MusicLayout.RehearsalHeight)
+        _drag = Drag.None;
+        if (point.Y < RowsTop)
         {
-            int row = (int)((point.Y - MusicLayout.RulerHeight - MusicLayout.RehearsalHeight) / MusicLayout.TrackHeight);
-            if (row >= 0 && row < editor.Tracks.Count)
-            {
-                editor.Selected = editor.Tracks[row];
-                InvalidateVisual();
-            }
-
-            return;
+            _drag = Drag.Seek;
+            editor.SeekTo(BarAt(point.X));
         }
-
-        if (point.Y < MusicLayout.RulerHeight || !editor.HasRehearsal || editor.Spans.Count == 0)
+        else if (point.Y < NotifierTop)
         {
-            return;
+            PressRow(editor, point);
         }
-
-        RehearsalSpan span = editor.Spans[0];
-        double on = span.On * editor.BarWidth;
-        double off = span.Off * editor.BarWidth;
-        if (Math.Abs(point.X - on) <= EdgeGrab)
+        else if (point.Y < TracksTop)
         {
-            _drag = Drag.On;
+            PressNotifierRow(editor, point, args.ClickCount);
         }
-        else if (Math.Abs(point.X - off) <= EdgeGrab)
+        else
         {
-            _drag = Drag.Off;
-        }
-        else if (point.X > on && point.X < off)
-        {
-            _drag = Drag.Move;
-            _grabOffset = (point.X / editor.BarWidth) - span.On;
+            PressTracks(editor, point);
         }
 
         if (_drag != Drag.None)
         {
             args.Pointer.Capture(this);
         }
+
+        InvalidateVisual();
+    }
+
+    private void PressRow(MusicEditorViewModel editor, Point point)
+    {
+        int index = (int)((point.Y - RowsTop) / MusicLayout.RehearsalHeight);
+        if (index < 0 || index >= editor.Rows.Count)
+        {
+            return;
+        }
+
+        _row = editor.Rows[index];
+        RehearsalSpan span = _row.Span;
+        double on = span.On * editor.BarWidth;
+        double off = span.Off * editor.BarWidth;
+        if (Math.Abs(point.X - on) <= EdgeGrab)
+        {
+            _drag = Drag.SpanOn;
+        }
+        else if (Math.Abs(point.X - off) <= EdgeGrab)
+        {
+            _drag = Drag.SpanOff;
+        }
+        else if (point.X > on && point.X < off)
+        {
+            _drag = Drag.SpanMove;
+            _grabOffset = BarAt(point.X) - span.On;
+        }
+    }
+
+    private void PressNotifierRow(MusicEditorViewModel editor, Point point, int clicks)
+    {
+        int phrase = Math.Max(1, (int)editor.PhraseBars);
+        foreach (NotifierViewModel notifier in editor.Notifiers)
+        {
+            double offset = notifier.Notify.Bar - 1;
+            for (double at = offset; at < editor.TotalBars; at += phrase)
+            {
+                if (Math.Abs((at * editor.BarWidth) - point.X) <= 7)
+                {
+                    _notifier = notifier;
+                    _drag = Drag.Notifier;
+                    editor.SideTab = 1;
+                    return;
+                }
+            }
+        }
+
+        if (clicks == 2)
+        {
+            editor.AddNotifierAt(BarAt(point.X) % (double)phrase);
+        }
+    }
+
+    private void PressTracks(MusicEditorViewModel editor, Point point)
+    {
+        int index = (int)((point.Y - TracksTop) / MusicLayout.TrackHeight);
+        if (index < 0 || index >= editor.Tracks.Count)
+        {
+            return;
+        }
+
+        MusicTrackViewModel track = editor.Tracks[index];
+        double y = TracksTop + (index * MusicLayout.TrackHeight) + 4;
+        double bar = editor.BarWidth;
+        foreach (ArrangementClip clip in track.Clips)
+        {
+            if (clip.Kind is ArrangementKind.Scatter or ArrangementKind.Wait)
+            {
+                continue;
+            }
+
+            double left = clip.Start * bar;
+            double right = (clip.Start + clip.Length) * bar;
+            if (point.X < left - EdgeGrab || point.X > right + EdgeGrab)
+            {
+                continue;
+            }
+
+            if (clip.Kind == ArrangementKind.Loop && editor.Selected == track && point.Y < y + Handle)
+            {
+                if (point.X <= left + Handle && IsRunStart(track, clip))
+                {
+                    Begin(Drag.FadeIn, track, clip);
+                    return;
+                }
+
+                if (point.X >= right - Handle && IsRunEnd(track, clip))
+                {
+                    Begin(Drag.FadeOut, track, clip);
+                    return;
+                }
+            }
+
+            if (clip.Kind == ArrangementKind.Loop && Math.Abs(point.X - right) <= EdgeGrab)
+            {
+                Begin(Drag.LoopSize, track, clip);
+                return;
+            }
+
+            if (point.X >= left && point.X <= right)
+            {
+                editor.SelectClip(track, clip);
+                return;
+            }
+        }
+
+        editor.Selected = track;
+        editor.SelectedClip = null;
+    }
+
+    private void Begin(Drag drag, MusicTrackViewModel track, ArrangementClip clip)
+    {
+        _drag = drag;
+        _track = track;
+        _clip = clip;
+        Editor!.SelectClip(track, clip);
     }
 
     protected override void OnPointerMoved(PointerEventArgs args)
     {
         base.OnPointerMoved(args);
-        if (_drag == Drag.None || Editor is not { } editor)
+        if (Editor is not { } editor)
         {
             return;
         }
 
-        RehearsalSpan span = editor.Spans[0];
-        double bars = Math.Round(args.GetPosition(this).X / editor.BarWidth * 4) / 4;
-        bars = Math.Clamp(bars, 0, editor.TotalBars);
+        Point point = args.GetPosition(this);
+        if (_drag == Drag.None)
+        {
+            UpdateCursor(editor, point);
+            return;
+        }
+
+        double bars = BarAt(point.X);
+        switch (_drag)
+        {
+            case Drag.Seek:
+                editor.SeekTo(bars);
+                break;
+            case Drag.SpanOn:
+            case Drag.SpanOff:
+            case Drag.SpanMove:
+                MoveSpan(editor, bars);
+                break;
+            case Drag.Notifier:
+                editor.MoveNotifier(_notifier!, bars % Math.Max(1, (double)editor.PhraseBars));
+                break;
+            case Drag.LoopSize:
+                editor.SetLoopBars(_track!, (int)Math.Max(1, Math.Round(bars - FirstLoopStart())));
+                break;
+            case Drag.FadeIn:
+                editor.SetFade(_track!, true, bars - _clip.Start);
+                break;
+            case Drag.FadeOut:
+                editor.SetFade(_track!, false, _clip.Start + _clip.Length - bars);
+                break;
+        }
+
+        InvalidateVisual();
+    }
+
+    private double FirstLoopStart()
+    {
+        double start = _clip.Start;
+        foreach (ArrangementClip clip in _track!.Clips)
+        {
+            if (clip.Kind == ArrangementKind.Loop && clip.Start <= _clip.Start && _clip.Start - clip.Start <= (_clip.Repeat * Math.Max(1, _track.Lengths.LoopBars)) + 0.001)
+            {
+                start = Math.Min(start, clip.Start);
+            }
+        }
+
+        return start;
+    }
+
+    private void MoveSpan(MusicEditorViewModel editor, double bars)
+    {
+        if (_row is null)
+        {
+            return;
+        }
+
+        RehearsalSpan span = _row.Span;
+        double snapped = Math.Round(bars * 4) / 4;
+        snapped = Math.Clamp(snapped, 0, editor.TotalBars);
         RehearsalSpan moved = span;
         switch (_drag)
         {
-            case Drag.On:
-                moved = new RehearsalSpan(Math.Min(bars, span.Off - 0.25), span.Off);
+            case Drag.SpanOn:
+                moved = new RehearsalSpan(Math.Min(snapped, span.Off - 0.25), span.Off);
                 break;
-            case Drag.Off:
-                moved = new RehearsalSpan(span.On, Math.Max(bars, span.On + 0.25));
+            case Drag.SpanOff:
+                moved = new RehearsalSpan(span.On, Math.Max(snapped, span.On + 0.25));
                 break;
-            case Drag.Move:
+            case Drag.SpanMove:
                 double length = span.Off - span.On;
-                double on = Math.Clamp(Math.Round((args.GetPosition(this).X / editor.BarWidth - _grabOffset) * 4) / 4, 0, editor.TotalBars - length);
+                double on = Math.Clamp(Math.Round((bars - _grabOffset) * 4) / 4, 0, editor.TotalBars - length);
                 moved = new RehearsalSpan(on, on + length);
                 break;
         }
 
-        editor.SetSpan(0, moved);
-        InvalidateVisual();
+        editor.SetSpan(_row, moved);
+    }
+
+    private void UpdateCursor(MusicEditorViewModel editor, Point point)
+    {
+        Cursor = Cursor.Default;
+        if (point.Y < RowsTop)
+        {
+            Cursor = new Cursor(StandardCursorType.Hand);
+            return;
+        }
+
+        if (point.Y >= TracksTop)
+        {
+            int index = (int)((point.Y - TracksTop) / MusicLayout.TrackHeight);
+            if (index >= 0 && index < editor.Tracks.Count)
+            {
+                foreach (ArrangementClip clip in editor.Tracks[index].Clips.Where(clip => clip.Kind == ArrangementKind.Loop))
+                {
+                    if (Math.Abs(point.X - ((clip.Start + clip.Length) * editor.BarWidth)) <= EdgeGrab)
+                    {
+                        Cursor = new Cursor(StandardCursorType.SizeWestEast);
+                        return;
+                    }
+                }
+            }
+        }
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs args)
@@ -303,6 +657,50 @@ public sealed class MusicLanes : Control
         base.OnPointerReleased(args);
         _drag = Drag.None;
         args.Pointer.Capture(null);
+    }
+
+    protected override void OnKeyDown(KeyEventArgs args)
+    {
+        base.OnKeyDown(args);
+        if (args.Key == Key.Delete && _notifier is not null && Editor is { } editor && editor.Notifiers.Contains(_notifier))
+        {
+            editor.RemoveNotifier(_notifier);
+            _notifier = null;
+            args.Handled = true;
+        }
+    }
+
+    private void HandleDragOver(object? sender, DragEventArgs args)
+    {
+        bool sound = SoundDrag.GetPath(args.DataTransfer) is not null || SoundDrag.GetFiles(args.DataTransfer).Count > 0;
+        args.DragEffects = sound ? DragDropEffects.Copy : DragDropEffects.None;
+        args.Handled = true;
+    }
+
+    private void HandleDrop(object? sender, DragEventArgs args)
+    {
+        if (Editor is not { } editor)
+        {
+            return;
+        }
+
+        Point point = args.GetPosition(this);
+        int row = (int)Math.Floor((point.Y - TracksTop) / MusicLayout.TrackHeight);
+        string? path = SoundDrag.GetPath(args.DataTransfer);
+        if (path is not null)
+        {
+            editor.DropSound(path, row);
+        }
+        else
+        {
+            IReadOnlyList<string> files = SoundDrag.GetFiles(args.DataTransfer);
+            if (files.Count > 0)
+            {
+                editor.ImportAndDrop(files, row);
+            }
+        }
+
+        args.Handled = true;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -322,13 +720,25 @@ public sealed class MusicLanes : Control
         if (_watched is not null)
         {
             _watched.PropertyChanged += HandleEditorChanged;
-            _watched.Tracks.CollectionChanged += (_, _) => HandleEditorChanged(null, null);
+            _watched.Tracks.CollectionChanged += (_, _) => Remeasure();
+            _watched.Rows.CollectionChanged += (_, _) => Remeasure();
+            _watched.Notifiers.CollectionChanged += (_, _) => Remeasure();
         }
     }
 
-    private void HandleEditorChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs? args)
+    private void Remeasure()
     {
         InvalidateMeasure();
+        InvalidateVisual();
+    }
+
+    private void HandleEditorChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(MusicEditorViewModel.BarWidth) or nameof(MusicEditorViewModel.TotalBars))
+        {
+            InvalidateMeasure();
+        }
+
         InvalidateVisual();
     }
 }

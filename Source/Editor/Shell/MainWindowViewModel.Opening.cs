@@ -194,13 +194,101 @@ public sealed partial class MainWindowViewModel
         {
             JsonTypeInfo trackType = types.Options.GetTypeInfo(typeof(MusicTrack));
             ClipCatalog catalog = new(ReadClip);
-            MusicEditorViewModel editor = new(title, cue, typeInfo, trackType, document.Hold, catalog, files.Find);
+            MusicEditorServices services = CreateMusicServices(files);
+            MusicEditorViewModel editor = new(path, title, cue, typeInfo, trackType, document.Hold, catalog, services, files.Find);
             _openMusic.Add(path);
             MusicRequested?.Invoke(path, editor);
             return;
         }
 
         ShowData(path, new DataObjectViewModel(title, document.Asset, typeInfo, document.Hold, files.Find));
+    }
+
+    /// <summary>What the music editor asks of the editor: a preview over the project's content, the open scene's music areas, the project's sounds and mix, and importing.</summary>
+    private MusicEditorServices CreateMusicServices(ContentFileFinder files)
+    {
+        return new MusicEditorServices
+        {
+            Preview = () => _musicPreview ??= new MusicPreview(_content),
+            Areas = FindMusicAreas,
+            Sounds = () => files.Find([".wav", ".ogg", ".fvsound"]),
+            Cues = () => files.Find([MusicCue.Extension]),
+            Import = ImportSounds,
+            Mix = ReadMix,
+            OpenMix = OpenMix,
+            Open = OpenData,
+        };
+    }
+
+    private IReadOnlyList<RehearsalSource> FindMusicAreas()
+    {
+        List<RehearsalSource> found = [];
+        Arch.Core.World world = Viewport.Scene.Game.World;
+        Arch.Core.QueryDescription query = new Arch.Core.QueryDescription().WithAll<MusicArea>();
+        world.Query(in query, (Arch.Core.Entity entity, ref MusicArea area) =>
+        {
+            string name = "Music area";
+            if (world.Has<FlickerVoid.Engine.Runtime.Components.EntityName>(entity))
+            {
+                name = world.Get<FlickerVoid.Engine.Runtime.Components.EntityName>(entity).Value;
+            }
+
+            found.Add(new RehearsalSource(name, [.. area.Layers]));
+        });
+        return found;
+    }
+
+    /// <summary>Copies sound files into the project's Content under Music and returns their content paths.</summary>
+    private IReadOnlyList<string> ImportSounds(IReadOnlyList<string> files)
+    {
+        List<string> imported = [];
+        _content.CreateFolder("Music");
+        foreach (string file in files)
+        {
+            string name = Path.GetFileName(file);
+            string target = $"Music/{name}";
+            byte[] bytes = File.ReadAllBytes(file);
+            _content.Write(target, bytes);
+            imported.Add(target);
+        }
+
+        Assets.Refresh();
+        return imported;
+    }
+
+    private MixSet ReadMix()
+    {
+        string full = _content.GetFullPath(MixSet.Path);
+        if (!File.Exists(full))
+        {
+            return MixSet.Default();
+        }
+
+        try
+        {
+            DataDocument document = new(_content, Viewport.Scene.Game.Data, MixSet.Path);
+            return document.Asset as MixSet ?? MixSet.Default();
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            return MixSet.Default();
+        }
+    }
+
+    /// <summary>Opens the project's mix in the data editor, writing the default states there first when it has none.</summary>
+    private void OpenMix()
+    {
+        string full = _content.GetFullPath(MixSet.Path);
+        if (!File.Exists(full))
+        {
+            _content.CreateFolder("Audio");
+            AssetNew made = AssetTypes.Mix.New!;
+            string text = made.Write("../.schemas/data.schema.json");
+            _content.Write(MixSet.Path, System.Text.Encoding.UTF8.GetBytes(text));
+            Assets.Refresh();
+        }
+
+        OpenData(MixSet.Path);
     }
 
     private SoundClip? ReadClip(string file)

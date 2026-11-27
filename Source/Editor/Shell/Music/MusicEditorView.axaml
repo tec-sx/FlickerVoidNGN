@@ -2,80 +2,127 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:music="using:FlickerVoid.Editor.Music"
              xmlns:coremusic="using:FlickerVoid.Editor.Core.Music"
-             xmlns:data="using:FlickerVoid.Editor.Data"
-             xmlns:dataCore="using:FlickerVoid.Editor.Core.Data"
              xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Music.MusicEditorView"
              x:DataType="coremusic:MusicEditorViewModel">
-  <!-- A music cue as lanes: a row per track with its clips beside a header, the rehearsal that stands for the game's areas above
-       them, and the selected track's values and the cue's own in the side panel. -->
-  <Grid ColumnDefinitions="*,1,300">
-    <Border Grid.Column="0" Classes="well">
-      <DockPanel>
-        <Border DockPanel.Dock="Top" Classes="searchRow">
-          <StackPanel Orientation="Horizontal" Spacing="2">
-            <Button Classes="quiet" Command="{Binding AddTrackCommand}">
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Add}" />
-                <TextBlock Text="Track" />
-              </StackPanel>
-            </Button>
-            <Button Classes="icon" ToolTip.Tip="Move up" Command="{Binding MoveUpCommand}">
-              <PathIcon Data="{x:Static shell:LucideIcons.Collapse}" />
-            </Button>
-            <Button Classes="icon" ToolTip.Tip="Move down" Command="{Binding MoveDownCommand}">
-              <PathIcon Data="{x:Static shell:LucideIcons.Expand}" />
-            </Button>
-            <Button Classes="icon delete" ToolTip.Tip="Remove track" Command="{Binding RemoveSelectedCommand}">
-              <PathIcon Data="{x:Static shell:LucideIcons.Delete}" />
-            </Button>
-          </StackPanel>
-        </Border>
-        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-          <Grid ColumnDefinitions="180,*">
-            <StackPanel Grid.Column="0" Margin="0,24,0,0">
-              <Border Height="22" Padding="8,0" BorderThickness="0,1,1,1" BorderBrush="{DynamicResource EditorLineBrush}">
-                <TextBlock Text="Rehearsal" Classes="hint" VerticalAlignment="Center" />
-              </Border>
-              <ItemsControl ItemsSource="{Binding Tracks}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate DataType="coremusic:MusicTrackViewModel">
-                    <Border Height="72" Padding="8,6" BorderThickness="0,0,1,1" BorderBrush="{DynamicResource EditorLineBrush}"
-                            Background="Transparent" Tapped="HandleHeaderTapped">
-                      <StackPanel Spacing="3">
-                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                        <TextBlock Classes="hint" Text="{Binding Track.Loop}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Classes="hint" Text="By request" IsVisible="{Binding ByRequest}" />
-                      </StackPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-            <music:MusicLanes Grid.Column="1" Editor="{Binding}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
-          </Grid>
-        </ScrollViewer>
+  <!-- A music cue as a DAW: the transport on top, the ruler, rehearsal, notifiers and a lane per track beside their headers (name,
+       mute, solo, gain and meter), and under them the dock with the mixer and the selected clip. The values of the selected
+       track and of the cue, and the lists of sounds and cues, are in the side column. -->
+  <Grid RowDefinitions="Auto,*,Auto" Background="{DynamicResource EditorDeepBrush}">
+    <Border Grid.Row="0" Height="38" Background="{DynamicResource EditorFrameBrush}" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,0,0,1">
+      <DockPanel Margin="8,0">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+          <TextBlock Classes="hint" Text="{Binding LayersText}" VerticalAlignment="Center" Margin="0,0,10,0" />
+          <Button Classes="icon" ToolTip.Tip="Zoom out" Command="{Binding ZoomOutCommand}"><PathIcon Data="{x:Static shell:LucideIcons.ZoomOut}" /></Button>
+          <Button Classes="icon" ToolTip.Tip="Zoom in" Command="{Binding ZoomInCommand}"><PathIcon Data="{x:Static shell:LucideIcons.ZoomIn}" /></Button>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <Button x:Name="PlayButton" Classes="icon" ToolTip.Tip="Play or pause (Space)" Command="{Binding PlayCommand}" Width="28" Height="28">
+            <PathIcon Data="{x:Static shell:LucideIcons.Play}" Foreground="{DynamicResource EditorAccentBrush}" />
+          </Button>
+          <Button Classes="icon" ToolTip.Tip="Stop; again, back to the start" Command="{Binding StopCommand}" Width="28" Height="28">
+            <PathIcon Data="{x:Static shell:LucideIcons.Stop}" />
+          </Button>
+          <ToggleButton Classes="icon" ToolTip.Tip="Loop the whole cue" IsChecked="{Binding LoopPlayback, Mode=TwoWay}" Width="28" Height="28">
+            <PathIcon Data="{x:Static shell:LucideIcons.Repeat}" />
+          </ToggleButton>
+          <TextBlock Text="{Binding PositionText}" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" MinWidth="72" />
+          <TextBlock Text="{Binding TimeText}" Classes="hint" VerticalAlignment="Center" MinWidth="40" />
+          <Border Classes="stripCell"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <TextBlock Text="Tempo" Classes="hint" VerticalAlignment="Center" />
+            <TextBox Text="{Binding Tempo}" Width="52" />
+            <TextBlock Text="BPM" Classes="hint" VerticalAlignment="Center" />
+          </StackPanel></Border>
+          <Border Classes="stripCell"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <TextBlock Text="Meter" Classes="hint" VerticalAlignment="Center" />
+            <TextBox Text="{Binding BeatsPerBar}" Width="36" />
+            <TextBlock Text="beats" Classes="hint" VerticalAlignment="Center" />
+          </StackPanel></Border>
+          <Border Classes="stripCell"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <TextBlock Text="Phrase" Classes="hint" VerticalAlignment="Center" />
+            <TextBox Text="{Binding PhraseBars}" Width="40" />
+            <TextBlock Text="bars" Classes="hint" VerticalAlignment="Center" />
+          </StackPanel></Border>
+          <Border Classes="stripCell"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <TextBlock Text="Snap" Classes="hint" VerticalAlignment="Center" />
+            <ComboBox ItemsSource="{Binding SnapOptions}" SelectedItem="{Binding Snap}" MinWidth="80" />
+          </StackPanel></Border>
+        </StackPanel>
       </DockPanel>
     </Border>
-    <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-    <Border Grid.Column="2" Classes="well">
-      <ScrollViewer Padding="8">
-        <StackPanel Spacing="8">
-          <TextBlock Text="{Binding Selected.Title, FallbackValue='Select a track'}" Classes="heading" />
-          <ItemsControl ItemsSource="{Binding Selected.Forms}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate DataType="dataCore:DataObjectViewModel">
-                <StackPanel Margin="0,0,0,6">
-                  <TextBlock Text="{Binding Title}" Classes="hint" Margin="0,4,0,2" />
-                  <data:DataView DataContext="{Binding}" />
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <TextBlock Text="Cue" Classes="heading" Margin="0,8,0,0" />
-          <data:DataView DataContext="{Binding Cue}" />
-        </StackPanel>
+
+    <Grid Grid.Row="1">
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <Grid ColumnDefinitions="220,*">
+          <StackPanel Grid.Column="0" Background="{DynamicResource EditorPanelBrush}">
+            <Border Height="24" Padding="10,0" BorderThickness="0,0,1,1" BorderBrush="{DynamicResource EditorLineBrush}">
+              <TextBlock Text="{Binding Title, StringFormat='{}{0}  bars'}" Classes="hint" VerticalAlignment="Center" />
+            </Border>
+            <ItemsControl ItemsSource="{Binding Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="coremusic:RehearsalRow">
+                  <Border Height="22" Padding="10,0" BorderThickness="0,0,1,1" BorderBrush="{DynamicResource EditorLineBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                      <PathIcon Classes="small faint" Data="{x:Static shell:LucideIcons.Trigger}" />
+                      <TextBlock Text="{Binding Label}" Classes="hint" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border Height="22" Padding="10,0" BorderThickness="0,0,1,1" BorderBrush="{DynamicResource EditorLineBrush}">
+              <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <PathIcon Classes="small faint" Data="{x:Static shell:LucideIcons.Bell}" />
+                <TextBlock Text="Notifiers" Classes="hint" />
+                <Button Classes="icon small" ToolTip.Tip="Add a notifier at the playhead (or double-click its row)" Command="{Binding AddNotifierCommand}"><PathIcon Data="{x:Static shell:LucideIcons.Add}" /></Button>
+              </StackPanel>
+            </Border>
+            <ItemsControl ItemsSource="{Binding Tracks}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="coremusic:MusicTrackViewModel">
+                  <Border Height="84" Padding="10,6,8,6" BorderThickness="0,0,1,1" BorderBrush="{DynamicResource EditorLineBrush}"
+                          Background="Transparent" Tapped="HandleHeaderTapped">
+                    <StackPanel Spacing="4">
+                      <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="3">
+                          <ToggleButton Classes="icon" Content="M" IsChecked="{Binding Muted, Mode=TwoWay}" ToolTip.Tip="Mute" Width="22" Height="20" Padding="0" FontSize="10.5" />
+                          <ToggleButton Classes="icon" Content="S" IsChecked="{Binding Soloed, Mode=TwoWay}" ToolTip.Tip="Solo" Width="22" Height="20" Padding="0" FontSize="10.5" />
+                        </StackPanel>
+                        <PathIcon Classes="small" DockPanel.Dock="Left" Margin="0,0,6,0" Data="{x:Static shell:LucideIcons.Waveform}" />
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      </DockPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Border Classes="chip"><TextBlock Classes="hint small" Text="{Binding PlaysText}" VerticalAlignment="Center" /></Border>
+                        <Border Classes="chip"><TextBlock Classes="hint small" Text="{Binding StartText}" VerticalAlignment="Center" /></Border>
+                        <Border Classes="chip" IsVisible="{Binding IsStretched}"><TextBlock Classes="hint small" Text="stretched" VerticalAlignment="Center" /></Border>
+                      </StackPanel>
+                      <Grid ColumnDefinitions="*,6,36" Height="18">
+                        <music:GainBar Grid.Column="0" Decibels="{Binding GainDb, Mode=TwoWay}" />
+                        <music:LevelMeter Grid.Column="2" Level="{Binding Level}" Height="18" />
+                      </Grid>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Classes="quiet" Command="{Binding AddTrackCommand}" HorizontalAlignment="Left" Margin="6,6,0,0">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Add}" />
+                <TextBlock Text="Add track" />
+              </StackPanel>
+            </Button>
+            <TextBlock Classes="hint small" Margin="12,2" Text="or drop sounds from Content or the Sounds list" />
+          </StackPanel>
+          <music:MusicLanes Grid.Column="1" Editor="{Binding}" HorizontalAlignment="Left" VerticalAlignment="Stretch" />
+        </Grid>
       </ScrollViewer>
+      <TextBlock Classes="hint small" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,10" MaxWidth="420" TextWrapping="Wrap" TextAlignment="Right"
+                 Text="The Rehearsal rows stand for the music areas of the open scene: drag a span to walk in and out, and the lanes show what the game will play. Hatched clips are fills, dashed gaps a layer waiting for its bar." />
+      <TextBlock Classes="hint small" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="236,0,0,10" Text="{Binding Problem}" Foreground="{DynamicResource EditorDeleteBrush}" />
+    </Grid>
+
+    <Border Grid.Row="2" Height="210" IsVisible="{Binding DockOpen}" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource EditorPanelBrush}">
+      <music:MusicDockView DataContext="{Binding}" />
     </Border>
   </Grid>
 </UserControl>

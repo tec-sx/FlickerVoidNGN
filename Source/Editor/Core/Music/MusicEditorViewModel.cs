@@ -562,6 +562,24 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         return imported.Count;
     }
 
+    /// <summary>Imports sound files dropped on the lanes and gives the first to the lane they were dropped on.</summary>
+    public void ImportAndDrop(IReadOnlyList<string> files, int row)
+    {
+        if (_services.Import is null)
+        {
+            Status = "This project can't import sound files.";
+            return;
+        }
+
+        IReadOnlyList<string> imported = _services.Import(files);
+        RefreshLists();
+        Status = $"Imported {imported.Count} sound file(s)";
+        for (int index = 0; index < imported.Count; index++)
+        {
+            DropSound(imported[index], index == 0 ? row : Tracks.Count);
+        }
+    }
+
     public void OpenFile(string path) => _services.Open?.Invoke(path);
 
     [RelayCommand]
@@ -882,8 +900,11 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        ReleaseRows();
-        _preview?.Dispose();
+        if (IsPlaying)
+        {
+            Pause();
+        }
+
         _preview = null;
     }
 }
