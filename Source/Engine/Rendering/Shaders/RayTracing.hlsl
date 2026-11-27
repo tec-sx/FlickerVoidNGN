@@ -85,7 +85,8 @@ float TraceVisibility(FrameData frame, float3 origin, float3 direction, float di
     return 0;
 }
 
-// Where a ray stopped: whether it hit anything, how far along it, and the draw and triangle it hit and where on it.
+// Where a ray stopped: whether it hit anything, how far along it, the draw and triangle it hit and where on it, and how the hit
+// instance turns its mesh, in rows for row vectors as a draw's World: its draw's, or a batch's copy's.
 struct RayHit
 {
     bool Hit;
@@ -93,6 +94,7 @@ struct RayHit
     uint Draw;
     uint Triangle;
     float2 Barycentrics;
+    float3x3 Basis;
 };
 
 // The first surface the scene draws along the ray from the origin along the unit direction within the distance.
@@ -124,6 +126,8 @@ RayHit TraceClosest(FrameData frame, float3 origin, float3 direction, float dist
         hit.Draw = query.CommittedInstanceID();
         hit.Triangle = query.CommittedPrimitiveIndex();
         hit.Barycentrics = query.CommittedTriangleBarycentrics();
+        float3x4 objectToWorld = query.CommittedObjectToWorld3x4();
+        hit.Basis = transpose((float3x3)objectToWorld);
     }
 
     return hit;
@@ -138,8 +142,8 @@ struct HitSurface
     uint Material;
 };
 
-// The surface the ray from the origin along the unit direction hit: its normal blended from its corners' and turned as its draw
-// stands, as the geometry pass turns it, and its paint times its material's tint.
+// The surface the ray from the origin along the unit direction hit: its normal blended from its corners' and turned as its
+// instance stands, as the geometry pass turns it, and its paint times its material's tint.
 HitSurface LoadHitSurface(FrameData frame, RayHit hit, float3 origin, float3 direction)
 {
     Draw draw = LoadDraw(frame, hit.Draw);
@@ -149,7 +153,7 @@ HitSurface LoadHitSurface(FrameData frame, RayHit hit, float3 origin, float3 dir
     float3 weights = CornerWeights(hit.Barycentrics);
     float3 normal = BlendCorners3(vertices, corners, VertexNormal, weights);
     float2 uv = BlendCorners2(vertices, corners, VertexUv, weights);
-    float3x3 basis = (float3x3)draw.World;
+    float3x3 basis = hit.Basis;
     float3x3 cofactor = float3x3(cross(basis[1], basis[2]), cross(basis[2], basis[0]), cross(basis[0], basis[1]));
     float mirror = sign(dot(basis[0], cofactor[0]));
     float3 turned = mul(normal, cofactor) * mirror;

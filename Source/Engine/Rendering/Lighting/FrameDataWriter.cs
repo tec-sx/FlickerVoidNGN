@@ -8,6 +8,7 @@ using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Instancing;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Runtime.Geometry;
@@ -300,6 +301,17 @@ internal sealed class FrameDataWriter : IDisposable
             }
 
             Bounds box = draw.Bounds ?? part.Bounds.Transform(draw.World);
+            uint scales = 0;
+            if (draw.Instanced is { } instanced)
+            {
+                // Each copy places the part's own box, so its centre stays the model's and the shader moves it.
+                InstanceBatch batch = instanced.Batch;
+                scales = batch.PackScales();
+                float middle = (batch.MinScale + batch.MaxScale) / 2;
+                Matrix4x4 sized = Matrix4x4.CreateScale(middle);
+                box = part.Bounds.Transform(sized);
+            }
+
             float wholeness = ObjectDepth.Wholeness(box, viewDirection);
 
             GpuDraw record = new(
@@ -314,7 +326,7 @@ internal sealed class FrameDataWriter : IDisposable
                 draw.Material.Parameters.BindlessIndex,
                 (uint)draw.Flags,
                 part.Indices.BindlessIndex,
-                0,
+                scales,
                 box.Center,
                 wholeness);
             _draws.Add(record);

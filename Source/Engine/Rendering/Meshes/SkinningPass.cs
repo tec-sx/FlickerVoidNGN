@@ -23,12 +23,11 @@ internal sealed class SkinningPass : IRenderPass
     private readonly MaterialLibrary _materials;
     private readonly PreviousWorlds _previousWorlds = new();
 
-    public SkinningPass(IGraphicsDevice device, ShaderLibrary shaders, IContentManager content)
+    public SkinningPass(IGraphicsDevice device, ShaderLibrary shaders, MeshLibrary meshes, MaterialLibrary materials)
     {
-        _meshes = new MeshLibrary(device, content);
+        _meshes = meshes;
         _skinner = new MeshSkinner(device, shaders);
-        ShaderParameters parameters = ShaderParameters.Load(shaders, "Scene");
-        _materials = new MaterialLibrary(device, content, parameters.Parameters);
+        _materials = materials;
     }
 
     public void Prepare(RenderContext context)
@@ -57,9 +56,7 @@ internal sealed class SkinningPass : IRenderPass
 
     public void Dispose()
     {
-        _materials.Dispose();
         _skinner.Dispose();
-        _meshes.Dispose();
     }
 
     /// <summary>Whether the view draws the part: neither shadow nor outline only, and not wholly outside it; counted when it is shown.</summary>

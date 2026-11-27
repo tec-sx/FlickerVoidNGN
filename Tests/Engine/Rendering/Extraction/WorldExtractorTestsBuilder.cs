@@ -5,6 +5,7 @@ using Arch.Core;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Instancing;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Moods;
@@ -53,6 +54,19 @@ internal sealed class WorldExtractorTestsBuilder : IDisposable
         MeshRenderer renderer = new() { Mesh = mesh };
         Entity entity = _world.Create(renderer, new Transform(), animator);
         id = entity.Id;
+        return this;
+    }
+
+    public WorldExtractorTestsBuilder WithBatch(InstanceBatch batch, out int id)
+    {
+        Entity entity = _world.Create(new InstancedMesh(batch));
+        id = entity.Id;
+        return this;
+    }
+
+    public WorldExtractorTestsBuilder WithHiddenBatch(InstanceBatch batch)
+    {
+        _world.Create(new InstancedMesh(batch), new Hidden());
         return this;
     }
 

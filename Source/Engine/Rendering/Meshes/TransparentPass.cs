@@ -93,8 +93,9 @@ internal sealed class TransparentPass : IRenderPass
         Vector4 depthAxis = context.View.DepthAxis;
         for (int index = 0; index < context.Draws.Count; index++)
         {
+            // Batches' copies are never glass.
             MeshDraw draw = context.Draws[index];
-            if (!draw.InView || !draw.Material.Transparent)
+            if (!draw.InView || !draw.Material.Transparent || draw.Instanced is not null)
             {
                 continue;
             }

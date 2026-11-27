@@ -3,6 +3,7 @@ using System.Numerics;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Instancing;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Moods;
@@ -62,6 +63,26 @@ public sealed class WorldExtractorTests : IDisposable
         scene.FogVolumes[0].Rotation.Should().Be(transform.Rotation);
         scene.FogVolumes[0].Volume.Shape.Should().Be(FogShape.Ball);
         scene.FogVolumes[0].Volume.Density.Should().Be(0.5f);
+    }
+
+    [Fact]
+    public void CopiesInstanceBatchesByTheirEntity()
+    {
+        InstanceBatch batch = new("Grass.glb");
+
+        RenderScene scene = _builder.WithBatch(batch, out int id).Extract();
+
+        scene.InstanceBatches.Should().Equal(new RenderInstanceBatch(id, batch));
+    }
+
+    [Fact]
+    public void LeavesOutHiddenInstanceBatches()
+    {
+        InstanceBatch batch = new("Grass.glb");
+
+        RenderScene scene = _builder.WithHiddenBatch(batch).Extract();
+
+        scene.InstanceBatches.Should().BeEmpty();
     }
 
     [Fact]

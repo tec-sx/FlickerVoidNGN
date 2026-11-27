@@ -14,6 +14,9 @@ public sealed class RenderScene
     /// <summary>Static meshes first, then animated ones, each in query order.</summary>
     public List<RenderMesh> Meshes { get; } = [];
 
+    /// <summary>Batches of copies of one model, each drawn together.</summary>
+    public List<RenderInstanceBatch> InstanceBatches { get; } = [];
+
     public List<RenderPointLight> PointLights { get; } = [];
 
     public List<RenderSpotLight> SpotLights { get; } = [];
@@ -45,6 +48,7 @@ public sealed class RenderScene
     {
         Cameras.Clear();
         Meshes.Clear();
+        InstanceBatches.Clear();
         PointLights.Clear();
         SpotLights.Clear();
         ProbeVolumes.Clear();
@@ -63,6 +67,7 @@ public sealed class RenderScene
         Clear();
         Cameras.AddRange(other.Cameras);
         Meshes.AddRange(other.Meshes);
+        InstanceBatches.AddRange(other.InstanceBatches);
         PointLights.AddRange(other.PointLights);
         SpotLights.AddRange(other.SpotLights);
         ProbeVolumes.AddRange(other.ProbeVolumes);

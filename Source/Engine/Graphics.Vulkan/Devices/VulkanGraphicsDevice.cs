@@ -1097,6 +1097,11 @@ public sealed unsafe class VulkanGraphicsDevice : IGraphicsDevice
             return ResourceState.IndexBuffer;
         }
 
+        if (usage.HasFlag(BufferUsage.Indirect))
+        {
+            return ResourceState.IndirectArgument;
+        }
+
         return ResourceState.CopyDestination;
     }
 

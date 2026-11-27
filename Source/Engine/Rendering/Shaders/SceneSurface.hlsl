@@ -1,5 +1,6 @@
 // Draws a mesh part whose vertices (float3 position, float3 normal, float2 uv) are pulled from a bindless buffer, as its record
-// among the frame buffer's draws says (pushed by its number). The geometry pass leaves its surface in the G-buffer (GBuffer.cs)
+// among the frame buffer's draws says (pushed by its number). A batch's part draws an instance a copy, placed as the copy says
+// (Instance.hlsl): the instance's number reads the copy's own through the list of those the view sees, when there is one. The geometry pass leaves its surface in the G-buffer (GBuffer.cs)
 // for Lighting.hlsl: its base color times its texture and its material's tint, its normal tilted by a painting's relief, its
 // material, its object's depth and its motion, without the jitter. While the camera looks into an indoor volume (the cutaway),
 // whatever stands in front of its box is cut away. The outline pass draws outlined meshes' silhouettes in their outline's color
@@ -12,11 +13,15 @@
 
 #include "Draw.hlsl"
 #include "GBuffer.hlsl"
+#include "Instance.hlsl"
 
 struct SceneConstants
 {
     uint Frame;
     uint Draw;
+    // A batch's copies and the list of those the view sees; None for a single mesh, and for the list when every copy draws.
+    uint Copies;
+    uint Visible;
 };
 
 [[vk::push_constant]] ConstantBuffer<SceneConstants> Scene : register(b0, space0);
@@ -29,20 +34,47 @@ struct VertexOutput
     float2 Uv : TEXCOORD0;
     // Where the vertex stood in the frame before, as the view then saw it.
     float4 PreviousClip : TEXCOORD1;
+    // The centre of the box round what is drawn, the draw's or its copy's, for the depth tone.
+    nointerpolation float3 Center : TEXCOORD2;
 };
 
+// Where a batch's copy, by its instance's number, places its model, and where the copy's box centre then stands.
+float4x4 CopyWorld(Draw draw, uint instanceId, inout float3 center)
+{
+    uint index = instanceId;
+    if (Scene.Visible != None)
+    {
+        index = Buffers[Scene.Visible].Load<uint>(instanceId * 4);
+    }
+
+    Instance copy = LoadInstance(Buffers[Scene.Copies], index);
+    float size = InstanceScale(copy, draw.Scales);
+    float4x4 world = InstanceWorld(copy, size);
+    center = mul(float4(center, 1), world).xyz;
+    return world;
+}
+
 // Where the frame's view, jittered for an upscaler, puts the vertex.
-VertexOutput Project(FrameData frame, uint vertexId)
+VertexOutput Project(FrameData frame, uint vertexId, uint instanceId)
 {
     Draw draw = LoadDraw(frame, Scene.Draw);
+    float4x4 placement = draw.World;
+    float4x4 previousPlacement = draw.PreviousWorld;
+    float3 center = draw.Center;
+    if (Scene.Copies != None)
+    {
+        placement = CopyWorld(draw, instanceId, center);
+        previousPlacement = placement;
+    }
+
     ByteAddressBuffer vertices = Buffers[draw.Vertices];
     uint offset = vertexId * VertexStride;
     float3 position = vertices.Load<float3>(offset);
     float3 normal = vertices.Load<float3>(offset + 12);
-    float4 world = mul(float4(position, 1), draw.World);
+    float4 world = mul(float4(position, 1), placement);
 
     // The cofactor matrix keeps normals at right angles to surfaces under non-uniform scale; mirroring flips its sign.
-    float3x3 basis = (float3x3)draw.World;
+    float3x3 basis = (float3x3)placement;
     float3x3 cofactor = float3x3(cross(basis[1], basis[2]), cross(basis[2], basis[0]), cross(basis[0], basis[1]));
     float mirror = sign(dot(basis[0], cofactor[0]));
 
@@ -52,22 +84,23 @@ VertexOutput Project(FrameData frame, uint vertexId)
     output.Normal = mul(normal, cofactor) * mirror;
     output.Uv = vertices.Load<float2>(offset + VertexUv);
     float3 previousPosition = Buffers[draw.PreviousVertices].Load<float3>(offset);
-    float4 previousWorld = mul(float4(previousPosition, 1), draw.PreviousWorld);
+    float4 previousWorld = mul(float4(previousPosition, 1), previousPlacement);
     output.PreviousClip = mul(previousWorld, frame.PreviousViewProjection);
+    output.Center = center;
     return output;
 }
 
-VertexOutput VertexMain(uint vertexId : SV_VertexID)
+VertexOutput VertexMain(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
 {
     FrameData frame = LoadFrame(Scene.Frame);
-    return Project(frame, vertexId);
+    return Project(frame, vertexId, instanceId);
 }
 
 // For passes drawing at the output's size, such as the outlines' silhouettes: where the view puts the vertex without the jitter.
-VertexOutput SilhouetteVertexMain(uint vertexId : SV_VertexID)
+VertexOutput SilhouetteVertexMain(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
 {
     FrameData frame = LoadFrame(Scene.Frame);
-    VertexOutput output = Project(frame, vertexId);
+    VertexOutput output = Project(frame, vertexId, instanceId);
     output.Position = Unjitter(frame, output.Position);
     return output;
 }

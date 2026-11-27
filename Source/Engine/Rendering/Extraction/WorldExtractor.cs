@@ -4,6 +4,7 @@ using Arch.Core;
 
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Instancing;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Outlines;
@@ -24,6 +25,7 @@ public sealed class WorldExtractor : IRenderExtractor
     private static readonly QueryDescription Cameras = new QueryDescription().WithAll<Camera, Transform>().WithNone<ActiveCamera>();
     private static readonly QueryDescription Meshes = new QueryDescription().WithAll<MeshRenderer, Transform>().WithNone<MeshAnimator, Hidden, Undrawn>();
     private static readonly QueryDescription AnimatedMeshes = new QueryDescription().WithAll<MeshRenderer, Transform, MeshAnimator>().WithNone<Hidden, Undrawn>();
+    private static readonly QueryDescription Batches = new QueryDescription().WithAll<InstancedMesh>().WithNone<Hidden, Undrawn>();
     private static readonly QueryDescription Greyboxes = new QueryDescription().WithAll<Greybox, Transform>().WithNone<MeshRenderer, Hidden, Undrawn>();
     private static readonly QueryDescription PointLights = new QueryDescription().WithAll<PointLight, Transform>().WithNone<Hidden, Undrawn>();
     private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>().WithNone<Hidden, Undrawn>();
@@ -80,6 +82,11 @@ public sealed class WorldExtractor : IRenderExtractor
             MeshFlags flags = GetFlags(world, entity);
             scene.Meshes.Add(new RenderMesh(entity.Id, meshWorld, renderer.Mesh, animator, renderer.Materials, outline, flags));
         });
+        world.Query(in Batches, (Entity entity, ref InstancedMesh instanced) =>
+        {
+            scene.InstanceBatches.Add(new RenderInstanceBatch(entity.Id, instanced.Batch));
+        });
+
         world.Query(in Greyboxes, (Entity entity, ref Greybox greybox, ref Transform transform) =>
         {
             Matrix4x4 meshWorld = transform.ToMatrix();

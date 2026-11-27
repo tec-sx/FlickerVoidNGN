@@ -135,6 +135,11 @@ internal sealed unsafe class VulkanBuffer : IBuffer
             flags |= BufferUsageFlags.IndexBufferBit;
         }
 
+        if (usage.HasFlag(BufferUsage.Indirect))
+        {
+            flags |= BufferUsageFlags.IndirectBufferBit;
+        }
+
         if (usage.HasFlag(BufferUsage.CopySource))
         {
             flags |= BufferUsageFlags.TransferSrcBit;

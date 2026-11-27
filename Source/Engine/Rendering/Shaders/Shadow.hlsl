@@ -1,8 +1,10 @@
 // Draws a mesh part's depth into a shadow atlas tile; vertices are pulled from a bindless buffer as in Scene.hlsl. CutoutMain,
 // for parts in a cutout material, reads the paint's coverage through the draw's record and leaves out its holes, where the
-// coverage falls below the material's cutoff, so a card casts the shape of its paint.
+// coverage falls below the material's cutoff, so a card casts the shape of its paint. A batch's part draws every copy, an
+// instance each, placed as the copy says (Instance.hlsl), its draw's world being the identity.
 
 #include "Draw.hlsl"
+#include "Instance.hlsl"
 
 struct ShadowConstants
 {
@@ -10,6 +12,8 @@ struct ShadowConstants
     uint Vertices;
     uint Frame;
     uint Draw;
+    // A batch's copies, else None.
+    uint Copies;
 };
 
 [[vk::push_constant]] ConstantBuffer<ShadowConstants> Shadow : register(b0, space0);
@@ -20,12 +24,22 @@ struct ShadowVertex
     float2 Uv : TEXCOORD0;
 };
 
-ShadowVertex VertexMain(uint vertexId : SV_VertexID)
+ShadowVertex VertexMain(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
 {
     ByteAddressBuffer vertices = Buffers[Shadow.Vertices];
-    float3 position = vertices.Load<float3>(vertexId * VertexStride);
+    float4 position = float4(vertices.Load<float3>(vertexId * VertexStride), 1);
+    if (Shadow.Copies != None)
+    {
+        FrameData frame = LoadFrame(Shadow.Frame);
+        Draw draw = LoadDraw(frame, Shadow.Draw);
+        Instance copy = LoadInstance(Buffers[Shadow.Copies], instanceId);
+        float size = InstanceScale(copy, draw.Scales);
+        float4x4 placement = InstanceWorld(copy, size);
+        position = mul(position, placement);
+    }
+
     ShadowVertex output;
-    output.Position = mul(float4(position, 1), Shadow.WorldViewProjection);
+    output.Position = mul(position, Shadow.WorldViewProjection);
     output.Uv = vertices.Load<float2>(vertexId * VertexStride + VertexUv);
     return output;
 }

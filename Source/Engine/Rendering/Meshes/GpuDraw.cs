@@ -7,7 +7,8 @@ namespace FlickerVoid.Engine.Rendering.Meshes;
 /// A draw's record in the frame buffer, which Shaders/Draw.hlsl reads by the draw's number: where its mesh stands this frame
 /// and the frame before, its vertices then and now, its looks, its outline's color (none when transparent), its
 /// <see cref="Extraction.MeshFlags"/>, its indices, for rays to find a hit triangle's corners, and the centre of its box with how
-/// wholly it takes that depth for the depth tone (<see cref="ObjectDepth"/>). 208 bytes.
+/// wholly it takes that depth for the depth tone (<see cref="ObjectDepth"/>), and for a batch's part its copies' smallest and
+/// largest size as two halves. 208 bytes.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
 internal readonly record struct GpuDraw(
@@ -22,6 +23,6 @@ internal readonly record struct GpuDraw(
     uint Material,
     uint Flags,
     uint Indices,
-    uint Padding,
+    uint Scales,
     Vector3 Center,
     float Wholeness);

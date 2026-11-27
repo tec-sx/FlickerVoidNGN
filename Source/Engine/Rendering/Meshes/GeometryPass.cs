@@ -15,7 +15,7 @@ namespace FlickerVoid.Engine.Rendering.Meshes;
 /// does, for screen shadows and lighting to read. Each draw reads its record in the frame's data buffer by its number. Materials
 /// with a master are drawn by its geometry pass, made the first time one is drawn and again when the content build changes it or
 /// its file, both sides of the master's surfaces when it is two-sided, a master at a time after those without; glass is left to
-/// the <see cref="TransparentPass"/>.
+/// the <see cref="TransparentPass"/>. A batch's part draws the copies its cull left in view, as many as its indirect arguments say.
 /// </summary>
 internal sealed class GeometryPass : IRenderPass
 {
@@ -114,8 +114,16 @@ internal sealed class GeometryPass : IRenderPass
             }
 
             GpuMeshPart part = draw.Part;
-            SceneConstants constants = new(context.FrameBuffer, (uint)index);
             commands.SetIndexBuffer(part.Indices, IndexFormat.UInt32);
+            if (draw.Instanced is { } instanced)
+            {
+                SceneConstants copies = new(context.FrameBuffer, (uint)index, instanced.Copies.BindlessIndex, instanced.Visible.BindlessIndex);
+                commands.PushConstants(copies);
+                commands.DrawIndexedIndirect(instanced.Arguments, instanced.ArgumentsOffset);
+                continue;
+            }
+
+            SceneConstants constants = new(context.FrameBuffer, (uint)index);
             commands.PushConstants(constants);
             commands.DrawIndexed(part.IndexCount);
         }

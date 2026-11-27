@@ -13,6 +13,7 @@ using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Instancing;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Meshes;
@@ -56,6 +57,8 @@ public sealed class SceneRenderer : IDisposable
     private readonly ProbeCache _probes;
     private readonly FrameDataWriter _frameData;
     private readonly ProbePass _probePass;
+    private readonly MeshLibrary _meshes;
+    private readonly MaterialLibrary _materials;
     private readonly RenderScene _scene = new();
     private readonly RenderContext _context;
     private readonly JitterSequence _jitter = new();
@@ -90,7 +93,11 @@ public sealed class SceneRenderer : IDisposable
             White = _white,
         };
 
-        Pipeline.Add(new SkinningPass(device, shaders, content));
+        _meshes = new MeshLibrary(device, content);
+        ShaderParameters parameters = ShaderParameters.Load(shaders, "Scene");
+        _materials = new MaterialLibrary(device, content, parameters.Parameters);
+        Pipeline.Add(new SkinningPass(device, shaders, _meshes, _materials));
+        Pipeline.Add(new InstancingPass(device, shaders, _meshes, _materials));
         Pipeline.Add(new LightGatherPass());
         Pipeline.Add(new ShadowPass(device, shaders));
         Pipeline.Add(new RayTracingPass(device));
@@ -254,6 +261,8 @@ public sealed class SceneRenderer : IDisposable
         _upscaler?.Dispose();
         _sharpSampler?.Dispose();
         Pipeline.Dispose();
+        _materials.Dispose();
+        _meshes.Dispose();
         _frameData.Dispose();
         _probes.Dispose();
         _targets.Dispose();

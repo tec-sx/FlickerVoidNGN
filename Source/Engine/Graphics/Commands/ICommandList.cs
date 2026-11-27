@@ -77,6 +77,13 @@ public interface ICommandList : IDisposable
     void DrawIndexed(int indexCount, int instanceCount = 1, int firstIndex = 0, int vertexOffset = 0, int firstInstance = 0);
 
     /// <summary>
+    /// Draws as <see cref="DrawIndexed"/> with the five words at the offset of a buffer with <see cref="BufferUsage.Indirect"/>:
+    /// index count, instance count, first index, vertex offset and first instance, which a shader may have written before a
+    /// barrier to <see cref="ResourceState.IndirectArgument"/>.
+    /// </summary>
+    void DrawIndexedIndirect(IBuffer arguments, long offset = 0);
+
+    /// <summary>
     /// Builds bottom-level acceleration structures from their geometry, or refits refittable ones built before to their geometry's
     /// new vertex positions, all at once. Builds wait for every earlier command and leave the structures readable by later builds
     /// and by shaders' ray queries, so they need no barriers.

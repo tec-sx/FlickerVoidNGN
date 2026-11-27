@@ -15,7 +15,7 @@ struct GeometryOutput
 
 // The geometry pass leaves the surface for lighting, unlit, but where the cutaway cuts it away or a cutout card's paint is
 // thinner than its material's cutoff. The object depth leans from the pixel's own view depth to its box centre's as the draw is
-// small (Draw.Wholeness), and the motion is where the surface stood in the frame before less where it stands now, in pixels.
+// small (Draw.Wholeness; the centre is the draw's or its copy's), and the motion is where the surface stood in the frame before less where it stands now, in pixels.
 GeometryOutput GeometryMain(VertexOutput input, bool front : SV_IsFrontFace)
 {
     FrameData frame = LoadFrame(Scene.Frame);
@@ -43,7 +43,7 @@ GeometryOutput GeometryMain(VertexOutput input, bool front : SV_IsFrontFace)
     output.Normal = EncodeNormal(surface.Normal);
     output.Material = EncodeMaterial(draw.Material, surface.Impasto, draw.Flags);
     float depth = dot(float4(input.WorldPosition, 1), frame.DepthAxis);
-    float centerDepth = dot(float4(draw.Center, 1), frame.DepthAxis);
+    float centerDepth = dot(float4(input.Center, 1), frame.DepthAxis);
     output.ObjectDepth = lerp(depth, centerDepth, draw.Wholeness);
     // The pixel without the jitter, as the frame before's view is without it too.
     float2 previous = ClipToPixel(frame, input.PreviousClip);
