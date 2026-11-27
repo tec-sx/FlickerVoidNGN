@@ -3,6 +3,7 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../Audio/FlickerVoid.Engine.Audio.csproj" />
     <ProjectReference Include="../Flow/FlickerVoid.Engine.Flow.csproj" />
     <ProjectReference Include="../Graphics.Vulkan/FlickerVoid.Engine.Graphics.Vulkan.csproj" />
     <ProjectReference Include="../Platform/FlickerVoid.Engine.Platform.csproj" />

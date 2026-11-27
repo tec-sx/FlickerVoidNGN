@@ -13,6 +13,7 @@
     <Project Path="Source/Engine/Abilities/FlickerVoid.Engine.Abilities.csproj" />
     <Project Path="Source/Engine/Ai/FlickerVoid.Engine.Ai.csproj" />
     <Project Path="Source/Engine/Attributes/FlickerVoid.Engine.Attributes.csproj" />
+    <Project Path="Source/Engine/Audio/FlickerVoid.Engine.Audio.csproj" />
     <Project Path="Source/Engine/Cameras/FlickerVoid.Engine.Cameras.csproj" />
     <Project Path="Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
     <Project Path="Source/Engine/Creations/FlickerVoid.Engine.Creations.csproj" />
@@ -52,6 +53,7 @@
     <Project Path="Tests/Engine/Abilities/FlickerVoid.Engine.Abilities.Tests.csproj" />
     <Project Path="Tests/Engine/Ai/FlickerVoid.Engine.Ai.Tests.csproj" />
     <Project Path="Tests/Engine/Attributes/FlickerVoid.Engine.Attributes.Tests.csproj" />
+    <Project Path="Tests/Engine/Audio/FlickerVoid.Engine.Audio.Tests.csproj" />
     <Project Path="Tests/Engine/Cameras/FlickerVoid.Engine.Cameras.Tests.csproj" />
     <Project Path="Tests/Engine/Characters/FlickerVoid.Engine.Characters.Tests.csproj" />
     <Project Path="Tests/Engine/Creations/FlickerVoid.Engine.Creations.Tests.csproj" />
