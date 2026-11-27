@@ -21,4 +21,10 @@
     <InternalsVisibleTo Include="FlickerVoid.Editor.Core.Tests" />
     <InternalsVisibleTo Include="FlickerVoid.Editor.Tests" />
   </ItemGroup>
+  <!-- Manifold, which the mesh tools cut with (Hollow, doors, Booleans), built on the first build; ManifoldNative finds it in artifacts/native. -->
+  <PropertyGroup>
+    <NativeLibraryName>Manifold</NativeLibraryName>
+    <NativeLibraryFile>manifoldc</NativeLibraryFile>
+  </PropertyGroup>
+  <Import Project="../../Native/Native.targets" />
 </Project>
