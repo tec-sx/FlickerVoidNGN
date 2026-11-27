@@ -177,6 +177,71 @@ public sealed class GraphicsDeviceTests : IDisposable
     }
 
     [Fact]
+    public void CopiesARectangleToTheSamePlaceInAnotherTexture()
+    {
+        using IGraphicsDevice device = CreateDevice();
+        const int Half = GraphicsDeviceTestsBuilder.TargetSize / 2;
+        TextureDescription description = new(GraphicsDeviceTestsBuilder.TargetSize, GraphicsDeviceTestsBuilder.TargetSize, PixelFormat.Rgba8UNorm, TextureUsage.RenderTarget | TextureUsage.CopyDestination | TextureUsage.CopySource);
+        using ITexture source = device.CreateTexture(description);
+        using ITexture destination = device.CreateTexture(description);
+        using ICommandList commands = device.CreateCommandList();
+
+        commands.Begin();
+        GraphicsDeviceTestsBuilder.BeginRendering(commands, source, Red);
+        commands.EndRendering();
+        GraphicsDeviceTestsBuilder.BeginRendering(commands, destination, Blue);
+        commands.EndRendering();
+        commands.Barrier(source, ResourceState.CopySource);
+        commands.Barrier(destination, ResourceState.CopyDestination);
+        commands.CopyTextureRegion(source, destination, Half, 0, Half, Half);
+        commands.End();
+        device.Submit(commands);
+
+        uint[] pixels = GraphicsDeviceTestsBuilder.ReadPixels(device, destination);
+        int size = GraphicsDeviceTestsBuilder.TargetSize;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                bool copied = x >= Half && y < Half;
+                uint expected = copied ? RedPixel : BluePixel;
+                pixels[(y * size) + x].Should().Be(expected, $"pixel {x},{y} is {(copied ? "inside" : "outside")} the copied rectangle");
+            }
+        }
+    }
+
+    [Fact]
+    public void ClearsARectangleOfTheDepthBeingDrawn()
+    {
+        using IGraphicsDevice device = CreateDevice();
+        const int Half = GraphicsDeviceTestsBuilder.TargetSize / 2;
+        TextureDescription description = new(GraphicsDeviceTestsBuilder.TargetSize, GraphicsDeviceTestsBuilder.TargetSize, PixelFormat.Depth32Float, TextureUsage.DepthStencil | TextureUsage.CopySource);
+        using ITexture depth = device.CreateTexture(description);
+        using ICommandList commands = device.CreateCommandList();
+
+        commands.Begin();
+        commands.Barrier(depth, ResourceState.DepthWrite);
+        commands.BeginRendering([], new DepthTarget(depth, LoadAction.Clear, ClearDepth: 0.5f));
+        commands.ClearDepth(0, Half, Half, Half, 1);
+        commands.EndRendering();
+        commands.End();
+        device.Submit(commands);
+
+        uint[] texels = GraphicsDeviceTestsBuilder.ReadPixels(device, depth);
+        int size = GraphicsDeviceTestsBuilder.TargetSize;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                bool cleared = x < Half && y >= Half;
+                float expected = cleared ? 1 : 0.5f;
+                float value = BitConverter.Int32BitsToSingle((int)texels[(y * size) + x]);
+                value.Should().Be(expected, $"texel {x},{y} is {(cleared ? "inside" : "outside")} the cleared rectangle");
+            }
+        }
+    }
+
+    [Fact]
     public void DrawsVerticesPulledFromABindlessBuffer()
     {
         using IGraphicsDevice device = CreateDevice();

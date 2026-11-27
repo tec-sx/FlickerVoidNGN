@@ -2,8 +2,10 @@ using System.Numerics;
 
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Rendering.Shadows;
+using FlickerVoid.Engine.Runtime.Geometry;
 
 namespace FlickerVoid.Engine.Rendering.Lighting;
 
@@ -21,7 +23,12 @@ internal sealed class LightGatherPass : IRenderPass
     // Texels between a filtered shadow lookup and its tile's edge, so filtering never reads a neighbouring tile.
     private const float TileInset = 2;
 
+    // How far the sun turns before its shadow is drawn again: a quarter of a degree moves the edge of a 10 unit caster's shadow by
+    // 4 hundredths of a unit, under a texel of the sun's map at street sizes.
+    private static readonly float SunTurnCosine = MathF.Cos(float.DegreesToRadians(0.25f));
+
     private readonly ShadowAtlas _atlas = new();
+    private Vector3? _sunShadowDirection;
 
     public void Prepare(RenderContext context)
     {
@@ -30,9 +37,13 @@ internal sealed class LightGatherPass : IRenderPass
         if (mood.SunShadowDistance > 0 && (!context.RayTracing || NeedsFogShadows(context)))
         {
             DirectionalLight directional = DirectionalLight.Of(mood);
-            Vector3 sunDirection = Vector3.Normalize(directional.Direction);
-            Matrix4x4 sun = ShadowProjections.FitSun(context.Camera, context.View, sunDirection, mood.SunShadowDistance, SunCasterReach);
-            context.SunShadow = AddShadow(context, sun, _atlas.Sun, orthographic: true);
+            Vector3 sunDirection = FollowSun(Vector3.Normalize(directional.Direction));
+            Bounds world = FindWorld(context.Draws);
+            Matrix4x4? sun = ShadowProjections.FitSun(context.Camera, context.View, sunDirection, mood.SunShadowDistance, SunCasterReach, world);
+            if (sun is { } fitted)
+            {
+                context.SunShadow = AddShadow(context, fitted, _atlas.Sun, orthographic: true);
+            }
         }
 
         if (!context.LocalLights)
@@ -122,6 +133,36 @@ internal sealed class LightGatherPass : IRenderPass
 
         context.RayShadowLights.Add((uint)context.Lights.Count);
         return (uint)context.RayShadowLights.Count;
+    }
+
+    /// <summary>The direction the sun's shadow is drawn along: the sun's own once it has turned far enough from the last one.</summary>
+    private Vector3 FollowSun(Vector3 direction)
+    {
+        if (_sunShadowDirection is not { } kept || Vector3.Dot(kept, direction) < SunTurnCosine)
+        {
+            _sunShadowDirection = direction;
+            return direction;
+        }
+
+        return kept;
+    }
+
+    /// <summary>The box round every mesh drawn this frame, the space shadows can fall in.</summary>
+    private static Bounds FindWorld(List<MeshDraw> draws)
+    {
+        Bounds world = Bounds.Empty;
+        foreach (MeshDraw draw in draws)
+        {
+            if (draw.Flags.HasFlag(MeshFlags.OutlineOnly))
+            {
+                continue;
+            }
+
+            Bounds bounds = draw.Bounds ?? ShadowRenderer.PosedBounds(draw);
+            world = world.Include(bounds);
+        }
+
+        return world;
     }
 
     /// <summary>Whether the fog marches through the air, where traced shadows don't reach, so it needs shadow maps.</summary>

@@ -67,8 +67,8 @@ internal sealed class RayTracingPass : IRenderPass
         for (int index = 0; index < context.Draws.Count; index++)
         {
             MeshDraw draw = context.Draws[index];
-            // Rays pass through glass.
-            if (draw.Flags.HasFlag(MeshFlags.OutlineOnly) || draw.Material.Transparent || draw.Part.IndexCount == 0)
+            // Rays pass through glass, and see a batch's model rather than its shadow mesh.
+            if ((draw.Flags & (MeshFlags.OutlineOnly | MeshFlags.ShadowMap)) != 0 || draw.Material.Transparent || draw.Part.IndexCount == 0)
             {
                 continue;
             }
@@ -109,7 +109,7 @@ internal sealed class RayTracingPass : IRenderPass
         for (int index = 0; index < context.Draws.Count; index++)
         {
             MeshDraw draw = context.Draws[index];
-            if (draw.Instanced is not null && draw.Bounds is { } bounds)
+            if (draw.Instanced is not null && !draw.Flags.HasFlag(MeshFlags.ShadowMap) && draw.Bounds is { } bounds)
             {
                 float distance = Vector3.Distance(bounds.Center, focus);
                 _batchDraws.Add((distance, index));
