@@ -194,4 +194,77 @@ public sealed class MixerTests
 
         heard.Should().OnlyContain(sample => sample == 1);
     }
+
+    [Fact]
+    public void StopsAVoiceOnAScheduledFrame()
+    {
+        SoundClip clip = MixerTestsBuilder.Constant(5000);
+        int voice = _builder.Play(clip);
+        MixerCommand stop = MixerCommand.StopAt(voice, 700, 0);
+        _builder.Mixer.Send(in stop);
+
+        float[] heard = _builder.Device.Render(710);
+
+        heard[699 * 2].Should().Be(1);
+        heard[700 * 2].Should().Be(0);
+    }
+
+    [Fact]
+    public void FadesAVoiceOutFromAScheduledFrame()
+    {
+        SoundClip clip = MixerTestsBuilder.Constant(5000);
+        int voice = _builder.Play(clip);
+        MixerCommand stop = MixerCommand.StopAt(voice, 300, 100);
+        _builder.Mixer.Send(in stop);
+
+        float[] heard = _builder.Device.Render(410);
+
+        heard[299 * 2].Should().Be(1);
+        heard[350 * 2].Should().BeApproximately(0.5f, 0.02f);
+        heard[405 * 2].Should().Be(0);
+    }
+
+    [Fact]
+    public void NeverSoundsAVoiceStoppedOnTheFrameItStarts()
+    {
+        SoundClip clip = MixerTestsBuilder.Constant(5000);
+        int voice = _builder.Play(clip, startFrame: 400);
+        MixerCommand stop = MixerCommand.StopAt(voice, 400, 0);
+        _builder.Mixer.Send(in stop);
+
+        float[] heard = _builder.Device.Render(600);
+
+        heard.Should().OnlyContain(sample => sample == 0);
+        _builder.Mixer.TryTakeFinished(out int finished).Should().BeTrue();
+        finished.Should().Be(voice);
+    }
+
+    [Fact]
+    public void FadesAVoiceInFromItsStart()
+    {
+        SoundClip clip = MixerTestsBuilder.Constant(5000);
+        ClipSource source = new(clip);
+        MixerCommand play = MixerCommand.PlayOnGrid(1, source, AudioBus.Music, 1, 100, 200);
+        _builder.Mixer.Send(in play);
+
+        float[] heard = _builder.Device.Render(400);
+
+        heard[100 * 2].Should().Be(0);
+        heard[200 * 2].Should().BeApproximately(0.5f, 0.02f);
+        heard[350 * 2].Should().Be(1);
+    }
+
+    [Fact]
+    public void StartsALateVoiceWhereItWouldHaveBeen()
+    {
+        SoundClip ramp = MixerTestsBuilder.Ramp(5000);
+        _builder.Device.Render(1000);
+        ClipSource source = new(ramp);
+        MixerCommand play = MixerCommand.PlayOnGrid(1, source, AudioBus.Music, 1, 400);
+        _builder.Mixer.Send(in play);
+
+        float[] heard = _builder.Device.Render(4);
+
+        heard[0].Should().BeApproximately(0.6f, 0.0001f);
+    }
 }

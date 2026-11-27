@@ -148,10 +148,23 @@ public sealed class Mixer
         float leftStep = (voice.TargetLeft - voice.Left) / wanted;
         float rightStep = (voice.TargetRight - voice.Right) / wanted;
         bool faded = false;
+        long first = _position + offset;
         for (int frame = 0; frame < read; frame++)
         {
             voice.Left += leftStep;
             voice.Right += rightStep;
+            if (voice.StopAt >= 0 && voice.FadeTotal == 0 && first + frame >= voice.StopAt)
+            {
+                if (voice.StopFade <= 0)
+                {
+                    faded = true;
+                    break;
+                }
+
+                voice.FadeTotal = voice.StopFade;
+                voice.FadeLeft = voice.StopFade;
+            }
+
             float fade = 1;
             if (voice.FadeTotal > 0)
             {
@@ -162,6 +175,12 @@ public sealed class Mixer
                     faded = true;
                     break;
                 }
+            }
+
+            if (voice.FadeInDone < voice.FadeInTotal)
+            {
+                fade *= voice.FadeInDone / (float)voice.FadeInTotal;
+                voice.FadeInDone++;
             }
 
             into[frame * 2] += played[frame * 2] * voice.Left * fade;
@@ -196,6 +215,9 @@ public sealed class Mixer
                     break;
                 case MixerCommandKind.Stop:
                     Stop(in command);
+                    break;
+                case MixerCommandKind.StopAt:
+                    StopAt(in command);
                     break;
                 case MixerCommandKind.SetBus:
                     Bus bus = _buses[(int)command.Bus];
@@ -241,6 +263,52 @@ public sealed class Mixer
         free.Start = command.Frames;
         free.FadeLeft = 0;
         free.FadeTotal = 0;
+        free.FadeInTotal = command.More;
+        free.FadeInDone = 0;
+        free.StopAt = -1;
+        free.StopFade = 0;
+        if (command.CatchUp)
+        {
+            CatchUp(free);
+        }
+    }
+
+    /// <summary>Reads past what a voice scheduled on a frame that has passed would have played by now.</summary>
+    private void CatchUp(Voice voice)
+    {
+        long missed = _position - voice.Start;
+        while (missed > 0)
+        {
+            long most = Math.Min(missed, AudioFormat.BlockFrames);
+            int frames = (int)most;
+            Span<float> skipped = _scratch.AsSpan(0, frames * AudioFormat.Channels);
+            int read = voice.Source!.Read(skipped);
+            if (read < frames)
+            {
+                End(voice);
+                return;
+            }
+
+            missed -= frames;
+        }
+    }
+
+    private void StopAt(in MixerCommand command)
+    {
+        Voice? voice = Find(command.Voice);
+        if (voice is null)
+        {
+            return;
+        }
+
+        if (command.More <= voice.Start)
+        {
+            End(voice);
+            return;
+        }
+
+        voice.StopAt = command.More;
+        voice.StopFade = command.Frames;
     }
 
     private void Stop(in MixerCommand command)
@@ -300,6 +368,10 @@ public sealed class Mixer
         public long Start;
         public long FadeLeft;
         public long FadeTotal;
+        public long FadeInTotal;
+        public long FadeInDone;
+        public long StopAt = -1;
+        public long StopFade;
     }
 
     private sealed class Bus
