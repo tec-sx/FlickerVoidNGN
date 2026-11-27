@@ -52,6 +52,8 @@ public static class MoodValues
         new MoodNumber("beamWidth", MoodGroup.Fog, Environment, mood => mood.BeamWidth, (mood, value) => mood.BeamWidth = value),
         new MoodNumber("beamReach", MoodGroup.Fog, Environment, mood => mood.BeamReach, (mood, value) => mood.BeamReach = value),
         new MoodColor("beamColor", MoodGroup.Fog, Environment, mood => mood.BeamColor, (mood, value) => mood.BeamColor = value),
+        new MoodNumber("rain", MoodGroup.Weather, Environment, mood => mood.Rain, (mood, value) => mood.Rain = value),
+        new MoodNumber("dust", MoodGroup.Weather, Environment, mood => mood.Dust, (mood, value) => mood.Dust = value),
         new MoodNumber("hazeDensity", MoodGroup.Fog, Environment, mood => mood.HazeDensity, (mood, value) => mood.HazeDensity = value),
         new MoodNumber("hazeStart", MoodGroup.Fog, Environment, mood => mood.HazeStart, (mood, value) => mood.HazeStart = value),
         new MoodNumber("hazeMax", MoodGroup.Fog, Environment, mood => mood.HazeMax, (mood, value) => mood.HazeMax = value),

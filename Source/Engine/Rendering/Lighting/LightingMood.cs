@@ -170,6 +170,17 @@ public sealed record LightingMood
     public Vector3 BeamColor { get; set; } = Vector3.One;
 
     /// <summary>
+    /// How hard it rains, from 0 (dry) to 1 (a downpour): outdoor surfaces darken and gloss as they wet, and rain streaks fall round
+    /// the focus along the fog's wind, as many as the rain is heavy.
+    /// </summary>
+    [Range(0, 1)]
+    public float Rain { get; set; }
+
+    /// <summary>How much dust floats round the focus, from 0 to 1; the motes show where light falls on them, as in a beam through a window.</summary>
+    [Range(0, 1)]
+    public float Dust { get; set; }
+
+    /// <summary>
     /// How fast the haze thickens with the distance beyond its start, as a share of the light it takes per world unit; 0 leaves no haze.
     /// The haze melts what lies far from the view's focus into <see cref="HazeColor"/>, cheaply, and the sky takes it at the horizon.
     /// </summary>

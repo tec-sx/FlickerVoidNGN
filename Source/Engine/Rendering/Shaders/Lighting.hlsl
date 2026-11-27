@@ -246,6 +246,22 @@ void FogIntegrateMain(uint3 id : SV_DispatchThreadID)
     }
 }
 
+// Rain wets a surface outdoors, less where it faces down: wet paint darkens by about a third, and its highlight grows stronger
+// and tighter.
+void Wet(FrameData frame, float3 worldPosition, float3 normal, inout float3 albedo, inout Material material)
+{
+    if (frame.Rain <= 0 || IsIndoors(frame, worldPosition))
+    {
+        return;
+    }
+
+    float facing = lerp(0.4, 1, saturate(normal.y * 0.5 + 0.5));
+    float wet = saturate(frame.Rain) * facing;
+    albedo *= 1 - 0.35 * wet;
+    material.Specular = lerp(material.Specular, max(material.Specular, 1), wet);
+    material.Glossiness = lerp(material.Glossiness, max(material.Glossiness, 0.85), wet);
+}
+
 [numthreads(8, 8, 1)]
 void ComputeMain(uint3 id : SV_DispatchThreadID)
 {
@@ -272,6 +288,7 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     float4 materialBytes = Textures[frame.GBufferMaterial].Load(texel);
     SurfaceMaterial surface = DecodeMaterial(materialBytes);
     Material material = LoadMaterial(surface.Material);
+    Wet(frame, worldPosition, normal, albedo.rgb, material);
     float3 toCamera = ToCamera(frame, worldPosition);
     float2 screenShadows = 1;
     if (frame.RayShadows == None || frame.RayOcclusion == None)

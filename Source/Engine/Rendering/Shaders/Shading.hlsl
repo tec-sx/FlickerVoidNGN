@@ -200,10 +200,11 @@ float Phase(float cosAngle, float anisotropy)
     return (1 - g * g) / (denominator * sqrt(denominator));
 }
 
-// The light a point in fog scatters toward the camera, from every light that reaches it, before the fog's color.
-float3 FogLight(FrameData frame, float2 pixel, float3 position, float3 towardCamera)
+// The part of a point's scattered light that comes straight from the sun, past its shadow, and from the local lights, without the
+// ambient light: the light that shows dust where it falls.
+float3 DirectFogLight(FrameData frame, float2 pixel, float3 position, float3 towardCamera)
 {
-    float3 light = frame.Ambient * IndoorAmbient(frame, position) + SampleProbes(frame, position, 0, towardCamera);
+    float3 light = 0;
     float3 sunDirection = normalize(frame.SunDirection);
     float3 sun = (1 - frame.Ambient) * frame.SunLight * Phase(dot(sunDirection, towardCamera), frame.FogAnisotropy);
     if (frame.SunShadow != None)
@@ -225,6 +226,13 @@ float3 FogLight(FrameData frame, float2 pixel, float3 position, float3 towardCam
     }
 
     return light;
+}
+
+// The light a point in fog scatters toward the camera, from every light that reaches it, before the fog's color.
+float3 FogLight(FrameData frame, float2 pixel, float3 position, float3 towardCamera)
+{
+    float3 ambient = frame.Ambient * IndoorAmbient(frame, position) + SampleProbes(frame, position, 0, towardCamera);
+    return ambient + DirectFogLight(frame, pixel, position, towardCamera);
 }
 
 // Fog density at a point: full at and below the fog height, thinning exponentially above it.
