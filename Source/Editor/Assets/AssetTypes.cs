@@ -112,13 +112,13 @@ public static class AssetTypes
     public static AssetType Music { get; } = new("Music", "Music", "#E58F65", MusicCue.Extension);
 
     /// <summary>A sound: a clip, or a few to pick from, with gain, pitch, spread and the bus it plays on.</summary>
-    public static AssetType Sound { get; } = new("Sound", "Sound", "#7FC4B8", SoundDefinition.Extension);
+    public static AssetType Sound { get; } = new("Sound", "Waveform", "#7FC4B8", SoundDefinition.Extension);
 
     /// <summary>A recorded or exported sound file, imported into Content; sounds and music cues play them.</summary>
-    public static AssetType Audio { get; } = new("Audio", "Sound", "#B8A27F", ".wav", ".ogg");
+    public static AssetType Audio { get; } = new("Audio", "Waveform", "#B8A27F", ".wav", ".ogg");
 
     /// <summary>The mix states of a game: what lowers and dulls which bus while the player is indoors, talking or in the hub.</summary>
-    public static AssetType Mix { get; } = new("Mix", "Sound", "#D9A66B", MixSet.Extension)
+    public static AssetType Mix { get; } = new("Mix", "Mixer", "#D9A66B", MixSet.Extension)
     {
         New = new AssetNew("Mix", "Mix", "data", WriteMix),
     };

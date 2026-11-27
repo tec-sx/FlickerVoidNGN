@@ -113,7 +113,7 @@
             </Button>
             <TextBlock Classes="hint small" Margin="12,2" Text="or drop sounds from Content or the Sounds list" />
           </StackPanel>
-          <music:MusicLanes Grid.Column="1" Editor="{Binding}" HorizontalAlignment="Left" VerticalAlignment="Stretch" />
+          <music:MusicLanes Grid.Column="1" Editor="{Binding}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
         </Grid>
       </ScrollViewer>
       <TextBlock Classes="hint small" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,10" MaxWidth="420" TextWrapping="Wrap" TextAlignment="Right"

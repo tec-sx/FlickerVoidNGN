@@ -38,6 +38,6 @@ AppBuilder.Configure(() => new App { Options = options })
     .UsePlatformDetect()
     .WithInterFont()
     .With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Vulkan] })
-    .With(new X11PlatformOptions { RenderingMode = [X11RenderingMode.Vulkan] })
+    .With(new X11PlatformOptions { RenderingMode = Environment.GetEnvironmentVariable("FLICKERVOID_EDITOR_SOFTWARE") == "1" ? [X11RenderingMode.Software] : [X11RenderingMode.Vulkan] })
     .StartWithClassicDesktopLifetime(args);
 return 0;
