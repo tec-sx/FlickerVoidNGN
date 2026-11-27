@@ -128,6 +128,11 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         }
 
         List<CueState> stack = GetStack(definition.Bus);
+        if (definition.TempoFromBelow && stack.Count > 0)
+        {
+            definition = definition.WithGridOf(stack[^1].Cue);
+        }
+
         CueState state = CreateState(cue, definition);
         long start = Mixer.Position + LookaheadFrames;
         if (stack.Count > 0)
@@ -169,6 +174,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
             resume += GridLength(top.Cue, fill);
         }
 
+        below.HeldFrames = GetContinueFrames(below);
         below.Start = resume - below.HeldFrames;
         below.ActiveFrom = resume;
         below.Held = false;
@@ -459,6 +465,26 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
     private static bool IsCue(CueState state, string cue) => string.Equals(state.Name, cue, StringComparison.OrdinalIgnoreCase);
 
     private static double BeatFrames(MusicCue cue) => cue.Tempo > 0 ? AudioFormat.SampleRate * 60.0 / cue.Tempo : 0;
+
+    private static long GetContinueFrames(CueState cue)
+    {
+        if (cue.Cue.ContinuePoints.Count == 0)
+        {
+            return cue.HeldFrames;
+        }
+
+        double barFrames = BarFrames(cue.Cue);
+        List<long> points = cue.Cue.ContinuePoints.Select(point => (long)Math.Round(Math.Max(0, point.Bar - 1) * barFrames)).Order().ToList();
+        foreach (long point in points)
+        {
+            if (point >= cue.HeldFrames)
+            {
+                return point;
+            }
+        }
+
+        return points[0];
+    }
 
     private static double BarFrames(MusicCue cue) => BeatFrames(cue) * cue.BeatsPerBar;
 
@@ -840,7 +866,13 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         double bar = played / barFrames;
         double last = cue.LastBar;
         cue.LastBar = bar;
-        if (double.IsNaN(last) || cue.Cue.Notifies.Count == 0)
+        if (double.IsNaN(last))
+        {
+            return;
+        }
+
+        SendSections(cue, last, bar);
+        if (cue.Cue.Notifies.Count == 0)
         {
             return;
         }
@@ -860,6 +892,20 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
                     _game.Events.Send(new MusicNotifyEvent(cue.Name, notify.Name, whole));
                 }
             }
+        }
+    }
+
+    private void SendSections(CueState cue, double last, double bar)
+    {
+        double begins = 0;
+        foreach (MusicSection section in cue.Cue.Sections)
+        {
+            if (begins > last && begins <= bar)
+            {
+                _game.Events.Send(new MusicSectionEvent(cue.Name, section.Name, (int)Math.Floor(begins) + 1));
+            }
+
+            begins += section.Bars;
         }
     }
 

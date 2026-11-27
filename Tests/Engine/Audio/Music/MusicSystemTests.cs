@@ -214,6 +214,43 @@ public sealed class MusicSystemTests : IDisposable
     }
 
     [Fact]
+    public void KeepsTheTempoOfTheCueBelowForAPushedCueThatAsksForIt()
+    {
+        string street = _builder.WithCue("Street", """{ "name": "Lead", "loop": "TwoBars.wav" }""");
+        _builder.WithClip("Song", 0.6f);
+        string hub = _builder.WithCue("Hub", """{ "name": "Song", "loop": "Song.wav" }""", "\"tempo\": 120, \"tempoFromBelow\": true, \"fillIn\": \"FillIn.wav\", \"fillOut\": \"FillOut.wav\"");
+        long first = Start(street);
+        _builder.PlayUntilBar(2.5);
+
+        _builder.Music.Push(hub);
+        _builder.PlayFor(MusicSystemTestsBuilder.BarFrames * 3);
+        _builder.Music.Pop();
+        _builder.PlayFor(MusicSystemTestsBuilder.BarFrames * 4);
+
+        _builder.HeardAtBar(first, 4.5).Should().BeApproximately(0.6f, Close, "the song plays on the street's grid");
+        _builder.HeardAtBar(first, 6.5).Should().BeApproximately(0.05f, Close, "the fill-out plays alone");
+        _builder.HeardAtBar(first, 7.5).Should().BeApproximately(0.3f, Close);
+    }
+
+    [Fact]
+    public void ContinuesACueBelowAtItsNextContinuePointInsteadOfWhereItStopped()
+    {
+        string street = _builder.WithCue("Street", """{ "name": "Lead", "loop": "TwoBars.wav" }""", "\"tempo\": 480, \"continuePoints\": [ { \"name\": \"Start\", \"bar\": 1 } ]");
+        _builder.WithClip("Song", 0.6f);
+        string hub = _builder.WithCue("Hub", """{ "name": "Song", "loop": "Song.wav" }""", "\"tempo\": 480, \"fillIn\": \"FillIn.wav\", \"fillOut\": \"FillOut.wav\"");
+        long first = Start(street);
+        _builder.PlayUntilBar(2.5);
+
+        _builder.Music.Push(hub);
+        _builder.PlayFor(MusicSystemTestsBuilder.BarFrames * 3);
+        _builder.Music.Pop();
+        _builder.PlayFor(MusicSystemTestsBuilder.BarFrames * 4);
+
+        _builder.HeardAtBar(first, 7.5).Should().BeApproximately(0.2f, Close, "the street continues at its first bar, its continue point");
+        _builder.HeardAtBar(first, 8.5).Should().BeApproximately(0.3f, Close);
+    }
+
+    [Fact]
     public void StopsOnTheNextBar()
     {
         string cue = _builder.WithCue("Street", Bass);
@@ -397,6 +434,20 @@ public sealed class MusicSystemTests : IDisposable
         _builder.PlayFor(1000);
 
         notified.Should().Equal(new MusicNotifyEvent(cue, "Drop", 2), new MusicNotifyEvent(cue, "Drop", 4));
+    }
+
+    [Fact]
+    public void SendsASectionEventAsTheMusicEntersEachSectionOfTheSong()
+    {
+        string cue = _builder.WithCue("Song", Bass, "\"tempo\": 480, \"sections\": [ { \"name\": \"Intro\", \"bars\": 1 }, { \"name\": \"Verse\", \"bars\": 2 }, { \"name\": \"Chorus\", \"bars\": 2 } ]");
+        List<MusicSectionEvent> entered = [];
+        _builder.Game.Events.Handle((in MusicSectionEvent section) => entered.Add(section));
+        Start(cue);
+
+        _builder.PlayUntilBar(4.5);
+        _builder.PlayFor(1000);
+
+        entered.Should().Equal(new MusicSectionEvent(cue, "Verse", 2), new MusicSectionEvent(cue, "Chorus", 4));
     }
 
     [Fact]

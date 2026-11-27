@@ -20,6 +20,9 @@ public sealed class MusicCue
     [Range(0, 400)]
     public float Tempo { get; set; } = 120;
 
+    /// <summary>Whether, pushed over another cue, it plays on that cue's tempo and meter instead of its own.</summary>
+    public bool TempoFromBelow { get; set; }
+
     [Range(1, 16)]
     public int BeatsPerBar { get; set; } = 4;
 
@@ -36,6 +39,12 @@ public sealed class MusicCue
     /// <summary>Points on the phrase that tell gameplay when the music passes them.</summary>
     public List<MusicNotify> Notifies { get; set; } = [];
 
+    /// <summary>The parts of a song, one after the other from the cue's start.</summary>
+    public List<MusicSection> Sections { get; set; } = [];
+
+    /// <summary>Bars the cue can pick up from when it is taken back from under another: the first one at or after where it stopped, else the first.</summary>
+    public List<MusicContinuePoint> ContinuePoints { get; set; } = [];
+
     /// <summary>Played once when the cue is pushed over another, which plays on under it; the cue starts when its bars are over.</summary>
     [ContentFile(".wav", ".ogg")]
     public string FillIn { get; set; } = string.Empty;
@@ -43,4 +52,13 @@ public sealed class MusicCue
     /// <summary>Played once when the cue is taken off another, which continues when its bars are over.</summary>
     [ContentFile(".wav", ".ogg")]
     public string FillOut { get; set; } = string.Empty;
+
+    /// <summary>A copy of the cue on another cue's tempo and meter.</summary>
+    public MusicCue WithGridOf(MusicCue other)
+    {
+        MusicCue copy = (MusicCue)MemberwiseClone();
+        copy.Tempo = other.Tempo;
+        copy.BeatsPerBar = other.BeatsPerBar;
+        return copy;
+    }
 }
