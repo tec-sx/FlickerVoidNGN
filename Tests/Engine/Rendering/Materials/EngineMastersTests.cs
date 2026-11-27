@@ -185,7 +185,7 @@ public sealed class EngineMastersTests : IDisposable
 
         int size = MaterialLayout.Size(scene);
 
-        size.Should().Be(96, "Material.hlsl loads the shading model at 96 and its values at 100");
+        size.Should().Be(108, "Material.hlsl loads the shading model at 108 and its values at 112");
     }
 
     private static T ReadFile<T>(string path, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo)

@@ -182,6 +182,24 @@ float RaiseRelief(Material material, SamplerState sampler, float2 uv, float2 uvX
     return centre;
 }
 
+// The colour of the palette's row at the paint's brightness, read the way it looks (sRGB), the darkest at the row's start; the two
+// nearest texels are blended, as the palette is uncompressed.
+float3 PaletteColor(Material material, float3 paint)
+{
+    Texture2D palette = Textures[material.Palette];
+    float width;
+    float height;
+    palette.GetDimensions(width, height);
+    float brightness = pow(saturate(dot(paint, float3(0.2126, 0.7152, 0.0722))), 1 / 2.2);
+    float along = brightness * (width - 1);
+    int row = clamp(int(material.PaletteRow + 0.5), 0, int(height) - 1);
+    int first = int(floor(along));
+    int second = min(first + 1, int(width) - 1);
+    float3 before = palette.Load(int3(first, row, 0)).rgb;
+    float3 after = palette.Load(int3(second, row, 0)).rgb;
+    return lerp(before, after, along - first);
+}
+
 // The relief's height (a share of the painting's impasto range) at which paint stands thick enough to hide the canvas.
 static const float ImpastoCover = 0.1;
 
@@ -200,7 +218,13 @@ Surface ReadSurface(VertexOutput input, Draw draw, Material material)
     float2 uv = input.Uv;
     uint texture = PaintTexture(draw, material, uv);
     Surface surface;
-    surface.Albedo = Textures[texture].Sample(sampler, uv) * draw.BaseColor;
+    surface.Albedo = Textures[texture].Sample(sampler, uv);
+    if (material.Palette != None)
+    {
+        surface.Albedo.rgb = PaletteColor(material, surface.Albedo.rgb);
+    }
+
+    surface.Albedo *= draw.BaseColor;
     surface.Albedo.rgb *= material.Tint;
     surface.Normal = normalize(input.Normal);
     float2 uvX = ddx(uv);
