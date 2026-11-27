@@ -25,15 +25,32 @@ public readonly record struct MixerCommand
 
     public bool Paused { get; private init; }
 
+    /// <summary>For a play, the frames the voice fades in over; for a stop at a frame, that frame.</summary>
+    public long More { get; private init; }
+
+    /// <summary>For a play whose start frame has passed, whether the voice skips what it missed, so it stays on the grid it was scheduled on.</summary>
+    public bool CatchUp { get; private init; }
+
     /// <summary>Starts a voice on a bus with its gain to each ear and a low-pass cutoff in hertz, on the mixer frame <paramref name="startFrame"/>.</summary>
     public static MixerCommand Play(int voice, ISoundSource source, AudioBus bus, float left, float right, float cutoff = NoCutoff, long startFrame = 0) =>
         new() { Kind = MixerCommandKind.Play, Voice = voice, Source = source, Bus = bus, Left = left, Right = right, Cutoff = cutoff, Frames = startFrame };
+
+    /// <summary>
+    /// Starts a voice on the grid: on the mixer frame <paramref name="startFrame"/>, fading in over <paramref name="fadeInFrames"/>,
+    /// and when that frame has passed already, from where it would have been by now.
+    /// </summary>
+    public static MixerCommand PlayOnGrid(int voice, ISoundSource source, AudioBus bus, float gain, long startFrame, long fadeInFrames = 0) =>
+        new() { Kind = MixerCommandKind.Play, Voice = voice, Source = source, Bus = bus, Left = gain, Right = gain, Cutoff = NoCutoff, Frames = startFrame, More = fadeInFrames, CatchUp = true };
 
     public static MixerCommand SetVoice(int voice, float left, float right, float cutoff = NoCutoff) =>
         new() { Kind = MixerCommandKind.SetVoice, Voice = voice, Left = left, Right = right, Cutoff = cutoff };
 
     /// <summary>Fades a voice out over the frames and ends it.</summary>
     public static MixerCommand Stop(int voice, long fadeFrames) => new() { Kind = MixerCommandKind.Stop, Voice = voice, Frames = fadeFrames };
+
+    /// <summary>Fades a voice out over the frames from the mixer frame <paramref name="atFrame"/> on and ends it; a voice that starts no sooner never sounds.</summary>
+    public static MixerCommand StopAt(int voice, long atFrame, long fadeFrames) =>
+        new() { Kind = MixerCommandKind.StopAt, Voice = voice, Frames = fadeFrames, More = atFrame };
 
     public static MixerCommand SetBus(AudioBus bus, float gain, float cutoff = NoCutoff) =>
         new() { Kind = MixerCommandKind.SetBus, Bus = bus, Left = gain, Cutoff = cutoff };

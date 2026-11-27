@@ -4,7 +4,9 @@ using Arch.Core;
 
 using FlickerVoid.Engine.Audio.Devices;
 using FlickerVoid.Engine.Audio.Mixing;
+using FlickerVoid.Engine.Audio.Music;
 using FlickerVoid.Engine.Audio.Sounds;
+using FlickerVoid.Engine.Cameras;
 using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Rendering;
 using FlickerVoid.Engine.Runtime.Content;
@@ -18,7 +20,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace FlickerVoid.Engine.Audio.Tests.Sounds;
 
 /// <summary>
-/// A playing game with rendering's components and audio over a temporary content folder, heard through a null device: writes
+/// A playing game with rendering's components, cameras' trigger areas and audio over a temporary content folder, heard through a null device: writes
 /// sounds of known samples, spawns entities from scene JSON and runs frames.
 /// </summary>
 internal sealed class AudioSystemTestsBuilder : IDisposable
@@ -37,7 +39,9 @@ internal sealed class AudioSystemTestsBuilder : IDisposable
         _data = new DataAssets(content, Game.Data);
         Game.Services.AddService(_data);
         Game.AddRendering();
+        Game.AddCameras();
         Audio = Game.AddAudio();
+        Music = Game.Services.GetService<MusicSystem>()!;
         Device = new NullAudioDevice(Audio.Mixer);
         Game.Lifecycle.Play(Game.World);
     }
@@ -45,6 +49,8 @@ internal sealed class AudioSystemTestsBuilder : IDisposable
     public Game Game { get; } = new(NullLoggerFactory.Instance);
 
     public AudioSystem Audio { get; }
+
+    public MusicSystem Music { get; }
 
     public NullAudioDevice Device { get; }
 
