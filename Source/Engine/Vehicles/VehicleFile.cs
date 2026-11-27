@@ -37,6 +37,17 @@ public sealed class VehicleFile : IJsonOnDeserialized
     /// <summary>The doors, numbered from 1 in order: <c>door.1</c>, <c>door.2</c>; the door tool adds them.</summary>
     public List<VehiclePart> Doors { get; set; } = [];
 
+    /// <summary>How the vehicle drives; a file without it drives as a new vehicle of its type does (<see cref="GetDrive"/>).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public VehicleDrive? Drive { get; set; }
+
+    /// <summary>Whether the vehicle balances on wheels in line and leans into turns: a motorcycle on two.</summary>
+    [JsonIgnore]
+    public bool Leans => Type == VehicleType.Motorcycle && Wheels.Count == 2;
+
+    /// <summary>How the vehicle drives: its own values, else those a new vehicle of its type starts with.</summary>
+    public VehicleDrive GetDrive() => Drive ?? VehicleDrive.Create(Type);
+
     /// <summary>A new vehicle of the type: a box body and the fewest wheels it takes.</summary>
     public static VehicleFile Create(VehicleType type)
     {
