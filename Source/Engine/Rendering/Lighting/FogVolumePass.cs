@@ -107,7 +107,7 @@ internal sealed class FogVolumePass : IRenderPass
         }
 
         IBuffer fog = WriteFog(context);
-        LightingConstants constants = new(context.FrameBuffer, 0, _lit.BindlessIndex, _history.BindlessIndex, _integrated.BindlessIndex, keep, _number, fog.BindlessIndex);
+        LightingConstants constants = new(context.FrameBuffer, 0, _lit.BindlessIndex, _history.BindlessIndex, _integrated.BindlessIndex, keep, _number, fog.BindlessIndex, context.Time);
         ICommandList commands = context.Commands;
         commands.Barrier(_history, ResourceState.ShaderRead);
         commands.Barrier(_lit, ResourceState.ShaderWrite);

@@ -48,6 +48,8 @@ public sealed class SceneRenderer : IDisposable
     /// </summary>
     public const int MaxFramesInFlight = 3;
 
+    private const double MaxTimeStep = 0.1;
+
     private static readonly Vector4 Background = new(0, 0, 0, 1);
 
     private readonly ScreenTargets _targets;
@@ -67,6 +69,8 @@ public sealed class SceneRenderer : IDisposable
     private ISampler? _sharpSampler;
     private uint _cuts;
     private bool _drawn;
+    private long _lastTimestamp;
+    private double _time;
 
     public SceneRenderer(IGraphicsDevice device, IContentManager content, PixelFormat colorFormat)
     {
@@ -356,6 +360,7 @@ public sealed class SceneRenderer : IDisposable
         }
 
         context.Focus = Focus ?? _scene.Focus;
+        context.Time = Advance();
         context.Meshes = Meshes;
         context.FrameSlot = _frameData.Advance();
 
@@ -410,5 +415,19 @@ public sealed class SceneRenderer : IDisposable
         SamplerDescription sharp = new(SamplerFilter.Linear, SamplerAddressMode.Wrap) { MipBias = bias };
         _sharpSampler = Device.CreateSampler(sharp);
         return true;
+    }
+
+    /// <summary>Moves the renderer's time on by the time since the last frame, at most <see cref="MaxTimeStep"/>, so a stall doesn't jump it.</summary>
+    private float Advance()
+    {
+        long now = Stopwatch.GetTimestamp();
+        if (_lastTimestamp != 0)
+        {
+            double seconds = Stopwatch.GetElapsedTime(_lastTimestamp, now).TotalSeconds;
+            _time += Math.Min(seconds, MaxTimeStep);
+        }
+
+        _lastTimestamp = now;
+        return (float)_time;
     }
 }

@@ -1,5 +1,7 @@
 using System.Numerics;
 
+using Avalonia.Media;
+
 using FlickerVoid.Engine.Ui.Surfaces;
 
 using Silk.NET.Input;
@@ -17,10 +19,10 @@ public sealed class UiSurfaceTests : IDisposable
     {
         UiSurface surface = _builder.Build();
 
-        byte[] pixels = _builder.Pixels(surface);
+        surface.Draw();
 
-        UiSurfaceTestsBuilder.At(pixels, 10, 10).Should().Be(((byte)255, (byte)0, (byte)0, (byte)255));
-        UiSurfaceTestsBuilder.At(pixels, 160, 100).A.Should().Be(0);
+        UiSurfaceTestsBuilder.At(surface, 10, 10).Should().Be(((byte)255, (byte)0, (byte)0, (byte)255));
+        UiSurfaceTestsBuilder.At(surface, 160, 100).A.Should().Be(0);
     }
 
     [Fact]
@@ -65,9 +67,36 @@ public sealed class UiSurfaceTests : IDisposable
 
         surface.Width.Should().Be(640);
         surface.Height.Should().Be(400);
-        byte[] pixels = new byte[640 * 400 * 4];
-        surface.Render(pixels, 640 * 4);
-        int bottomRight = (((400 - 10) * 640) + (640 - 10)) * 4;
-        pixels[bottomRight + 3].Should().BeGreaterThan(0, "the button moved to the new bottom right corner");
+        surface.Draw();
+        UiSurfaceTestsBuilder.At(surface, 640 - 10, 400 - 10).A.Should().BeGreaterThan(0, "the button moved to the new bottom right corner");
+    }
+
+    [Fact]
+    public void ItTellsWhetherADrawingLooksDifferentFromTheLast()
+    {
+        UiSurface surface = _builder.Build();
+
+        bool first = surface.Draw();
+        surface.Update(_builder.Input);
+        bool same = surface.Draw();
+        _builder.Panel.Background = Brushes.Lime;
+        surface.Update(_builder.Input);
+        bool recoloured = surface.Draw();
+
+        first.Should().BeTrue("nothing was drawn before");
+        same.Should().BeFalse("nothing changed");
+        recoloured.Should().BeTrue("the panel took a new colour");
+        UiSurfaceTestsBuilder.At(surface, 10, 10).Should().Be(((byte)0, (byte)255, (byte)0, (byte)255));
+    }
+
+    [Fact]
+    public void ADrawingAfterAResizeLooksDifferent()
+    {
+        UiSurface surface = _builder.Build();
+        surface.Draw();
+
+        surface.Resize(640, 400);
+
+        surface.Draw().Should().BeTrue();
     }
 }
