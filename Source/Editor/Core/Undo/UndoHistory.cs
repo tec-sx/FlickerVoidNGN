@@ -93,6 +93,29 @@ public sealed class UndoHistory
         }
     }
 
+    /// <summary>Ends the group by undoing what it recorded and recording nothing, as a cancelled drag does.</summary>
+    public void CancelGroup()
+    {
+        if (IsApplying || _groupDepth == 0)
+        {
+            return;
+        }
+
+        _groupDepth--;
+        if (_groupDepth > 0)
+        {
+            return;
+        }
+
+        UndoGroup group = _group!;
+        _group = null;
+        if (group.Steps.Count > 0)
+        {
+            Apply(group.Undo);
+            Applied?.Invoke();
+        }
+    }
+
     public bool Undo()
     {
         if (_group is not null || _undo.Last is null)

@@ -65,6 +65,12 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
         return CreatorMode.InPlace(Scene, Camera, placed, FileHistory, Save, FindMesh, ApplyMesh, IsMirrored, SetMirror, HangDoor);
     }
 
+    public CreatorMode EnterPiece(string name)
+    {
+        Entity piece = Find(name);
+        return CreatorMode.Piece(Scene, Camera, piece);
+    }
+
     public CreatorMode EnterAlone()
     {
         Vehicle vehicle = new() { File = File };
@@ -93,7 +99,7 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
     /// <summary>The mesh of the car's part, as the creator's panel would give it.</summary>
     public SolidMesh? FindMesh(string id)
     {
-        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        foreach ((string partId, SolidPart part) in _car.GetParts())
         {
             if (partId == id)
             {
@@ -110,7 +116,7 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
     /// <summary>Puts the mesh in the car's part and writes the file, as the creator's panel would.</summary>
     public void ApplyMesh(string id, SolidMesh mesh)
     {
-        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        foreach ((string partId, SolidPart part) in _car.GetParts())
         {
             if (partId == id)
             {
@@ -141,7 +147,7 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
     /// <summary>Whether the car's part has its mirror switch on.</summary>
     public bool IsMirrored(string id)
     {
-        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        foreach ((string partId, SolidPart part) in _car.GetParts())
         {
             if (partId == id)
             {
@@ -155,7 +161,7 @@ internal sealed class CreatorModeTestsBuilder : IDisposable
     /// <summary>Sets the car's part's mirror switch and writes the file, as the creator's panel would.</summary>
     public void SetMirror(string id, bool on)
     {
-        foreach ((string partId, VehiclePart part) in _car.GetParts())
+        foreach ((string partId, SolidPart part) in _car.GetParts())
         {
             if (partId == id)
             {

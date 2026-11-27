@@ -22,6 +22,8 @@ public static class CreationsGameExtensions
         JointSystem joints = new(game.World, game.Lifecycle, game.Events);
         game.FrameSystems.Add(joints);
         game.Services.AddService(joints);
+        PartOffers offers = new(game.World, game.Lifecycle);
+        game.Services.AddService(offers);
         game.Data.AddResolver(CreationsJsonContext.Default);
         PartToggleSaves saves = new(game.World, parts, joints);
         game.SaveStates.Add<SavedPartToggles>("partToggles", saves.Save, saves.Restore);

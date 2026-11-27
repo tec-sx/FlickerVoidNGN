@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Serialization;
 using FlickerVoid.Engine.Runtime.Solids;
@@ -38,6 +39,22 @@ public sealed class VehicleFileTests
     }
 
     [Fact]
+    public void ANewTrailerHasOneAxleOfTwoWheelsBehindItsMiddleAndTakesTwoOrFour()
+    {
+        VehicleFile trailer = VehicleFile.Create(VehicleType.Trailer);
+
+        trailer.GetParts().Select(part => part.Id).Should().Equal("body", "wheel.1L", "wheel.1R");
+        trailer.Wheels[0].Place.Position.Z.Should().BeLessThan(0);
+        VehicleFile.GetWheelCounts(VehicleType.Trailer).Should().Equal(2, 4);
+        trailer.CanBeDriven.Should().BeFalse();
+        trailer.GetDrive().EngineTorque.Should().Be(0);
+        trailer.SetWheelCount(4);
+        trailer.GetParts().Select(part => part.Id).Should().Equal("body", "wheel.1L", "wheel.1R", "wheel.2L", "wheel.2R");
+        VehicleFile read = VehicleFileTestsBuilder.Read(VehicleFileTestsBuilder.Write(trailer));
+        read.Type.Should().Be(VehicleType.Trailer);
+    }
+
+    [Fact]
     public void ANewMotorcycleHasTwoWheelsInLine()
     {
         VehicleFile motorcycle = VehicleFile.Create(VehicleType.Motorcycle);
@@ -58,8 +75,8 @@ public sealed class VehicleFileTests
     public void ChangingTheWheelCountAddsAxlesBehindAndKeepsEveryOtherWheel()
     {
         VehicleFile car = VehicleFile.Create(VehicleType.Car);
-        VehiclePart body = car.Body;
-        VehiclePart frontLeft = car.Wheels[0];
+        SolidPart body = car.Body;
+        SolidPart frontLeft = car.Wheels[0];
         frontLeft.Place = new Transform { Position = new Vector3(1, 0.4f, 1.5f) };
 
         car.SetWheelCount(6);
@@ -135,7 +152,7 @@ public sealed class VehicleFileTests
     {
         VehicleFile car = VehicleFile.Create(VehicleType.Car);
         car.SetWheelCount(8);
-        VehiclePart[] first = [.. car.Wheels.Take(4)];
+        SolidPart[] first = [.. car.Wheels.Take(4)];
 
         car.SetWheelCount(4);
 
@@ -161,8 +178,8 @@ public sealed class VehicleFileTests
         VehicleFile vehicle = VehicleFile.Create(VehicleType.Car);
         float overhang = VehicleFileTestsBuilder.GetRearOverhang(vehicle);
         vehicle.SetWheelCount(6);
-        VehiclePart body = vehicle.Body;
-        VehiclePart[] first = [.. vehicle.Wheels.Take(4)];
+        SolidPart body = vehicle.Body;
+        SolidPart[] first = [.. vehicle.Wheels.Take(4)];
 
         vehicle.SetType(VehicleType.Motorcycle);
 
@@ -176,7 +193,7 @@ public sealed class VehicleFileTests
     public void ChangingTheTypeRemakesWheelsThatNoLongerSitTheSameWay()
     {
         VehicleFile vehicle = VehicleFile.Create(VehicleType.Motorcycle);
-        VehiclePart body = vehicle.Body;
+        SolidPart body = vehicle.Body;
 
         vehicle.SetType(VehicleType.Car);
 
@@ -228,7 +245,7 @@ public sealed class VehicleFileTests
         JsonObject schema = JsonSchemas.CreateFile(VehiclesJsonContext.Default.VehicleFile);
 
         JsonNode properties = schema["properties"]!;
-        properties["type"]!["enum"]!.AsArray().Select(value => value!.GetValue<string>()).Should().Equal("car", "motorcycle");
+        properties["type"]!["enum"]!.AsArray().Select(value => value!.GetValue<string>()).Should().Equal("car", "motorcycle", "trailer");
         properties["body"]!["properties"]!["mesh"]!["required"]!.AsArray().Should().HaveCount(2);
         properties["wheels"]!["type"]!.ToString().Should().Contain("array");
     }
@@ -241,7 +258,7 @@ public sealed class VehicleFileTests
         string json = VehicleFileTestsBuilder.Write(car);
         VehicleFile read = VehicleFileTestsBuilder.Read(json);
 
-        VehiclePart door = read.Doors.Should().ContainSingle().Subject;
+        SolidPart door = read.Doors.Should().ContainSingle().Subject;
         door.Joint.Should().Be(car.Doors[0].Joint);
         door.Toggle.Should().Be(car.Doors[0].Toggle);
         json.Should().Contain("\"joint\"").And.Contain("\"toggle\":\"Interaction.Action.Toggle\"");
@@ -274,7 +291,7 @@ public sealed class VehicleFileTests
     public void DoorsComeAfterTheWheelsAndKeepTheirIds()
     {
         VehicleFile car = VehicleFileTestsBuilder.WithDoor();
-        VehiclePart second = new() { Mesh = SolidMesh.Box(Vector3.One) };
+        SolidPart second = new() { Mesh = SolidMesh.Box(Vector3.One) };
         car.Doors.Add(second);
 
         car.GetParts().Select(part => part.Id).Should().EndWith(["door.1", "door.2"]);
@@ -285,7 +302,7 @@ public sealed class VehicleFileTests
     public void ChangingTheWheelsLeavesTheDoorsAlone()
     {
         VehicleFile car = VehicleFileTestsBuilder.WithDoor();
-        VehiclePart door = car.Doors[0];
+        SolidPart door = car.Doors[0];
 
         car.SetWheelCount(6);
         car.SetType(VehicleType.Motorcycle);

@@ -10,6 +10,7 @@ using FlickerVoid.Engine.Rendering.Outlines;
 using FlickerVoid.Engine.Rendering.Sky;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Greyboxes;
+using FlickerVoid.Engine.Runtime.Solids;
 
 namespace FlickerVoid.Engine.Rendering.Tests.Extraction;
 
@@ -46,6 +47,19 @@ public sealed class WorldExtractorTests : IDisposable
         RenderScene scene = _builder.WithEnvironment(new SceneEnvironment()).Extract();
 
         scene.Sky.Should().BeNull();
+    }
+
+    [Fact]
+    public void DrawsAShapedGreyboxAsItsShape()
+    {
+        SolidMesh shape = SolidMesh.Box(new Vector3(1, 2, 1));
+        Greybox greybox = new() { Size = new Vector3(4, 3, 0.2f), Mesh = shape, Material = "Glass.fvmat" };
+
+        RenderScene scene = _builder.WithGreybox(greybox, new Transform()).Extract();
+
+        scene.Meshes.Should().ContainSingle();
+        scene.Meshes[0].Mesh.Should().Be(GreyboxMesh.GetName(shape));
+        scene.Meshes[0].Materials.Should().Equal("Glass.fvmat");
     }
 
     [Fact]

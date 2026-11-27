@@ -11,8 +11,12 @@ using FlickerVoid.Editor.Persistence.Layout;
 using FlickerVoid.Editor.Persistence.Projects;
 using FlickerVoid.Editor.Projects;
 using FlickerVoid.Editor.Viewports;
+using FlickerVoid.Engine.Rendering.Materials;
+using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Scenes;
+using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Buildings.Serialization;
 using FlickerVoid.Engine.Vehicles;
 using FlickerVoid.Engine.Vehicles.Serialization;
 
@@ -36,6 +40,7 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
     public const string Cellar = "Cellar.fvflow";
     public const string Street = "Street.fvscene";
     public const string Van = "Vans/Van.fvvehicle";
+    public const string House = "Houses/House.fvbuilding";
     public const string Program = "/game/Game.dll";
     public const int Width = 640;
     public const int Height = 480;
@@ -151,6 +156,23 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
     }
 
     /// <summary>The wheel count the file holds as saved on disk.</summary>
+    /// <summary>Writes the vehicle's look as the content build bakes it, one triangle in an object named by the node, and reports it changed.</summary>
+    public void WriteLook(string vehiclePath, string node)
+    {
+        MeshVertex[] vertices = [new(Vector3.Zero, Vector3.UnitZ, Vector2.Zero), new(Vector3.UnitX, Vector3.UnitZ, Vector2.UnitX), new(Vector3.UnitY, Vector3.UnitZ, Vector2.UnitY)];
+        MaterialData material = new(Vector4.One, null);
+        MeshPart part = new(vertices, [0, 2, 1], material) { Nodes = [node] };
+        ModelData look = new([part], []);
+        string path = VehicleLook.GetBuiltPath(vehiclePath);
+        string fullPath = _scene.Content.GetFullPath(path);
+        using (FileStream stream = File.Create(fullPath))
+        {
+            ModelFile.Write(look, stream);
+        }
+
+        _scene.Content.NotifyChanged(path);
+    }
+
     public int WheelsOnDisk(string path)
     {
         string json = ReadFile(path);
@@ -178,6 +200,17 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
     {
         byte[] contents = Encoding.UTF8.GetBytes("""{ "edited": true }""");
         _content.Edit(Paper, contents);
+    }
+
+    /// <summary>Writes a new building's file and lists it in the asset browser.</summary>
+    public void WriteHouse()
+    {
+        string folder = Path.Combine(_contentFolder, "Houses");
+        Directory.CreateDirectory(folder);
+        BuildingFile house = BuildingFile.Create();
+        string json = JsonSerializer.Serialize(house, BuildingsJsonContext.Default.BuildingFile);
+        WriteFile(House, json);
+        ViewModel.Assets.Refresh();
     }
 
     /// <summary>Opens the file as the asset browser would, as a scene unless another type is given.</summary>

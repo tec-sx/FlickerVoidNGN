@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../../Source/Engine/Buildings/FlickerVoid.Engine.Buildings.csproj" />
+    <ProjectReference Include="../../../Source/Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
+  </ItemGroup>
+</Project>

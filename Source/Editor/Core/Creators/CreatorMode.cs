@@ -41,6 +41,12 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     private readonly Action<string, bool>? _setMirror;
     private readonly Func<string, int, SolidEdge, DoorOptions, string?>? _hangDoor;
     private SolidMesh? _meshSolid;
+    private SolidMesh? _dragSolid;
+    private MeshElement _dragElement;
+    private int[] _dragFaces = [];
+    private SolidEdge[] _dragEdges = [];
+    private MeshDragOptions _dragOptions;
+    private bool _dragShown;
     private readonly List<Entity> _marked = [];
 
     private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh, Action<string, SolidMesh>? applyMesh, Func<string, bool>? isMirrored, Action<string, bool>? setMirror, Func<string, int, SolidEdge, DoorOptions, string?>? hangDoor)
@@ -58,12 +64,21 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         History = history;
         World world = scene.Game.World;
         WorkLight = world.Create(new Transform(), new PointLight());
+        if (placement == CreatorPlacement.Piece)
+        {
+            SelectedPart = PieceId;
+            scene.Edited += RefreshMesh;
+        }
+
         Update();
         Mark();
         scene.Content.Changed += HandleChanged;
     }
 
-    /// <summary>The creation being made: the one placed in the level, or the temporary copy.</summary>
+    /// <summary>The part id of a level's greybox being shaped, which is its own only part.</summary>
+    public const string PieceId = "piece";
+
+    /// <summary>The creation being made: the one placed in the level, the temporary copy, or the greybox being shaped.</summary>
     public Entity Root { get; }
 
     public CreatorPlacement Placement { get; }
@@ -111,6 +126,16 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         return new CreatorMode(scene, camera, copy, CreatorPlacement.Alone, history, save, findMesh, applyMesh, isMirrored, setMirror, hangDoor);
     }
 
+    /// <summary>
+    /// Shapes a greybox of the level in place, greying the rest: its only part is itself (<see cref="PieceId"/>), always selected, its
+    /// mesh is kept on the greybox, and undo, redo and save are the level's.
+    /// </summary>
+    public static CreatorMode Piece(EditorScene scene, EditorCamera camera, Entity greybox)
+    {
+        PieceShape shape = new(scene, greybox);
+        return new CreatorMode(scene, camera, greybox, CreatorPlacement.Piece, scene.History, scene.Save, _ => shape.Find(), (_, mesh) => shape.Apply(mesh), null, null, null);
+    }
+
     public bool Save() => _save();
 
     /// <summary>Selects the part of the creation under the mouse, whatever is in front of it, or none.</summary>
@@ -119,6 +144,11 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         if (MeshSelection is not null)
         {
             PressMesh(pixel, width, height, additive: false, loop: false);
+            return;
+        }
+
+        if (Placement == CreatorPlacement.Piece)
+        {
             return;
         }
 
@@ -137,7 +167,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>Selects the creation's part with the id, or none, as a click on it does; another part leaves the mesh.</summary>
     public void SelectPart(string? id)
     {
-        if (id == SelectedPart)
+        if (id == SelectedPart || Placement == CreatorPlacement.Piece)
         {
             return;
         }
@@ -151,6 +181,11 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>The entity of the selected part, or null when none is selected or the creation no longer has it.</summary>
     public Entity? FindSelectedPart()
     {
+        if (Placement == CreatorPlacement.Piece)
+        {
+            return _scene.Game.World.IsAlive(Root) ? Root : null;
+        }
+
         CreationParts? parts = _scene.Game.Services.GetService<CreationParts>();
         if (SelectedPart is not { } id || parts is null)
         {
@@ -196,6 +231,8 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         {
             return;
         }
+
+        EndMeshDrag(keep: false);
 
         MeshSelection = null;
         MeshPart = null;
@@ -300,6 +337,11 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     /// <summary>Opens or shuts the door part of the vehicle at once, to see it swing; false for a part without a joint and toggle.</summary>
     public bool SwingDoor(string id)
     {
+        if (Placement == CreatorPlacement.Piece)
+        {
+            return false;
+        }
+
         Entity part = _scene.Game.Services.GetService<CreationParts>()!.Find(Root, id);
         World world = _scene.Game.World;
         if (!world.IsAlive(part) || !world.Has<PartJoint, Toggle>(part))
@@ -347,6 +389,156 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         }
 
         return ReplaceMesh((current, _) => CutLoops(current, found.Edge, cuts, slide));
+    }
+
+    /// <summary>The tool whose amount is being dragged, or null.</summary>
+    public MeshDragTool? MeshDrag { get; private set; }
+
+    /// <summary>
+    /// Starts dragging a tool over the selection: every <see cref="DragMesh"/> then shows the tool's work at an amount, made from the
+    /// mesh as it is now, until <see cref="EndMeshDrag"/> keeps the last as one undo step or puts the mesh back. False when the tool
+    /// has nothing selected to work on (faces, or edges for a bevel).
+    /// </summary>
+    public bool BeginMeshDrag(MeshDragTool tool, MeshDragOptions options)
+    {
+        EndMeshDrag(keep: true);
+        if (MeshSelection is not { } selection || MeshPart is not { } id || _applyMesh is null || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return false;
+        }
+
+        bool bevel = tool == MeshDragTool.Bevel;
+        if ((bevel && selection.Edges.Count == 0) || (!bevel && selection.Faces.Count == 0))
+        {
+            return false;
+        }
+
+        _dragSolid = solid;
+        _dragElement = selection.Element;
+        _dragFaces = [.. selection.Faces];
+        _dragEdges = [.. selection.Edges];
+        _dragOptions = options;
+        _dragShown = false;
+        MeshDrag = tool;
+        History.BeginGroup(tool.ToString());
+        return true;
+    }
+
+    /// <summary>Shows the dragged tool's work at the amount; false, with the mesh as it was, when the tool can make nothing of it.</summary>
+    public bool DragMesh(float amount)
+    {
+        if (MeshDrag is not { } tool || MeshPart is not { } id || _dragSolid is not { } start)
+        {
+            return false;
+        }
+
+        MeshSelection selection = StartOfDrag(start);
+        MeshResult? result = null;
+        if (amount > 0 || (tool == MeshDragTool.Extrude && amount < 0))
+        {
+            result = RunDragTool(tool, start, selection, amount);
+        }
+
+        if (result is null)
+        {
+            if (_dragShown)
+            {
+                _dragShown = false;
+                _meshSolid = start;
+                MeshSelection = selection;
+                _applyMesh!(id, start);
+            }
+
+            return false;
+        }
+
+        MeshSelection next = new(result.Solid);
+        if (result.Edges.Count > 0)
+        {
+            next.SelectEdges(result.Edges);
+        }
+        else
+        {
+            next.SelectFaces(result.Faces);
+        }
+
+        _dragShown = true;
+        _meshSolid = result.Solid;
+        MeshSelection = next;
+        _applyMesh!(id, result.Solid);
+        return true;
+    }
+
+    /// <summary>Ends the drag: keeps what it shows as one undo step, or puts the mesh and its selection back.</summary>
+    public void EndMeshDrag(bool keep)
+    {
+        if (MeshDrag is null)
+        {
+            return;
+        }
+
+        MeshDrag = null;
+        SolidMesh start = _dragSolid!;
+        _dragSolid = null;
+        if (keep)
+        {
+            History.EndGroup();
+        }
+        else
+        {
+            if (_dragShown && MeshPart is { } id)
+            {
+                _meshSolid = start;
+                _applyMesh!(id, start);
+            }
+
+            History.CancelGroup();
+            if (MeshSelection is not null)
+            {
+                _meshSolid = start;
+                MeshSelection = StartOfDrag(start);
+            }
+        }
+
+        MeshModeChanged?.Invoke();
+    }
+
+    /// <summary>How far a drag from one pixel to another sets a tool's amount, in metres: the way up the screen, at the view's pivot.</summary>
+    public float GetMeshDragAmount(Vector2 from, Vector2 to, int height)
+    {
+        float perPixel = _camera.WorldUnitsPerPixel(_camera.Pivot, height);
+        return (from.Y - to.Y) * perPixel;
+    }
+
+    private MeshSelection StartOfDrag(SolidMesh start)
+    {
+        MeshSelection selection = new(start);
+        selection.SetElement(_dragElement);
+        if (_dragElement == MeshElement.Edge)
+        {
+            selection.SelectEdges(_dragEdges);
+        }
+        else
+        {
+            selection.SelectFaces(_dragFaces);
+        }
+
+        return selection;
+    }
+
+    private MeshResult? RunDragTool(MeshDragTool tool, SolidMesh solid, MeshSelection selection, float amount)
+    {
+        switch (tool)
+        {
+            case MeshDragTool.Extrude:
+                return MeshExtrude.Faces(solid, GetFaces(solid, selection), amount);
+            case MeshDragTool.Inset:
+                return MeshInset.Faces(solid, GetFaces(solid, selection), amount);
+            case MeshDragTool.Cut:
+                return MeshCut.Faces(solid, GetFaces(solid, selection), amount, through: false);
+            default:
+                return MeshBevel.Edges(solid, GetEdges(solid, selection), amount, _dragOptions.Rows, _dragOptions.Round);
+        }
     }
 
     private IReadOnlySet<int> GetFaces(SolidMesh solid, MeshSelection selected)
@@ -524,6 +716,7 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     public void Dispose()
     {
         LeaveMesh();
+        _scene.Edited -= RefreshMesh;
         _scene.Content.Changed -= HandleChanged;
         World world = _scene.Game.World;
         foreach (Entity entity in _marked)
@@ -563,13 +756,13 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         });
         foreach (Entity entity in others)
         {
-            if (Placement == CreatorPlacement.InPlace)
+            if (Placement == CreatorPlacement.Alone)
             {
-                world.Add<Greyed>(entity);
+                world.Add<Undrawn>(entity);
             }
             else
             {
-                world.Add<Undrawn>(entity);
+                world.Add<Greyed>(entity);
             }
 
             _marked.Add(entity);
@@ -605,23 +798,23 @@ public sealed class CreatorMode : IViewportMode, IDisposable
 
     private bool IsMarked(World world, Entity entity)
     {
-        if (Placement == CreatorPlacement.InPlace)
+        if (Placement == CreatorPlacement.Alone)
         {
-            return world.Has<Greyed>(entity);
+            return world.Has<Undrawn>(entity);
         }
 
-        return world.Has<Undrawn>(entity);
+        return world.Has<Greyed>(entity);
     }
 
     private void Unmark(World world, Entity entity)
     {
-        if (Placement == CreatorPlacement.InPlace)
+        if (Placement == CreatorPlacement.Alone)
         {
-            world.Remove<Greyed>(entity);
+            world.Remove<Undrawn>(entity);
         }
         else
         {
-            world.Remove<Undrawn>(entity);
+            world.Remove<Greyed>(entity);
         }
     }
 

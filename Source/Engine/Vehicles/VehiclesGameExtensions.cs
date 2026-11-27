@@ -17,7 +17,7 @@ public static class VehiclesGameExtensions
     /// <summary>
     /// Adds the <c>.fvvehicle</c> file kind and its schema, so the content check reads vehicle files, and the <c>vehicle</c> scene
     /// component, whose parts are spawned from its file through the <see cref="IContentManager"/> service (none without one) and
-    /// drawn through a mesh source, after <c>AddRendering</c>. Adding it again does nothing.
+    /// drawn through a mesh source, after <c>AddRendering</c>, as their look from Blender when one was built (the <see cref="VehicleLooks"/> service). Adding it again does nothing.
     /// </summary>
     public static void AddVehicles(this Game game)
     {
@@ -30,18 +30,26 @@ public static class VehiclesGameExtensions
         ArrayRegistry.Add<RigidBody>();
         game.Schemas.AddFile("vehicle", VehicleFile.Extension, static () => VehiclesJsonContext.Default.VehicleFile);
         game.Spawner.Register("vehicle", VehiclesJsonContext.Default.Vehicle);
-        ILogger logger = game.LoggerFactory.CreateLogger(typeof(VehicleFiles));
-        VehicleFiles files = new(logger);
+        ILogger logger = game.LoggerFactory.CreateLogger(typeof(VehicleFile));
+        CreationFiles<VehicleFile> files = new(logger, VehiclesJsonContext.Default.VehicleFile);
+        VehicleLooks looks = new(files);
+        game.Services.AddService(looks);
         if (game.Services.GetService<MeshSources>() is { } meshes)
         {
-            VehicleMeshSource source = new(files);
+            VehicleMeshSource source = new(files, looks);
             meshes.Add(source);
         }
 
         CreationParts parts = game.AddCreations();
         IContentManager? content = game.Services.GetService<IContentManager>();
-        VehicleSpawnSystem spawner = new(game.World, parts, files, content);
+        VehicleSpawnSystem spawner = new(game.World, parts, files, looks, content);
         game.FrameSystems.Add(spawner);
         game.Services.AddService(spawner);
+        if (content is not null)
+        {
+            VehicleDriveSystem drive = new(game.World, parts, spawner, files, content, () => game.Services.GetService<IPhysicsSystem>());
+            game.FixedSystems.Add(drive);
+            game.Services.AddService(drive);
+        }
     }
 }

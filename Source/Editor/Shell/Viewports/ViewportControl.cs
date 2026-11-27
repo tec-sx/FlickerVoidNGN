@@ -245,6 +245,19 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         PixelSize size = GetPixelSize();
         Vector2 pixel = ToPixels(position);
         _keys.Clear();
+        if (viewModel.MeshTools.CancelDrag())
+        {
+            return;
+        }
+
+        if (viewModel.MeshTools.IsMeshMode)
+        {
+            List<MenuChoice> tools = [.. viewModel.MeshTools.GetMenu()];
+            AddUndoChoices(tools, viewModel.Mode.History);
+            EditorMenus.ShowOptions(this, tools, MenuGrouping.Separators);
+            return;
+        }
+
         if (viewModel.IsCreating)
         {
             ShowCreatorOptions(viewModel);

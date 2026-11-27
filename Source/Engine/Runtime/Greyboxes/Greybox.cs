@@ -1,11 +1,13 @@
 using System.Numerics;
+using System.Text.Json.Serialization;
 
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Solids;
 
 namespace FlickerVoid.Engine.Runtime.Greyboxes;
 
 /// <summary>
-/// A block-out box standing on its entity, drawn grey until one of its swap models is shown in its place, so a level can be
+/// A block-out box standing on its entity, or the shape the mesh tools made of it, drawn grey until one of its swap models is shown in its place, so a level can be
 /// laid out and played before its models are made and each model can be tried where it will stand.
 /// </summary>
 public struct Greybox
@@ -16,6 +18,10 @@ public struct Greybox
 
     /// <summary>Width, height and length; the box stands on the entity's position, centred across.</summary>
     public Vector3 Size { get; set; } = Vector3.One;
+
+    /// <summary>The shape the mesh tools gave it, standing on the entity as the box does; none keeps the box of its size.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SolidMesh? Mesh { get; set; }
 
     /// <summary>Whether others collide with it: while playing, physics gives it a static box of its size.</summary>
     public bool Solid { get; set; } = true;

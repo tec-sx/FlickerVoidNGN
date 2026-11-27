@@ -322,6 +322,95 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void DraggingAToolShowsEachAmountFromTheStartAndKeepsTheLast()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        SelectBodyFace(mode);
+        int points = _builder.FindMesh("body")!.Points.Count;
+
+        bool began = mode.BeginMeshDrag(MeshDragTool.Extrude, new MeshDragOptions());
+        mode.DragMesh(0.2f);
+        mode.DragMesh(0.5f);
+        MeshDragTool? during = mode.MeshDrag;
+        mode.EndMeshDrag(keep: true);
+
+        began.Should().BeTrue();
+        during.Should().Be(MeshDragTool.Extrude);
+        mode.MeshDrag.Should().BeNull();
+        _builder.FindMesh("body")!.Points.Should().HaveCount(points + 4, "each amount is made from the mesh as it was");
+        mode.MeshSelection!.Faces.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void CancellingADragPutsTheMeshAndTheSelectionBack()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        SelectBodyFace(mode);
+        int faces = _builder.FindMesh("body")!.Faces.Count;
+
+        mode.BeginMeshDrag(MeshDragTool.Inset, new MeshDragOptions());
+        mode.DragMesh(0.1f);
+        int shown = _builder.FindMesh("body")!.Faces.Count;
+        mode.EndMeshDrag(keep: false);
+
+        shown.Should().Be(faces + 4);
+        _builder.FindMesh("body")!.Faces.Should().HaveCount(faces);
+        mode.MeshSelection!.Faces.Should().Equal(2);
+        mode.MeshDrag.Should().BeNull();
+    }
+
+    [Fact]
+    public void AnAmountOfNothingShowsTheMeshAsItWas()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        SelectBodyFace(mode);
+        int faces = _builder.FindMesh("body")!.Faces.Count;
+
+        mode.BeginMeshDrag(MeshDragTool.Inset, new MeshDragOptions());
+        mode.DragMesh(0.1f);
+        bool made = mode.DragMesh(0);
+
+        made.Should().BeFalse();
+        _builder.FindMesh("body")!.Faces.Should().HaveCount(faces);
+        mode.MeshSelection!.Faces.Should().Equal(2);
+    }
+
+    [Fact]
+    public void ADragNeedsWhatItsToolWorksOnSelected()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+
+        bool bevel = mode.BeginMeshDrag(MeshDragTool.Bevel, new MeshDragOptions());
+
+        bevel.Should().BeFalse("nothing is selected");
+        mode.MeshDrag.Should().BeNull();
+    }
+
+    [Fact]
+    public void TheMouseSetsADragsAmountByHowFarUpItMoved()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        Vector2 from = new(100, 300);
+
+        float up = mode.GetMeshDragAmount(from, new Vector2(140, 200), CreatorModeTestsBuilder.Height);
+        float down = mode.GetMeshDragAmount(from, new Vector2(100, 350), CreatorModeTestsBuilder.Height);
+
+        float perPixel = _builder.Camera.WorldUnitsPerPixel(_builder.Camera.Pivot, CreatorModeTestsBuilder.Height);
+        up.Should().BeApproximately(100 * perPixel, 1e-4f);
+        down.Should().BeApproximately(-50 * perPixel, 1e-4f);
+    }
+
+    private static void SelectBodyFace(CreatorMode mode)
+    {
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Face);
+        mode.MeshSelection.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfFace(2, default), additive: false);
+    }
+
+    [Fact]
     public void InsettingTheSelectedFaceEditsTheMeshOnceAndSelectsTheInnerFace()
     {
         using CreatorMode mode = _builder.EnterAlone();
