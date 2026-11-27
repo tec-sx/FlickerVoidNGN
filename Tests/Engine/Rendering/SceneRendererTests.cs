@@ -692,23 +692,33 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
-    public void DrawsABeamWhereTheSunBreaksPastAnEdge()
+    public void DrawsABeamWhereTheSunComesThroughAGap()
+    {
+        WithBeamScene(roofHeight: 2.5f, gap: true);
+
+        uint[] pixels = _builder.Render();
+
+        uint[] row = BeamRow(pixels, 8);
+        row.Max().Should().BeGreaterThan(10, "the seeds under the gap are lit with shade all round them");
+        Array.IndexOf(row, row.Max()).Should().BeInRange(5, 10, "the beam stands under the gap");
+        row[1].Should().BeLessThan(3, "under the roof the seeds are in full shade");
+        row[14].Should().BeLessThan(3, "under the roof the seeds are in full shade");
+    }
+
+    [Fact]
+    public void DrawsNoBeamAlongTheEdgeOfAnOpenShadow()
     {
         WithBeamScene(roofHeight: 2.5f);
 
         uint[] pixels = _builder.Render();
 
-        uint[] row = BeamRow(pixels, 8);
-        row.Max().Should().BeGreaterThan(10, "the seeds beside the roof's edge are half in the sun");
-        Array.IndexOf(row, row.Max()).Should().BeInRange(5, 10, "the beam stands at the roof's edge");
-        row[1].Should().BeLessThan(3, "under the roof the seeds are in full shade");
-        row[14].Should().BeLessThan(3, "beyond the roof the seeds are in full sun");
+        BeamRow(pixels, 8).Max().Should().BeLessThan(3, "a seed half in shade beside open sun is no gap");
     }
 
     [Fact]
     public void ReachesUpToWhatCastsTheBeam()
     {
-        WithBeamScene(roofHeight: 0);
+        WithBeamScene(roofHeight: 0, gap: true);
 
         uint[] pixels = _builder.Render();
 
@@ -721,7 +731,7 @@ public sealed class SceneRendererTests : IDisposable
     [Fact]
     public void DrawsNoBeamsWithoutRayTracing()
     {
-        WithBeamScene(roofHeight: 2.5f);
+        WithBeamScene(roofHeight: 2.5f, gap: true);
         _builder.WithRenderer(static renderer => renderer.RayTracing = false);
 
         uint[] pixels = _builder.Render();
@@ -732,7 +742,7 @@ public sealed class SceneRendererTests : IDisposable
     [Fact]
     public void DrawsNoBeamsWithoutTheirIntensity()
     {
-        WithBeamScene(roofHeight: 2.5f);
+        WithBeamScene(roofHeight: 2.5f, gap: true);
         _builder.WithMood(static mood => mood with { BeamIntensity = 0 });
 
         uint[] pixels = _builder.Render();
@@ -743,9 +753,10 @@ public sealed class SceneRendererTests : IDisposable
     [Fact]
     public void EasesABeamOutWhenWhatCastsItGoes()
     {
-        WithBeamScene(roofHeight: 2.5f);
+        WithBeamScene(roofHeight: 2.5f, gap: true);
         uint[] before = BeamRow(_builder.Render(), 8);
         _builder.WithPosition("Roof", new Vector3(-100, 2.5f, 0));
+        _builder.WithPosition("Roof East", new Vector3(100, 2.5f, 0));
 
         uint[] after = BeamRow(_builder.Render(), 8);
 
@@ -2405,18 +2416,23 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     /// <summary>
-    /// A floor seen edge on under a sun straight overhead, with a roof over its left half at the given height, before a camera
-    /// eight units high, and beams a unit wide.
+    /// A floor seen edge on under a sun straight overhead, with a roof over its left half at the given height (and over its right
+    /// half too but for a gap two units wide in the middle), before a camera eight units high, and beams a unit wide.
     /// </summary>
-    private void WithBeamScene(float roofHeight)
+    private void WithBeamScene(float roofHeight, bool gap = false)
     {
         const string wideCamera = """{ "name": "Camera", "components": { "transform": { "position": [0, 0, 5] }, "camera": { "orthographicHeight": 8 } } }""";
         const string floor = """{ "name": "Floor", "components": { "transform": { "position": [0, -3, 0] }, "greybox": { "size": [20, 0.1, 4] } } }""";
         string height = System.FormattableString.Invariant($"{roofHeight}");
-        string roof = $$"""{ "name": "Roof", "components": { "transform": { "position": [-5, {{height}}, 0] }, "greybox": { "size": [10, 0.1, 12] } } }""";
+        string roof = $$"""{ "name": "Roof", "components": { "transform": { "position": [-6, {{height}}, 0] }, "greybox": { "size": [10, 0.1, 12] } } }""";
         _builder.WithRayQueries();
         _builder.WithTargetSize(16);
         _builder.WithScene(wideCamera, floor, roof);
+        if (gap)
+        {
+            string east = $$"""{ "name": "Roof East", "components": { "transform": { "position": [6, {{height}}, 0] }, "greybox": { "size": [10, 0.1, 12] } } }""";
+            _builder.WithScene(east);
+        }
         _builder.WithLight(sunDirection: -Vector3.UnitY, ambient: 0);
         _builder.WithMood(static mood => mood with { BeamIntensity = 0.3f, BeamWidth = 1, BeamReach = 8 });
         _builder.WithRenderer(static renderer => renderer.RayTracing = true);
