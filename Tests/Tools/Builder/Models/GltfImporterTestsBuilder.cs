@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json.Nodes;
 
 using SharpGLTF.Geometry;
 using SharpGLTF.Geometry.VertexTypes;
@@ -29,6 +30,7 @@ internal sealed class GltfImporterTestsBuilder
     private Vector4 _baseColor = Vector4.One;
     private bool _textured;
     private (Vector3 From, Vector3 To, float Seconds)? _movingJoint;
+    private (string Parent, string Child, string? Part)? _nodes;
 
     public GltfImporterTestsBuilder WithTriangle()
     {
@@ -73,6 +75,13 @@ internal sealed class GltfImporterTestsBuilder
         return this;
     }
 
+    /// <summary>Hangs the mesh's node, named <paramref name="child"/>, under a node named <paramref name="parent"/>, with an <c>fv_part</c> property when one is given.</summary>
+    public GltfImporterTestsBuilder WithNodes(string parent, string child, string? part = null)
+    {
+        _nodes = (parent, child, part);
+        return this;
+    }
+
     public ModelRoot BuildModel()
     {
         MaterialBuilder material = new("Material");
@@ -101,7 +110,21 @@ internal sealed class GltfImporterTestsBuilder
         else
         {
             MeshBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty> mesh = BuildMesh(material, default(VertexEmpty));
-            scene.AddRigidMesh(mesh, _nodeTransform);
+            if (_nodes is { } nodes)
+            {
+                NodeBuilder parent = new(nodes.Parent);
+                NodeBuilder child = parent.CreateNode(nodes.Child);
+                if (nodes.Part is { } part)
+                {
+                    child.Extras = new JsonObject { ["fv_part"] = part };
+                }
+
+                scene.AddRigidMesh(mesh, child);
+            }
+            else
+            {
+                scene.AddRigidMesh(mesh, _nodeTransform);
+            }
         }
 
         return scene.ToGltf2();

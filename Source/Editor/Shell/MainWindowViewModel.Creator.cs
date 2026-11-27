@@ -5,6 +5,7 @@ using Arch.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using FlickerVoid.Editor.Assets.Blender;
 using FlickerVoid.Editor.Assets.Vehicles;
 using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Meshes.Doors;
@@ -148,6 +149,7 @@ public sealed partial class MainWindowViewModel
     {
         Viewport.EnterCreator(creator, file);
         creator.PartSelected += () => OnPropertyChanged(nameof(CreatorPart));
+        creator.MeshModeChanged += ShowGreyboxesInTheMesh;
         CreatorPanel = panel;
         ShowContext(CreatorTab);
         OutlinerTab = PartsTab;
@@ -167,7 +169,44 @@ public sealed partial class MainWindowViewModel
             return null;
         }
 
-        return new VehiclePanelViewModel(document);
+        return new VehiclePanelViewModel(document, CreateLookTools());
+    }
+
+    /// <summary>The look tools over the scene's vehicle looks; none when the game has no vehicles.</summary>
+    private VehicleLookTools? CreateLookTools()
+    {
+        if (Viewport.Scene.Game.Services.GetService<VehicleLooks>() is not { } looks)
+        {
+            return null;
+        }
+
+        BlenderLauncher launcher = new();
+        BlenderRoundTrip blender = new(_content, launcher, BlenderLocator.Find);
+        return new VehicleLookTools(_content, blender, looks);
+    }
+
+    /// <summary>Reads the creation's look again when the content build baked it anew.</summary>
+    private void ShowCreationLook(string fullPath)
+    {
+        if (CreatorPanel is null || Viewport.CreatorFile is not { } file)
+        {
+            return;
+        }
+
+        string look = VehicleLook.GetBuiltPath(file);
+        if (IsPath(look, fullPath))
+        {
+            CreatorPanel.RefreshLook();
+        }
+    }
+
+    /// <summary>The mesh tools work on the greybox, so entering a part's mesh shows the greyboxes under the look.</summary>
+    private void ShowGreyboxesInTheMesh()
+    {
+        if (Viewport.Creator?.MeshSelection is not null && CreatorPanel is { ShowsLook: true } panel)
+        {
+            panel.ShowsLook = false;
+        }
     }
 
     private SolidMesh? FindCreatorMesh(string id) => CreatorPanel?.FindMesh(id);
@@ -210,6 +249,11 @@ public sealed partial class MainWindowViewModel
 
         if (Viewport.Creator is null)
         {
+            if (CreatorPanel is { } left)
+            {
+                left.ShowsLook = true;
+            }
+
             CreatorPanel = null;
             HideContext(CreatorTab);
             if (OutlinerTab == PartsTab)

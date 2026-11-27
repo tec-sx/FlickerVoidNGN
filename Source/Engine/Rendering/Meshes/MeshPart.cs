@@ -10,5 +10,11 @@ public sealed record MeshPart(MeshVertex[] Vertices, uint[] Indices, MaterialDat
 {
     /// <summary>One entry per vertex, or null for a rigid part.</summary>
     public SkinVertex[]? Skin { get; init; }
+
+    /// <summary>
+    /// The name of the glTF node the part was read from, then of each node it hangs under, innermost first; a node's <c>fv_part</c>
+    /// property stands for its name. Empty for parts not read from glTF.
+    /// </summary>
+    public IReadOnlyList<string> Nodes { get; init; } = [];
 }
 

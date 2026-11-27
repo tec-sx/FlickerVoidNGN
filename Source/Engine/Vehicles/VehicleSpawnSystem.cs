@@ -26,14 +26,17 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
     private readonly CreationParts _parts;
     private readonly VehicleFiles _files;
     private readonly IContentManager? _content;
+    private readonly VehicleLooks _looks;
     private readonly List<(Entity Root, string File)> _changed = [];
 
-    public VehicleSpawnSystem(World world, CreationParts parts, VehicleFiles files, IContentManager? content)
+    public VehicleSpawnSystem(World world, CreationParts parts, VehicleFiles files, VehicleLooks looks, IContentManager? content)
         : base(world)
     {
         _parts = parts;
         _files = files;
         _content = content;
+        _looks = looks;
+        _looks.Changed += HandleLooksChanged;
         _parts.AddKind<Vehicle>(vehicle => Describe(vehicle.File));
         if (_content is not null)
         {
@@ -43,6 +46,7 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
 
     public override void Dispose()
     {
+        _looks.Changed -= HandleLooksChanged;
         if (_content is not null)
         {
             _content.Changed -= HandleChanged;
@@ -62,7 +66,7 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
         List<PartData> parts = [];
         foreach ((string id, VehiclePart part) in file.GetParts())
         {
-            string mesh = VehicleMeshSource.GetName(path, id);
+            string mesh = VehicleMeshSource.GetName(path, id, _looks.ShowGreyboxes);
             MeshRenderer renderer = new() { Mesh = mesh };
             PartData data = new PartData(id, part.Place).With(renderer);
             if (part.Joint is { } joint)
@@ -113,11 +117,22 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
             return;
         }
 
+        Patch(vehicle =>
+        {
+            string vehiclePath = _content!.GetFullPath(vehicle.File);
+            return ContentManager.PathComparer.Equals(vehiclePath, fullPath);
+        });
+    }
+
+    /// <summary>Every vehicle's parts change between their looks and their greyboxes.</summary>
+    private void HandleLooksChanged() => Patch(_ => true);
+
+    private void Patch(Func<Vehicle, bool> matches)
+    {
         _changed.Clear();
         World.Query(in Vehicles, (Entity entity, ref Vehicle vehicle) =>
         {
-            string vehiclePath = _content!.GetFullPath(vehicle.File);
-            if (ContentManager.PathComparer.Equals(vehiclePath, fullPath))
+            if (matches(vehicle))
             {
                 _changed.Add((entity, vehicle.File));
             }

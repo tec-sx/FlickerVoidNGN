@@ -52,6 +52,57 @@ public sealed class VehicleEntityTests : IDisposable
     }
 
     [Fact]
+    public void APartWithALookIsDrawnAsItsLookAndTheRestAsGreyboxes()
+    {
+        _builder.WithVehicle(Van, VehicleFile.Create(VehicleType.Car)).Build();
+        _builder.WriteLook(Van, ["body"], ["Mirror", "body"]);
+        MeshSources meshes = _builder.Game.Services.GetService<MeshSources>()!;
+
+        MadeMesh? body = meshes.Make($"{Van}#body", _builder.Content);
+        MadeMesh? wheel = meshes.Make($"{Van}#wheel.1L", _builder.Content);
+
+        body!.Model.Parts.Should().HaveCount(2, "the look's two objects of the body");
+        body.OtherFiles.Should().Contain(VehicleLook.GetBuiltPath(Van), "a look built again draws again");
+        wheel!.Model.Parts.Should().ContainSingle().Which.Nodes.Should().BeEmpty("it keeps its greybox");
+        wheel.OtherFiles.Should().Contain(VehicleLook.GetBuiltPath(Van), "a look that gains the wheel draws it");
+    }
+
+    [Fact]
+    public void ShowingGreyboxesDrawsEveryPartAsItsSolidAgain()
+    {
+        _builder.WithVehicle(Van, VehicleFile.Create(VehicleType.Car)).Build();
+        _builder.WriteLook(Van, ["body"], ["Mirror", "body"]);
+        Entity van = _builder.Place(Van);
+        VehicleLooks looks = _builder.Game.Services.GetService<VehicleLooks>()!;
+        MeshSources meshes = _builder.Game.Services.GetService<MeshSources>()!;
+        World world = _builder.Game.World;
+
+        looks.ShowGreyboxes = true;
+
+        Entity part = _builder.Parts.Find(van, "body");
+        string mesh = world.Get<MeshRenderer>(part).Mesh;
+        mesh.Should().NotBe($"{Van}#body");
+        meshes.Make(mesh, _builder.Content)!.Model.Parts.Should().ContainSingle("the greybox is one solid");
+        looks.ShowGreyboxes = false;
+        world.Get<MeshRenderer>(part).Mesh.Should().Be($"{Van}#body");
+    }
+
+    [Fact]
+    public void TheLooksReportSaysWhatMatchedNothingAndWhatHasNoObject()
+    {
+        _builder.WithVehicle(Van, VehicleFile.Create(VehicleType.Car)).Build();
+        _builder.WriteLook(Van, ["body"], ["Antenna.001"]);
+        VehicleLooks looks = _builder.Game.Services.GetService<VehicleLooks>()!;
+
+        VehicleLook? look = looks.Find(_builder.Content, Van);
+        VehicleLook? none = looks.Find(_builder.Content, "Vans/Other.fvvehicle");
+
+        look!.Unmatched.Should().Equal("Antenna.001");
+        look.Greyboxed.Should().Equal("wheel.1L", "wheel.1R", "wheel.2L", "wheel.2R");
+        none.Should().BeNull();
+    }
+
+    [Fact]
     public void RespawnsThePartsWhenTheFileChangesKeepingThoseThatStay()
     {
         VehicleFile car = VehicleFile.Create(VehicleType.Car);

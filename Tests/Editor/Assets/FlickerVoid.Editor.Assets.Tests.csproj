@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="../../../Source/Editor/Assets/FlickerVoid.Editor.Assets.csproj" />
+    <ProjectReference Include="../../../Source/Tools/Builder/FlickerVoid.Tools.Builder.csproj" />
   </ItemGroup>
 </Project>

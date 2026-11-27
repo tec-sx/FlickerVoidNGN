@@ -336,6 +336,7 @@ public sealed partial class MainWindowViewModel
     /// <summary>Shows the open mood or creation again when its file changed other than by an edit here: discarded or changed on disk.</summary>
     private void HandleContentChanged(string fullPath)
     {
+        ShowCreationLook(fullPath);
         if (Viewport.CreatorFile is { } creation && !_content.IsUnsaved(creation))
         {
             ShowCreation(fullPath);

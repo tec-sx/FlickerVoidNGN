@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Engine.Runtime.Solids;
@@ -8,17 +9,97 @@ namespace FlickerVoid.Editor.Assets.Vehicles;
 
 /// <summary>
 /// The vehicle creator's panel: the vehicle's type, its wheel count among those the type takes, and its parts, each choice written
-/// to the file through the document.
+/// to the file through the document; and its look from Blender: Open in Blender, the switch between look and greyboxes, and what
+/// the look covers.
 /// </summary>
 public sealed partial class VehiclePanelViewModel : ObservableObject
 {
     private readonly VehicleDocument _document;
     private bool _showing;
 
-    public VehiclePanelViewModel(VehicleDocument document)
+    private readonly IVehicleLookTools? _looks;
+
+    public VehiclePanelViewModel(VehicleDocument document, IVehicleLookTools? looks = null)
     {
         _document = document;
+        _looks = looks;
         Show();
+        RefreshLook();
+    }
+
+    /// <summary>Whether the panel can open the vehicle in Blender and switch its look, which it can in the editor's window.</summary>
+    public bool HasLookTools => _looks is not null;
+
+    /// <summary>Whether the vehicle has a look from Blender, so the switch between it and the greyboxes means something.</summary>
+    [ObservableProperty]
+    public partial bool HasLook { get; private set; }
+
+    /// <summary>What the look covers: how many parts, which keep their greybox and which objects joined the body.</summary>
+    [ObservableProperty]
+    public partial string LookReport { get; private set; } = string.Empty;
+
+    /// <summary>What Open in Blender last said.</summary>
+    [ObservableProperty]
+    public partial string BlenderStatus { get; private set; } = string.Empty;
+
+    /// <summary>Whether vehicles are drawn as their looks; off shows the greyboxes under them, as the mesh tools need.</summary>
+    public bool ShowsLook
+    {
+        get => _looks?.ShowGreyboxes == false;
+        set
+        {
+            if (_looks is null || _looks.ShowGreyboxes == !value)
+            {
+                return;
+            }
+
+            _looks.ShowGreyboxes = !value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Opens the vehicle in Blender: the first time on its greyboxes, later on its Blender file.</summary>
+    [RelayCommand]
+    public void OpenInBlender()
+    {
+        if (_looks is null)
+        {
+            return;
+        }
+
+        BlenderStatus = _looks.OpenInBlender(_document.Path, _document.Vehicle);
+    }
+
+    /// <summary>Reads the look again, after the content build baked a new one.</summary>
+    public void RefreshLook()
+    {
+        VehicleLook? look = _looks?.FindLook(_document.Path);
+        HasLook = look is not null;
+        LookReport = Describe(look);
+        OnPropertyChanged(nameof(ShowsLook));
+    }
+
+    private string Describe(VehicleLook? look)
+    {
+        if (look is null)
+        {
+            return "No look yet. Open in Blender makes one from the greyboxes.";
+        }
+
+        string report = $"Look on {look.Parts.Count} of {Parts.Count} parts.";
+        if (look.Greyboxed.Count > 0)
+        {
+            string kept = string.Join(", ", look.Greyboxed);
+            report += $" Greybox kept: {kept}.";
+        }
+
+        if (look.Unmatched.Count > 0)
+        {
+            string joined = string.Join(", ", look.Unmatched);
+            report += $" Joined the body: {joined}.";
+        }
+
+        return report;
     }
 
     public IReadOnlyList<VehicleType> Types { get; } = Enum.GetValues<VehicleType>();

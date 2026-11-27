@@ -3,7 +3,7 @@
              xmlns:vehicles="using:FlickerVoid.Editor.Assets.Vehicles"
              x:Class="FlickerVoid.Editor.Vehicles.VehiclePanelView"
              x:DataType="vehicles:VehiclePanelViewModel">
-  <!-- The vehicle's type and wheel count; its parts are listed in the outliner. -->
+  <!-- The vehicle's type and wheel count, then its look; its parts are listed in the outliner. -->
   <StackPanel Margin="4,2">
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
       <TextBlock Text="Type" VerticalAlignment="Center" />
@@ -13,5 +13,17 @@
       <ComboBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding WheelCounts}" SelectedItem="{Binding WheelCount}"
                 ToolTip.Tip="Axles are added or removed at the back." />
     </Grid>
+    <!-- The look from Blender: open the vehicle there, switch between the look and the greyboxes, and what the look covers. -->
+    <StackPanel Margin="0,6,0,0" Spacing="4" IsVisible="{Binding HasLookTools}">
+      <StackPanel Orientation="Horizontal" Spacing="4">
+        <Button Content="Open in Blender" Command="{Binding OpenInBlenderCommand}"
+                ToolTip.Tip="The first time, Blender starts on the greyboxes and saves a .blend beside the vehicle; saving there brings the look back here." />
+        <ToggleButton Content="Look" IsChecked="{Binding ShowsLook}" IsVisible="{Binding HasLook}"
+                      ToolTip.Tip="Draw the look from Blender; off shows the greyboxes under it." />
+      </StackPanel>
+      <TextBlock Classes="muted" Text="{Binding LookReport}" TextWrapping="Wrap" />
+      <TextBlock Classes="muted" Text="{Binding BlenderStatus}" TextWrapping="Wrap"
+                 IsVisible="{Binding BlenderStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+    </StackPanel>
   </StackPanel>
 </UserControl>

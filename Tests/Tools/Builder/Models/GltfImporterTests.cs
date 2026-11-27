@@ -139,4 +139,20 @@ public sealed class GltfImporterTests
 
         looped[1].Translation.X.Should().BeApproximately(early[1].Translation.X, 1e-4f);
     }
+
+    [Fact]
+    public void KeepsTheNameOfEachPartsNodeAndOfTheNodesItHangsUnder()
+    {
+        IReadOnlyList<MeshPart> parts = _builder.WithTriangle().WithNodes("door.1", "Handle.001").Build();
+
+        parts[0].Nodes.Should().Equal("Handle.001", "door.1");
+    }
+
+    [Fact]
+    public void APartPropertyOnANodeStandsForItsName()
+    {
+        IReadOnlyList<MeshPart> parts = _builder.WithTriangle().WithNodes("Van", "Cube.004", part: "body").Build();
+
+        parts[0].Nodes.Should().Equal("body", "Van");
+    }
 }

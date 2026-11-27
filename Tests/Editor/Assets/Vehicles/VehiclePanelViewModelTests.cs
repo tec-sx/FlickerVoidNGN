@@ -59,4 +59,60 @@ public sealed class VehiclePanelViewModelTests : IDisposable
         panel.WheelCount.Should().Be(4);
         _builder.Content.IsUnsaved("Van.fvvehicle").Should().BeFalse();
     }
+
+    [Fact]
+    public void WithoutALookItSaysHowToMakeOne()
+    {
+        VehiclePanelViewModel panel = _builder.BuildWithLooks();
+
+        panel.HasLookTools.Should().BeTrue();
+        panel.HasLook.Should().BeFalse();
+        panel.LookReport.Should().Contain("Open in Blender");
+    }
+
+    [Fact]
+    public void TheLookReportSaysWhatItCoversWhatKeepsItsGreyboxAndWhatJoinedTheBody()
+    {
+        _builder.WithLook(["body"], ["wheel.1L"], ["Antenna"]);
+
+        VehiclePanelViewModel panel = _builder.BuildWithLooks();
+
+        panel.HasLook.Should().BeTrue();
+        panel.LookReport.Should().Be("Look on 2 of 5 parts. Greybox kept: wheel.1R, wheel.2L, wheel.2R. Joined the body: Antenna.");
+    }
+
+    [Fact]
+    public void OpenInBlenderHandsOverTheVehicleAndShowsWhatWasSaid()
+    {
+        VehiclePanelViewModel panel = _builder.BuildWithLooks();
+        _builder.Looks.OpenInBlender(VehicleDocumentTestsBuilder.Van, Arg.Any<VehicleFile>()).Returns("Opened in Blender.");
+
+        panel.OpenInBlenderCommand.Execute(null);
+
+        panel.BlenderStatus.Should().Be("Opened in Blender.");
+    }
+
+    [Fact]
+    public void TheLookSwitchShowsTheGreyboxesAndTheLookAgain()
+    {
+        VehiclePanelViewModel panel = _builder.BuildWithLooks();
+        bool shown = panel.ShowsLook;
+
+        panel.ShowsLook = false;
+
+        shown.Should().BeTrue();
+        _builder.Looks.ShowGreyboxes.Should().BeTrue();
+        panel.ShowsLook.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ALookBuiltWhileThePanelIsOpenShowsWhenItIsReadAgain()
+    {
+        VehiclePanelViewModel panel = _builder.BuildWithLooks();
+        _builder.WithLook(["body"]);
+
+        panel.RefreshLook();
+
+        panel.HasLook.Should().BeTrue();
+    }
 }

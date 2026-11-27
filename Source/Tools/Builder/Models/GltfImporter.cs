@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using FlickerVoid.Tools.Builder.Textures;
 using FlickerVoid.Engine.Graphics.Textures;
@@ -12,12 +13,15 @@ using SharpGLTF.Schema2;
 namespace FlickerVoid.Tools.Builder.Models;
 
 /// <summary>
-/// Reads glTF models into mesh parts, one per primitive, with each node's transform baked in. Skinned meshes stay in their
+/// Reads glTF models into mesh parts, one per primitive, with each node's transform baked in and the names of the nodes it hangs from. Skinned meshes stay in their
 /// bind pose with their joints and weights, and the animations of the model's skin are baked into <see cref="AnimationClip"/>s;
 /// a model has at most one skin. Textures are compressed to BC7.
 /// </summary>
 public static class GltfImporter
 {
+    /// <summary>The custom property naming the creation part a node belongs to, written by the editor's export and kept by Blender.</summary>
+    public const string PartProperty = "fv_part";
+
     public static ModelData Load(string path)
     {
         ModelRoot model = ModelRoot.Load(path);
@@ -70,12 +74,13 @@ public static class GltfImporter
                 world = Matrix4x4.Identity;
             }
 
+            IReadOnlyList<string> names = GetNames(node);
             foreach (MeshPrimitive primitive in node.Mesh.Primitives)
             {
                 MeshPart? part = ImportPrimitive(primitive, world, skinned);
                 if (part is not null)
                 {
-                    parts.Add(part);
+                    parts.Add(part with { Nodes = names });
                 }
             }
         }
@@ -92,6 +97,24 @@ public static class GltfImporter
         }
 
         return new ModelData(parts, animations);
+    }
+
+    /// <summary>The node's name and those of the nodes it hangs under, innermost first, each node's <c>fv_part</c> property standing for its name.</summary>
+    private static IReadOnlyList<string> GetNames(Node node)
+    {
+        List<string> names = [];
+        for (Node? current = node; current is not null; current = current.VisualParent)
+        {
+            string name = current.Name ?? string.Empty;
+            if (current.Extras is JsonObject extras && extras[PartProperty] is JsonValue value && value.TryGetValue(out string? part))
+            {
+                name = part;
+            }
+
+            names.Add(name);
+        }
+
+        return names;
     }
 
     /// <summary>Returns null for primitives without triangles, such as lines and points.</summary>

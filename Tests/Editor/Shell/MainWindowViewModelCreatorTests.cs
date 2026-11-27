@@ -186,6 +186,27 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     }
 
     [Fact]
+    public void ALookBuiltForTheCreationShowsInItsPanelAndEnteringAMeshShowsTheGreyboxes()
+    {
+        _builder.DoubleClick(_builder.MiddleOf("Van"));
+        bool before = ViewModel.CreatorPanel!.HasLook;
+
+        _builder.WriteLook(MainWindowViewModelTestsBuilder.Van, "body");
+        bool lookShown = ViewModel.CreatorPanel.ShowsLook;
+        ViewModel.CreatorPart = "body";
+        Viewport.MeshTools.ToggleMesh();
+
+        before.Should().BeFalse();
+        ViewModel.CreatorPanel.HasLook.Should().BeTrue();
+        lookShown.Should().BeTrue();
+        ViewModel.CreatorPanel.ShowsLook.Should().BeFalse("the mesh tools work on the greybox");
+        Viewport.KeyPressed(ViewportKey.Escape, ViewportButtons.None);
+        Viewport.KeyPressed(ViewportKey.Escape, ViewportButtons.None);
+        VehicleLooks looks = _builder.Scene.Game.Services.GetService<VehicleLooks>()!;
+        looks.ShowGreyboxes.Should().BeFalse("leaving the creator draws the looks again");
+    }
+
+    [Fact]
     public void EnteringClearsTheSelectionSoNoGizmoShows()
     {
         _builder.DoubleClick(_builder.MiddleOf("Van"));
