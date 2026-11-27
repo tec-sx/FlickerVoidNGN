@@ -22,6 +22,9 @@ public sealed partial class CreatorMode
     /// <summary>Raised when the door tool starts, ends or changes a number.</summary>
     public event Action? DoorChanged;
 
+    /// <summary>Whether the creation takes doors at all: it is no level piece and the shell gave it its doors.</summary>
+    public bool HasDoorTool => Doors is not null && Placement != CreatorPlacement.Piece;
+
     /// <summary>Whether the door tool can start: the creation is not a piece and Manifold cuts.</summary>
     public bool CanPlaceDoor => Doors is { IsAvailable: true } && Placement != CreatorPlacement.Piece;
 

@@ -12,12 +12,20 @@
   <ItemGroup>
     <ProjectReference Include="../Graphics/FlickerVoid.Engine.Graphics.csproj" />
   </ItemGroup>
-  <!-- The engine's DLSS library and NVIDIA's DLSS and Ray Reconstruction runtimes, beside every program once Source/Native/Dlss's build script has built them. -->
+  <!-- The engine's DLSS library and NVIDIA's DLSS and Ray Reconstruction runtimes, built on the first build (Source/Native/Dlss) and copied beside every program. -->
   <PropertyGroup>
-    <DlssNativeFolder Condition="$([MSBuild]::IsOSPlatform('Windows'))">win-x64</DlssNativeFolder>
-    <DlssNativeFolder Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux-x64</DlssNativeFolder>
+    <NativeLibraryName>Dlss</NativeLibraryName>
+    <NativeLibraryFile>FlickerVoid.Dlss</NativeLibraryFile>
   </PropertyGroup>
+  <Import Project="../../Native/Native.targets" />
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)../../../artifacts/native/$(DlssNativeFolder)/*" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+    <None Include="$(NativeOutput)*" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
   </ItemGroup>
+  <!-- The glob above ran before a first build made the files, so they are taken again once it has. -->
+  <Target Name="TakeBuiltNativeFiles" AfterTargets="BuildNativeLibrary" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <None Remove="$(NativeOutput)*" />
+      <None Include="$(NativeOutput)*" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+    </ItemGroup>
+  </Target>
 </Project>

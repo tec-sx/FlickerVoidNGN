@@ -275,6 +275,30 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         ViewModel.CreatorPanel.FindMesh("body")!.Points.Should().HaveCount(points + 4);
     }
 
+    [Fact]
+    public void HollowStartsAtTheWallThicknessAndWaitsForApplyWithoutMovingTheMouse()
+    {
+        Assert.SkipUnless(FlickerVoid.Editor.Core.Meshes.Booleans.SolidBoolean.IsAvailable, "Manifold's library is not built.");
+        MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
+        int faces = ViewModel.CreatorPanel!.FindMesh("body")!.Faces.Count;
+        tools.Thickness = 0.05;
+
+        Viewport.KeyPressed(ViewportKey.H, ViewportButtons.None);
+        bool pending = tools.IsDragging && !tools.IsFollowing;
+        Viewport.KeyPressed(ViewportKey.Enter, ViewportButtons.None);
+
+        pending.Should().BeTrue("hollow shows at once and its wall is tuned in the Tool tab");
+        ViewModel.CreatorPanel.FindMesh("body")!.Faces.Count.Should().BeGreaterThan(faces);
+    }
+
+    [Fact]
+    public void TheRailOffersTheDoorInEveryCreationEvenWhenItCannotCut()
+    {
+        _builder.DoubleClick(_builder.MiddleOf("Van"));
+
+        Viewport.MeshTools.HasDoorTool.Should().BeTrue("the door tool says what it needs rather than disappearing");
+    }
+
     private MeshToolsViewModel EnterBodyWithAFaceSelected()
     {
         _builder.DoubleClick(_builder.MiddleOf("Van"));

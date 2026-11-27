@@ -65,7 +65,7 @@ public sealed partial class ToolRailViewModel : ObservableObject
             ], true));
         }
 
-        if (tools.CanDoor)
+        if (tools.HasDoorTool)
         {
             groups.Add(new ToolGroup([new ToolItem("Door", "D", nameof(LucideIcons.Door), tools.ToggleDoor, tools.IsDoorTool)], true));
         }
@@ -83,7 +83,7 @@ public sealed partial class ToolRailViewModel : ObservableObject
 
     private void HandleToolsChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MeshToolsViewModel.IsMeshMode) or nameof(MeshToolsViewModel.ActiveTool) or nameof(MeshToolsViewModel.Mirror) or nameof(MeshToolsViewModel.IsDoorTool) or nameof(MeshToolsViewModel.CanDoor))
+        if (e.PropertyName is nameof(MeshToolsViewModel.IsMeshMode) or nameof(MeshToolsViewModel.ActiveTool) or nameof(MeshToolsViewModel.Mirror) or nameof(MeshToolsViewModel.IsDoorTool) or nameof(MeshToolsViewModel.HasDoorTool))
         {
             Refresh();
         }
