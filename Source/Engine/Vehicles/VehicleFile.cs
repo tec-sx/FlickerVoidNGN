@@ -54,6 +54,21 @@ public sealed class VehicleFile : IJsonOnDeserialized, ICreationFile
     /// <summary>How the vehicle drives: its own values, else those a new vehicle of its type starts with.</summary>
     public VehicleDrive GetDrive() => Drive ?? VehicleDrive.Create(Type);
 
+    /// <summary>How the vehicle drives; a file without it drives as a new vehicle of its type does (<see cref="GetDrive"/>).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public VehicleDrive? Drive { get; set; }
+
+    /// <summary>Whether the vehicle balances on wheels in line and leans into turns: a motorcycle on two.</summary>
+    [JsonIgnore]
+    public bool Leans => Type == VehicleType.Motorcycle && Wheels.Count == 2;
+
+    /// <summary>Whether the vehicle can take a driver; a trailer is only towed.</summary>
+    [JsonIgnore]
+    public bool CanBeDriven => Type != VehicleType.Trailer;
+
+    /// <summary>How the vehicle drives: its own values, else those a new vehicle of its type starts with.</summary>
+    public VehicleDrive GetDrive() => Drive ?? VehicleDrive.Create(Type);
+
     /// <summary>A new vehicle of the type: a box body and the fewest wheels it takes.</summary>
     public static VehicleFile Create(VehicleType type)
     {
