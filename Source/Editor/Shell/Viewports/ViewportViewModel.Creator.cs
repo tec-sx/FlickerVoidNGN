@@ -170,7 +170,9 @@ public sealed partial class ViewportViewModel
             case ViewportKey.B:
                 MeshTools.DragBevel();
                 break;
-            case ViewportKey.L:
+            case ViewportKey.M:
+                MeshTools.Mirror = !MeshTools.Mirror;
+                break;
             case ViewportKey.R when ctrl:
                 MeshTools.LoopCut();
                 break;

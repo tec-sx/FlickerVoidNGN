@@ -128,8 +128,36 @@ public sealed partial class MeshToolsViewModel : ObservableObject
         set => _creator()?.SetMirror(value);
     }
 
+    /// <summary>The tool whose amount is following the mouse, or null.</summary>
+    public MeshDragTool? ActiveTool => _creator()?.MeshDrag;
+
+    /// <summary>Whether the Tool tab has something to show: the mesh is entered.</summary>
+    public bool HasToolOptions => IsMeshMode;
+
+    /// <summary>The Tool tab's heading: the tool in hand, or what the gizmo does when none is.</summary>
+    public string ToolName => ActiveTool?.ToString() ?? "Selection";
+
+    public bool ShowsAmount => ActiveTool is MeshDragTool.Extrude or MeshDragTool.Cut;
+
+    public bool ShowsCutThrough => ActiveTool == MeshDragTool.Cut;
+
+    public bool ShowsThickness => ActiveTool is MeshDragTool.Inset or MeshDragTool.Bevel;
+
+    public bool ShowsBevel => ActiveTool == MeshDragTool.Bevel;
+
+    /// <summary>Whether no tool is held, so the options of the tools that act at once and the numeric transform show.</summary>
+    public bool ShowsResting => IsMeshMode && ActiveTool is null;
+
     public void Refresh()
     {
+        OnPropertyChanged(nameof(ActiveTool));
+        OnPropertyChanged(nameof(HasToolOptions));
+        OnPropertyChanged(nameof(ToolName));
+        OnPropertyChanged(nameof(ShowsAmount));
+        OnPropertyChanged(nameof(ShowsCutThrough));
+        OnPropertyChanged(nameof(ShowsThickness));
+        OnPropertyChanged(nameof(ShowsBevel));
+        OnPropertyChanged(nameof(ShowsResting));
         OnPropertyChanged(nameof(IsCreating));
         OnPropertyChanged(nameof(IsDragging));
         OnPropertyChanged(nameof(IsMeshMode));
@@ -195,12 +223,20 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
         _dragFrom = _pointer;
         _dragTyped = false;
-        _report($"{tool}: move the mouse up or down, click to keep, right-click or Escape to cancel.");
-        OnPropertyChanged(nameof(IsDragging));
+        _report($"{tool}: move the mouse up or down, click or Enter to apply, right-click or Escape to cancel.");
+        Refresh();
     }
 
     /// <summary>Keeps what the dragged tool shows; false when no tool is dragged.</summary>
     public bool ConfirmDrag() => EndDrag(keep: true);
+
+    /// <summary>The confirm bar's Apply (Enter).</summary>
+    [RelayCommand]
+    public void Apply() => ConfirmDrag();
+
+    /// <summary>The confirm bar's Cancel (Escape).</summary>
+    [RelayCommand]
+    public void Cancel() => CancelDrag();
 
     /// <summary>Puts the mesh back as it was before the dragged tool; false when no tool is dragged.</summary>
     public bool CancelDrag() => EndDrag(keep: false);

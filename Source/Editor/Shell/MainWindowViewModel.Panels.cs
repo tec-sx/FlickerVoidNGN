@@ -9,6 +9,7 @@ using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Persistence.Layout;
+using FlickerVoid.Editor.Viewports;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Editor;
@@ -26,6 +27,9 @@ public sealed partial class MainWindowViewModel
 
     /// <summary>The context panel's creator tab, shown while a vehicle or a building is made.</summary>
     public const int CreatorTab = 2;
+
+    /// <summary>The context panel's Tool tab, shown while a creator's mesh is entered: the options of the tool in hand.</summary>
+    public const int ToolTab = 3;
 
     /// <summary>The outliner's Scene tab, hidden in the creator.</summary>
     public const int SceneTab = 0;
@@ -68,6 +72,8 @@ public sealed partial class MainWindowViewModel
     public bool ShowsData => _contextTabs.Contains(DataTab);
 
     public bool ShowsCreator => _contextTabs.Contains(CreatorTab);
+
+    public bool ShowsTool => _contextTabs.Contains(ToolTab);
 
     /// <summary>Whether the context panel shows anything; when not, it says how to fill it.</summary>
     public bool HasContext => _contextTabs.Count > 0;
@@ -290,7 +296,26 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(ShowsInspector));
         OnPropertyChanged(nameof(ShowsData));
         OnPropertyChanged(nameof(ShowsCreator));
+        OnPropertyChanged(nameof(ShowsTool));
         OnPropertyChanged(nameof(HasContext));
+    }
+
+    /// <summary>The Tool tab comes in front while the mesh is entered and goes when it is left.</summary>
+    private void HandleMeshToolsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MeshToolsViewModel.IsMeshMode))
+        {
+            return;
+        }
+
+        if (Viewport.MeshTools.IsMeshMode)
+        {
+            ShowContext(ToolTab);
+        }
+        else
+        {
+            HideContext(ToolTab);
+        }
     }
 
     /// <summary>Shows the inspector while an entity is selected, in front when the selection changes to one.</summary>

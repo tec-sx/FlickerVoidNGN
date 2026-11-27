@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text.Json.Serialization.Metadata;
 
 using Arch.Core;
@@ -55,6 +56,11 @@ public sealed partial class ViewportViewModel
     /// <summary>The mood the viewport draws: the <see cref="GetLayeredMood"/>, without its canvas while <see cref="ShowCanvas"/> is off.</summary>
     public LightingMood GetDrawnMood()
     {
+        if (IsCreating)
+        {
+            return GetWorkshopMood();
+        }
+
         LightingMood drawn = GetLayeredMood();
         if (!ShowCanvas)
         {
@@ -62,6 +68,28 @@ public sealed partial class ViewportViewModel
         }
 
         return drawn;
+    }
+
+    /// <summary>The look of a creator (owner, 2026-11-27): a dark room, no sky, sun, moon, stars, fog or canvas, lit by the work light and a little ambient.</summary>
+    public static LightingMood GetWorkshopMood()
+    {
+        Vector3 dark = new(0.012f, 0.011f, 0.01f);
+        return new LightingMood
+        {
+            Ambient = 0.55f,
+            SunIntensity = 0,
+            MoonIntensity = 0,
+            SunDiscIntensity = 0,
+            MoonDiscIntensity = 0,
+            SunGlow = 0,
+            MoonCorona = 0,
+            StarIntensity = 0,
+            SkyZenith = dark,
+            SkyHorizon = dark,
+            SkyGround = dark,
+            SkyBandColor = dark,
+            SkyMaskStrength = 0,
+        };
     }
 
     /// <summary>

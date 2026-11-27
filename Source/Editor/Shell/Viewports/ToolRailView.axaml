@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:viewports="using:FlickerVoid.Editor.Viewports"
+             x:Class="FlickerVoid.Editor.Viewports.ToolRailView"
+             x:DataType="viewports:ToolRailViewModel">
+  <!-- The tools of what is being edited, one column on the viewport's left edge: the chosen one, or the one whose key was pressed, is lit. -->
+  <Border Classes="viewportBar" Height="NaN" Padding="3">
+    <ItemsControl ItemsSource="{Binding Groups}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="viewports:ToolGroup">
+          <StackPanel>
+            <Border Classes="hsep" IsVisible="{Binding HasLine}" Margin="3,3" />
+            <ItemsControl ItemsSource="{Binding Items}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="viewports:ToolItem">
+                  <ToggleButton Classes="viewportIcon rail" Width="26" Height="26" IsChecked="{Binding IsActive, Mode=OneWay}" Command="{Binding Command}"
+                                ToolTip.Tip="{Binding Tip}">
+                    <PathIcon Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}" Width="15" Height="15" />
+                  </ToggleButton>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </Border>
+</UserControl>

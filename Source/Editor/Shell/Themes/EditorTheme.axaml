@@ -756,6 +756,11 @@
     <Setter Property="Padding" Value="6,0" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
+  <Style Selector="Border.hsep">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="0,5" />
+    <Setter Property="Background" Value="{StaticResource EditorLineBrush}" />
+  </Style>
   <Style Selector="Border.vsep">
     <Setter Property="Width" Value="1" />
     <Setter Property="Height" Value="16" />
@@ -1328,16 +1333,14 @@
     <Setter Property="Padding" Value="5,0,0,0" />
     <Setter Property="FontWeight" Value="Medium" />
   </Style>
-  <Style Selector="Button.viewportRound">
-    <Setter Property="Width" Value="28" />
-    <Setter Property="Height" Value="28" />
-    <Setter Property="MinHeight" Value="0" />
+  <!-- The tool rail's buttons are square, and the one in hand is filled. -->
+  <Style Selector="ToggleButton.viewportIcon.rail">
     <Setter Property="Padding" Value="0" />
-    <Setter Property="CornerRadius" Value="14" />
-    <Setter Property="HorizontalAlignment" Value="Center" />
-    <Setter Property="Background" Value="{StaticResource EditorOverlayBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource EditorOverlayLineBrush}" />
-    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.viewportIcon.accent">
+    <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentInkBrush}" />
   </Style>
   <!-- A message floating at the bottom left of the picture. -->
   <Style Selector="Border.toast">

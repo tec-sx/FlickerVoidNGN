@@ -11,6 +11,12 @@ namespace FlickerVoid.Editor;
 /// </summary>
 public static class LucideIcons
 {
+    public static Geometry Extrude { get; } = Parse("M18 9l-6-6-6 6 M12 3v14 M5 21h14");
+    public static Geometry Inset { get; } = Parse("M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z M9 8h6a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1z");
+    public static Geometry Bevel { get; } = Parse("M20.34 17.52a10 10 0 1 0-2.82 2.82 M17 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0z M13.41 13.41L17.59 17.59 M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0z");
+    public static Geometry LoopCut { get; } = Parse("M12 2v20 M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3 M8 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3");
+    public static Geometry Cut { get; } = Parse("M11 16.586V19a1 1 0 0 1-1 1H2L18.37 3.63a1 1 0 1 1 3 3l-9.663 9.663a1 1 0 0 1-1.414 0L8 14");
+    public static Geometry Mirror { get; } = Parse("M10 12H8 M16 12h-2 M22 12h-2 M4 12H2 M7.298 20.288A1 1 0 0 0 8 22h8a1 1 0 0 0 .703-1.712l-3.991-3.99a1 1 0 0 0-1.424-.001z M7.298 3.712A1 1 0 0 1 8 2h8a1 1 0 0 1 .703 1.712l-3.991 3.99a1 1 0 0 1-1.424.001z");
     public static Geometry Select { get; } = Parse("M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z");
     public static Geometry Move { get; } = Parse("M12 2v20 M15 19l-3 3-3-3 M19 9l3 3-3 3 M2 12h20 M5 9l-3 3 3 3 M9 5l3-3 3 3");
     public static Geometry Rotate { get; } = Parse("M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8 M21 3v5h-5");
@@ -20,8 +26,6 @@ public static class LucideIcons
     public static Geometry Perspective { get; } = Parse("M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z M3.3 7l8.7 5 8.7-5 M12 22V12");
     public static Geometry Grid { get; } = Parse("M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z M3 9h18 M3 15h18 M9 3v18 M15 3v18");
     public static Geometry DepthFade { get; } = Parse("M8 9a7 7 0 1 0 14 0a7 7 0 1 0 -14 0z M2 15a7 7 0 1 0 14 0a7 7 0 1 0 -14 0z");
-    public static Geometry Pan { get; } = Parse("M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2 M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2 M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8 M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15");
-    public static Geometry Zoom { get; } = Parse("M21 21l-4.34-4.34 M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0z");
     public static Geometry Play { get; } = Parse("M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z");
     public static Geometry Duplicate { get; } = Parse("M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2z M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2");
     public static Geometry Delete { get; } = Parse("M10 11v6 M14 11v6 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6 M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2");
@@ -142,8 +146,6 @@ public static class LucideIcons
         [nameof(Perspective)] = Perspective,
         [nameof(Grid)] = Grid,
         [nameof(DepthFade)] = DepthFade,
-        [nameof(Pan)] = Pan,
-        [nameof(Zoom)] = Zoom,
         [nameof(Play)] = Play,
         [nameof(Duplicate)] = Duplicate,
         [nameof(Delete)] = Delete,
@@ -230,6 +232,12 @@ public static class LucideIcons
         [nameof(Moon)] = Moon,
         [nameof(Environment)] = Environment,
         [nameof(Door)] = Door,
+        [nameof(Extrude)] = Extrude,
+        [nameof(Inset)] = Inset,
+        [nameof(Bevel)] = Bevel,
+        [nameof(LoopCut)] = LoopCut,
+        [nameof(Cut)] = Cut,
+        [nameof(Mirror)] = Mirror,
         [nameof(Zone)] = Zone,
         [nameof(Pin)] = Pin,
         [nameof(Cube)] = Cube,

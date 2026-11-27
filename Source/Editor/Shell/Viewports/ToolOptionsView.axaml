@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewports="using:FlickerVoid.Editor.Viewports"
+             xmlns:inspector="using:FlickerVoid.Editor.Inspector"
+             x:Class="FlickerVoid.Editor.Viewports.ToolOptionsView"
+             x:DataType="viewports:MeshToolsViewModel">
+  <!-- The options of the tool in hand, in the inspector's place: its numbers change the result at once, and Apply and Cancel wait at the bottom of the view. -->
+  <StackPanel Margin="4,2" Spacing="4">
+    <TextBlock Text="{Binding ToolName}" FontWeight="SemiBold" Margin="0,2,0,2" />
+    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4" IsVisible="{Binding IsDragging}">
+      <TextBlock Text="Amount" VerticalAlignment="Center" IsVisible="{Binding ShowsAmount}" />
+      <inspector:DragNumberBox Grid.Column="1" Value="{Binding Amount}" Minimum="0" IsVisible="{Binding ShowsAmount}"
+                               ToolTip.Tip="How far the faces go, in metres; the mouse sets it until a number is typed" />
+      <TextBlock Grid.Row="1" Text="Width" VerticalAlignment="Center" IsVisible="{Binding ShowsThickness}" />
+      <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding Thickness}" Minimum="0" IsVisible="{Binding ShowsThickness}"
+                               ToolTip.Tip="Inset thickness or bevel width, in metres" />
+      <TextBlock Grid.Row="2" Text="Segments" VerticalAlignment="Center" IsVisible="{Binding ShowsBevel}" />
+      <inspector:DragNumberBox Grid.Row="2" Grid.Column="1" Value="{Binding Rows}" Minimum="1" Maximum="8" Step="1" IsVisible="{Binding ShowsBevel}"
+                               ToolTip.Tip="How many strips the bevel is made of" />
+      <TextBlock Grid.Row="3" Text="Shape" VerticalAlignment="Center" IsVisible="{Binding ShowsBevel}" />
+      <ToggleButton Grid.Row="3" Grid.Column="1" Content="Round" IsChecked="{Binding Round}" IsVisible="{Binding ShowsBevel}" HorizontalAlignment="Left"
+                    ToolTip.Tip="A curve toward the old edge, or flat" />
+    </Grid>
+    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto" IsVisible="{Binding ShowsCutThrough}">
+      <TextBlock Text="Through" VerticalAlignment="Center" />
+      <ToggleButton Grid.Column="1" Content="All the way" IsChecked="{Binding Through}" HorizontalAlignment="Left" ToolTip.Tip="A through cut has no depth and is made at once" />
+    </Grid>
+    <!-- With no tool in hand: the numbers the gizmo's tool takes, and the settings of the tools that act at once. -->
+    <StackPanel Spacing="4" IsVisible="{Binding ShowsResting}">
+      <TextBlock Classes="muted" Text="Numbers" />
+      <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto" RowSpacing="4">
+        <TextBlock Text="Do" VerticalAlignment="Center" />
+        <ComboBox Grid.Column="1" SelectedIndex="{Binding TransformToolIndex}" HorizontalAlignment="Stretch"
+                  ToolTip.Tip="Move, rotate or scale the selection by exact numbers">
+          <ComboBoxItem>Move</ComboBoxItem>
+          <ComboBoxItem>Rotate</ComboBoxItem>
+          <ComboBoxItem>Scale</ComboBoxItem>
+        </ComboBox>
+        <TextBlock Grid.Row="1" Text="Values" VerticalAlignment="Center" />
+        <UniformGrid Grid.Row="1" Grid.Column="1" Columns="3">
+          <inspector:DragNumberBox Value="{Binding TransformX}" AxisBrush="{StaticResource EditorAxisXBrush}" ToolTip.Tip="X" />
+          <inspector:DragNumberBox Value="{Binding TransformY}" AxisBrush="{StaticResource EditorAxisYBrush}" ToolTip.Tip="Y" />
+          <inspector:DragNumberBox Value="{Binding TransformZ}" AxisBrush="{StaticResource EditorAxisZBrush}" ToolTip.Tip="Z" />
+        </UniformGrid>
+      </Grid>
+      <Button Content="Apply numbers" Command="{Binding ApplyTransformCommand}" HorizontalAlignment="Left" ToolTip.Tip="Do it to the selection" />
+      <TextBlock Classes="muted" Text="Loop cut (L)" Margin="0,6,0,0" />
+      <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto" RowSpacing="4">
+        <TextBlock Text="Cuts" VerticalAlignment="Center" />
+        <inspector:DragNumberBox Grid.Column="1" Value="{Binding Cuts}" Minimum="1" Maximum="8" Step="1" ToolTip.Tip="Loop cuts" />
+        <TextBlock Grid.Row="1" Text="Slide" VerticalAlignment="Center" />
+        <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding Slide}" Minimum="-1" Maximum="1" ToolTip.Tip="Loop slide, -1 to 1" />
+      </Grid>
+      <TextBlock Classes="muted" Text="Door (D)" Margin="0,6,0,0" />
+      <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
+        <TextBlock Text="Depth" VerticalAlignment="Center" />
+        <inspector:DragNumberBox Grid.Column="1" Value="{Binding Thickness}" Minimum="0" ToolTip.Tip="Door depth, in metres" />
+        <TextBlock Grid.Row="1" Text="Angle" VerticalAlignment="Center" />
+        <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding Angle}" Minimum="1" Maximum="170" Step="1" ToolTip.Tip="Door angle, in degrees" />
+        <TextBlock Grid.Row="2" Text="Opens" VerticalAlignment="Center" />
+        <ToggleButton Grid.Row="2" Grid.Column="1" Content="Outward" IsChecked="{Binding Outward}" HorizontalAlignment="Left" ToolTip.Tip="Swing out or in" />
+        <TextBlock Grid.Row="3" Text="Cut" VerticalAlignment="Center" />
+        <ToggleButton Grid.Row="3" Grid.Column="1" Content="Through" IsChecked="{Binding Through}" HorizontalAlignment="Left" ToolTip.Tip="Cut through the whole wall" />
+      </Grid>
+      <TextBlock Classes="muted" TextWrapping="Wrap" Margin="0,6,0,0"
+                 Text="Double-click an edge for its loop, Shift adds. Q W E R switch the gizmo; X, I, C and B start a tool, then Enter applies and Escape cancels." />
+    </StackPanel>
+  </StackPanel>
+</UserControl>

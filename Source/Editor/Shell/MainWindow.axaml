@@ -265,6 +265,15 @@
                 </ContentControl.DataTemplates>
               </ContentControl>
             </TabItem>
+            <TabItem IsVisible="{Binding ShowsTool}">
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <PathIcon Data="{x:Static shell:LucideIcons.Transform}" />
+                  <TextBlock Text="Tool" />
+                </StackPanel>
+              </TabItem.Header>
+              <viewports:ToolOptionsView DataContext="{Binding Viewport.MeshTools}" />
+            </TabItem>
           </TabControl>
         </Panel>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" />

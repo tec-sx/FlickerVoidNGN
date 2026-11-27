@@ -10,19 +10,29 @@
     <!-- Top left, the tools in hand: select, move, turn and scale, the axes they follow, and the snap of the tool chosen. -->
     <Border Classes="viewportBar" Margin="12" HorizontalAlignment="Left" VerticalAlignment="Top">
       <StackPanel Orientation="Horizontal">
-        <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsSelectMode}" ToolTip.Tip="Select (Q)">
-          <PathIcon Data="{x:Static shell:LucideIcons.Select}" />
-        </ToggleButton>
-        <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsMoveMode}" ToolTip.Tip="Move (W)">
-          <PathIcon Data="{x:Static shell:LucideIcons.Move}" />
-        </ToggleButton>
-        <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsRotateMode}" ToolTip.Tip="Rotate (E)">
-          <PathIcon Data="{x:Static shell:LucideIcons.Rotate}" />
-        </ToggleButton>
-        <ToggleButton Classes="viewportIcon" IsChecked="{Binding IsScaleMode}" ToolTip.Tip="Scale (R)">
-          <PathIcon Data="{x:Static shell:LucideIcons.Scale}" />
-        </ToggleButton>
-        <Border Classes="vsep" />
+        <!-- A creator's object or mesh, and in the mesh the kind of element a click selects. -->
+        <StackPanel Orientation="Horizontal" IsVisible="{Binding IsCreating}" DataContext="{Binding MeshTools}" x:DataType="viewports:MeshToolsViewModel">
+          <ToggleButton Classes="viewportIcon text" IsChecked="{Binding !IsMeshMode}" Command="{Binding LeaveCommand}" ToolTip.Tip="Move and select the creation's parts">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Data="{x:Static shell:LucideIcons.Cube}" />
+              <TextBlock Text="Object" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Classes="viewportIcon text" IsChecked="{Binding IsMeshMode, Mode=OneWay}" Command="{Binding ToggleMeshCommand}"
+                        ToolTip.Tip="Edit the mesh of the selected part (Tab); click a part first">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Data="{x:Static shell:LucideIcons.Grid}" />
+              <TextBlock Text="Mesh" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding IsMeshMode}">
+            <Border Classes="vsep" />
+            <ToggleButton Classes="viewportIcon text" IsChecked="{Binding IsPoint}" ToolTip.Tip="Points (1)" Content="Point" />
+            <ToggleButton Classes="viewportIcon text" IsChecked="{Binding IsEdge}" ToolTip.Tip="Edges (2)" Content="Edge" />
+            <ToggleButton Classes="viewportIcon text" IsChecked="{Binding IsFace}" ToolTip.Tip="Faces (3)" Content="Face" />
+          </StackPanel>
+          <Border Classes="vsep" />
+        </StackPanel>
         <ToggleButton Classes="viewportIcon text flat" IsChecked="{Binding IsLocalSpace}" ToolTip.Tip="The axes the handles follow: the world's, or the selected entity's own.">
           <StackPanel Orientation="Horizontal" Spacing="6">
             <Panel>
@@ -86,35 +96,16 @@
                 ToolTip.Tip="Cut the other selected greyboxes out of the one selected last: a tunnel, a doorway, a window" />
       </StackPanel>
     </Border>
-    <!-- The creator's mesh: Edit mesh, then in the mesh the element kind, the tools' numbers and the numeric transform; the tools are on the right-click menu. -->
-    <Border Classes="viewportBar" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Bottom"
-            IsVisible="{Binding MeshTools.IsCreating}">
-      <StackPanel Orientation="Horizontal" Spacing="2" DataContext="{Binding MeshTools}" x:DataType="viewports:MeshToolsViewModel">
-        <ToggleButton Content="Edit mesh" IsChecked="{Binding IsMeshMode, Mode=OneWay}" Command="{Binding ToggleMeshCommand}"
-                      ToolTip.Tip="Edit the mesh of the selected part (Tab); click a part first" />
-        <StackPanel Orientation="Horizontal" Spacing="2" IsVisible="{Binding IsMeshMode}">
-          <Rectangle Width="1" Fill="{StaticResource EditorLineBrush}" Margin="2,0" />
-          <RadioButton GroupName="MeshElement" Content="Point" IsChecked="{Binding IsPoint}" ToolTip.Tip="Points (1)" />
-          <RadioButton GroupName="MeshElement" Content="Edge" IsChecked="{Binding IsEdge}" ToolTip.Tip="Edges (2)" />
-          <RadioButton GroupName="MeshElement" Content="Face" IsChecked="{Binding IsFace}" ToolTip.Tip="Faces (3)" />
-          <Rectangle Width="1" Fill="{StaticResource EditorLineBrush}" Margin="2,0" />
-          <inspector:DragNumberBox Width="56" Value="{Binding Amount}" Minimum="0" ToolTip.Tip="Amount: extrude and cut depth, in metres; follows the mouse while the tool is held" />
-          <inspector:DragNumberBox Width="56" Value="{Binding Thickness}" Minimum="0" ToolTip.Tip="Thickness: inset, bevel width and door depth, in metres; follows the mouse while the tool is held" />
-          <inspector:DragNumberBox Width="44" Value="{Binding Rows}" Minimum="1" Maximum="8" Step="1" ToolTip.Tip="Bevel rows" />
-          <inspector:DragNumberBox Width="44" Value="{Binding Cuts}" Minimum="1" Maximum="8" Step="1" ToolTip.Tip="Loop cuts" />
-          <inspector:DragNumberBox Width="48" Value="{Binding Slide}" Minimum="-1" Maximum="1" ToolTip.Tip="Loop slide, -1 to 1" />
-          <inspector:DragNumberBox Width="52" Value="{Binding Angle}" Minimum="1" Maximum="170" Step="1" ToolTip.Tip="Door angle, in degrees" />
-          <Rectangle Width="1" Fill="{StaticResource EditorLineBrush}" Margin="2,0" />
-          <ComboBox SelectedIndex="{Binding TransformToolIndex}" ToolTip.Tip="Numeric move, rotate or scale of the selection">
-            <ComboBoxItem>Move</ComboBoxItem>
-            <ComboBoxItem>Rotate</ComboBoxItem>
-            <ComboBoxItem>Scale</ComboBoxItem>
-          </ComboBox>
-          <inspector:DragNumberBox Width="52" Value="{Binding TransformX}" AxisBrush="{StaticResource EditorAxisXBrush}" ToolTip.Tip="X" />
-          <inspector:DragNumberBox Width="52" Value="{Binding TransformY}" AxisBrush="{StaticResource EditorAxisYBrush}" ToolTip.Tip="Y" />
-          <inspector:DragNumberBox Width="52" Value="{Binding TransformZ}" AxisBrush="{StaticResource EditorAxisZBrush}" ToolTip.Tip="Z" />
-          <Button Content="Apply" Command="{Binding ApplyTransformCommand}" ToolTip.Tip="Do it to the selection" />
-        </StackPanel>
+    <!-- The tool rail down the left edge, under the mode bar: one component, filled with the tools of what is being edited. -->
+    <viewports:ToolRailView Margin="12,50,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" DataContext="{Binding ToolRail}" />
+    <!-- A tool with a pending result waits here: Apply (Enter) keeps it, Cancel (Escape) puts the mesh back. -->
+    <Border Classes="viewportBar" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"
+            IsVisible="{Binding MeshTools.IsDragging}">
+      <StackPanel Orientation="Horizontal" Spacing="8" DataContext="{Binding MeshTools}" x:DataType="viewports:MeshToolsViewModel">
+        <TextBlock Text="{Binding ToolName}" VerticalAlignment="Center" FontWeight="Medium" />
+        <Border Classes="vsep" Margin="0" />
+        <Button Classes="viewportIcon text" Height="26" Content="Cancel" Command="{Binding CancelCommand}" ToolTip.Tip="Put the mesh back (Escape)" />
+        <Button Classes="viewportIcon text accent" Height="26" Padding="10,0" Content="Apply" Command="{Binding ApplyCommand}" ToolTip.Tip="Keep the result (Enter)" />
       </StackPanel>
     </Border>
     <!-- The selected shot's timeline, left of the camera preview in the bottom right corner. -->
@@ -174,14 +165,6 @@
         </StackPanel>
       </Border>
       <viewports:NavigationGizmo Width="80" Height="80" Camera="{Binding Camera}" HorizontalAlignment="Right" />
-      <viewports:CameraDragButton Classes="viewportRound" Drag="Pan" Camera="{Binding Camera}" HorizontalAlignment="Right" Margin="0,0,26,0"
-                                  ViewportHeight="{Binding $parent[UserControl].Bounds.Height}" ToolTip.Tip="Drag to pan the view.">
-        <PathIcon Data="{x:Static shell:LucideIcons.Pan}" />
-      </viewports:CameraDragButton>
-      <viewports:CameraDragButton Classes="viewportRound" Drag="Zoom" Camera="{Binding Camera}" HorizontalAlignment="Right" Margin="0,0,26,0"
-                                  ToolTip.Tip="Drag to zoom the view.">
-        <PathIcon Data="{x:Static shell:LucideIcons.Zoom}" />
-      </viewports:CameraDragButton>
     </StackPanel>
   </Panel>
 </UserControl>
