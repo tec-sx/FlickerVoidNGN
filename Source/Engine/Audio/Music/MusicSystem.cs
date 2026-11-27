@@ -360,22 +360,15 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
     /// <summary>The first line of the cue's grid on or after a frame; the frame itself without a grid.</summary>
     private static long NextLine(CueState cue, long from, MusicQuantize quantize)
     {
-        double unit = quantize switch
-        {
-            MusicQuantize.Beat => BeatFrames(cue.Cue),
-            MusicQuantize.Bar => BarFrames(cue.Cue),
-            MusicQuantize.Phrase => BarFrames(cue.Cue) * cue.Cue.PhraseBars,
-            _ => 0,
-        };
+        double barFrames = BarFrames(cue.Cue);
+        double unit = MusicGrid.GetUnit(cue.Cue, quantize) * barFrames;
         if (unit <= 0)
         {
             return from;
         }
 
-        double passed = (from - cue.Start) / unit;
-        double lines = Math.Ceiling(passed - 0.000001);
-        lines = Math.Max(0, lines);
-        return cue.Start + (long)Math.Round(lines * unit);
+        double line = MusicGrid.NextLine(from - cue.Start, unit);
+        return cue.Start + (long)Math.Round(line);
     }
 
     private long NextBar(CueState cue)

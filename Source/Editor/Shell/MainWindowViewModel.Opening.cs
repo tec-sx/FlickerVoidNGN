@@ -15,10 +15,14 @@ using FlickerVoid.Editor.Assets.Textures;
 using FlickerVoid.Editor.Core.Data;
 using FlickerVoid.Editor.Core.Environments;
 using FlickerVoid.Editor.Core.Flows;
+using FlickerVoid.Editor.Core.Music;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Editor.Materials;
+using FlickerVoid.Engine.Audio.Mixing;
+using FlickerVoid.Engine.Audio.Music;
+using FlickerVoid.Engine.Audio.Sounds;
 using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Data;
@@ -32,6 +36,12 @@ public sealed partial class MainWindowViewModel
 
     /// <summary>Forgets a flow graph whose editor window closed, so undo there no longer opens it.</summary>
     public void CloseFlow(string path) => _openFlows.Remove(path);
+
+    /// <summary>The music cue's undo and redo steps, for its editor window.</summary>
+    public UndoHistory GetMusicHistory(string path) => _content.GetHistory(path);
+
+    /// <summary>Forgets a music cue whose editor window closed, so undo there no longer opens it.</summary>
+    public void CloseMusic(string path) => _openMusic.Remove(path);
 
     /// <summary>The environment file's undo and redo steps, for its editor window.</summary>
     public UndoHistory GetEnvironmentHistory(string path) => _content.GetHistory(path);
@@ -177,7 +187,42 @@ public sealed partial class MainWindowViewModel
         JsonTypeInfo typeInfo = types.Options.GetTypeInfo(document.Asset.GetType());
         ContentFileFinder files = new(_content);
         string title = Path.GetFileNameWithoutExtension(path);
+        if (document.Asset is MusicCue cue)
+        {
+            JsonTypeInfo trackType = types.Options.GetTypeInfo(typeof(MusicTrack));
+            ClipCatalog catalog = new(ReadClip);
+            MusicEditorViewModel editor = new(title, cue, typeInfo, trackType, document.Hold, catalog, files.Find);
+            _openMusic.Add(path);
+            MusicRequested?.Invoke(path, editor);
+            return;
+        }
+
         ShowData(path, new DataObjectViewModel(title, document.Asset, typeInfo, document.Hold, files.Find));
+    }
+
+    private SoundClip? ReadClip(string file)
+    {
+        string full = _content.GetFullPath(file);
+        if (!File.Exists(full))
+        {
+            return null;
+        }
+
+        try
+        {
+            if (full.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase))
+            {
+                using FileStream stream = File.OpenRead(full);
+                return OggReader.Read(stream);
+            }
+
+            byte[] bytes = File.ReadAllBytes(full);
+            return WavReader.Read(bytes);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Edits the flow graph in a graph editor window, its edits held unsaved like a data asset's.</summary>
@@ -383,6 +428,14 @@ public sealed partial class MainWindowViewModel
             if (IsPath(environment, fullPath))
             {
                 OpenEnvironment(environment);
+            }
+        }
+
+        foreach (string music in _openMusic.ToList())
+        {
+            if (IsPath(music, fullPath))
+            {
+                OpenData(music);
             }
         }
 

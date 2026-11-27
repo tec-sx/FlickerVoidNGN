@@ -81,6 +81,12 @@
     <SolidColorBrush x:Key="FlowMapFrameFillBrush" Color="#14F5A639" />
 
     <!-- Colours the code views draw with: the curve palette, code assets, the splash track and shadows. -->
+    <Color x:Key="EditorTrack1">#F5A639</Color>
+    <Color x:Key="EditorTrack2">#E0804A</Color>
+    <Color x:Key="EditorTrack3">#E0664A</Color>
+    <Color x:Key="EditorTrack4">#D9B23A</Color>
+    <Color x:Key="EditorTrack5">#4FB3A9</Color>
+    <Color x:Key="EditorTrack6">#D97BA6</Color>
     <Color x:Key="EditorCurveBlue">#5ACCFF</Color>
     <Color x:Key="EditorCurvePink">#D97BA6</Color>
     <Color x:Key="EditorCodeColor">#B48EC9</Color>
