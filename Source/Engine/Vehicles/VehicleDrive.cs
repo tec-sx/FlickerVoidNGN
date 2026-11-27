@@ -27,12 +27,17 @@ public sealed class VehicleDrive
     /// <summary>How quickly the suspension stops bouncing, from 0 (never) to 1 (at once).</summary>
     public float SuspensionDamping { get; set; } = 0.5f;
 
-    /// <summary>The values a new vehicle of the type drives with: a motorcycle is light, with an engine to match.</summary>
+    /// <summary>The values a new vehicle of the type drives with: a motorcycle is light, with an engine to match, and a trailer has neither engine nor steering.</summary>
     public static VehicleDrive Create(VehicleType type)
     {
         if (type == VehicleType.Motorcycle)
         {
             return new VehicleDrive { Mass = 250, EngineTorque = 150, BrakeTorque = 500, Steer = 30 };
+        }
+
+        if (type == VehicleType.Trailer)
+        {
+            return new VehicleDrive { Mass = 400, EngineTorque = 0, BrakeTorque = 800, Steer = 0 };
         }
 
         return new VehicleDrive();

@@ -14,7 +14,7 @@ public sealed class VehiclePanelViewModelTests : IDisposable
     {
         VehiclePanelViewModel panel = _builder.Build();
 
-        panel.Types.Should().Equal(VehicleType.Car, VehicleType.Motorcycle);
+        panel.Types.Should().Equal(VehicleType.Car, VehicleType.Motorcycle, VehicleType.Trailer);
         panel.Type.Should().Be(VehicleType.Car);
         panel.WheelCounts.Should().Equal(4, 6, 8);
         panel.WheelCount.Should().Be(4);

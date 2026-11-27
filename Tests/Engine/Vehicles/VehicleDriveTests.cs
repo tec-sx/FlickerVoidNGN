@@ -140,6 +140,29 @@ public sealed class VehicleDriveTests : IDisposable
     }
 
     [Fact]
+    public void ATrailerTakesNoDriver()
+    {
+        _builder = new VehicleDriveTestsBuilder(VehicleFile.Create(VehicleType.Trailer));
+        Entity trailer = _builder.Place();
+        VehicleDriveSystem drive = _builder.Game.Services.GetService<VehicleDriveSystem>()!;
+
+        _builder.Enter(trailer);
+
+        drive.CanDrive(trailer).Should().BeFalse();
+        _builder.World.Has<WheeledBody>(trailer).Should().BeFalse();
+        _builder.World.Has<DrivenVehicle>(trailer).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ACarTakesADriver()
+    {
+        _builder = new VehicleDriveTestsBuilder(VehicleFile.Create(VehicleType.Car));
+        Entity car = _builder.Place();
+
+        _builder.Game.Services.GetService<VehicleDriveSystem>()!.CanDrive(car).Should().BeTrue();
+    }
+
+    [Fact]
     public void AFileKeepsItsDriveAndOneWithoutDrivesAsItsTypeDoes()
     {
         VehicleFile car = VehicleFile.Create(VehicleType.Car);

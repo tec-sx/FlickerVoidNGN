@@ -49,6 +49,7 @@ public static class VehiclesGameExtensions
         {
             VehicleDriveSystem drive = new(game.World, parts, spawner, files, content, () => game.Services.GetService<IPhysicsSystem>());
             game.FixedSystems.Add(drive);
+            game.Services.AddService(drive);
         }
     }
 }

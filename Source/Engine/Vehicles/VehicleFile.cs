@@ -21,6 +21,7 @@ public sealed class VehicleFile : IJsonOnDeserialized
 
     private static readonly int[] CarWheels = [4, 6, 8];
     private static readonly int[] MotorcycleWheels = [2, 4];
+    private static readonly int[] TrailerWheels = [2, 4];
 
     [JsonPropertyName(JsonSchemas.SchemaProperty)]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -45,6 +46,10 @@ public sealed class VehicleFile : IJsonOnDeserialized
     [JsonIgnore]
     public bool Leans => Type == VehicleType.Motorcycle && Wheels.Count == 2;
 
+    /// <summary>Whether the vehicle can take a driver; a trailer is only towed.</summary>
+    [JsonIgnore]
+    public bool CanBeDriven => Type != VehicleType.Trailer;
+
     /// <summary>How the vehicle drives: its own values, else those a new vehicle of its type starts with.</summary>
     public VehicleDrive GetDrive() => Drive ?? VehicleDrive.Create(Type);
 
@@ -57,6 +62,11 @@ public sealed class VehicleFile : IJsonOnDeserialized
         int perAxle = GetWheelsPerAxle(type, count);
         List<VehiclePart> wheels = VehicleShapes.CreateWheels(type, perAxle);
         vehicle.Wheels.AddRange(wheels);
+        if (wheels.Count > count)
+        {
+            vehicle.Wheels.RemoveRange(count, wheels.Count - count);
+        }
+
         return vehicle;
     }
 
@@ -67,6 +77,8 @@ public sealed class VehicleFile : IJsonOnDeserialized
         {
             case VehicleType.Motorcycle:
                 return MotorcycleWheels;
+            case VehicleType.Trailer:
+                return TrailerWheels;
             default:
                 return CarWheels;
         }
@@ -160,6 +172,10 @@ public sealed class VehicleFile : IJsonOnDeserialized
         if (type == VehicleType.Motorcycle)
         {
             name = "A motorcycle";
+        }
+        else if (type == VehicleType.Trailer)
+        {
+            name = "A trailer";
         }
 
         IEnumerable<int> allButLast = counts.Take(counts.Count - 1);

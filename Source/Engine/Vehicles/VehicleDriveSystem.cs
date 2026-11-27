@@ -15,9 +15,10 @@ namespace FlickerVoid.Engine.Vehicles;
 /// <summary>
 /// Drives vehicles, each fixed step: one that gets a <see cref="DrivenVehicle"/> becomes a body on wheels made from its file, and
 /// its parts give up their standing collision; its wheel parts follow the wheels on their suspension; and one whose driver left
-/// brakes until it stops, then stands as it did before. Does nothing in a game without physics.
+/// brakes until it stops, then stands as it did before. Does nothing in a game without physics. A game service, so game code can
+/// ask whether a vehicle takes a driver.
 /// </summary>
-internal sealed class VehicleDriveSystem : BaseSystem<World, GameTime>
+public sealed class VehicleDriveSystem : BaseSystem<World, GameTime>
 {
     /// <summary>The speed, in metres a second, under which a vehicle without a driver counts as stopped.</summary>
     private const float StoppedSpeed = 0.2f;
@@ -35,7 +36,7 @@ internal sealed class VehicleDriveSystem : BaseSystem<World, GameTime>
     private readonly List<Entity> _changing = [];
     private IPhysicsSystem? _physics;
 
-    public VehicleDriveSystem(World world, CreationParts parts, VehicleSpawnSystem spawner, VehicleFiles files, IContentManager content, Func<IPhysicsSystem?> findPhysics)
+    internal VehicleDriveSystem(World world, CreationParts parts, VehicleSpawnSystem spawner, VehicleFiles files, IContentManager content, Func<IPhysicsSystem?> findPhysics)
         : base(world)
     {
         _parts = parts;
@@ -72,18 +73,30 @@ internal sealed class VehicleDriveSystem : BaseSystem<World, GameTime>
         World.Query(in Rolling, (Entity vehicle) => PoseWheels(vehicle, physics));
     }
 
+    /// <summary>Whether the vehicle can take a driver: its file can be read, and it is not a trailer.</summary>
+    public bool CanDrive(Entity vehicle)
+    {
+        if (!World.IsAlive(vehicle) || !World.TryGet(vehicle, out Vehicle placed))
+        {
+            return false;
+        }
+
+        return _files.Read(_content, placed.File) is { CanBeDriven: true };
+    }
+
     private void Collect(QueryDescription query)
     {
         _changing.Clear();
         World.Query(in query, (Entity vehicle) => _changing.Add(vehicle));
     }
 
-    /// <summary>Makes the vehicle a body on wheels where it stands; one whose file can't be read stays standing.</summary>
+    /// <summary>Makes the vehicle a body on wheels where it stands; one whose file can't be read, or a trailer, stays standing and loses its driver.</summary>
     private void Start(Entity vehicle)
     {
         string path = World.Get<Vehicle>(vehicle).File;
-        if (_files.Read(_content, path) is not { } file)
+        if (_files.Read(_content, path) is not { CanBeDriven: true } file)
         {
+            World.Remove<DrivenVehicle>(vehicle);
             return;
         }
 
