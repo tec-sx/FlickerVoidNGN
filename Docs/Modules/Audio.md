@@ -23,3 +23,8 @@ Design: the "Audio system base: design" doc (owner, 2026-11-27). Steps 1 (sound 
 - `PlayStinger` plays a sound file once over the music from the next line of the cue heard (the next beat by default). The `playMusic` and `playStinger` effects and flow nodes do the same from data. `MusicBeatEvent` (the cue, the bar and the beat, from 1) is sent as the music heard reaches a beat, for anything that wants to move in time.
 - Tests hear cues through the null device at 480 beats a minute over loops that hold one value a bar, so a sample tells which layers sounded on a frame (`MusicSystemTests`).
 - Not yet: a pitch-keeping time stretch for loops at another tempo, streaming, gain curves over the day, a pushed cue following the tempo of the one below, continue points other than where the cue stopped, and the editor.
+
+### Time stretch (owner, 2026-11-27)
+
+A track's `tempo` is the tempo its files were exported at (0 for the cue's own). When it differs from the cue's, the music system stretches the loop and fills to the cue's tempo without changing their pitch (`TimeStretch`: waveform similarity overlap-add, 2048-frame windows at half overlap, each placed where it best continues the last), once when the cue's state is built and cached per clip and ratio, never on the audio thread. The editor measures such a track's bars from the stretched length. Files shorter than two windows are resampled instead (their pitch follows).
+

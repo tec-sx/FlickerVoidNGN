@@ -321,6 +321,21 @@ public sealed class MusicSystemTests : IDisposable
     }
 
     /// <summary>Plays a cue through its first frame and returns the frame its first bar begins on.</summary>
+    [Fact]
+    public void StretchesATracksFilesFromItsOwnTempoToTheCuesWithoutChangingTheirLength()
+    {
+        _builder.WithClip("Slow", 0.2f, 0.4f);
+        string cue = _builder.WithCue("Street", """{ "name": "Slow", "loop": "Slow.wav", "tempo": 240 }""");
+
+        long first = Start(cue);
+        _builder.PlayUntilBar(3);
+
+        _builder.HeardAtBar(first, 1.25).Should().BeApproximately(0.2f, Close);
+        _builder.HeardAtBar(first, 1.75).Should().BeApproximately(0.4f, Close);
+        _builder.HeardAtBar(first, 2.25).Should().BeApproximately(0.2f, Close);
+        _builder.HeardAtBar(first, 2.75).Should().BeApproximately(0.4f, Close);
+    }
+
     private long Start(string cue)
     {
         _builder.Music.Play(cue);

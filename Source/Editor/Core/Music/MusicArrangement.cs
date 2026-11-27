@@ -47,14 +47,15 @@ public static class MusicArrangement
     /// <summary>The track's lengths in bars from its files, rounded to whole bars, at least one; its own <c>bars</c> for the loop when it has them.</summary>
     public static TrackLengths Measure(MusicCue cue, MusicTrack track, ClipCatalog catalog)
     {
+        double stretch = cue.Tempo > 0 && track.Tempo > 0 ? track.Tempo / cue.Tempo : 1;
         double loop = track.Bars;
         if (loop <= 0)
         {
-            loop = GetBars(cue, catalog.Find(track.Loop), 4);
+            loop = GetBars(cue, catalog.Find(track.Loop), 4, stretch);
         }
 
-        double fillIn = GetBars(cue, catalog.Find(track.FillIn), 0);
-        double fillOut = GetBars(cue, catalog.Find(track.FillOut), 0);
+        double fillIn = GetBars(cue, catalog.Find(track.FillIn), 0, stretch);
+        double fillOut = GetBars(cue, catalog.Find(track.FillOut), 0, stretch);
         return new TrackLengths(loop, fillIn, fillOut);
     }
 
@@ -124,14 +125,14 @@ public static class MusicArrangement
         return clips;
     }
 
-    private static double GetBars(MusicCue cue, ClipInfo? info, double fallback)
+    private static double GetBars(MusicCue cue, ClipInfo? info, double fallback, double stretch)
     {
         if (info is null)
         {
             return fallback;
         }
 
-        double bars = Math.Round(info.Seconds / GetBarSeconds(cue));
+        double bars = Math.Round(info.Seconds * stretch / GetBarSeconds(cue));
         return Math.Max(1, bars);
     }
 

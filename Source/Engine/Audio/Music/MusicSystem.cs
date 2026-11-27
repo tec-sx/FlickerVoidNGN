@@ -39,6 +39,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
     private readonly Game _game;
     private readonly AudioSystem _audio;
     private readonly ILogger _logger;
+    private readonly Dictionary<(SoundClip, double), SoundClip> _stretched = [];
     private readonly Random _random;
     private readonly Dictionary<AudioBus, List<CueState>> _stacks = [];
     private readonly Dictionary<string, int> _requests = new(StringComparer.OrdinalIgnoreCase);
@@ -398,14 +399,32 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
             TrackState trackState = new()
             {
                 Track = track,
-                Loop = LoadOptional(track.Loop),
-                FillIn = LoadOptional(track.FillIn),
-                FillOut = LoadOptional(track.FillOut),
+                Loop = LoadStretched(track.Loop, cue, track),
+                FillIn = LoadStretched(track.FillIn, cue, track),
+                FillOut = LoadStretched(track.FillOut, cue, track),
             };
             state.Tracks.Add(trackState);
         }
 
         return state;
+    }
+
+    private SoundClip? LoadStretched(string file, MusicCue cue, MusicTrack track)
+    {
+        SoundClip? clip = LoadOptional(file);
+        if (clip is null || track.Tempo <= 0 || cue.Tempo <= 0 || Math.Abs(track.Tempo - cue.Tempo) < 0.01f)
+        {
+            return clip;
+        }
+
+        double ratio = track.Tempo / cue.Tempo;
+        if (!_stretched.TryGetValue((clip, ratio), out SoundClip? stretched))
+        {
+            stretched = TimeStretch.Stretch(clip, ratio);
+            _stretched[(clip, ratio)] = stretched;
+        }
+
+        return stretched;
     }
 
     private SoundClip? LoadOptional(string file) => file.Length == 0 ? null : _audio.LoadClip(file);

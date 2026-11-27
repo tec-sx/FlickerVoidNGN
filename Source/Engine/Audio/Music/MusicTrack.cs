@@ -26,6 +26,10 @@ public sealed class MusicTrack
     [ContentFile(".wav", ".ogg")]
     public string FillIn { get; set; } = string.Empty;
 
+    /// <summary>The tempo the track's files were exported at; when it differs from the cue's the files are stretched to the cue's without changing their pitch. 0 for the cue's own.</summary>
+    [Range(0, 400)]
+    public float Tempo { get; set; }
+
     /// <summary>Played once from the line the loop stops on.</summary>
     [ContentFile(".wav", ".ogg")]
     public string FillOut { get; set; } = string.Empty;
