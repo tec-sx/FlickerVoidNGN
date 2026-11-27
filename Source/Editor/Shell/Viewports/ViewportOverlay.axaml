@@ -77,6 +77,15 @@
         </StackPanel>
       </StackPanel>
     </Border>
+    <!-- A selected greybox of the level: shape it with the mesh tools, or cut the other selected greyboxes out of it. -->
+    <Border Classes="viewportBar" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Bottom" IsVisible="{Binding CanShapeSelected}">
+      <StackPanel Orientation="Horizontal" Spacing="2">
+        <Button Classes="viewportIcon text" Content="Shape" Command="{Binding ShapeSelectedCommand}"
+                ToolTip.Tip="Shape this greybox with the mesh tools, in place (double-click it)" />
+        <Button Classes="viewportIcon text" Content="Cut" Command="{Binding CutSelectedCommand}" IsVisible="{Binding CanCutSelected}"
+                ToolTip.Tip="Cut the other selected greyboxes out of the one selected last: a tunnel, a doorway, a window" />
+      </StackPanel>
+    </Border>
     <!-- The creator's mesh: Edit mesh, then in the mesh the element kind, the tools' numbers and the numeric transform; the tools are on the right-click menu. -->
     <Border Classes="viewportBar" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Bottom"
             IsVisible="{Binding MeshTools.IsCreating}">

@@ -522,5 +522,6 @@ public sealed partial class ViewportViewModel : ObservableObject
     private void HandleSelectionChanged()
     {
         OnPropertyChanged(nameof(SelectionText));
+        NotifyPieces();
     }
 }

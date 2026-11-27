@@ -173,6 +173,7 @@ public sealed partial class ViewportViewModel
         OnPropertyChanged(nameof(Mode));
         OnPropertyChanged(nameof(IsCreating));
         OnPropertyChanged(nameof(CreatorFile));
+        NotifyPieces();
         MeshTools.Refresh();
     }
 }
