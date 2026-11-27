@@ -1,8 +1,12 @@
+using System.Numerics;
+
 using Arch.Core;
 
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Creators;
+using FlickerVoid.Editor.Core.Menus;
+using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Editor.Viewports;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Vehicles;
@@ -43,6 +47,142 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         ViewModel.OutlinerTab.Should().Be(MainWindowViewModel.PartsTab, "the parts take the scene's place");
         ViewModel.CreatorParts.Should().Equal("body", "wheel.1L", "wheel.1R", "wheel.2L", "wheel.2R");
         ViewModel.CreatorHeading.Should().Be(MainWindowViewModelTestsBuilder.Van);
+    }
+
+    [Fact]
+    public void TheEditMeshButtonShowsInTheCreatorAndEntersTheSelectedPartsMesh()
+    {
+        MeshToolsViewModel tools = Viewport.MeshTools;
+        bool shownInTheScene = tools.IsCreating;
+        _builder.DoubleClick(_builder.MiddleOf("Van"));
+        ViewModel.CreatorPart = "body";
+
+        tools.ToggleMesh();
+
+        shownInTheScene.Should().BeFalse();
+        tools.IsCreating.Should().BeTrue();
+        tools.IsMeshMode.Should().BeTrue();
+        Viewport.Creator!.MeshPart.Should().Be("body");
+        tools.ToggleMesh();
+        tools.IsMeshMode.Should().BeFalse("pressing it again leaves the mesh");
+    }
+
+    [Fact]
+    public void TabEntersAndLeavesTheSelectedPartsMesh()
+    {
+        _builder.DoubleClick(_builder.MiddleOf("Van"));
+        ViewModel.CreatorPart = "body";
+
+        Viewport.KeyPressed(ViewportKey.Tab, ViewportButtons.None);
+
+        Viewport.MeshTools.IsMeshMode.Should().BeTrue();
+        Viewport.KeyPressed(ViewportKey.Tab, ViewportButtons.None);
+        Viewport.MeshTools.IsMeshMode.Should().BeFalse();
+    }
+
+    [Fact]
+    public void EditingTheMeshWithNoPartSelectedSaysWhatToClick()
+    {
+        _builder.DoubleClick(_builder.MiddleOf("Van"));
+
+        Viewport.MeshTools.ToggleMesh();
+
+        Viewport.MeshTools.IsMeshMode.Should().BeFalse();
+        Viewport.Status.Should().Contain("Click a part");
+    }
+
+    [Fact]
+    public void ExtrudeFollowsTheMouseUntilAClickKeepsIt()
+    {
+        MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
+        int points = ViewModel.CreatorPanel!.FindMesh("body")!.Points.Count;
+        Viewport.PointerMoved(new Vector2(300, 300), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
+
+        Viewport.KeyPressed(ViewportKey.E, ViewportButtons.None);
+        Viewport.PointerMoved(new Vector2(300, 260), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
+        Viewport.PointerMoved(new Vector2(300, 200), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
+        bool dragging = tools.IsDragging;
+        Viewport.PointerPressed(new Vector2(300, 200), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height, additive: false, loop: false);
+
+        dragging.Should().BeTrue();
+        tools.IsDragging.Should().BeFalse();
+        tools.Amount.Should().BeGreaterThan(0);
+        ViewModel.CreatorPanel.FindMesh("body")!.Points.Should().HaveCount(points + 4);
+        Viewport.Creator!.MeshSelection!.Faces.Should().ContainSingle("the click kept the tool's work and selected nothing else");
+        Viewport.Mode.History.Undo();
+        ViewModel.CreatorPanel.FindMesh("body")!.Points.Should().HaveCount(points, "the whole drag is one undo step");
+    }
+
+    [Fact]
+    public void EscapeCancelsADraggedToolAndStaysInTheMesh()
+    {
+        MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
+        int faces = ViewModel.CreatorPanel!.FindMesh("body")!.Faces.Count;
+        Viewport.PointerMoved(new Vector2(300, 300), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
+
+        Viewport.KeyPressed(ViewportKey.I, ViewportButtons.None);
+        Viewport.PointerMoved(new Vector2(300, 280), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
+        int shown = ViewModel.CreatorPanel.FindMesh("body")!.Faces.Count;
+        Viewport.KeyPressed(ViewportKey.Escape, ViewportButtons.None);
+
+        shown.Should().Be(faces + 4);
+        ViewModel.CreatorPanel.FindMesh("body")!.Faces.Should().HaveCount(faces);
+        tools.IsMeshMode.Should().BeTrue();
+        Viewport.Mode.History.CanUndo.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ANumberTypedWhileAToolIsHeldSetsItsAmountAndTheMouseLetsGo()
+    {
+        MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
+        Viewport.KeyPressed(ViewportKey.E, ViewportButtons.None);
+
+        tools.Amount = 0.75;
+        Viewport.PointerMoved(new Vector2(300, 100), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
+
+        tools.Amount.Should().Be(0.75);
+        tools.IsDragging.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TheKeys123PickPointsEdgesAndFacesAndTheBarFollows()
+    {
+        MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
+        List<string?> changed = [];
+        tools.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        Viewport.KeyPressed(ViewportKey.Two, ViewportButtons.None);
+
+        tools.IsEdge.Should().BeTrue();
+        changed.Should().Contain([nameof(MeshToolsViewModel.IsEdge), nameof(MeshToolsViewModel.IsFace)]);
+        Viewport.KeyPressed(ViewportKey.One, ViewportButtons.None);
+        tools.IsPoint.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TheMeshMenuHoldsTheToolsAndTheSwitchesAsTheyAreSet()
+    {
+        MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
+
+        IReadOnlyList<MenuChoice> menu = tools.GetMenu();
+        menu.Single(choice => choice.Name == "Cut Through: Off").Run();
+        menu.Single(choice => choice.Name == "Extrude").Run();
+
+        menu.Select(choice => choice.Name).Should().Contain(["Inset", "Cut", "Bevel", "Loop Cut", "Hang Door", "Test Door", "Mirror: Off"]);
+        tools.Through.Should().BeTrue();
+        tools.GetMenu().Select(choice => choice.Name).Should().Contain("Cut Through: On");
+        tools.IsDragging.Should().BeTrue();
+    }
+
+    private MeshToolsViewModel EnterBodyWithAFaceSelected()
+    {
+        _builder.DoubleClick(_builder.MiddleOf("Van"));
+        ViewModel.CreatorPart = "body";
+        MeshToolsViewModel tools = Viewport.MeshTools;
+        tools.ToggleMesh();
+        tools.Element = MeshElement.Face;
+        Viewport.Creator!.MeshSelection!.Select(MeshHit.OfFace(2, default), additive: false);
+        return tools;
     }
 
     [Fact]

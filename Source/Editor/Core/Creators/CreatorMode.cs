@@ -41,6 +41,12 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     private readonly Action<string, bool>? _setMirror;
     private readonly Func<string, int, SolidEdge, DoorOptions, string?>? _hangDoor;
     private SolidMesh? _meshSolid;
+    private SolidMesh? _dragSolid;
+    private MeshElement _dragElement;
+    private int[] _dragFaces = [];
+    private SolidEdge[] _dragEdges = [];
+    private MeshDragOptions _dragOptions;
+    private bool _dragShown;
     private readonly List<Entity> _marked = [];
 
     private CreatorMode(EditorScene scene, EditorCamera camera, Entity root, CreatorPlacement placement, UndoHistory history, Func<bool> save, Func<string, SolidMesh?>? findMesh, Action<string, SolidMesh>? applyMesh, Func<string, bool>? isMirrored, Action<string, bool>? setMirror, Func<string, int, SolidEdge, DoorOptions, string?>? hangDoor)
@@ -197,6 +203,8 @@ public sealed class CreatorMode : IViewportMode, IDisposable
             return;
         }
 
+        EndMeshDrag(keep: false);
+
         MeshSelection = null;
         MeshPart = null;
         _meshSolid = null;
@@ -347,6 +355,156 @@ public sealed class CreatorMode : IViewportMode, IDisposable
         }
 
         return ReplaceMesh((current, _) => CutLoops(current, found.Edge, cuts, slide));
+    }
+
+    /// <summary>The tool whose amount is being dragged, or null.</summary>
+    public MeshDragTool? MeshDrag { get; private set; }
+
+    /// <summary>
+    /// Starts dragging a tool over the selection: every <see cref="DragMesh"/> then shows the tool's work at an amount, made from the
+    /// mesh as it is now, until <see cref="EndMeshDrag"/> keeps the last as one undo step or puts the mesh back. False when the tool
+    /// has nothing selected to work on (faces, or edges for a bevel).
+    /// </summary>
+    public bool BeginMeshDrag(MeshDragTool tool, MeshDragOptions options)
+    {
+        EndMeshDrag(keep: true);
+        if (MeshSelection is not { } selection || MeshPart is not { } id || _applyMesh is null || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return false;
+        }
+
+        bool bevel = tool == MeshDragTool.Bevel;
+        if ((bevel && selection.Edges.Count == 0) || (!bevel && selection.Faces.Count == 0))
+        {
+            return false;
+        }
+
+        _dragSolid = solid;
+        _dragElement = selection.Element;
+        _dragFaces = [.. selection.Faces];
+        _dragEdges = [.. selection.Edges];
+        _dragOptions = options;
+        _dragShown = false;
+        MeshDrag = tool;
+        History.BeginGroup(tool.ToString());
+        return true;
+    }
+
+    /// <summary>Shows the dragged tool's work at the amount; false, with the mesh as it was, when the tool can make nothing of it.</summary>
+    public bool DragMesh(float amount)
+    {
+        if (MeshDrag is not { } tool || MeshPart is not { } id || _dragSolid is not { } start)
+        {
+            return false;
+        }
+
+        MeshSelection selection = StartOfDrag(start);
+        MeshResult? result = null;
+        if (amount > 0 || (tool == MeshDragTool.Extrude && amount < 0))
+        {
+            result = RunDragTool(tool, start, selection, amount);
+        }
+
+        if (result is null)
+        {
+            if (_dragShown)
+            {
+                _dragShown = false;
+                _meshSolid = start;
+                MeshSelection = selection;
+                _applyMesh!(id, start);
+            }
+
+            return false;
+        }
+
+        MeshSelection next = new(result.Solid);
+        if (result.Edges.Count > 0)
+        {
+            next.SelectEdges(result.Edges);
+        }
+        else
+        {
+            next.SelectFaces(result.Faces);
+        }
+
+        _dragShown = true;
+        _meshSolid = result.Solid;
+        MeshSelection = next;
+        _applyMesh!(id, result.Solid);
+        return true;
+    }
+
+    /// <summary>Ends the drag: keeps what it shows as one undo step, or puts the mesh and its selection back.</summary>
+    public void EndMeshDrag(bool keep)
+    {
+        if (MeshDrag is null)
+        {
+            return;
+        }
+
+        MeshDrag = null;
+        SolidMesh start = _dragSolid!;
+        _dragSolid = null;
+        if (keep)
+        {
+            History.EndGroup();
+        }
+        else
+        {
+            if (_dragShown && MeshPart is { } id)
+            {
+                _meshSolid = start;
+                _applyMesh!(id, start);
+            }
+
+            History.CancelGroup();
+            if (MeshSelection is not null)
+            {
+                _meshSolid = start;
+                MeshSelection = StartOfDrag(start);
+            }
+        }
+
+        MeshModeChanged?.Invoke();
+    }
+
+    /// <summary>How far a drag from one pixel to another sets a tool's amount, in metres: the way up the screen, at the view's pivot.</summary>
+    public float GetMeshDragAmount(Vector2 from, Vector2 to, int height)
+    {
+        float perPixel = _camera.WorldUnitsPerPixel(_camera.Pivot, height);
+        return (from.Y - to.Y) * perPixel;
+    }
+
+    private MeshSelection StartOfDrag(SolidMesh start)
+    {
+        MeshSelection selection = new(start);
+        selection.SetElement(_dragElement);
+        if (_dragElement == MeshElement.Edge)
+        {
+            selection.SelectEdges(_dragEdges);
+        }
+        else
+        {
+            selection.SelectFaces(_dragFaces);
+        }
+
+        return selection;
+    }
+
+    private MeshResult? RunDragTool(MeshDragTool tool, SolidMesh solid, MeshSelection selection, float amount)
+    {
+        switch (tool)
+        {
+            case MeshDragTool.Extrude:
+                return MeshExtrude.Faces(solid, GetFaces(solid, selection), amount);
+            case MeshDragTool.Inset:
+                return MeshInset.Faces(solid, GetFaces(solid, selection), amount);
+            case MeshDragTool.Cut:
+                return MeshCut.Faces(solid, GetFaces(solid, selection), amount, through: false);
+            default:
+                return MeshBevel.Edges(solid, GetEdges(solid, selection), amount, _dragOptions.Rows, _dragOptions.Round);
+        }
     }
 
     private IReadOnlySet<int> GetFaces(SolidMesh solid, MeshSelection selected)
