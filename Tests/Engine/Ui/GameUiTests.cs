@@ -1,5 +1,7 @@
 using System.Numerics;
 
+using Avalonia.Media;
+
 namespace FlickerVoid.Engine.Ui.Tests;
 
 public sealed class GameUiTests : IDisposable
@@ -51,5 +53,31 @@ public sealed class GameUiTests : IDisposable
 
         shown.Should().BeTrue();
         hidden.Should().BeFalse();
+    }
+
+    [Fact]
+    public void KeepsShowingItsControlsOnFramesWhereNothingChanged()
+    {
+        _builder.RenderFrame();
+
+        uint[] second = _builder.RenderFrame();
+        uint[] third = _builder.RenderFrame();
+        uint[] fourth = _builder.RenderFrame();
+
+        GameUiTestsBuilder.At(second, 10, 10).Should().Be(0xFF0000FF);
+        GameUiTestsBuilder.At(third, 10, 10).Should().Be(0xFF0000FF);
+        GameUiTestsBuilder.At(fourth, 10, 10).Should().Be(0xFF0000FF);
+    }
+
+    [Fact]
+    public void ShowsAChangeOnTheNextFrame()
+    {
+        _builder.RenderFrame();
+        _builder.RenderFrame();
+
+        _builder.Panel.Background = Brushes.Lime;
+        uint[] pixels = _builder.RenderFrame();
+
+        GameUiTestsBuilder.At(pixels, 10, 10).Should().Be(0xFF00FF00);
     }
 }

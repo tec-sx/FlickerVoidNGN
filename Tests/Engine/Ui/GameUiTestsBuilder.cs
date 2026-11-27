@@ -51,6 +51,16 @@ internal sealed class GameUiTestsBuilder : IDisposable
 
     public GameUi Ui => _ui ?? BuildUi();
 
+    /// <summary>The red panel at the top left.</summary>
+    public Border Panel { get; } = new()
+    {
+        Width = 100,
+        Height = 60,
+        Background = Brushes.Red,
+        HorizontalAlignment = HorizontalAlignment.Left,
+        VerticalAlignment = VerticalAlignment.Top,
+    };
+
     public void MoveMouse(Vector2 position) => _input.MoveMouse(position);
 
     public void ResizeWindow(int width, int height) => _window.Size.Returns(new Vector2D<int>(width, height));
@@ -107,15 +117,7 @@ internal sealed class GameUiTestsBuilder : IDisposable
     {
         IGraphicsDevice device = BuildDevice();
         UiPlatform.Start<TestApplication>();
-        Border panel = new()
-        {
-            Width = 100,
-            Height = 60,
-            Background = Brushes.Red,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Top,
-        };
-        Grid root = new() { Children = { panel } };
+        Grid root = new() { Children = { Panel } };
         _ui = new GameUi(device, _window, PixelFormat.Rgba8UNorm, root);
         return _ui;
     }

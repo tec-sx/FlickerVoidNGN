@@ -1,5 +1,5 @@
 // Draws the game's interface over the frame: one triangle covers the target and each pixel reads the interface's pixel at the same
-// place, RGBA with premultiplied alpha in sRGB, made linear when the target stores linear values.
+// place (stored BGRA, read as RGBA), with premultiplied alpha in sRGB, made linear when the target stores linear values.
 
 Texture2D Textures[] : register(t0, space1);
 

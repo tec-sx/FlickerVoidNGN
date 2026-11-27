@@ -47,18 +47,12 @@ internal sealed class UiSurfaceTestsBuilder : IDisposable
         return _surface;
     }
 
-    /// <summary>The surface's pixels, RGBA with premultiplied alpha, rows tightly packed.</summary>
-    public byte[] Pixels(UiSurface surface)
+    /// <summary>The pixel at a point of the surface's last drawing, with premultiplied alpha.</summary>
+    public static (byte R, byte G, byte B, byte A) At(UiSurface surface, int x, int y)
     {
-        byte[] pixels = new byte[Width * Height * 4];
-        surface.Render(pixels, Width * 4);
-        return pixels;
-    }
-
-    public static (byte R, byte G, byte B, byte A) At(byte[] pixels, int x, int y)
-    {
-        int offset = ((y * Width) + x) * 4;
-        return (pixels[offset], pixels[offset + 1], pixels[offset + 2], pixels[offset + 3]);
+        ReadOnlySpan<byte> pixels = surface.Pixels;
+        int offset = ((y * surface.Width) + x) * 4;
+        return (pixels[offset + 2], pixels[offset + 1], pixels[offset], pixels[offset + 3]);
     }
 
     public void Dispose()
