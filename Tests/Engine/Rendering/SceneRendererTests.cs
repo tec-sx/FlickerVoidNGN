@@ -766,6 +766,20 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void SmoothsTheFogBetweenNeighbouringCells()
+    {
+        _builder.WithTargetSize(8);
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(4).WithBaseColor(new Vector4(0, 0, 0, 1)));
+        _builder.WithScene(Camera, Quad, FogBox(size: "[4, 4, 2]", position: "[0, -2, 1]"));
+
+        uint[] pixels = _builder.Render();
+
+        uint[] reds = [.. pixels.Select(static pixel => (uint)SceneRendererTestsBuilder.Channels(pixel).Red)];
+        uint spread = reds.Max() - reds.Min();
+        spread.Should().BeLessThan(8, "the box's hard front face cuts through a slice, and neighbouring cells sample it at evenly spread depths (a spread of 21 with random depths)");
+    }
+
+    [Fact]
     public void LeavesSurfacesClearWithoutFog()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));

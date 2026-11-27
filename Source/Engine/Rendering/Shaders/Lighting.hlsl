@@ -147,6 +147,16 @@ float4 FogMediumAt(FrameData frame, uint fogBuffer, float3 position)
     return float4(medium, density);
 }
 
+// Where in its slice a froxel samples this frame, from 0 to 1: interleaved gradient noise across the grid, so neighbouring
+// froxels spread their samples evenly over the slice rather than at random, turned by the golden ratio each frame, so a froxel
+// covers its slice evenly over the frames its history keeps.
+float FogJitter(uint3 id, uint number)
+{
+    float2 place = float2(id.xy) + float2(5.588238, 3.137254) * id.z;
+    float gradient = frac(52.9829189 * frac(dot(place, float2(0.06711056, 0.00583715))));
+    return frac(gradient + number * 0.618034);
+}
+
 // The light a froxel lit this frame holds: the fog's color times the light scattered at its centre, and its density, mixed with
 // the frame before's at the same place in the world, reprojected, unless the history is not kept or the place was out of sight.
 [numthreads(8, 8, 4)]
@@ -158,8 +168,7 @@ void FogLightMain(uint3 id : SV_DispatchThreadID)
     }
 
     FrameData frame = LoadFrame(Pass.Frame);
-    uint seed = Hash(id.x + Hash(id.y + Hash(id.z + Hash(Pass.Number))));
-    float jitter = HashToUnit(seed);
+    float jitter = FogJitter(id, Pass.Number);
     float2 pixel = (float2(id.xy) + 0.5) / float2(FogGrid.xy) * frame.TargetSize;
     float depth = FogSliceDepth(frame, id.z + jitter);
     float3 direction;
@@ -190,6 +199,23 @@ void FogLightMain(uint3 id : SV_DispatchThreadID)
     RWBuffers[Pass.Lit].Store<float4>(((id.z * FogGrid.y + id.y) * FogGrid.x + id.x) * 16, current);
 }
 
+// A froxel's light and density blurred with its eight neighbours in its slice by a 3x3 tent, so what's left of the jitter's
+// noise between neighbouring froxels doesn't show as a mottle; the history keeps the unblurred froxels.
+float4 LoadFogCellBlurred(ByteAddressBuffer volume, int3 cell)
+{
+    float4 sum = 0;
+    for (int y = -1; y <= 1; y++)
+    {
+        for (int x = -1; x <= 1; x++)
+        {
+            float weight = (2 - abs(x)) * (2 - abs(y));
+            sum += LoadFogCell(volume, cell + int3(x, y, 0)) * weight;
+        }
+    }
+
+    return sum / 16;
+}
+
 // Integrates a column of froxels front to back, so each slice holds the light the fog scatters toward the camera up to its far
 // boundary and the share of a surface's light that gets through (as the surface's own light is seen through it).
 [numthreads(8, 8, 1)]
@@ -210,7 +236,7 @@ void FogIntegrateMain(uint3 id : SV_DispatchThreadID)
     float transmittance = 1;
     for (uint slice = 0; slice < FogGrid.z; slice++)
     {
-        float4 cell = LoadFogCell(lit, int3(id.xy, slice));
+        float4 cell = LoadFogCellBlurred(lit, int3(id.xy, slice));
         float stepLength = (FogSliceDepth(frame, slice + 1) - FogSliceDepth(frame, slice)) / along;
         float stepTransmittance = exp(-cell.a * stepLength);
         scattered += transmittance * cell.rgb * (1 - stepTransmittance);
@@ -266,7 +292,7 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
         sun *= screenShadows.g;
         if (sun > 0 && (any(sunDiffuse > 0) || sunSpecular > 0) && frame.SunShadow != None)
         {
-            sun *= SampleShadow(frame, frame.SunShadow, worldPosition, normal, 0, true);
+            sun *= SampleShadow(frame, frame.SunShadow, worldPosition, normal, 0);
         }
     }
 
