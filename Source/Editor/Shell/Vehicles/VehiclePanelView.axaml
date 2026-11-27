@@ -1,50 +1,71 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vehicles="using:FlickerVoid.Editor.Assets.Vehicles"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
+             xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Vehicles.VehiclePanelView"
              x:DataType="vehicles:VehiclePanelViewModel">
   <!-- The vehicle's type and wheel count, how it drives, then its look; its parts are listed in the outliner. -->
-  <StackPanel Margin="4,2">
-    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
-      <TextBlock Text="Type" VerticalAlignment="Center" />
-      <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Types}" SelectedItem="{Binding Type}"
-                ToolTip.Tip="A car, a motorcycle or a trailer (towed, never driven); the wheel count goes to the nearest one the type takes." />
-      <TextBlock Grid.Row="1" Text="Wheels" VerticalAlignment="Center" />
-      <ComboBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding WheelCounts}" SelectedItem="{Binding WheelCount}"
-                ToolTip.Tip="Axles are added or removed at the back." />
-    </Grid>
-    <!-- How it drives: the engine and weight, then the steering and the suspension. -->
-    <TextBlock Classes="muted" Text="Drive" Margin="0,8,0,2" />
-    <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4">
-      <TextBlock Text="Weight" VerticalAlignment="Center" />
-      <TextBox Grid.Column="1" Text="{Binding Mass}" ToolTip.Tip="Kilograms." />
-      <TextBlock Grid.Column="2" Text="Engine" VerticalAlignment="Center" />
-      <TextBox Grid.Column="3" Text="{Binding EngineTorque}" ToolTip.Tip="The engine's greatest torque, in newton metres." />
-      <TextBlock Grid.Row="1" Text="Driven" VerticalAlignment="Center" />
-      <ComboBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding DrivenChoices}" SelectedItem="{Binding Driven}"
-                ToolTip.Tip="The axles the engine turns: every axle but the first, the first, or all." />
-      <TextBlock Grid.Row="1" Grid.Column="2" Text="Brakes" VerticalAlignment="Center" />
-      <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding BrakeTorque}" ToolTip.Tip="The brakes' greatest torque on each wheel, in newton metres." />
-      <TextBlock Grid.Row="2" Text="Steer" VerticalAlignment="Center" />
-      <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Steer}" ToolTip.Tip="How far the front wheels turn, in degrees." />
-      <TextBlock Grid.Row="2" Grid.Column="2" Text="Travel" VerticalAlignment="Center" />
-      <TextBox Grid.Row="2" Grid.Column="3" Text="{Binding SuspensionTravel}" ToolTip.Tip="How far each wheel moves on its suspension, in metres." />
-      <TextBlock Grid.Row="3" Text="Spring" VerticalAlignment="Center" />
-      <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SuspensionFrequency}" ToolTip.Tip="How fast the suspension springs back, in cycles a second; lower is softer." />
-      <TextBlock Grid.Row="3" Grid.Column="2" Text="Damping" VerticalAlignment="Center" />
-      <TextBox Grid.Row="3" Grid.Column="3" Text="{Binding SuspensionDamping}" ToolTip.Tip="How quickly it stops bouncing, from 0 to 1." />
-    </Grid>
-    <!-- The look from Blender: open the vehicle there, switch between the look and the greyboxes, and what the look covers. -->
-    <StackPanel Margin="0,6,0,0" Spacing="4" IsVisible="{Binding HasLookTools}">
-      <StackPanel Orientation="Horizontal" Spacing="4">
-        <Button Content="Open in Blender" Command="{Binding OpenInBlenderCommand}"
-                ToolTip.Tip="The first time, Blender starts on the greyboxes and saves a .blend beside the vehicle; saving there brings the look back here." />
-        <ToggleButton Content="Look" IsChecked="{Binding ShowsLook}" IsVisible="{Binding HasLook}"
-                      ToolTip.Tip="Draw the look from Blender; off shows the greyboxes under it." />
-      </StackPanel>
-      <TextBlock Classes="muted" Text="{Binding LookReport}" TextWrapping="Wrap" />
-      <TextBlock Classes="muted" Text="{Binding BlenderStatus}" TextWrapping="Wrap"
-                 IsVisible="{Binding BlenderStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+  <ScrollViewer>
+    <StackPanel>
+      <controls:PanelCard Header="Vehicle" Icon="{x:Static shell:LucideIcons.Vehicle}">
+        <StackPanel>
+          <controls:PanelRow Label="Type"
+                             ToolTip.Tip="A car, a motorcycle or a trailer (towed, never driven); the wheel count goes to the nearest one the type takes.">
+            <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Types}" SelectedItem="{Binding Type}" />
+          </controls:PanelRow>
+          <controls:PanelRow Label="Wheels" ToolTip.Tip="Axles are added or removed at the back.">
+            <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding WheelCounts}" SelectedItem="{Binding WheelCount}" />
+          </controls:PanelRow>
+        </StackPanel>
+      </controls:PanelCard>
+      <!-- How it drives: the engine and weight, then the steering and the suspension. -->
+      <controls:PanelCard Header="Drive" Icon="{x:Static shell:LucideIcons.Physics}">
+        <StackPanel>
+          <controls:PanelRow Label="Weight" ToolTip.Tip="Kilograms.">
+            <TextBox Text="{Binding Mass}" />
+          </controls:PanelRow>
+          <controls:PanelRow Label="Engine" ToolTip.Tip="The engine's greatest torque, in newton metres.">
+            <TextBox Text="{Binding EngineTorque}" />
+          </controls:PanelRow>
+          <controls:PanelRow Label="Driven" ToolTip.Tip="The axles the engine turns: every axle but the first, the first, or all.">
+            <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding DrivenChoices}" SelectedItem="{Binding Driven}" />
+          </controls:PanelRow>
+          <controls:PanelRow Label="Brakes" ToolTip.Tip="The brakes' greatest torque on each wheel, in newton metres.">
+            <TextBox Text="{Binding BrakeTorque}" />
+          </controls:PanelRow>
+        </StackPanel>
+      </controls:PanelCard>
+      <controls:PanelCard Header="Steering and suspension" Icon="{x:Static shell:LucideIcons.Transform}">
+        <StackPanel>
+          <controls:PanelRow Label="Steer" ToolTip.Tip="How far the front wheels turn, in degrees.">
+            <TextBox Text="{Binding Steer}" />
+          </controls:PanelRow>
+          <controls:PanelRow Label="Travel" ToolTip.Tip="How far each wheel moves on its suspension, in metres.">
+            <TextBox Text="{Binding SuspensionTravel}" />
+          </controls:PanelRow>
+          <controls:PanelRow Label="Spring" ToolTip.Tip="How fast the suspension springs back, in cycles a second; lower is softer.">
+            <TextBox Text="{Binding SuspensionFrequency}" />
+          </controls:PanelRow>
+          <controls:PanelRow Label="Damping" ToolTip.Tip="How quickly it stops bouncing, from 0 to 1.">
+            <TextBox Text="{Binding SuspensionDamping}" />
+          </controls:PanelRow>
+        </StackPanel>
+      </controls:PanelCard>
+      <!-- The look from Blender: open the vehicle there, switch between the look and the greyboxes, and what the look covers. -->
+      <controls:PanelCard Header="Look" Icon="{x:Static shell:LucideIcons.Look}" IsVisible="{Binding HasLookTools}">
+        <StackPanel Spacing="4">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Button Content="Open in Blender" Command="{Binding OpenInBlenderCommand}"
+                    ToolTip.Tip="The first time, Blender starts on the greyboxes and saves a .blend beside the vehicle; saving there brings the look back here." />
+            <ToggleButton Content="Look" IsChecked="{Binding ShowsLook}" IsVisible="{Binding HasLook}"
+                          ToolTip.Tip="Draw the look from Blender; off shows the greyboxes under it." />
+          </StackPanel>
+          <TextBlock Classes="hint small" Text="{Binding LookReport}" TextWrapping="Wrap" />
+          <TextBlock Classes="hint small" Text="{Binding BlenderStatus}" TextWrapping="Wrap"
+                     IsVisible="{Binding BlenderStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </StackPanel>
+      </controls:PanelCard>
     </StackPanel>
-  </StackPanel>
+  </ScrollViewer>
 </UserControl>

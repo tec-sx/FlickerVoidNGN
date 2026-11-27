@@ -51,38 +51,20 @@
         <ItemsControl ItemsSource="{Binding VisibleComponents}">
           <ItemsControl.ItemTemplate>
             <DataTemplate DataType="inspector:ComponentViewModel">
-              <StackPanel>
-                <!-- A section: open, its fields; folded, one line saying what it holds. -->
-                <ToggleButton Classes="section" IsChecked="{Binding IsExpanded}">
-                  <DockPanel>
-                    <Panel DockPanel.Dock="Left" Width="14" Margin="0,0,6,0">
-                      <PathIcon Classes="small faint" Data="{x:Static shell:LucideIcons.Expand}" IsVisible="{Binding IsExpanded}" />
-                      <PathIcon Classes="small faint" Data="{x:Static shell:LucideIcons.Next}" IsVisible="{Binding !IsExpanded}" />
-                    </Panel>
-                    <PathIcon DockPanel.Dock="Left" Classes="muted" Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}" Margin="0,0,7,0" />
-                    <Button DockPanel.Dock="Right" Classes="icon small" IsVisible="{Binding CanRemove}" ToolTip.Tip="More: remove the component.">
-                      <PathIcon Data="{x:Static shell:LucideIcons.More}" />
-                      <Button.Flyout>
-                        <MenuFlyout Placement="BottomEdgeAlignedRight">
-                          <MenuItem Header="Remove component"
-                                    Command="{Binding $parent[UserControl].((inspector:InspectorViewModel)DataContext).RemoveComponentCommand}"
-                                    CommandParameter="{Binding}">
-                            <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></MenuItem.Icon>
-                          </MenuItem>
-                        </MenuFlyout>
-                      </Button.Flyout>
-                    </Button>
-                    <StackPanel Orientation="Horizontal" Spacing="7">
-                      <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
-                      <TextBlock Text="{Binding Summary}" Classes="faint small" FontWeight="Normal" VerticalAlignment="Center"
-                                 TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsExpanded}" />
-                    </StackPanel>
-                  </DockPanel>
-                </ToggleButton>
-                <Border Classes="sectionBody" IsVisible="{Binding IsExpanded}">
-                  <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" />
-                </Border>
-              </StackPanel>
+              <!-- A component: open, its fields; folded, one line saying what it holds. -->
+              <controls:PanelCard Header="{Binding Title}" Icon="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}"
+                                  Summary="{Binding Summary}" IsExpanded="{Binding IsExpanded}" ShowsMenu="{Binding CanRemove}">
+                <controls:PanelCard.Menu>
+                  <MenuFlyout Placement="BottomEdgeAlignedRight">
+                    <MenuItem Header="Remove component"
+                              Command="{Binding $parent[UserControl].((inspector:InspectorViewModel)DataContext).RemoveComponentCommand}"
+                              CommandParameter="{Binding}">
+                      <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></MenuItem.Icon>
+                    </MenuItem>
+                  </MenuFlyout>
+                </controls:PanelCard.Menu>
+                <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" />
+              </controls:PanelCard>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

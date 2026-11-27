@@ -1,6 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:data="using:FlickerVoid.Editor.Data"
+        xmlns:dataModels="using:FlickerVoid.Editor.Core.Data"
+        xmlns:tableModels="using:FlickerVoid.Editor.Assets.Data"
         xmlns:shell="using:FlickerVoid.Editor"
         xmlns:inspector="using:FlickerVoid.Editor.Inspector"
         xmlns:inspectorCore="using:FlickerVoid.Editor.Core.Inspector"
@@ -252,7 +254,14 @@
                   </Button>
                 </StackPanel>
               </TabItem.Header>
-              <data:DataView DataContext="{Binding DataContent}" />
+              <ScrollViewer>
+                <ContentControl Content="{Binding DataContent}">
+                  <ContentControl.DataTemplates>
+                    <DataTemplate DataType="dataModels:DataObjectViewModel"><data:DataView /></DataTemplate>
+                    <DataTemplate DataType="tableModels:TableViewModel"><data:TableView /></DataTemplate>
+                  </ContentControl.DataTemplates>
+                </ContentControl>
+              </ScrollViewer>
             </TabItem>
             <TabItem IsVisible="{Binding ShowsCreator}">
               <TabItem.Header>
@@ -321,15 +330,15 @@
                   </Grid>
                 </Border>
                 <ScrollViewer>
-                  <Border Classes="sectionBody">
+                  <controls:PanelCard Header="View" Icon="{x:Static shell:LucideIcons.Visible}">
                     <StackPanel>
-                      <Grid ColumnDefinitions="96,*" Margin="0,1" ToolTip.Tip="Draw the canvas the scene is painted on. Off hides it in the viewport only; the mood and lens keep it.">
-                        <TextBlock Text="Canvas" Classes="fieldLabel" />
-                        <ToggleButton Grid.Column="1" Theme="{StaticResource Switch}" IsChecked="{Binding Viewport.ShowCanvas}" HorizontalAlignment="Left" />
-                      </Grid>
+                      <controls:PanelRow Label="Canvas"
+                                         ToolTip.Tip="Draw the canvas the scene is painted on. Off hides it in the viewport only; the mood and lens keep it.">
+                        <ToggleButton Theme="{StaticResource Switch}" IsChecked="{Binding Viewport.ShowCanvas}" HorizontalAlignment="Left" />
+                      </controls:PanelRow>
                       <ItemsControl ItemsSource="{Binding ViewSettings.Fields}" ItemTemplate="{StaticResource FieldRow}" />
                     </StackPanel>
-                  </Border>
+                  </controls:PanelCard>
                 </ScrollViewer>
               </DockPanel>
             </TabItem>

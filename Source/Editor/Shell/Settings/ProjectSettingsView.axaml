@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
              xmlns:settings="using:FlickerVoid.Editor.Core.Settings"
              x:Class="FlickerVoid.Editor.Settings.ProjectSettingsView"
              x:DataType="settings:ProjectSettingsViewModel">
@@ -29,44 +30,27 @@
     </Border>
     <ScrollViewer>
       <StackPanel MaxWidth="560" HorizontalAlignment="Left">
-        <TextBlock Text="GRAPHICS" Classes="caps" Margin="12,10,12,4" />
-        <Border Classes="sectionBody">
+        <controls:PanelCard Header="Graphics" Icon="{x:Static shell:LucideIcons.Look}">
           <ItemsControl ItemsSource="{Binding Graphics}">
             <ItemsControl.DataTemplates>
               <DataTemplate DataType="settings:SwitchSettingViewModel">
-                <Grid Margin="0,1" ToolTip.Tip="{Binding Help}">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" MinWidth="96" SharedSizeGroup="FieldLabel" />
-                    <ColumnDefinition Width="*" />
-                  </Grid.ColumnDefinitions>
-                  <TextBlock Text="{Binding Label}" Classes="fieldLabel" />
-                  <ToggleButton Grid.Column="1" Theme="{StaticResource Switch}" IsChecked="{Binding IsOn}" HorizontalAlignment="Left" />
-                </Grid>
+                <controls:PanelRow Label="{Binding Label}" ToolTip.Tip="{Binding Help}">
+                  <ToggleButton Theme="{StaticResource Switch}" IsChecked="{Binding IsOn}" HorizontalAlignment="Left" />
+                </controls:PanelRow>
               </DataTemplate>
               <DataTemplate DataType="settings:ChoiceSettingViewModel">
-                <Grid Margin="0,1" ToolTip.Tip="{Binding Help}">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" MinWidth="96" SharedSizeGroup="FieldLabel" />
-                    <ColumnDefinition Width="*" />
-                  </Grid.ColumnDefinitions>
-                  <TextBlock Text="{Binding Label}" Classes="fieldLabel" />
-                  <ComboBox Grid.Column="1" Width="200" HorizontalAlignment="Left" ItemsSource="{Binding Choices}"
-                            SelectedItem="{Binding Selected}" />
-                </Grid>
+                <controls:PanelRow Label="{Binding Label}" ToolTip.Tip="{Binding Help}">
+                  <ComboBox Width="200" HorizontalAlignment="Left" ItemsSource="{Binding Choices}" SelectedItem="{Binding Selected}" />
+                </controls:PanelRow>
               </DataTemplate>
               <DataTemplate DataType="settings:TextSettingViewModel">
-                <Grid Margin="0,1" ToolTip.Tip="{Binding Help}">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" MinWidth="96" SharedSizeGroup="FieldLabel" />
-                    <ColumnDefinition Width="*" />
-                  </Grid.ColumnDefinitions>
-                  <TextBlock Text="{Binding Label}" Classes="fieldLabel" />
-                  <TextBox Grid.Column="1" Width="200" HorizontalAlignment="Left" Text="{Binding Text}" />
-                </Grid>
+                <controls:PanelRow Label="{Binding Label}" ToolTip.Tip="{Binding Help}">
+                  <TextBox Width="200" HorizontalAlignment="Left" Text="{Binding Text}" />
+                </controls:PanelRow>
               </DataTemplate>
             </ItemsControl.DataTemplates>
           </ItemsControl>
-        </Border>
+        </controls:PanelCard>
       </StackPanel>
     </ScrollViewer>
   </DockPanel>

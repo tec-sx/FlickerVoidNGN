@@ -490,8 +490,10 @@
       </Style>
     </ControlTheme>
 
-    <!-- A section's header as a control theme, for templates, where class styles and nested template selectors do not reach. -->
-    <ControlTheme x:Key="SectionToggle" TargetType="ToggleButton">
+    <!-- The panel card (rule R26): the one card every side panel is built from, as the inspector shows a component: a 24 px
+         raised header with a chevron, an icon, the title, the card's actions and its More menu, over a body of panel rows.
+         Folded, the header sinks into the panel and says what the card holds. -->
+    <ControlTheme x:Key="PanelCardHeader" TargetType="ToggleButton">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
       <Setter Property="FontWeight" Value="Medium" />
@@ -517,27 +519,36 @@
         <Setter Property="FontWeight" Value="SemiBold" />
       </Style>
     </ControlTheme>
-    <!-- An expander is a section: the 24 px header with a chevron, and its body under it. -->
-    <ControlTheme x:Key="{x:Type Expander}" TargetType="Expander">
+    <ControlTheme x:Key="{x:Type controls:PanelCard}" TargetType="controls:PanelCard">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      <Setter Property="Padding" Value="10,5,8,7" />
       <Setter Property="Template">
         <ControlTemplate>
           <DockPanel>
-            <ToggleButton x:Name="PART_Toggle" DockPanel.Dock="Top" Theme="{StaticResource SectionToggle}"
+            <ToggleButton x:Name="PART_Header" DockPanel.Dock="Top" Theme="{StaticResource PanelCardHeader}"
                           IsChecked="{TemplateBinding IsExpanded, Mode=TwoWay}">
               <DockPanel>
                 <Panel DockPanel.Dock="Left" Width="14" Margin="0,0,6,0">
-                  <PathIcon x:Name="Closed" Data="{x:Static shell:LucideIcons.Next}" Width="12" Height="12"
-                            Foreground="{StaticResource EditorHintBrush}" />
-                  <PathIcon x:Name="Opened" Data="{x:Static shell:LucideIcons.Expand}" Width="12" Height="12" IsVisible="False"
-                            Foreground="{StaticResource EditorHintBrush}" />
+                  <PathIcon x:Name="PART_Closed" Classes="small faint" Data="{x:Static shell:LucideIcons.Next}" />
+                  <PathIcon x:Name="PART_Opened" Classes="small faint" Data="{x:Static shell:LucideIcons.Expand}" />
                 </Panel>
-                <ContentPresenter Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
-                                  VerticalAlignment="Center" />
+                <PathIcon x:Name="PART_Icon" DockPanel.Dock="Left" Classes="muted" Data="{TemplateBinding Icon}" Margin="0,0,7,0"
+                          IsVisible="{TemplateBinding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <Button x:Name="PART_More" DockPanel.Dock="Right" Classes="icon small" Flyout="{TemplateBinding Menu}" ToolTip.Tip="More">
+                  <PathIcon Data="{x:Static shell:LucideIcons.More}" />
+                </Button>
+                <ContentPresenter x:Name="PART_Actions" DockPanel.Dock="Right" Content="{TemplateBinding Actions}" VerticalAlignment="Center" />
+                <ContentPresenter x:Name="PART_HeaderPresenter" DockPanel.Dock="Left" Content="{TemplateBinding Header}"
+                                  ContentTemplate="{TemplateBinding HeaderTemplate}" VerticalAlignment="Center" />
+                <TextBlock x:Name="PART_Note" DockPanel.Dock="Left" Classes="faint small" Text="{TemplateBinding Note}" FontWeight="Normal"
+                           VerticalAlignment="Center" Margin="7,0,0,0"
+                           IsVisible="{TemplateBinding Note, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock x:Name="PART_Summary" Classes="faint small" Text="{TemplateBinding Summary}" FontWeight="Normal"
+                           VerticalAlignment="Center" Margin="7,0,0,0" TextTrimming="CharacterEllipsis" />
               </DockPanel>
             </ToggleButton>
-            <Border x:Name="Body" IsVisible="{TemplateBinding IsExpanded}" Padding="10,5,8,7" Grid.IsSharedSizeScope="True"
+            <Border x:Name="PART_Body" Padding="{TemplateBinding Padding}" Grid.IsSharedSizeScope="True"
                     BorderBrush="{StaticResource EditorLineBrush}" BorderThickness="0,0,0,1">
               <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
                                 ContentTemplate="{TemplateBinding ContentTemplate}" />
@@ -545,11 +556,62 @@
           </DockPanel>
         </ControlTemplate>
       </Setter>
-      <Style Selector="^:expanded /template/ PathIcon#Closed">
+      <Style Selector="^ /template/ PathIcon#PART_Opened">
         <Setter Property="IsVisible" Value="False" />
       </Style>
-      <Style Selector="^:expanded /template/ PathIcon#Opened">
+      <Style Selector="^:expanded /template/ PathIcon#PART_Opened">
         <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^:expanded /template/ PathIcon#PART_Closed">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^ /template/ Border#PART_Body">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^:expanded /template/ Border#PART_Body">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^:expanded /template/ TextBlock#PART_Summary">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^ /template/ Button#PART_More">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^:menu /template/ Button#PART_More">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^ /template/ ContentPresenter#PART_HeaderPresenter > TextBlock">
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      </Style>
+    </ControlTheme>
+    <!-- A row of a panel card: the label in a column 96 px wide or as wide as the card's longest label, the value beside it, or
+         under it, indented, when it holds rows of its own. The row cuts its label before its value runs out of room. -->
+    <ControlTheme x:Key="{x:Type controls:PanelRow}" TargetType="controls:PanelRow">
+      <Setter Property="Margin" Value="0,1" />
+      <Setter Property="MinHeight" Value="20" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid RowDefinitions="Auto,Auto">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" MinWidth="{x:Static controls:PanelRow.LabelColumn}" SharedSizeGroup="FieldLabel" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="PART_Label" Classes="fieldLabel" Text="{TemplateBinding Label}" />
+            <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Grid.Column" Value="1" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
+      <Style Selector="^:nested /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Grid.Row" Value="1" />
+        <Setter Property="Grid.Column" Value="0" />
+        <Setter Property="Grid.ColumnSpan" Value="2" />
+        <Setter Property="Margin" Value="10,2,0,0" />
       </Style>
     </ControlTheme>
 
@@ -787,6 +849,11 @@
     <Setter Property="Padding" Value="6,0" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
+  <Style Selector="Border.chip.outline">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
   <Style Selector="Border.hsep">
     <Setter Property="Height" Value="1" />
     <Setter Property="Margin" Value="0,5" />
@@ -836,6 +903,14 @@
   </Style>
   <Style Selector="ToggleButton.icon:checked, ToggleButton.quiet:checked">
     <Setter Property="Foreground" Value="{StaticResource EditorAccentInkBrush}" />
+  </Style>
+  <!-- An icon button that shows something is on: Play while the music plays. -->
+  <Style Selector="Button.icon.on">
+    <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentInkBrush}" />
+  </Style>
+  <Style Selector="Button.icon.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
   </Style>
   <Style Selector="Button.icon.save">
     <Setter Property="Foreground" Value="{StaticResource EditorSaveBrush}" />
@@ -1167,6 +1242,34 @@
   <Style Selector="Border.iconTile > PathIcon">
     <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
   </Style>
+  <!-- A tile that is clicked to pick another icon, and the icons it offers. -->
+  <Style Selector="Button.iconTile">
+    <Setter Property="Width" Value="22" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ListBox.iconChoices">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="ListBox.iconChoices ListBoxItem">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ListBox.iconChoices ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
   <Style Selector="Button.addRow">
     <Setter Property="Height" Value="26" />
     <Setter Property="Padding" Value="8,0" />
@@ -1175,53 +1278,7 @@
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
 
-  <!-- Sections (a component in the inspector): a 24 px raised header with a chevron, an icon and a menu; closed, the header
-       sinks into the panel and says what the section holds. -->
-  <Style Selector="ToggleButton.section">
-    <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
-    <Setter Property="BorderThickness" Value="0,0,0,1" />
-    <Setter Property="CornerRadius" Value="0" />
-    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Height" Value="24" />
-    <Setter Property="MinHeight" Value="24" />
-    <Setter Property="Padding" Value="6,0" />
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-  </Style>
-  <Style Selector="ToggleButton.section:checked">
-    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.section:checked /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.section:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.section:not(:checked)">
-    <Setter Property="FontWeight" Value="Medium" />
-    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.section:not(:checked) /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="Transparent" />
-  </Style>
-  <Style Selector="Border.sectionBody">
-    <Setter Property="Grid.IsSharedSizeScope" Value="True" />
-    <Setter Property="Padding" Value="10,5,8,7" />
-    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
-    <Setter Property="BorderThickness" Value="0,0,0,1" />
-  </Style>
-  <!-- A field's value sits beside its label, or, holding fields of its own, under it, across the row and indented (FieldRow in
-       App.axaml); set by style, as a local column would win over the nested one. -->
-  <Style Selector="ContentControl.fieldValue">
-    <Setter Property="Grid.Column" Value="1" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-  <Style Selector="ContentControl.fieldValue.nested">
-    <Setter Property="Grid.Row" Value="1" />
-    <Setter Property="Grid.Column" Value="0" />
-    <Setter Property="Grid.ColumnSpan" Value="2" />
-    <Setter Property="Margin" Value="10,2,0,0" />
-  </Style>
+  <!-- A panel row's label; the row narrows it further as the panel narrows. -->
   <Style Selector="TextBlock.fieldLabel">
     <Setter Property="Margin" Value="0,0,8,0" />
     <Setter Property="MaxWidth" Value="170" />
@@ -1350,6 +1407,25 @@
     <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
     <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
     <Setter Property="BoxShadow" Value="{StaticResource EditorTabTopBar}" />
+  </Style>
+  <!-- The bus a mixer strip goes to: a choice small enough to sit under the fader. -->
+  <Style Selector="ComboBox.route">
+    <Setter Property="MinHeight" Value="16" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Width" Value="70" />
+    <Setter Property="Padding" Value="4,0,0,0" />
+    <Setter Property="FontSize" Value="{StaticResource EditorCapsFontSize}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+  </Style>
+  <!-- A layer's header beside its lane; the picked layer's is tinted. -->
+  <Style Selector="Border.laneHeader">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,1" />
+  </Style>
+  <Style Selector="Border.laneHeader.selected">
+    <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
   </Style>
   <Style Selector="Border.stripCell">
     <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
