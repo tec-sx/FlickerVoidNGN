@@ -182,7 +182,7 @@ public sealed partial class MainWindowViewModel
         CreatorMode creator = CreatorMode.Piece(scene, Viewport.Camera, piece);
         Viewport.EnterCreator(creator, name);
         creator.EnterMesh();
-        Viewport.Status = $"Shaping {name}: 1, 2 and 3 pick points, edges or faces, E extrudes, I insets, Ctrl+B bevels, Ctrl+R cuts a loop. Escape goes back to the level.";
+        Viewport.Status = $"Shaping {name}: 1, 2 and 3 pick points, edges or faces, X extrudes, I insets, B bevels, L cuts a loop. Escape goes back to the level.";
     }
 
     private static bool IsFoliage(string file) => file.EndsWith(FoliageFile.Extension, StringComparison.OrdinalIgnoreCase);

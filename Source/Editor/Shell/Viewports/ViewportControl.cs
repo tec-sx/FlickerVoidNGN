@@ -130,7 +130,7 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
             Vector2 pixel = ToPixels(point.Position);
             if (e.ClickCount == 2)
             {
-                viewModel?.DoubleClicked(pixel, size.Width, size.Height);
+                viewModel?.DoubleClicked(pixel, size.Width, size.Height, e.KeyModifiers.HasFlag(KeyModifiers.Shift));
             }
             else
             {

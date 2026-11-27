@@ -175,7 +175,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Starts a tool whose amount the mouse sets (E, I, C, Ctrl+B): moving it up makes more, a click keeps it, a right-click or Escape
+    /// Starts a tool whose amount the mouse sets (X, I, C, B): moving it up makes more, a click keeps it, a right-click or Escape
     /// cancels, and a number typed in the tool's box sets it exactly.
     /// </summary>
     public void BeginDrag(MeshDragTool tool)
@@ -236,11 +236,11 @@ public sealed partial class MeshToolsViewModel : ObservableObject
         const string Switches = "Switches";
         return
         [
-            new MenuChoice("Extrude", DragExtrude, Tools, null, "E"),
+            new MenuChoice("Extrude", DragExtrude, Tools, null, "X"),
             new MenuChoice("Inset", DragInset, Tools, null, "I"),
             new MenuChoice("Cut", DragCut, Tools, null, "C"),
-            new MenuChoice("Bevel", DragBevel, Tools, null, "Ctrl+B"),
-            new MenuChoice("Loop Cut", LoopCut, Tools, null, "Ctrl+R"),
+            new MenuChoice("Bevel", DragBevel, Tools, null, "B"),
+            new MenuChoice("Loop Cut", LoopCut, Tools, null, "L"),
             new MenuChoice("Hang Door", HangDoor, Doors, null, "D"),
             new MenuChoice("Test Door", Test, Doors),
             new MenuChoice(Describe("Mirror", Mirror), () => Mirror = !Mirror, Switches),
