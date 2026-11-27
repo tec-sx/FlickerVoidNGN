@@ -354,6 +354,7 @@ public sealed partial class MainWindowViewModel
 
             CreatorPanel = null;
             HideContext(CreatorTab);
+            HideContext(ToolTab);
             if (OutlinerTab == PartsTab)
             {
                 OutlinerTab = SceneTab;

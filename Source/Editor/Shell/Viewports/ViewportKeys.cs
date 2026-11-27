@@ -31,6 +31,7 @@ public static class ViewportKeys
         Key.X => ViewportKey.X,
         Key.L => ViewportKey.L,
         Key.M => ViewportKey.M,
+        Key.Enter => ViewportKey.Enter,
         _ => null,
     };
 }

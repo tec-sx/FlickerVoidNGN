@@ -24,4 +24,5 @@ public enum ViewportKey
     X,
     L,
     M,
+    Enter,
 }

@@ -66,6 +66,7 @@ public sealed partial class ViewportViewModel : ObservableObject
         SceneMode = new SceneMode(scene, Camera, Gizmo, Icons, Timeline);
         Mode = SceneMode;
         MeshTools = new MeshToolsViewModel(() => Creator, message => Status = message);
+        ToolRail = new ToolRailViewModel(this);
         Selection.Changed += HandleSelectionChanged;
         scene.Content.Changed += HandleContentChanged;
         scene.Opened += HandleSceneOpened;
@@ -96,6 +97,9 @@ public sealed partial class ViewportViewModel : ObservableObject
 
     /// <summary>The tool bar of the creator's mesh mode.</summary>
     public MeshToolsViewModel MeshTools { get; private set; }
+
+    /// <summary>The tool rail on the viewport's left edge.</summary>
+    public ToolRailViewModel ToolRail { get; private set; }
 
     /// <summary>Whether the viewport's renderer turns on the Vulkan validation layer.</summary>
     public bool Validation { get; }

@@ -100,6 +100,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         viewport.PieceRequested += ShapePiece;
         viewport.PropertyChanged += HandleViewportChanged;
         viewport.Selection.Changed += HandleSelectionChanged;
+        viewport.MeshTools.PropertyChanged += HandleMeshToolsChanged;
         ShowSceneMood();
         WatchHistory();
     }
