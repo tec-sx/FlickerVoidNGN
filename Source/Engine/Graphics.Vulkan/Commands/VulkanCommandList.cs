@@ -351,6 +351,12 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         _vk.CmdDrawIndexed(Handle, (uint)indexCount, (uint)instanceCount, (uint)firstIndex, vertexOffset, (uint)firstInstance);
     }
 
+    public void DrawIndexedIndirect(IBuffer arguments, long offset = 0)
+    {
+        VulkanBuffer buffer = (VulkanBuffer)arguments;
+        _vk.CmdDrawIndexedIndirect(Handle, buffer.Handle, (ulong)offset, 1, 20);
+    }
+
     public void BuildBottomLevels(ReadOnlySpan<BottomLevelBuild> builds)
     {
         if (builds.IsEmpty)

@@ -20,5 +20,8 @@ public enum BufferUsage : byte
     /// <see cref="Devices.GraphicsFeatures.RayQueries"/>.
     /// </summary>
     AccelerationStructureInput = 32,
+
+    /// <summary>Indirect draws read their arguments from it, which shaders may have written.</summary>
+    Indirect = 64,
 }
 

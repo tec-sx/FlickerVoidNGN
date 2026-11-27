@@ -16,6 +16,9 @@ public enum ResourceState : byte
     DepthRead,
     IndexBuffer,
 
+    /// <summary>Indirect draws read their arguments from it.</summary>
+    IndirectArgument,
+
     /// <summary>A swapchain back buffer ready to be shown.</summary>
     Present,
 }

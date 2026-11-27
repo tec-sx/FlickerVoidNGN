@@ -39,6 +39,7 @@ public sealed class RenderingWindow : DebugWindow
         RenderStatistics statistics = _renderer.Statistics;
         ImGui.Text($"Mesh parts drawn {statistics.Drawn}, culled {statistics.Culled}");
         ImGui.Text($"In shadows drawn {statistics.ShadowDrawn}, culled {statistics.ShadowCulled}");
+        ImGui.Text($"Batches drawn {statistics.BatchesDrawn}, culled {statistics.BatchesCulled}; copies sent {statistics.CopiesSubmitted}, drawn {statistics.CopiesDrawn}");
         RenderSwitch(_settings.LocalLights, "Point and spot lights");
         RenderSwitch(_settings.Probes, "Irradiance probes");
         RenderSwitch(_settings.RayTracing, "Ray tracing (where the GPU has ray queries)");

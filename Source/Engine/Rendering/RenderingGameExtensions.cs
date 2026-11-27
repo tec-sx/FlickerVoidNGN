@@ -2,6 +2,7 @@
 using Arch.Core;
 
 using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Rendering.Instancing;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Meshes;
@@ -59,6 +60,7 @@ public static class RenderingGameExtensions
         ArrayRegistry.Add<Undrawn>();
         ArrayRegistry.Add<Cutaway>();
         ArrayRegistry.Add<RequestedOutlines>();
+        ArrayRegistry.Add<InstancedMesh>();
         MeshAnimationSystem animation = new(game.World);
         game.FrameSystems.Add(animation);
     }

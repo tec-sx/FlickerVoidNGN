@@ -242,6 +242,44 @@ public sealed class GraphicsDeviceTests : IDisposable
     }
 
     [Fact]
+    public void DrawsIndexedVerticesAsItsArgumentsBufferSays()
+    {
+        using IGraphicsDevice device = CreateDevice();
+        GraphicsDeviceTestsBuilder builder = _builder!;
+
+        // The same two triangles as DrawsIndexedVertices, their counts read from a buffer: 6 indices, 1 instance.
+        float[] positions = [-1, 1, 0, 1, 1, 0, 1, -1, 0, -1, -1, 0];
+        ushort[] indices = [0, 1, 2, 0, 2, 3];
+        uint[] arguments = [6, 1, 0, 0, 0];
+        byte[] vertexData = MemoryMarshal.AsBytes(positions.AsSpan()).ToArray();
+        byte[] indexData = MemoryMarshal.AsBytes(indices.AsSpan()).ToArray();
+        byte[] argumentData = MemoryMarshal.AsBytes(arguments.AsSpan()).ToArray();
+        BufferDescription vertexDescription = new(vertexData.Length, BufferUsage.ShaderRead);
+        BufferDescription indexDescription = new(indexData.Length, BufferUsage.Index);
+        BufferDescription argumentDescription = new(argumentData.Length, BufferUsage.Indirect);
+        using IBuffer vertices = device.CreateBuffer(vertexDescription, vertexData);
+        using IBuffer indexBuffer = device.CreateBuffer(indexDescription, indexData);
+        using IBuffer argumentBuffer = device.CreateBuffer(argumentDescription, argumentData);
+        using ITexture target = GraphicsDeviceTestsBuilder.CreateTarget(device);
+        using IPipeline pipeline = builder.CreatePipeline(device, TestShaders.PulledVertex, TestShaders.SolidColorPixel);
+        using ICommandList commands = device.CreateCommandList();
+
+        commands.Begin();
+        GraphicsDeviceTestsBuilder.BeginRendering(commands, target, Blue);
+        commands.SetPipeline(pipeline);
+        commands.SetIndexBuffer(indexBuffer, IndexFormat.UInt16);
+        DrawConstants constants = new(vertices.BindlessIndex, 0, 0, 0, Red);
+        commands.PushConstants(constants);
+        commands.DrawIndexedIndirect(argumentBuffer);
+        commands.EndRendering();
+        commands.End();
+        device.Submit(commands);
+
+        uint[] pixels = GraphicsDeviceTestsBuilder.ReadPixels(device, target);
+        pixels.Should().AllBeEquivalentTo(RedPixel);
+    }
+
+    [Fact]
     public void SamplesABindlessTexture()
     {
         using IGraphicsDevice device = CreateDevice();

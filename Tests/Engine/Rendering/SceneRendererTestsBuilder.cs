@@ -10,6 +10,7 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Vulkan.Devices;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
+using FlickerVoid.Engine.Rendering.Instancing;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.PostProcessing;
 using FlickerVoid.Engine.Rendering.Meshes;
@@ -159,6 +160,13 @@ internal sealed class SceneRendererTestsBuilder : IDisposable
     {
         Entity entity = FindNamed(name);
         _game.World.Add(entity, component);
+        return this;
+    }
+
+    /// <summary>Adds a chunk entity drawing the batch, as a scatter or a brush would.</summary>
+    public SceneRendererTestsBuilder WithBatch(InstanceBatch batch)
+    {
+        _game.World.Create(new InstancedMesh(batch));
         return this;
     }
 

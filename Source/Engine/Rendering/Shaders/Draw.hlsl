@@ -7,7 +7,8 @@
 #include "Material.hlsl"
 
 // A draw's record: where its mesh stands this frame and the frame before, its vertices then and now, its looks, its outline's
-// color, its MeshFlags, its indices, and the centre of its box with how wholly it takes that depth for the depth tone.
+// color, its MeshFlags, its indices, for a batch's part its copies' smallest and largest size as two halves, and the centre of
+// its box with how wholly it takes that depth for the depth tone.
 struct Draw
 {
     float4x4 World;
@@ -21,6 +22,7 @@ struct Draw
     uint Material;
     uint Flags;
     uint Indices;
+    uint Scales;
     float3 Center;
     float Wholeness;
 };
@@ -50,6 +52,7 @@ Draw LoadDraw(FrameData frame, uint index)
     draw.Material = buffer.Load<uint>(offset + 176);
     draw.Flags = buffer.Load<uint>(offset + 180);
     draw.Indices = buffer.Load<uint>(offset + 184);
+    draw.Scales = buffer.Load<uint>(offset + 188);
     draw.Center = buffer.Load<float3>(offset + 192);
     draw.Wholeness = buffer.Load<float>(offset + 204);
     return draw;

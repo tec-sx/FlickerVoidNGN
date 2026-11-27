@@ -3,6 +3,7 @@ using System.Numerics;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Graphics.Upscaling;
 using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Rendering.Instancing;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
 using FlickerVoid.Engine.Rendering.Outlines;
@@ -32,6 +33,7 @@ public sealed class SceneRendererTests : IDisposable
     private static readonly Vector4 Red = new(1, 0, 0, 1);
     private static readonly uint RedPixel = SceneRendererTestsBuilder.Rgba(255, 0, 0, 255);
     private static readonly uint BlackPixel = SceneRendererTestsBuilder.Rgba(0, 0, 0, 255);
+    private static readonly uint BluePixel = SceneRendererTestsBuilder.Rgba(0, 0, 255, 255);
 
     /// <summary>Where nothing was drawn: transparent, so a stage's image shows over the interface there.</summary>
     private static readonly uint EmptyPixel = SceneRendererTestsBuilder.Rgba(0, 0, 0, 0);
@@ -331,6 +333,139 @@ public sealed class SceneRendererTests : IDisposable
         statistics.Culled.Should().Be(2);
         statistics.ShadowDrawn.Should().Be(2, "the blocker outside the view stands between the floor and the sun, so it casts onto it");
         statistics.ShadowCulled.Should().Be(1, "the far quad is outside the sun's view too");
+    }
+
+    [Fact]
+    public void DrawsTheCopiesOfABatchWhereTheyStand()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera);
+        InstanceBatch batch = Batch(new Instance(new Vector3(0.5f, 0.5f, 0), 0, 0, 0, 0), new Instance(new Vector3(-0.5f, -0.5f, 0), 0, 0, 0, 0));
+        _builder.WithBatch(batch);
+
+        uint[] pixels = _builder.Render();
+
+        int[] covered = [2, 3, 6, 7, 8, 9, 12, 13];
+        for (int index = 0; index < pixels.Length; index++)
+        {
+            uint expected = EmptyPixel;
+            if (covered.Contains(index))
+            {
+                expected = RedPixel;
+            }
+
+            pixels[index].Should().Be(expected, $"the half-sized copies cover the top right and bottom left quarters, not pixel {index}");
+        }
+    }
+
+    [Fact]
+    public void TurnsCopiesAboutTheVertical()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera);
+        InstanceBatch batch = Batch(new Instance(Vector3.Zero, MathF.PI / 4, 0, 0, 0));
+        batch.MinScale = 1;
+        batch.MaxScale = 1;
+        _builder.WithBatch(batch);
+
+        uint[] pixels = _builder.Render();
+
+        pixels[4].Should().Be(EmptyPixel, "turned an eighth, the quad reaches only 0.71 to each side");
+        pixels[5].Should().NotBe(EmptyPixel);
+        pixels[6].Should().NotBe(EmptyPixel);
+        pixels[7].Should().Be(EmptyPixel);
+    }
+
+    [Fact]
+    public void CullsBatchesWhollyOutsideTheView()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera);
+        _builder.WithBatch(Batch(new Instance(Vector3.Zero, 0, 0, 0, 0), new Instance(new Vector3(0.5f, 0, 0), 0, 0, 0, 0)));
+        _builder.WithBatch(Batch(new Instance(new Vector3(100, 0, 0), 0, 0, 0, 0)));
+
+        _builder.Render();
+
+        RenderStatistics statistics = _builder.Statistics;
+        statistics.BatchesDrawn.Should().Be(1);
+        statistics.BatchesCulled.Should().Be(1);
+        statistics.CopiesSubmitted.Should().Be(2, "only the batch in view sends its copies to be culled one by one");
+    }
+
+    [Fact]
+    public void CullsCopiesOutsideTheViewOnTheGpu()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera);
+        _builder.WithBatch(Batch(new Instance(Vector3.Zero, 0, 0, 0, 0), new Instance(new Vector3(4, 0, 0), 0, 0, 0, 0)));
+
+        _builder.RenderFrames(SceneRenderer.MaxFramesInFlight + 1);
+
+        RenderStatistics statistics = _builder.Statistics;
+        statistics.CopiesSubmitted.Should().Be(2, "the batch's box reaches into the view");
+        statistics.CopiesDrawn.Should().Be(1, "the copy at x = 4 stands outside it");
+    }
+
+    [Fact]
+    public void MovesCopiesWhenTheirBatchChanges()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera);
+        InstanceBatch batch = Batch(new Instance(new Vector3(0.5f, 0.5f, 0), 0, 0, 0, 0));
+        _builder.WithBatch(batch);
+        _builder.Render();
+
+        Span<Instance> copies = batch.Rewrite(1);
+        copies[0] = new Instance(new Vector3(-0.5f, -0.5f, 0), 0, 0, 0, 0);
+        uint[] pixels = _builder.RenderFrames(SceneRenderer.MaxFramesInFlight + 1);
+
+        pixels[3].Should().Be(EmptyPixel, "the copy left the top right");
+        pixels[12].Should().Be(RedPixel, "it stands at the bottom left in every frame's buffer");
+    }
+
+    [Fact]
+    public void DrawsAStandInForBatchesBeyondItsDistance()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithModel("Blue.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0, 0, 1, 1)));
+        _builder.WithScene(Camera);
+        InstanceBatch batch = Batch(new Instance(Vector3.Zero, 0, 0, 0, 0));
+        batch.MinScale = 1;
+        batch.MaxScale = 1;
+        batch.StandIn = "Blue.glb";
+        batch.StandInDistance = 10;
+        _builder.WithBatch(batch);
+
+        uint[] near = _builder.Render();
+        batch.StandInDistance = 2;
+        uint[] far = _builder.Render();
+
+        near.Should().AllBeEquivalentTo(RedPixel, "the camera stands 5 from the batch, nearer than 10");
+        far.Should().AllBeEquivalentTo(BluePixel, "beyond 2 the whole batch draws its stand-in");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CopiesCastShadows(bool rayQueries)
+    {
+        if (rayQueries)
+        {
+            _builder.WithRayQueries();
+        }
+
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        InstanceBatch batch = Batch(new Instance(new Vector3(0.75f, 0.25f, 1), 0, 0, 0, 0));
+        batch.MinScale = 0.25f;
+        batch.MaxScale = 0.25f;
+        _builder.WithBatch(batch);
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+
+        uint[] pixels = _builder.Render();
+
+        (byte shadowed, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        shadowed.Should().BeInRange(62, 66, "the copy hides the sun from that part of the floor");
     }
 
     [Fact]
@@ -2447,5 +2582,14 @@ public sealed class SceneRendererTests : IDisposable
         }
 
         return reds;
+    }
+
+    /// <summary>A batch of Quad.glb copies at half size.</summary>
+    private static InstanceBatch Batch(params Instance[] copies)
+    {
+        InstanceBatch batch = new("Quad.glb") { MinScale = 0.5f, MaxScale = 0.5f };
+        Span<Instance> written = batch.Rewrite(copies.Length);
+        copies.CopyTo(written);
+        return batch;
     }
 }

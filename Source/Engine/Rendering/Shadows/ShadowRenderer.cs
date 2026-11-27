@@ -4,6 +4,7 @@ using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
 using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Rendering.Pipeline;
 using FlickerVoid.Engine.Runtime.Geometry;
@@ -12,7 +13,7 @@ namespace FlickerVoid.Engine.Rendering.Shadows;
 
 /// <summary>
 /// Draws the depth of every mesh into the shadow atlas, once per shadow view it is in, leaving the atlas ready to sample; parts in a
-/// cutout material leave out their holes.
+/// cutout material leave out their holes. A batch's part in a view draws all its copies at once.
 /// </summary>
 internal sealed class ShadowRenderer : IDisposable
 {
@@ -107,10 +108,18 @@ internal sealed class ShadowRenderer : IDisposable
                 current = pipeline;
             }
 
-            ShadowConstants constants = new(draw.World * view.ViewProjection, draw.Vertices.BindlessIndex, frameBuffer, (uint)index);
+            uint copies = SceneConstants.None;
+            int instances = 1;
+            if (draw.Instanced is { } instanced)
+            {
+                copies = instanced.Copies.BindlessIndex;
+                instances = instanced.Batch.Count;
+            }
+
+            ShadowConstants constants = new(draw.World * view.ViewProjection, draw.Vertices.BindlessIndex, frameBuffer, (uint)index, copies);
             commands.SetIndexBuffer(draw.Part.Indices, IndexFormat.UInt32);
             commands.PushConstants(constants);
-            commands.DrawIndexed(draw.Part.IndexCount);
+            commands.DrawIndexed(draw.Part.IndexCount, instances);
         }
     }
 }
