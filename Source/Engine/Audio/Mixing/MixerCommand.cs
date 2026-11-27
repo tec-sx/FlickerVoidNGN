@@ -55,6 +55,13 @@ public readonly record struct MixerCommand
     public static MixerCommand SetBus(AudioBus bus, float gain, float cutoff = NoCutoff) =>
         new() { Kind = MixerCommandKind.SetBus, Bus = bus, Left = gain, Cutoff = cutoff };
 
+    /// <summary>For a reverb change, how big the room is (0 to 1); its wet mix is <see cref="Left"/> and its damping <see cref="Right"/>.</summary>
+    public float Size { get; private init; }
+
+    /// <summary>Sets the room the world buses (ambience, effects and dialogue) ring in: the wet mix, how big it is and how dull its walls are.</summary>
+    public static MixerCommand SetReverb(float wet, float size, float damping) =>
+        new() { Kind = MixerCommandKind.SetReverb, Left = wet, Right = damping, Size = size };
+
     /// <summary>Holds a bus's voices where they are, silent, or lets them go on.</summary>
     public static MixerCommand PauseBus(AudioBus bus, bool paused) => new() { Kind = MixerCommandKind.PauseBus, Bus = bus, Paused = paused };
 }

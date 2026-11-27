@@ -12,6 +12,7 @@ public sealed class Mixer
     public const int MaxVoices = 64;
 
     private const float CutoffFollow = 0.1f;
+    private const float WetFollow = 0.02f;
     private const float CutoffSnap = 50;
 
     private static readonly int BusCount = Enum.GetValues<AudioBus>().Length;
@@ -21,6 +22,10 @@ public sealed class Mixer
     private readonly Voice[] _voices = new Voice[MaxVoices];
     private readonly Bus[] _buses = new Bus[BusCount];
     private readonly float[] _scratch = new float[AudioFormat.BlockFrames * AudioFormat.Channels];
+    private readonly float[] _send = new float[AudioFormat.BlockFrames * AudioFormat.Channels];
+    private readonly Reverb _reverb = new();
+    private float _wet;
+    private float _targetWet;
     private long _position;
 
     public Mixer()
@@ -86,11 +91,20 @@ public sealed class Mixer
 
         Bus master = _buses[(int)AudioBus.Master];
         Span<float> mix = master.Buffer.AsSpan(0, output.Length);
+        Span<float> send = _send.AsSpan(0, output.Length);
+        send.Clear();
         for (int index = 1; index < _buses.Length; index++)
         {
             Bus bus = _buses[index];
             Span<float> buffer = bus.Buffer.AsSpan(0, output.Length);
-            MixBus(bus, buffer, mix);
+            bool rings = (AudioBus)index is AudioBus.Ambience or AudioBus.Effects or AudioBus.Dialogue;
+            MixBus(bus, buffer, mix, rings ? send : default);
+        }
+
+        _wet += (_targetWet - _wet) * WetFollow;
+        if (_wet > 0.0001f || _targetWet > 0)
+        {
+            _reverb.Process(send, mix, _wet);
         }
 
         master.Buffer.AsSpan(0, output.Length).CopyTo(_scratch);
@@ -106,7 +120,7 @@ public sealed class Mixer
     }
 
     /// <summary>Filters a bus's block, and adds it to <paramref name="into"/> at its gain, ramped across the block.</summary>
-    private static void MixBus(Bus bus, Span<float> buffer, Span<float> into)
+    private static void MixBus(Bus bus, Span<float> buffer, Span<float> into, Span<float> send = default)
     {
         bus.Cutoff = Follow(bus.Cutoff, bus.TargetCutoff);
         bus.Filter.Process(buffer, bus.Cutoff);
@@ -116,8 +130,15 @@ public sealed class Mixer
         for (int frame = 0; frame < frames; frame++)
         {
             gain += step;
-            into[frame * 2] += buffer[frame * 2] * gain;
-            into[(frame * 2) + 1] += buffer[(frame * 2) + 1] * gain;
+            float left = buffer[frame * 2] * gain;
+            float right = buffer[(frame * 2) + 1] * gain;
+            into[frame * 2] += left;
+            into[(frame * 2) + 1] += right;
+            if (!send.IsEmpty)
+            {
+                send[frame * 2] += left;
+                send[(frame * 2) + 1] += right;
+            }
         }
 
         bus.Gain = bus.TargetGain;
@@ -223,6 +244,11 @@ public sealed class Mixer
                     Bus bus = _buses[(int)command.Bus];
                     bus.TargetGain = command.Left;
                     bus.TargetCutoff = command.Cutoff;
+                    break;
+                case MixerCommandKind.SetReverb:
+                    _targetWet = command.Left;
+                    _reverb.Size = command.Size;
+                    _reverb.Damping = command.Right;
                     break;
                 case MixerCommandKind.PauseBus:
                     _buses[(int)command.Bus].Paused = command.Paused;

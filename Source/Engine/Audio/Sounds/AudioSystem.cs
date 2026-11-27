@@ -31,6 +31,7 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
 
     private static readonly QueryDescription Listeners = new QueryDescription().WithAll<AudioListener, Transform>();
     private static readonly QueryDescription Indoors = new QueryDescription().WithAll<IndoorVolume, Transform>();
+    private static readonly QueryDescription Rooms = new QueryDescription().WithAll<IndoorVolume, RoomReverb, Transform>();
     private static readonly AudioBus[] WorldBuses = [AudioBus.Ambience, AudioBus.Effects, AudioBus.Dialogue];
 
     private readonly Game _game;
@@ -52,6 +53,8 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
     private bool _paused;
     private bool _indoors;
     private bool _busesChanged = true;
+    private RoomReverb? _room;
+    private bool _roomSent;
 
     public AudioSystem(Game game, Random? random = null)
         : base(game.World)
@@ -139,6 +142,16 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
                 MixerCommand set = MixerCommand.SetVoice(id, left, right);
                 Mixer.Send(in set);
             }
+        }
+
+        RoomReverb? room = FindRoom();
+        if (!_roomSent || room?.Wet != _room?.Wet || room?.Size != _room?.Size || room?.Damping != _room?.Damping)
+        {
+            _room = room;
+            _roomSent = true;
+            RoomReverb heard = room ?? new RoomReverb { Wet = 0 };
+            MixerCommand reverb = MixerCommand.SetReverb(heard.Wet, heard.Size, heard.Damping);
+            Mixer.Send(in reverb);
         }
 
         bool indoors = IsListenerIndoors();
@@ -400,6 +413,29 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
         }
 
         _listener = ears ?? _listener;
+    }
+
+    /// <summary>The reverberation of the first room with one that the listener stands in; null outdoors.</summary>
+    private RoomReverb? FindRoom()
+    {
+        RoomReverb? found = null;
+        Vector3 ears = _listener;
+        World.Query(in Rooms, (ref IndoorVolume volume, ref RoomReverb room, ref Transform transform) =>
+        {
+            if (found is not null)
+            {
+                return;
+            }
+
+            Quaternion toVolume = Quaternion.Conjugate(transform.Rotation);
+            Vector3 local = Vector3.Transform(ears - transform.Position, toVolume);
+            Vector3 half = volume.Size / 2;
+            if (MathF.Abs(local.X) <= half.X && MathF.Abs(local.Z) <= half.Z && local.Y >= 0 && local.Y <= volume.Size.Y)
+            {
+                found = room;
+            }
+        });
+        return found;
     }
 
     private bool IsListenerIndoors()

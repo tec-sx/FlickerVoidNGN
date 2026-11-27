@@ -15,6 +15,7 @@ namespace FlickerVoid.Engine.Audio.Serialization;
     UseStringEnumConverter = true)]
 [JsonSerializable(typeof(AudioListener))]
 [JsonSerializable(typeof(SoundEmitter))]
+[JsonSerializable(typeof(RoomReverb))]
 [JsonSerializable(typeof(SoundDefinition))]
 [JsonSerializable(typeof(PlaySoundEffect))]
 [JsonSerializable(typeof(PlaySoundNode))]
