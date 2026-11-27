@@ -49,15 +49,22 @@ internal sealed class MeshLibrary : IDisposable
             throw new FileNotFoundException($"No mesh source makes {mesh}, and the content build baked no model of it.", fullPath);
         }
 
-        string? file = null;
+        List<string> files = [];
         if (made.File is not null)
         {
-            file = _content.GetFullPath(made.File);
+            string file = _content.GetFullPath(made.File);
+            files.Add(file);
+        }
+
+        foreach (string other in made.OtherFiles)
+        {
+            string file = _content.GetFullPath(other);
+            files.Add(file);
         }
 
         GpuMeshPart[] uploaded = [.. made.Model.Parts.Select(part => Upload(part, mesh))];
         GpuModel model = new(uploaded, made.Model.Animations);
-        _models.Add(mesh, new Made(model, file));
+        _models.Add(mesh, new Made(model, files));
         return model;
     }
 
@@ -91,7 +98,7 @@ internal sealed class MeshLibrary : IDisposable
         List<string> changed = [];
         foreach ((string mesh, Made made) in _models)
         {
-            if (made.File is not null && ContentManager.PathComparer.Equals(made.File, fullPath))
+            if (made.Files.Contains(fullPath, ContentManager.PathComparer))
             {
                 changed.Add(mesh);
             }
@@ -106,8 +113,8 @@ internal sealed class MeshLibrary : IDisposable
         }
     }
 
-    /// <summary>A mesh on the GPU and the full path of the file it was made from, if any.</summary>
-    private sealed record Made(GpuModel Model, string? File);
+    /// <summary>A mesh on the GPU and the full paths of the files it was made from, if any.</summary>
+    private sealed record Made(GpuModel Model, IReadOnlyList<string> Files);
 
     private GpuMeshPart Upload(MeshPart part, string name)
     {

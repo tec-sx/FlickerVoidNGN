@@ -35,6 +35,9 @@ public sealed partial class VehicleLook
     /// <summary>The look's source file for the vehicle file at the content path.</summary>
     public static string GetPath(string vehiclePath) => Path.ChangeExtension(vehiclePath, Extension);
 
+    /// <summary>The look as the content build bakes it: <c>Van.fvmodel</c> for <c>Van.fvvehicle</c>.</summary>
+    public static string GetBuiltPath(string vehiclePath) => Path.ChangeExtension(vehiclePath, ".fvmodel");
+
     public static VehicleLook Bind(VehicleFile vehicle, ModelData look)
     {
         IReadOnlyList<(string Id, VehiclePart Part)> parts = vehicle.GetParts();

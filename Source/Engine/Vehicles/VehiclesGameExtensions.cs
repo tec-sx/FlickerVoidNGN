@@ -17,7 +17,7 @@ public static class VehiclesGameExtensions
     /// <summary>
     /// Adds the <c>.fvvehicle</c> file kind and its schema, so the content check reads vehicle files, and the <c>vehicle</c> scene
     /// component, whose parts are spawned from its file through the <see cref="IContentManager"/> service (none without one) and
-    /// drawn through a mesh source, after <c>AddRendering</c>. Adding it again does nothing.
+    /// drawn through a mesh source, after <c>AddRendering</c>, as their look from Blender when one was built (the <see cref="VehicleLooks"/> service). Adding it again does nothing.
     /// </summary>
     public static void AddVehicles(this Game game)
     {
@@ -32,15 +32,17 @@ public static class VehiclesGameExtensions
         game.Spawner.Register("vehicle", VehiclesJsonContext.Default.Vehicle);
         ILogger logger = game.LoggerFactory.CreateLogger(typeof(VehicleFiles));
         VehicleFiles files = new(logger);
+        VehicleLooks looks = new(files);
+        game.Services.AddService(looks);
         if (game.Services.GetService<MeshSources>() is { } meshes)
         {
-            VehicleMeshSource source = new(files);
+            VehicleMeshSource source = new(files, looks);
             meshes.Add(source);
         }
 
         CreationParts parts = game.AddCreations();
         IContentManager? content = game.Services.GetService<IContentManager>();
-        VehicleSpawnSystem spawner = new(game.World, parts, files, content);
+        VehicleSpawnSystem spawner = new(game.World, parts, files, looks, content);
         game.FrameSystems.Add(spawner);
         game.Services.AddService(spawner);
     }
