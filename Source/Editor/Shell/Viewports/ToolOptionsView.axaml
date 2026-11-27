@@ -5,7 +5,8 @@
              x:Class="FlickerVoid.Editor.Viewports.ToolOptionsView"
              x:DataType="viewports:MeshToolsViewModel">
   <!-- The options of the tool in hand, in the inspector's place: its numbers change the result at once, and Apply and Cancel wait at the bottom of the view. -->
-  <StackPanel Margin="4,2" Spacing="4">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+  <StackPanel Margin="4,2,8,2" Spacing="4">
     <TextBlock Text="{Binding ToolName}" FontWeight="SemiBold" Margin="0,2,0,2" />
     <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4" IsVisible="{Binding IsDragging}">
       <TextBlock Text="Amount" VerticalAlignment="Center" IsVisible="{Binding ShowsAmount}" />
@@ -124,4 +125,5 @@
     </StackPanel>
     </StackPanel>
   </StackPanel>
+  </ScrollViewer>
 </UserControl>

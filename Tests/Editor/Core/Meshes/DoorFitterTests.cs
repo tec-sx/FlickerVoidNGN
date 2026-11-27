@@ -36,6 +36,22 @@ public sealed class DoorFitterTests
     }
 
     [Fact]
+    public void TheDoorStandsOnItsFootAndFillsItsWidthAndHeight()
+    {
+        Assert.SkipUnless(DoorFitter.IsAvailable, "Manifold's library is not built.");
+        DoorFit fit = MakeFit();
+        fit.Sill = 0.05f;
+        DoorFitter.Place(_car, fit);
+
+        IReadOnlyList<Vector3> points = _car.Doors[0].Mesh.Points;
+
+        points.Min(point => point.Y).Should().BeApproximately(fit.Centre.Y + 0.05f, 1e-3f);
+        points.Max(point => point.Y).Should().BeApproximately(fit.Centre.Y + 0.05f + fit.Height, 1e-3f);
+        points.Max(point => point.X).Should().BeApproximately(fit.Centre.X, 1e-3f, "the slab is flush with the wall face");
+        points.Min(point => point.X).Should().BeApproximately(fit.Centre.X - fit.Thickness, 1e-3f);
+    }
+
+    [Fact]
     public void RemovingTheDoorClosesTheWallAndDropsItsSource()
     {
         Assert.SkipUnless(DoorFitter.IsAvailable, "Manifold's library is not built.");

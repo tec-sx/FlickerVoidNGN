@@ -273,14 +273,16 @@ public static class DoorFitter
         }
     }
 
+    // A box stands on its origin, so the basis is put half its height lower to centre it on the point.
     private static SolidMesh PlaceBox(Vector3 size, Vector3 centre, DoorFit fit)
     {
         Vector3 up = fit.Up;
+        Vector3 origin = centre - (up * (size.Y / 2));
         Matrix4x4 basis = new(
             fit.Right.X, fit.Right.Y, fit.Right.Z, 0,
             up.X, up.Y, up.Z, 0,
             fit.Normal.X, fit.Normal.Y, fit.Normal.Z, 0,
-            centre.X, centre.Y, centre.Z, 1);
+            origin.X, origin.Y, origin.Z, 1);
         return SolidMesh.Box(size).Transform(basis);
     }
 
