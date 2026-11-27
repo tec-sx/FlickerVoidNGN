@@ -115,6 +115,7 @@ public sealed partial class MainWindowViewModel
             [AssetTypes.Data] = asset => OpenData(asset.Path),
             [AssetTypes.Music] = asset => OpenData(asset.Path),
             [AssetTypes.Sound] = asset => OpenData(asset.Path),
+            [AssetTypes.Mix] = asset => OpenData(asset.Path),
             [AssetTypes.Table] = asset => OpenTable(asset.Path),
             [AssetTypes.Flow] = asset => OpenFlow(asset.Path),
             [AssetTypes.Environment] = asset => OpenEnvironment(asset.Path),

@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Audio.Mixing;
 using FlickerVoid.Engine.Audio.Music;
 using FlickerVoid.Engine.Audio.Scripting;
 using FlickerVoid.Engine.Audio.Serialization;
@@ -26,6 +27,7 @@ public static class AudioGameExtensions
         game.Spawner.Register("roomReverb", AudioJsonContext.Default.RoomReverb);
         game.Data.AddResolver(AudioJsonContext.Default);
         game.Data.Register<SoundDefinition>("sound", SoundDefinition.Extension);
+        game.Data.Register<MixSet>("mix", MixSet.Extension);
         game.Data.RegisterDerived<Effect, PlaySoundEffect>("playSound");
         game.Data.RegisterDerived<FlowNode, PlaySoundNode>("playSound");
         AudioSystem audio = new(game) { SteamAudio = SteamAudio.TryCreate() };

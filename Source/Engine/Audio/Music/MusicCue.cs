@@ -33,6 +33,9 @@ public sealed class MusicCue
 
     public List<MusicTrack> Tracks { get; set; } = [];
 
+    /// <summary>Points on the phrase that tell gameplay when the music passes them.</summary>
+    public List<MusicNotify> Notifies { get; set; } = [];
+
     /// <summary>Played once when the cue is pushed over another, which plays on under it; the cue starts when its bars are over.</summary>
     [ContentFile(".wav", ".ogg")]
     public string FillIn { get; set; } = string.Empty;

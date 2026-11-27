@@ -1,7 +1,9 @@
 using System.Text;
 using System.Text.Json;
 
+using FlickerVoid.Engine.Audio.Mixing;
 using FlickerVoid.Engine.Audio.Music;
+using FlickerVoid.Engine.Audio.Serialization;
 using FlickerVoid.Engine.Audio.Sounds;
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Rendering.Moods;
@@ -115,10 +117,16 @@ public static class AssetTypes
     /// <summary>A recorded or exported sound file, imported into Content; sounds and music cues play them.</summary>
     public static AssetType Audio { get; } = new("Audio", "Sound", "#B8A27F", ".wav", ".ogg");
 
+    /// <summary>The mix states of a game: what lowers and dulls which bus while the player is indoors, talking or in the hub.</summary>
+    public static AssetType Mix { get; } = new("Mix", "Sound", "#D9A66B", MixSet.Extension)
+    {
+        New = new AssetNew("Mix", "Mix", "data", WriteMix),
+    };
+
     public static AssetType Code { get; } = new("Code", "Code", "#6FC2B0", ".cs");
 
     /// <summary>Every type a file can have, in the order the browser's filter and New menu list them.</summary>
-    public static IReadOnlyList<AssetType> Files { get; } = [Other, Scene, Vehicle, Building, Prop, Foliage, Model, Material, Texture, Mood, Environment, Lens, Canvas, Shader, Data, Table, Flow, Music, Sound, Audio, Code];
+    public static IReadOnlyList<AssetType> Files { get; } = [Other, Scene, Vehicle, Building, Prop, Foliage, Model, Material, Texture, Mood, Environment, Lens, Canvas, Shader, Data, Table, Flow, Music, Sound, Audio, Mix, Code];
 
     /// <summary>The content drawer's filter chips (rule R11, categories before long lists): everything, then five kinds of work.</summary>
     public static IReadOnlyList<AssetFilter> Filters { get; } =
@@ -127,7 +135,7 @@ public static class AssetTypes
         new("Scenes", [Scene, Vehicle, Building, Prop, Foliage], Scene.Color),
         new("Art", [Model, Material, Texture, Canvas, Shader], Model.Color),
         new("Light", [Mood, Environment, Lens], Mood.Color),
-        new("Sound", [Music, Sound, Audio], Music.Color),
+        new("Sound", [Music, Sound, Audio, Mix], Music.Color),
         new("Data", [Data, Table, Flow], Flow.Color),
         new("Code", [Code], Code.Color),
     ];
@@ -144,6 +152,20 @@ public static class AssetTypes
         }
 
         return Other;
+    }
+
+    private static string WriteMix(string schemaPath)
+    {
+        MixSet mix = MixSet.Default();
+        using MemoryStream stream = new();
+        using (Utf8JsonWriter writer = new(stream, WriterOptions))
+        {
+            JsonSerializer.Serialize(writer, mix, AudioJsonContext.Default.MixSet);
+        }
+
+        string body = Encoding.UTF8.GetString(stream.ToArray());
+        string header = "{\n  \"$schema\": \"" + schemaPath + "\",\n";
+        return header + body.TrimStart('{').TrimStart('\r', '\n') + "\n";
     }
 
     private static string WriteFoliage(string schemaPath)

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using FlickerVoid.Engine.Audio.Mixing;
 using FlickerVoid.Engine.Audio.Music;
 using FlickerVoid.Engine.Audio.Scripting;
 using FlickerVoid.Engine.Audio.Sounds;
@@ -19,6 +20,7 @@ namespace FlickerVoid.Engine.Audio.Serialization;
 [JsonSerializable(typeof(SoundDefinition))]
 [JsonSerializable(typeof(PlaySoundEffect))]
 [JsonSerializable(typeof(PlaySoundNode))]
+[JsonSerializable(typeof(MixSet))]
 [JsonSerializable(typeof(MusicCue))]
 [JsonSerializable(typeof(MusicArea))]
 [JsonSerializable(typeof(SceneMusic))]

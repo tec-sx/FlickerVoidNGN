@@ -16,7 +16,7 @@ namespace FlickerVoid.Editor.Assets;
 /// </summary>
 public sealed class UnsavedContent : IContentManager
 {
-    private static readonly string[] TrackedExtensions = [".fvmat", ".fvmood", ".fvenv", ".fvlens", ".fvcanvas", ".fvtexture", ".fvdata", ".fvmusic", ".fvsound", ".fvtable", ".fvflow", VehicleFile.Extension, BuildingFile.Extension, PropFile.Extension, FoliageFile.Extension];
+    private static readonly string[] TrackedExtensions = [".fvmat", ".fvmood", ".fvenv", ".fvlens", ".fvcanvas", ".fvtexture", ".fvdata", ".fvmusic", ".fvsound", ".fvmix", ".fvtable", ".fvflow", VehicleFile.Extension, BuildingFile.Extension, PropFile.Extension, FoliageFile.Extension];
 
     private readonly IContentManager _disk;
     private readonly Dictionary<string, byte[]> _unsaved = new(ContentManager.PathComparer);

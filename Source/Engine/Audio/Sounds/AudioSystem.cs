@@ -53,6 +53,9 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
     private bool _paused;
     private bool _indoors;
     private bool _busesChanged = true;
+    private MixSet? _mix;
+    private readonly HashSet<string> _manualStates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, float> _mixWeights = new(StringComparer.OrdinalIgnoreCase);
     private RoomReverb? _room;
     private bool _roomSent;
 
@@ -80,11 +83,34 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
         set => _steam = value;
     }
 
-    /// <summary>The ambience's gain while the listener stands in an indoor volume.</summary>
-    public float IndoorAmbienceGain { get; set; } = 0.6f;
+    /// <summary>The mix states the buses follow: the game's <see cref="MixSet.Path"/> when it has one, else the default ones.</summary>
+    public MixSet Mix
+    {
+        get
+        {
+            _mix ??= LoadMix();
+            return _mix;
+        }
 
-    /// <summary>The ambience's low-pass cutoff in hertz while the listener stands in an indoor volume.</summary>
-    public float IndoorAmbienceCutoff { get; set; } = 1200;
+        set
+        {
+            _mix = value;
+            _busesChanged = true;
+        }
+    }
+
+    /// <summary>Turns a mix state the game controls (<c>Talking</c>, <c>Hub open</c>) on or off; it fades in or out over its own time.</summary>
+    public void SetMixState(string name, bool on)
+    {
+        bool changed = on ? _manualStates.Add(name) : _manualStates.Remove(name);
+        if (changed)
+        {
+            _busesChanged = true;
+        }
+    }
+
+    /// <summary>How far in a mix state is, 0 to 1.</summary>
+    public float GetMixWeight(string name) => _mixWeights.TryGetValue(name, out float weight) ? weight : 0;
 
     /// <summary>Whether the listener stood in an indoor volume at the last update.</summary>
     public bool IsIndoors => _indoors;
@@ -161,6 +187,7 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
             _busesChanged = true;
         }
 
+        FollowMixStates((float)t.Elapsed.TotalSeconds);
         if (_busesChanged)
         {
             _busesChanged = false;
@@ -452,16 +479,79 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
         return inside;
     }
 
+    private MixSet LoadMix()
+    {
+        DataAssets? data = _game.Services.GetService<DataAssets>();
+        IContentManager? content = _game.Services.GetService<IContentManager>();
+        if (data is null || content is null)
+        {
+            return MixSet.Default();
+        }
+
+        string full = content.GetFullPath(MixSet.Path);
+        if (!File.Exists(full))
+        {
+            return MixSet.Default();
+        }
+
+        try
+        {
+            return data.Load<MixSet>(MixSet.Path);
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or System.Text.Json.JsonException)
+        {
+            _logger.LogWarning("The mix {Path} can't be read: {Problem}", MixSet.Path, exception.Message);
+            return MixSet.Default();
+        }
+    }
+
+    /// <summary>Moves each mix state's weight toward 1 while it holds and 0 while it does not, over its fade.</summary>
+    private void FollowMixStates(float seconds)
+    {
+        foreach (MixState state in Mix.States)
+        {
+            bool holds = _manualStates.Contains(state.Name)
+                || (_indoors && string.Equals(state.Name, MixSet.Indoors, StringComparison.OrdinalIgnoreCase))
+                || (_paused && string.Equals(state.Name, MixSet.Paused, StringComparison.OrdinalIgnoreCase));
+            float target = holds ? 1 : 0;
+            float weight = GetMixWeight(state.Name);
+            if (weight == target)
+            {
+                continue;
+            }
+
+            float step = state.Fade <= 0 ? 1 : seconds / state.Fade;
+            weight = target > weight ? Math.Min(target, weight + step) : Math.Max(target, weight - step);
+            _mixWeights[state.Name] = weight;
+            _busesChanged = true;
+        }
+    }
+
     private void SendBuses()
     {
         foreach (AudioBus bus in Enum.GetValues<AudioBus>())
         {
             float gain = Settings.GetVolume(bus);
             float cutoff = MixerCommand.NoCutoff;
-            if (bus == AudioBus.Ambience && _indoors)
+            foreach (MixState state in Mix.States)
             {
-                gain *= IndoorAmbienceGain;
-                cutoff = IndoorAmbienceCutoff;
+                float weight = GetMixWeight(state.Name);
+                if (weight <= 0)
+                {
+                    continue;
+                }
+
+                foreach (MixDuck duck in state.Ducks)
+                {
+                    if (duck.Bus != bus)
+                    {
+                        continue;
+                    }
+
+                    gain *= 1 + ((duck.Gain - 1) * weight);
+                    float dulled = MixerCommand.NoCutoff + ((duck.Cutoff - MixerCommand.NoCutoff) * weight);
+                    cutoff = Math.Min(cutoff, dulled);
+                }
             }
 
             MixerCommand set = MixerCommand.SetBus(bus, gain, cutoff);

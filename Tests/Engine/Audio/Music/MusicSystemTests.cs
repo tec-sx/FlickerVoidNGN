@@ -336,6 +336,95 @@ public sealed class MusicSystemTests : IDisposable
         _builder.HeardAtBar(first, 2.75).Should().BeApproximately(0.4f, Close);
     }
 
+    [Fact]
+    public void SeeksToABarAndPlaysTheLoopFromItsPlaceThere()
+    {
+        string cue = _builder.WithCue("Street", """{ "name": "Lead", "loop": "TwoBars.wav" }""");
+        Start(cue);
+        _builder.PlayUntilBar(1.5);
+
+        _builder.Music.Seek(2);
+        _builder.PlayFor(MusicSystemTestsBuilder.BarFrames / 2);
+
+        _builder.Music.GetPosition().Bar.Should().BeGreaterThanOrEqualTo(2);
+        _builder.HeardAt(_builder.Position - 1).Should().BeApproximately(0.3f, Close);
+    }
+
+    [Fact]
+    public void MutesAndSolosTracksWithoutTakingThemOut()
+    {
+        string cue = _builder.WithCue("Street", Bass + """, { "name": "Drums", "loop": "Drums.wav" }""");
+        long first = Start(cue);
+        _builder.PlayUntilBar(1.5);
+        _builder.HeardAtBar(first, 1.4).Should().BeApproximately(0.3f, Close);
+
+        _builder.Music.SetTrackMuted("Drums", true);
+        _builder.PlayUntilBar(2.5);
+        _builder.HeardAtBar(first, 2.4).Should().BeApproximately(0.1f, Close);
+        _builder.Music.IsLayerOn("Drums").Should().BeTrue();
+
+        _builder.Music.SetTrackMuted("Drums", false);
+        _builder.Music.SetTrackSoloed("Drums", true);
+        _builder.PlayUntilBar(3.5);
+        _builder.HeardAtBar(first, 3.4).Should().BeApproximately(0.2f, Close);
+    }
+
+    [Fact]
+    public void ScalesATracksGainAndMetersItsLevel()
+    {
+        string cue = _builder.WithCue("Street", Bass);
+        Start(cue);
+        _builder.Music.SetTrackGain("Bass", 0.5f);
+        _builder.PlayUntilBar(1.5);
+        _builder.Music.TakeLayerLevel("Bass");
+        _builder.PlayUntilBar(2.5);
+
+        float level = _builder.Music.TakeLayerLevel("Bass");
+
+        level.Should().BeApproximately(0.05f, Close);
+        _builder.Music.TakeLayerLevel("Missing").Should().Be(0);
+    }
+
+    [Fact]
+    public void SendsANotifyEachTimeThePhrasePassesIt()
+    {
+        string cue = _builder.WithCue("Street", Bass, "\"tempo\": 480, \"phraseBars\": 2, \"notifies\": [ { \"name\": \"Drop\", \"bar\": 2 } ]");
+        List<MusicNotifyEvent> notified = [];
+        _builder.Game.Events.Handle((in MusicNotifyEvent notify) => notified.Add(notify));
+        Start(cue);
+
+        _builder.PlayUntilBar(5.5);
+        _builder.PlayFor(1000);
+
+        notified.Should().Equal(new MusicNotifyEvent(cue, "Drop", 2), new MusicNotifyEvent(cue, "Drop", 4));
+    }
+
+    [Fact]
+    public void StopsNowWithoutWaitingForTheNextBar()
+    {
+        string cue = _builder.WithCue("Street", Bass);
+        Start(cue);
+        _builder.PlayUntilBar(1.5);
+
+        _builder.Music.StopNow();
+        _builder.PlayFor(MusicSystemTestsBuilder.BarFrames / 4);
+
+        _builder.Music.GetCurrent().Should().BeNull();
+        _builder.HeardAt(_builder.Position - 1).Should().Be(0);
+    }
+
+    [Fact]
+    public void PreviewsACueHeldInMemoryFromABar()
+    {
+        MusicCue cue = new() { Tempo = 480, Tracks = [new MusicTrack { Name = "Lead", Loop = "TwoBars.wav" }] };
+
+        _builder.Music.Preview("Held", cue, 2);
+        _builder.PlayFor(MusicSystemTestsBuilder.BarFrames / 2);
+
+        _builder.Music.GetCurrent().Should().Be("Held");
+        _builder.HeardAt(_builder.Position - 1).Should().BeApproximately(0.3f, Close);
+    }
+
     private long Start(string cue)
     {
         _builder.Music.Play(cue);
