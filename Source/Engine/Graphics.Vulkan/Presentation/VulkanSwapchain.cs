@@ -13,7 +13,7 @@ using FlickerVoid.Engine.Graphics.Vulkan.Textures;
 namespace FlickerVoid.Engine.Graphics.Vulkan.Presentation;
 
 /// <summary>
-/// A Vulkan swapchain with FIFO presentation. Each acquired image's semaphore is waited on by an empty submission that
+/// A Vulkan swapchain, presenting FIFO with vsync, otherwise mailbox or immediate as the surface offers. Each acquired image's semaphore is waited on by an empty submission that
 /// later submissions wait for on the device's timeline; each image has its own semaphore that tells presentation the GPU is done.
 /// </summary>
 internal sealed unsafe class VulkanSwapchain : ISwapchain
@@ -43,6 +43,7 @@ internal sealed unsafe class VulkanSwapchain : ISwapchain
     private uint _imageIndex;
     private bool _acquired;
     private bool _outOfDate;
+    private bool _vsync;
     private bool _disposed;
 
     public VulkanSwapchain(VulkanGraphicsDevice device, in SwapchainDescription description)
@@ -69,6 +70,7 @@ internal sealed unsafe class VulkanSwapchain : ISwapchain
             throw new GraphicsUnavailableException("The Vulkan graphics queue can't present to this window.");
         }
 
+        _vsync = description.VSync;
         Create(description.Width, description.Height);
     }
 
@@ -77,6 +79,21 @@ internal sealed unsafe class VulkanSwapchain : ISwapchain
     public int Height { get; private set; }
 
     public PixelFormat Format => PixelFormat.Bgra8UNormSrgb;
+
+    public bool VSync
+    {
+        get => _vsync;
+        set
+        {
+            if (value == _vsync)
+            {
+                return;
+            }
+
+            _vsync = value;
+            _outOfDate = true;
+        }
+    }
 
     public ITexture AcquireNextTexture()
     {
@@ -228,7 +245,7 @@ internal sealed unsafe class VulkanSwapchain : ISwapchain
             ImageSharingMode = SharingMode.Exclusive,
             PreTransform = capabilities.CurrentTransform,
             CompositeAlpha = ChooseCompositeAlpha(capabilities.SupportedCompositeAlpha),
-            PresentMode = PresentModeKHR.FifoKhr,
+            PresentMode = ChoosePresentMode(),
             Clipped = true,
             OldSwapchain = _handle,
         };
@@ -265,6 +282,35 @@ internal sealed unsafe class VulkanSwapchain : ISwapchain
         }
 
         throw new GraphicsUnavailableException($"The window surface doesn't support {SurfaceFormat}.");
+    }
+
+    /// <summary>FIFO with vsync, which every surface offers; without, mailbox (no tearing) or else immediate.</summary>
+    private PresentModeKHR ChoosePresentMode()
+    {
+        if (_vsync)
+        {
+            return PresentModeKHR.FifoKhr;
+        }
+
+        uint count = 0;
+        VulkanResult.Check(_surfaceApi.GetPhysicalDeviceSurfacePresentModes(_device.PhysicalDevice, _surface, &count, null));
+        PresentModeKHR[] modes = new PresentModeKHR[count];
+        fixed (PresentModeKHR* pointer = modes)
+        {
+            VulkanResult.Check(_surfaceApi.GetPhysicalDeviceSurfacePresentModes(_device.PhysicalDevice, _surface, &count, pointer));
+        }
+
+        if (modes.Contains(PresentModeKHR.MailboxKhr))
+        {
+            return PresentModeKHR.MailboxKhr;
+        }
+
+        if (modes.Contains(PresentModeKHR.ImmediateKhr))
+        {
+            return PresentModeKHR.ImmediateKhr;
+        }
+
+        return PresentModeKHR.FifoKhr;
     }
 
     private static CompositeAlphaFlagsKHR ChooseCompositeAlpha(CompositeAlphaFlagsKHR supported)

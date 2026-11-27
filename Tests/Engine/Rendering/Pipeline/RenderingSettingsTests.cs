@@ -23,6 +23,18 @@ public sealed class RenderingSettingsTests : IDisposable
     }
 
     [Fact]
+    public void VSyncIsOffUnlessSwitchedOn()
+    {
+        RenderingSettings settings = _builder.BuildSettings();
+        bool off = settings.VSync.Value;
+
+        string set = _builder.Console.Execute("r.vsync on");
+
+        off.Should().BeFalse();
+        set.Should().Be("r.VSync = true");
+    }
+
+    [Fact]
     public void TheDebugViewIsNotSaved()
     {
         RenderingSettings settings = _builder.BuildSettings();

@@ -11,7 +11,7 @@ public sealed class RenderingSettings
 {
     public RenderingSettings()
     {
-        Variables = [LocalLights, Probes, RayTracing, LiveProbes, Upscaling, ViewportUpscaling, RayReconstruction, DepthFades, DebugView];
+        Variables = [LocalLights, Probes, RayTracing, LiveProbes, Upscaling, ViewportUpscaling, RayReconstruction, DepthFades, VSync, DebugView];
         LocalLights.Changed += HandleChanged;
         Probes.Changed += HandleChanged;
         RayTracing.Changed += HandleChanged;
@@ -20,6 +20,7 @@ public sealed class RenderingSettings
         ViewportUpscaling.Changed += HandleChanged;
         RayReconstruction.Changed += HandleChanged;
         DepthFades.Changed += HandleChanged;
+        VSync.Changed += HandleChanged;
         DebugView.Changed += HandleChanged;
     }
 
@@ -45,6 +46,9 @@ public sealed class RenderingSettings
         ConsoleVariable.Create("r.RayReconstruction", "Denoises traced shadows and occlusion with DLSS Ray Reconstruction while DLSS upscales.", true);
 
     public ConsoleVariable<bool> DepthFades { get; } = ConsoleVariable.Create("r.DepthFades", "Draws the main camera's depth fade.", true);
+
+    public ConsoleVariable<bool> VSync { get; } =
+        ConsoleVariable.Create("r.VSync", "Waits for the display's refresh before showing each frame of the game window, capping the frame rate at it.", false);
 
     public ConsoleVariable<DebugView> DebugView { get; } =
         ConsoleVariable.CreateEnum("r.DebugView", "Shows a G-buffer target in place of the lit frame.", Pipeline.DebugView.Lit, saved: false);

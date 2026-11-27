@@ -138,8 +138,12 @@ public sealed partial class SceneHost : IDisposable
         LoadSettings();
         OpenAudioDevice();
         createOverlay ??= static (_, _) => null;
-        Renderer = new SceneRenderSystem(Window, Device, Game.World, CreateRenderer, _options.FrameLimit, createOverlay) { MoodSource = () => Moods.Current };
-        return Renderer;
+        SceneRenderSystem renderer = new(Window, Device, Game.World, CreateRenderer, _options.FrameLimit, createOverlay) { MoodSource = () => Moods.Current };
+        RenderingSettings settings = Game.Services.GetService<RenderingSettings>()!;
+        renderer.VSync = settings.VSync.Value;
+        settings.VSync.Changed += value => renderer.VSync = value;
+        Renderer = renderer;
+        return renderer;
     }
 
     /// <summary>Adds the renderer after the frame systems added so far and runs the game until the window closes.</summary>
