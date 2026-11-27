@@ -267,6 +267,8 @@ public sealed class UnsavedContent : IContentManager
         }
     }
 
+    public string GetSourcePath(string path) => _disk.GetSourcePath(path);
+
     public void CreateFolder(string path) => _disk.CreateFolder(path);
 
     public void Delete(string path)
