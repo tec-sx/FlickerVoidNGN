@@ -88,9 +88,6 @@ public sealed class GameWindow : IGameWindow, IDisposable
             _game.Tick(now - last);
             last = now;
             _input.EndFrame();
-
-            // Nothing presents frames with vsync until the renderer arrives, so give the core back between frames.
-            Thread.Sleep(1);
         }
     }
 
