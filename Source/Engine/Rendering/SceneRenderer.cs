@@ -24,6 +24,7 @@ using FlickerVoid.Engine.Rendering.RayTracing;
 using FlickerVoid.Engine.Rendering.Shadows;
 using FlickerVoid.Engine.Rendering.Sky;
 using FlickerVoid.Engine.Rendering.Upscaling;
+using FlickerVoid.Engine.Rendering.Weather;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Content;
 
@@ -109,6 +110,7 @@ public sealed class SceneRenderer : IDisposable
         Pipeline.Add(new LightingPass(device, shaders));
         Pipeline.Add(new SkyPass(device, shaders, MaxFramesInFlight));
         Pipeline.Add(new TransparentPass(device, shaders, content));
+        Pipeline.Add(new WeatherPass(device, shaders));
         Pipeline.Add(new LightBeamPass(device, shaders));
         Pipeline.Add(new DepthFadePass(device, shaders));
         Pipeline.Add(new UpscalePass(device, shaders));

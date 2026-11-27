@@ -6,6 +6,7 @@ public enum MoodGroup
     Sun,
     Sky,
     Fog,
+    Weather,
     Grade,
     Bloom,
     Tonemapper,
