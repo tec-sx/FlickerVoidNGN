@@ -247,6 +247,7 @@ public sealed class MusicSystemTests : IDisposable
         stack.Select(entry => entry.Cue).Should().Equal(hub, street);
         stack.Select(entry => entry.IsHeld).Should().Equal(false, true);
         stack[1].HeldBars.Should().BeGreaterThanOrEqualTo(2);
+        stack[1].Layers.Should().Be(1, "the street's lead sounded when it was held");
     }
 
     [Fact]

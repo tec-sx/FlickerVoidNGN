@@ -406,7 +406,8 @@ public sealed class MusicLanes : Control
                     return;
                 }
 
-                name = $"{System.IO.Path.GetFileNameWithoutExtension(track.Track.Loop)} · {track.Lengths.LoopBars:0} bars";
+                string length = editor.IsHours ? "seamless loop" : $"{track.Lengths.LoopBars:0} bars";
+                name = $"{System.IO.Path.GetFileNameWithoutExtension(track.Track.Loop)} · {length}";
                 if (track.IsStretched)
                 {
                     name += $" · {track.Track.Tempo:0.#} → {editor.Tempo:0}";

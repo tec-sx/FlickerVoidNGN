@@ -242,7 +242,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
             double barFrames = BarFrames(state.Cue);
             double played = state.Held ? state.HeldFrames : Mixer.Position - state.Start;
             double bars = barFrames > 0 ? Math.Max(0, played) / barFrames : 0;
-            int layers = state.Tracks.Count(track => track.On);
+            int layers = state.Held ? state.HeldLayers : state.Tracks.Count(track => track.On);
             entries.Add(new MusicStackEntry(state.Name, state.Held, state.Held ? bars : 0, bars, layers));
         }
 
@@ -769,6 +769,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
     /// <summary>Stops everything of a cue from a frame on: loops playing fade from it, and what would start no sooner never sounds.</summary>
     private void Hold(CueState cue, long at)
     {
+        cue.HeldLayers = cue.Tracks.Count(track => track.On);
         foreach (TrackState track in cue.Tracks)
         {
             if (track.LoopVoice != 0)
@@ -1037,6 +1038,9 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         public bool Fresh { get; set; } = true;
 
         public bool Held { get; set; }
+
+        /// <summary>How many of its tracks sounded when it was last held.</summary>
+        public int HeldLayers { get; set; }
 
         /// <summary>The frames it had played when it was held.</summary>
         public long HeldFrames { get; set; }

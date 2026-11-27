@@ -58,6 +58,8 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
     private Point? _rightPressedAt;
     private Vector2 _mouseDelta;
     private float _wheel;
+    private bool _readback;
+    private Avalonia.Media.Imaging.WriteableBitmap? _bitmap;
 
     public ViewportControl()
     {
@@ -385,18 +387,8 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         }
 
         _interop = await compositor.TryGetCompositionGpuInterop();
-        if (_interop is null)
-        {
-            viewModel.Status = "Avalonia's renderer offers no GPU interop: it needs its Vulkan backend on a GPU that exports memory and semaphores.";
-            return;
-        }
-
-        bool supported = _interop.SupportedImageHandleTypes.Contains(ImageHandleType) && _interop.SupportedSemaphoreTypes.Contains(SemaphoreHandleType);
-        if (!supported)
-        {
-            viewModel.Status = "Avalonia can't import Vulkan images and semaphores on this GPU.";
-            return;
-        }
+        bool supported = _interop is not null && _interop.SupportedImageHandleTypes.Contains(ImageHandleType) && _interop.SupportedSemaphoreTypes.Contains(SemaphoreHandleType);
+        _readback = !supported;
 
         try
         {
@@ -409,7 +401,7 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
             return;
         }
 
-        viewModel.Status = $"Vulkan on {_renderer.AdapterName}.";
+        viewModel.Status = _readback ? $"Vulkan on {_renderer.AdapterName}, read back (no GPU interop)." : $"Vulkan on {_renderer.AdapterName}.";
         _clock.Start();
         QueueNextFrame();
     }
@@ -458,7 +450,43 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
             Render(size);
         }
 
+        if (_readback)
+        {
+            Avalonia.Threading.DispatcherTimer.RunOnce(QueueNextFrame, TimeSpan.FromMilliseconds(700));
+            return;
+        }
+
         QueueNextFrame();
+    }
+
+    public override void Render(Avalonia.Media.DrawingContext context)
+    {
+        base.Render(context);
+        if (_bitmap is not null)
+        {
+            Rect bounds = new(Bounds.Size);
+            context.DrawImage(_bitmap, bounds);
+        }
+    }
+
+    private void Show(byte[] pixels, PixelSize size)
+    {
+        if (_bitmap is null || _bitmap.PixelSize != size)
+        {
+            _bitmap?.Dispose();
+            _bitmap = new Avalonia.Media.Imaging.WriteableBitmap(size, new Avalonia.Vector(96, 96), Avalonia.Platform.PixelFormat.Rgba8888, Avalonia.Platform.AlphaFormat.Opaque);
+        }
+
+        using (ILockedFramebuffer buffer = _bitmap.Lock())
+        {
+            int rowBytes = size.Width * 4;
+            for (int y = 0; y < size.Height; y++)
+            {
+                Marshal.Copy(pixels, y * rowBytes, buffer.Address + (y * buffer.RowBytes), rowBytes);
+            }
+        }
+
+        InvalidateVisual();
     }
 
     /// <summary>Hands the input gathered since the last frame to the view model, with the mouse in pixels.</summary>
@@ -480,7 +508,11 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
     private void Render(PixelSize size)
     {
         ViewportRenderer renderer = _renderer!;
-        if (renderer.Resize(size.Width, size.Height))
+        if (_readback)
+        {
+            renderer.ResizeReadback(size.Width, size.Height);
+        }
+        else if (renderer.Resize(size.Width, size.Height))
         {
             Import(renderer.Target!, size);
         }
@@ -503,6 +535,13 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         Vector3 focus = viewModel.GetDepthFocus();
         ViewportDepthFade depthFade = new(viewFade, previewFade, focus);
         RenderingSettings rendering = viewModel.Scene.Game.Services.GetService<RenderingSettings>()!;
+        if (_readback)
+        {
+            byte[] pixels = renderer.RenderPixels(viewModel.Scene.Game.World, rendering, camera, transform, preview, depthFade);
+            Show(pixels, size);
+            return;
+        }
+
         renderer.Render(viewModel.Scene.Game.World, rendering, camera, transform, preview, depthFade);
         _lastUpdate = _surface!.UpdateWithSemaphoresAsync(_image!, _ready!, _released!);
     }

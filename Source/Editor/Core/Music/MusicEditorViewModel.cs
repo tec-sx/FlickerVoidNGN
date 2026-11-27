@@ -352,7 +352,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
 
     partial void OnSearchChanged(string value) => RefreshLists();
 
-    private bool IsLayerOn(MusicTrackViewModel track) => _preview?.Music.IsLayerOn(track.Track.Name) == true;
+    private bool IsLayerOn(MusicTrackViewModel track) => _preview?.Music.IsLayerOn(track.Track.Name, _cue.Bus) == true;
 
     private MusicTrackViewModel MakeTrack(MusicTrack track)
     {
