@@ -8,7 +8,7 @@ using FlickerVoid.Editor.Core.Flows;
 
 namespace FlickerVoid.Editor.Flows;
 
-/// <summary>Faint lines under the graph every few canvas units, moving with the view, so panning and zooming show.</summary>
+/// <summary>Faint dots under the graph every few canvas units, moving with the view, so panning and zooming show.</summary>
 public sealed class FlowGrid : Control
 {
     public static readonly StyledProperty<FlowCanvasView?> ViewProperty =
@@ -18,8 +18,8 @@ public sealed class FlowGrid : Control
     private const double Spacing = 20;
     private const int MajorEvery = 8;
 
-    private static readonly Pen MinorPen = new(new SolidColorBrush(Color.Parse("#1D1610")), 1);
-    private static readonly Pen MajorPen = new(new SolidColorBrush(Color.Parse("#2A2119")), 1);
+    private static readonly IBrush DotBrush = new SolidColorBrush(Color.Parse("#2E241B"));
+    private static readonly IBrush MajorDotBrush = new SolidColorBrush(Color.Parse("#3A2F26"));
 
     private FlowCanvasView? _watched;
 
@@ -42,8 +42,19 @@ public sealed class FlowGrid : Control
             step *= MajorEvery;
         }
 
-        DrawLines(context, view.OffsetX, step, Bounds.Width, true);
-        DrawLines(context, view.OffsetY, step, Bounds.Height, false);
+        double firstX = view.OffsetX - (Math.Ceiling(view.OffsetX / step) * step);
+        double firstY = view.OffsetY - (Math.Ceiling(view.OffsetY / step) * step);
+        long column = (long)Math.Round((firstX - view.OffsetX) / step);
+        for (double x = firstX; x < Bounds.Width; x += step, column++)
+        {
+            long row = (long)Math.Round((firstY - view.OffsetY) / step);
+            for (double y = firstY; y < Bounds.Height; y += step, row++)
+            {
+                bool major = column % MajorEvery == 0 && row % MajorEvery == 0;
+                IBrush brush = major ? MajorDotBrush : DotBrush;
+                context.DrawRectangle(brush, null, new Rect(x - 1, y - 1, 2, 2));
+            }
+        }
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -66,24 +77,6 @@ public sealed class FlowGrid : Control
         }
 
         InvalidateVisual();
-    }
-
-    private void DrawLines(DrawingContext context, double offset, double step, double length, bool vertical)
-    {
-        double first = offset - (Math.Ceiling(offset / step) * step);
-        long index = (long)Math.Round((first - offset) / step);
-        for (double at = first; at < length; at += step, index++)
-        {
-            Pen pen = index % MajorEvery == 0 ? MajorPen : MinorPen;
-            if (vertical)
-            {
-                context.DrawLine(pen, new Point(at, 0), new Point(at, Bounds.Height));
-            }
-            else
-            {
-                context.DrawLine(pen, new Point(0, at), new Point(Bounds.Width, at));
-            }
-        }
     }
 
     private void HandleViewChanged(object? sender, PropertyChangedEventArgs e)

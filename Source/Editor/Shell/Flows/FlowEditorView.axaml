@@ -3,114 +3,118 @@
              xmlns:flows="using:FlickerVoid.Editor.Core.Flows"
              xmlns:shellflows="using:FlickerVoid.Editor.Flows"
              xmlns:data="using:FlickerVoid.Editor.Data"
+             xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Flows.FlowEditorView"
              x:DataType="flows:FlowGraphViewModel">
   <UserControl.KeyBindings>
     <KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedCommand}" />
   </UserControl.KeyBindings>
-  <Grid ColumnDefinitions="*,1,300">
+  <Grid>
     <!-- The endless canvas: drag with the right or middle button to pan, the wheel zooms, F frames the selected node (or all),
          Shift+A adds a node, right-click offers what can be done there, drag a node to move it, drag from a pin to wire it, or
-         onto empty space to add a node wired to it. -->
-    <Border Grid.Column="0" Classes="well viewport">
-    <Panel x:Name="Surface" ClipToBounds="True" Background="Transparent" Focusable="True">
-      <shellflows:FlowGrid View="{Binding View}" IsHitTestVisible="False" />
-      <Panel x:Name="Canvas" HorizontalAlignment="Left" VerticalAlignment="Top" Width="1" Height="1" RenderTransformOrigin="0,0">
-        <shellflows:FlowWires x:Name="Wires" Graph="{Binding}" IsHitTestVisible="False" />
-        <ItemsControl ItemsSource="{Binding Nodes}" ClipToBounds="False">
-          <!-- No border: nodes stand anywhere on the endless canvas, outside the control's own bounds. -->
-          <ItemsControl.Template>
-            <ControlTemplate>
-              <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" ClipToBounds="False" />
-            </ControlTemplate>
-          </ItemsControl.Template>
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate>
-              <Canvas />
-            </ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemContainerTheme>
-            <ControlTheme TargetType="ContentPresenter" x:DataType="flows:FlowNodeViewModel">
-              <Setter Property="Canvas.Left" Value="{Binding X}" />
-              <Setter Property="Canvas.Top" Value="{Binding Y}" />
-            </ControlTheme>
-          </ItemsControl.ItemContainerTheme>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate DataType="flows:FlowNodeViewModel">
-              <Border Width="180" Height="{Binding Height}" CornerRadius="4" Background="#2A2119"
-                      BorderThickness="1" Classes="node" Classes.selected="{Binding IsSelected}"
-                      BoxShadow="0 6 18 2 #E0000000">
-                <Border.Styles>
-                  <Style Selector="Border.node">
-                    <Setter Property="BorderBrush" Value="#3A2F26" />
-                  </Style>
-                  <Style Selector="Border.node.selected">
-                    <Setter Property="BorderBrush" Value="#E0AC2C" />
-                  </Style>
-                  <Style Selector="Ellipse.pin">
-                    <Setter Property="Width" Value="12" />
-                    <Setter Property="Height" Value="12" />
-                    <Setter Property="Stroke" Value="#17110C" />
-                    <Setter Property="StrokeThickness" Value="1" />
-                  </Style>
-                  <Style Selector="Panel.pinTarget:pointerover Ellipse.pin">
-                    <Setter Property="Width" Value="14" />
-                    <Setter Property="Height" Value="14" />
-                    <Setter Property="Stroke" Value="#EDE5D8" />
-                  </Style>
-                </Border.Styles>
-                <StackPanel>
-                  <StackPanel Height="39" Margin="8,3,8,0">
-                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis"
-                               ToolTip.Tip="{Binding Description}" />
-                  </StackPanel>
-                  <Grid ColumnDefinitions="*,*">
-                    <ItemsControl ItemsSource="{Binding Inputs}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="flows:FlowPinViewModel">
-                          <StackPanel Orientation="Horizontal" Height="22" Spacing="0" Margin="-11,0,0,0" Background="Transparent">
-                            <Panel Classes="pinTarget" Width="22" Height="22" Background="Transparent" Cursor="Hand"
-                                   ToolTip.Tip="Drag to wire, or onto empty space to add a node; right-click for options">
-                              <Ellipse Classes="pin" Fill="#B6AB99" />
-                            </Panel>
-                            <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center" />
+         onto empty space to add a node wired to it. The pill and the minimap float over it, outside the surface that reads the mouse. -->
+    <Border Classes="well viewport">
+      <Panel>
+        <Panel x:Name="Surface" ClipToBounds="True" Background="Transparent" Focusable="True">
+          <shellflows:FlowGrid View="{Binding View}" IsHitTestVisible="False" />
+          <Panel x:Name="Canvas" HorizontalAlignment="Left" VerticalAlignment="Top" Width="1" Height="1" RenderTransformOrigin="0,0">
+            <shellflows:FlowWires x:Name="Wires" Graph="{Binding}" IsHitTestVisible="False" />
+            <ItemsControl ItemsSource="{Binding Nodes}" ClipToBounds="False">
+              <!-- No border: nodes stand anywhere on the endless canvas, outside the control's own bounds. -->
+              <ItemsControl.Template>
+                <ControlTemplate>
+                  <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" ClipToBounds="False" />
+                </ControlTemplate>
+              </ItemsControl.Template>
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <Canvas />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemContainerTheme>
+                <ControlTheme TargetType="ContentPresenter" x:DataType="flows:FlowNodeViewModel">
+                  <Setter Property="Canvas.Left" Value="{Binding X}" />
+                  <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                </ControlTheme>
+              </ItemsControl.ItemContainerTheme>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="flows:FlowNodeViewModel">
+                  <Panel Width="200" Height="{Binding Height}">
+                    <Border Classes="flowNode" Classes.selected="{Binding IsSelected}">
+                      <StackPanel>
+                        <Border Classes="flowHeader" Background="{Binding Kind, Converter={x:Static shellflows:FlowNodeBrushes.Header}}">
+                          <DockPanel>
+                            <PathIcon DockPanel.Dock="Left" Classes="small" Margin="0,0,7,0"
+                                      Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}"
+                                      Foreground="{Binding Kind, Converter={x:Static shellflows:FlowNodeBrushes.Icon}}" />
+                            <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                          </DockPanel>
+                        </Border>
+                        <Border Height="{Binding BodyHeight}" ClipToBounds="True" Padding="10,6,10,0">
+                          <StackPanel>
+                            <TextBlock Text="{Binding DescriptionLead}" FontWeight="SemiBold"
+                                       IsVisible="{Binding DescriptionLead, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <TextBlock Text="{Binding DescriptionText}" Classes="muted" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                                       MaxLines="{Binding DescriptionLines}" ToolTip.Tip="{Binding Description}" />
                           </StackPanel>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <ItemsControl Grid.Column="1" ItemsSource="{Binding Outputs}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="flows:FlowPinViewModel">
-                          <StackPanel Orientation="Horizontal" Height="22" Spacing="0" Margin="0,0,-11,0"
-                                      HorizontalAlignment="Right" Background="Transparent">
-                            <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center" />
-                            <Panel Classes="pinTarget" Width="22" Height="22" Background="Transparent" Cursor="Hand"
-                                   ToolTip.Tip="Drag to wire, or onto empty space to add a node; right-click for options">
-                              <Ellipse Classes="pin" Fill="#E0AC2C" />
-                            </Panel>
-                          </StackPanel>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                  </Grid>
-                </StackPanel>
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+                        </Border>
+                      </StackPanel>
+                    </Border>
+                    <!-- The pins stand outside the border, so its rounded clip does not cut the half of them that hangs over the edge. -->
+                    <Grid ColumnDefinitions="*,*" VerticalAlignment="Bottom" Margin="0,0,0,3">
+                      <ItemsControl ItemsSource="{Binding Inputs}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate DataType="flows:FlowPinViewModel">
+                            <StackPanel Orientation="Horizontal" Height="22" Spacing="0" Margin="-11,0,0,0" Background="Transparent">
+                              <Panel Classes="pinTarget" Width="22" Height="22" Background="Transparent" Cursor="Hand"
+                                     ToolTip.Tip="Drag to wire, or onto empty space to add a node; right-click for options">
+                              </Panel>
+                              <TextBlock Text="{Binding Name}" Classes="small muted" VerticalAlignment="Center" />
+                            </StackPanel>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <ItemsControl Grid.Column="1" ItemsSource="{Binding Outputs}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate DataType="flows:FlowPinViewModel">
+                            <StackPanel Orientation="Horizontal" Height="22" Spacing="0" Margin="0,0,-11,0"
+                                        HorizontalAlignment="Right" Background="Transparent">
+                              <TextBlock Text="{Binding Name}" Classes="small muted" VerticalAlignment="Center" />
+                              <Panel Classes="pinTarget" Width="22" Height="22" Background="Transparent" Cursor="Hand"
+                                     ToolTip.Tip="Drag to wire, or onto empty space to add a node; right-click for options">
+                              </Panel>
+                            </StackPanel>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </Grid>
+                  </Panel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <shellflows:FlowWires x:Name="Pins" Graph="{Binding}" DrawsPins="True" IsHitTestVisible="False" />
+          </Panel>
+        </Panel>
+        <Border Classes="viewportBar" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12">
+          <StackPanel Orientation="Horizontal">
+            <Button Classes="viewportIcon text" Click="HandleAddNodeClick" ToolTip.Tip="Add a node (Shift+A)">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Add}" />
+                <TextBlock Text="Add node" VerticalAlignment="Center" />
+                <Border Classes="kbd"><TextBlock Text="Shift A" /></Border>
+              </StackPanel>
+            </Button>
+            <Border Classes="vsep" Margin="4,0" />
+            <Button Classes="viewportIcon" Click="HandleFitClick" ToolTip.Tip="Frame the selected node, or every node (F)">
+              <PathIcon Data="{x:Static shell:LucideIcons.Fit}" />
+            </Button>
+            <TextBlock Text="{Binding View.ZoomText}" Classes="muted" VerticalAlignment="Center" Margin="2,0,8,0" MinWidth="34" />
+          </StackPanel>
+        </Border>
+        <Border Classes="minimap" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="12">
+          <shellflows:FlowMinimap x:Name="Map" Graph="{Binding}" />
+        </Border>
       </Panel>
-    </Panel>
-    </Border>
-    <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-    <!-- The selected node's values. -->
-    <Border Grid.Column="2" Classes="well">
-    <ScrollViewer Padding="8">
-      <StackPanel>
-        <TextBlock Text="{Binding Selected.Title, FallbackValue='Select a node'}" Classes="heading" Margin="0,0,0,6" />
-        <data:DataView DataContext="{Binding SelectedForm}" />
-      </StackPanel>
-    </ScrollViewer>
     </Border>
   </Grid>
 </UserControl>

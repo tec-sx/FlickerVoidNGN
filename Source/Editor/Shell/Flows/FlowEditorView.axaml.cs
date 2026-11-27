@@ -27,6 +27,7 @@ public partial class FlowEditorView : UserControl
     private Point? _panFrom;
     private bool _panned;
     private FlowCanvasView? _view;
+    private FlowGraphViewModel? _graph;
 
     /// <summary>How far the mouse may move, in pixels, for a right-click to open the options menu rather than pan.</summary>
     private const double ClickSlop = 4;
@@ -40,6 +41,7 @@ public partial class FlowEditorView : UserControl
         Surface.PointerWheelChanged += HandleWheel;
         AddHandler(KeyDownEvent, HandleKeyDown, RoutingStrategies.Tunnel);
         AttachedToVisualTree += HandleOpened;
+        Surface.PropertyChanged += HandleSurfaceChanged;
         UndoShortcuts.Attach(this, () => History);
     }
 
@@ -54,6 +56,17 @@ public partial class FlowEditorView : UserControl
         if (_view is not null)
         {
             _view.PropertyChanged -= HandleViewChanged;
+        }
+
+        if (_graph is not null)
+        {
+            _graph.RevealRequested -= Frame;
+        }
+
+        _graph = Graph;
+        if (_graph is not null)
+        {
+            _graph.RevealRequested += Frame;
         }
 
         _view = Graph?.View;
@@ -76,6 +89,26 @@ public partial class FlowEditorView : UserControl
     }
 
     private void HandleViewChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => ShowView();
+
+    private void HandleSurfaceChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == BoundsProperty)
+        {
+            Map.ViewSize = Surface.Bounds.Size;
+        }
+    }
+
+    /// <summary>The pill's Add node: the menu at the middle of what is shown.</summary>
+    private void HandleAddNodeClick(object? sender, RoutedEventArgs e)
+    {
+        if (Graph is { } graph)
+        {
+            FlowPoint middle = graph.View.ToCanvas(Surface.Bounds.Width / 2, Surface.Bounds.Height / 2);
+            ShowAddMenu(graph, new Point(middle.X, middle.Y), null);
+        }
+    }
+
+    private void HandleFitClick(object? sender, RoutedEventArgs e) => Frame();
 
     private void ShowView()
     {
@@ -188,6 +221,7 @@ public partial class FlowEditorView : UserControl
     {
         Point point = e.GetPosition(Canvas);
         _pointer = point;
+        Pins.HoveredPin = Graph?.FindPin(point.X, point.Y, FlowGraphViewModel.GrabRadius);
         if (_panFrom is { } from && Graph is { } panned)
         {
             Point screen = e.GetPosition(Surface);
