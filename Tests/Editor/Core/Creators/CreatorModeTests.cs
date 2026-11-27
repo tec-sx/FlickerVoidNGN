@@ -285,6 +285,67 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void TheGizmoStandsOnTheMiddleOfTheSelectedPointsAndOnlyWithSome()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.Gizmo = new FlickerVoid.Editor.Core.Gizmos.TransformGizmo();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        bool none = mode.TryGetGizmoTarget(out _);
+        mode.MeshSelection!.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfPoint(0), additive: false);
+
+        bool some = mode.TryGetGizmoTarget(out Transform target);
+
+        none.Should().BeFalse();
+        some.Should().BeTrue();
+        Matrix4x4 toWorld = _builder.World.Get<Transform>(mode.FindSelectedPart()!.Value).ToMatrix();
+        Vector3 expected = Vector3.Transform(_builder.FindMesh("body")!.Points[0], toWorld);
+        Vector3.Distance(target.Position, expected).Should().BeLessThan(1e-4f);
+    }
+
+    [Fact]
+    public void DraggingAGizmoArrowMovesTheSelectedPointsAlongItAsOneUndoStep()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        FlickerVoid.Editor.Core.Gizmos.TransformGizmo gizmo = new();
+        mode.Gizmo = gizmo;
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfPoint(0), additive: false);
+        Vector3 before = _builder.FindMesh("body")!.Points[0];
+        mode.TryGetGizmoTarget(out Transform target);
+        float length = gizmo.GetHandleLength(_builder.Camera, target.Position, Height);
+        Vector3 grabbed = target.Position + (Vector3.UnitX * length * 0.7f);
+        Vector2 start = _builder.Camera.Project(grabbed, Width, Height);
+        Vector2 end = _builder.Camera.Project(grabbed + new Vector3(0.3f, 0, 0), Width, Height);
+
+        bool began = mode.BeginGizmoDrag(start, Width, Height);
+        mode.PointerMoved(end, Width, Height);
+        mode.PointerReleased();
+
+        began.Should().BeTrue();
+        Matrix4x4 toWorld = _builder.World.Get<Transform>(mode.FindSelectedPart()!.Value).ToMatrix();
+        Vector3 moved = Vector3.Transform(_builder.FindMesh("body")!.Points[0], toWorld) - Vector3.Transform(before, toWorld);
+        Vector3.Distance(moved, new Vector3(0.3f, 0, 0)).Should().BeLessThan(1e-3f);
+        gizmo.IsDragging.Should().BeFalse();
+        mode.MeshSelection.Points.Should().Equal(0);
+    }
+
+    [Fact]
+    public void NoGizmoDragStartsInSelectMode()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.Gizmo = new FlickerVoid.Editor.Core.Gizmos.TransformGizmo { Mode = FlickerVoid.Editor.Core.Gizmos.GizmoMode.Select };
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.Select(FlickerVoid.Editor.Core.Meshes.MeshHit.OfPoint(0), additive: false);
+
+        bool began = mode.BeginGizmoDrag(new Vector2(Width / 2, Height / 2), Width, Height);
+
+        began.Should().BeFalse();
+    }
+
+    [Fact]
     public void RotatingAndScalingNeedASelectionAndOneEditEach()
     {
         using CreatorMode mode = _builder.EnterAlone();

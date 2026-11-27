@@ -28,6 +28,9 @@ public static class ViewportKeys
         Key.I => ViewportKey.I,
         Key.C => ViewportKey.C,
         Key.B => ViewportKey.B,
+        Key.X => ViewportKey.X,
+        Key.L => ViewportKey.L,
+        Key.M => ViewportKey.M,
         _ => null,
     };
 }

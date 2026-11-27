@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Editor.Core.Cameras;
+using FlickerVoid.Editor.Core.Gizmos;
 using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Editor.Core.Overlays;
@@ -143,7 +144,11 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     {
         if (MeshSelection is not null)
         {
-            PressMesh(pixel, width, height, additive: false, loop: false);
+            if (!BeginGizmoDrag(pixel, width, height))
+            {
+                PressMesh(pixel, width, height, additive: false, loop: false);
+            }
+
             return;
         }
 
@@ -363,13 +368,13 @@ public sealed class CreatorMode : IViewportMode, IDisposable
     public bool CutMesh(float depth, bool through) => ReplaceMesh((solid, selected) => MeshCut.Faces(solid, GetFaces(solid, selected), depth, through));
 
     /// <summary>
-    /// Bevels the selected edges (Ctrl+B) as one undo step: each becomes a strip of the width on each face, in rows, flat or
+    /// Bevels the selected edges (B) as one undo step: each becomes a strip of the width on each face, in rows, flat or
     /// <paramref name="round"/>; the strips stay selected. False when no edge is selected or a point of one can't take it.
     /// </summary>
     public bool BevelMesh(float width, int rows, bool round) => ReplaceMesh((solid, selected) => MeshBevel.Edges(solid, GetEdges(solid, selected), width, rows, round));
 
     /// <summary>
-    /// Cuts loops across the ring of quads through the edge of the face under the mouse nearest it (Ctrl+R), as one undo step,
+    /// Cuts loops across the ring of quads through the edge of the face under the mouse nearest it (L), as one undo step,
     /// leaving the new edges selected; <paramref name="slide"/> (-1 to 1) moves them along the ring. False when the mouse is over no
     /// face or the ring crosses no quad.
     /// </summary>
@@ -661,7 +666,111 @@ public sealed class CreatorMode : IViewportMode, IDisposable
 
     public void PointerMoved(Vector2 pixel, int width, int height)
     {
+        if (Gizmo is { IsDragging: true })
+        {
+            DragGizmo(pixel, width, height);
+            return;
+        }
+
+        if (Gizmo is { } gizmo && TryGetGizmoTarget(out Transform target))
+        {
+            gizmo.Hover(_camera, target, pixel, width, height);
+        }
+
         Hover = FindMeshHit(pixel, width, height);
+    }
+
+    /// <summary>The viewport's gizmo, which moves, turns or scales the selected points, edges or faces of the entered mesh about their middle.</summary>
+    public TransformGizmo? Gizmo { get; set; }
+
+    private Transform _gizmoStart;
+    private Transform _gizmoPart;
+    private SolidMesh? _gizmoSolid;
+
+    /// <summary>Where the gizmo stands: the middle of the selected points, in the part's turn; false with none selected or no gizmo.</summary>
+    public bool TryGetGizmoTarget(out Transform target)
+    {
+        target = default;
+        if (Gizmo is null || MeshSelection is not { Points.Count: > 0 } selection || MeshPart is not { } id || _findMesh?.Invoke(id) is not { } solid || FindSelectedPart() is not { } part)
+        {
+            return false;
+        }
+
+        Transform placed = _scene.Game.World.Get<Transform>(part);
+        Vector3 centre = MeshEdit.GetCentre(solid, selection.Points);
+        Matrix4x4 toWorld = placed.ToMatrix();
+        target = new Transform { Position = Vector3.Transform(centre, toWorld), Rotation = placed.Rotation, Scale = Vector3.One };
+        return true;
+    }
+
+    /// <summary>Starts dragging the gizmo handle under the mouse over the selected mesh points, as one undo step; false when no handle is there.</summary>
+    public bool BeginGizmoDrag(Vector2 pixel, int width, int height)
+    {
+        if (Gizmo is not { Mode: not GizmoMode.Select } gizmo || !TryGetGizmoTarget(out Transform target) || MeshPart is not { } id || _findMesh?.Invoke(id) is not { } solid)
+        {
+            return false;
+        }
+
+        if (!gizmo.BeginDrag(_camera, target, pixel, width, height))
+        {
+            return false;
+        }
+
+        _gizmoStart = target;
+        _gizmoPart = _scene.Game.World.Get<Transform>(FindSelectedPart()!.Value);
+        _gizmoSolid = solid;
+        History.BeginGroup(gizmo.Mode.ToString());
+        return true;
+    }
+
+    /// <summary>Adds the gizmo on the selected mesh points to the overlay.</summary>
+    public void DrawGizmo(OverlayBuilder overlay, int viewportHeight)
+    {
+        if (Gizmo is { } gizmo && TryGetGizmoTarget(out Transform target))
+        {
+            gizmo.Draw(overlay, _camera, target, viewportHeight);
+        }
+    }
+
+    private void DragGizmo(Vector2 pixel, int width, int height)
+    {
+        if (Gizmo is not { } gizmo || _gizmoSolid is not { } start || MeshSelection is not { } selection || MeshPart is not { } id || _applyMesh is null)
+        {
+            return;
+        }
+
+        Transform dragged = gizmo.Drag(_camera, pixel, width, height);
+        Quaternion partTurn = _gizmoPart.Rotation;
+        Quaternion inverse = Quaternion.Inverse(partTurn);
+        SolidMesh edited;
+        switch (gizmo.Mode)
+        {
+            case GizmoMode.Move:
+                Vector3 local = Vector3.Transform(dragged.Position - _gizmoStart.Position, inverse);
+                edited = MeshEdit.Move(start, selection.Points, local / SafeScale(_gizmoPart.Scale));
+                break;
+            case GizmoMode.Rotate:
+                Quaternion world = dragged.Rotation * Quaternion.Inverse(_gizmoStart.Rotation);
+                edited = MeshEdit.Rotate(start, selection.Points, Quaternion.Normalize(inverse * world * partTurn));
+                break;
+            default:
+                edited = MeshEdit.Scale(start, selection.Points, dragged.Scale);
+                break;
+        }
+
+        if (Mirror)
+        {
+            edited = MeshMirror.Follow(start, edited, selection.Points);
+        }
+
+        _meshSolid = edited;
+        selection.TryFollow(edited);
+        _applyMesh(id, edited);
+    }
+
+    private static Vector3 SafeScale(Vector3 scale)
+    {
+        return new Vector3(scale.X == 0 ? 1 : scale.X, scale.Y == 0 ? 1 : scale.Y, scale.Z == 0 ? 1 : scale.Z);
     }
 
     /// <summary>Adds the entered mesh, its selection and the hover to the overlay; nothing outside the mesh.</summary>
@@ -700,6 +809,12 @@ public sealed class CreatorMode : IViewportMode, IDisposable
 
     public void PointerReleased()
     {
+        if (Gizmo is { IsDragging: true } gizmo)
+        {
+            gizmo.EndDrag();
+            _gizmoSolid = null;
+            History.EndGroup();
+        }
     }
 
     /// <summary>Moves the work light to the view, reaching past its pivot.</summary>

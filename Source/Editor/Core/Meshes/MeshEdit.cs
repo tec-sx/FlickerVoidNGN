@@ -42,6 +42,14 @@ public static class MeshEdit
         return Transform(solid, points, about);
     }
 
+    /// <summary>Turns the points about their middle by a rotation.</summary>
+    public static SolidMesh Rotate(SolidMesh solid, IReadOnlySet<int> points, Quaternion turn)
+    {
+        Vector3 centre = GetCentre(solid, points);
+        Matrix4x4 about = Matrix4x4.CreateTranslation(-centre) * Matrix4x4.CreateFromQuaternion(turn) * Matrix4x4.CreateTranslation(centre);
+        return Transform(solid, points, about);
+    }
+
     /// <summary>Scales the points about their middle by a factor along each axis.</summary>
     public static SolidMesh Scale(SolidMesh solid, IReadOnlySet<int> points, Vector3 factor)
     {

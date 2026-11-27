@@ -39,15 +39,21 @@ public sealed partial class ViewportViewModel
     public event Action<string>? CreationFileRequested;
 
     /// <summary>
-    /// A double-click: on a placed creation it asks to make it in place, and on a greybox of the level to shape it; in the creator, one that misses the creation leaves it. The
+    /// A double-click: on a placed creation it asks to make it in place, and on a greybox of the level to shape it; in the creator's mesh, the loop through what is hit (Shift adds), and elsewhere in the creator one that misses the creation leaves it. The
     /// game view only selects.
     /// </summary>
-    public void DoubleClicked(Vector2 pixel, int width, int height)
+    public void DoubleClicked(Vector2 pixel, int width, int height, bool additive = false)
     {
         World world = Scene.Game.World;
         Ray ray = Camera.GetRay(pixel, width, height);
         if (Creator is { } creator)
         {
+            if (creator.MeshSelection is not null)
+            {
+                creator.PressMesh(pixel, width, height, additive, loop: true);
+                return;
+            }
+
             if (Scene.Picker.PickPart(world, ray, creator.Root) is null)
             {
                 LeaveCreator();
@@ -90,6 +96,7 @@ public sealed partial class ViewportViewModel
         SceneMode.PointerReleased();
         Selection.Select(null);
         Mode = creator;
+        creator.Gizmo = Gizmo;
         creator.MeshModeChanged += MeshTools.Refresh;
         CreatorFile = file;
         NotifyCreator();
@@ -113,8 +120,8 @@ public sealed partial class ViewportViewModel
     }
 
     /// <summary>
-    /// The mesh keys of the creator: Tab enters and leaves the mesh, then 1, 2 and 3 pick points, edges or faces, E extrudes, I
-    /// insets, C cuts and Ctrl+B bevels by an amount the mouse then sets (any key keeps it, Escape cancels it), Ctrl+R cuts a loop and D hangs a door where the mouse is. Escape leaves the mesh before the
+    /// The mesh keys of the creator: Tab enters and leaves the mesh, then 1, 2 and 3 pick points, edges or faces, X extrudes, I
+    /// insets, C cuts and B bevels by an amount the mouse then sets (any key keeps it, Escape cancels it), L (or Ctrl+R) cuts a loop and D hangs a door where the mouse is. Escape leaves the mesh before the
     /// creator. True when the key was taken.
     /// </summary>
     private bool PressMeshKey(ViewportKey key, bool ctrl)
@@ -151,7 +158,7 @@ public sealed partial class ViewportViewModel
             case ViewportKey.Three:
                 MeshTools.Element = MeshElement.Face;
                 break;
-            case ViewportKey.E:
+            case ViewportKey.X:
                 MeshTools.DragExtrude();
                 break;
             case ViewportKey.I:
@@ -160,9 +167,10 @@ public sealed partial class ViewportViewModel
             case ViewportKey.C:
                 MeshTools.DragCut();
                 break;
-            case ViewportKey.B when ctrl:
+            case ViewportKey.B:
                 MeshTools.DragBevel();
                 break;
+            case ViewportKey.L:
             case ViewportKey.R when ctrl:
                 MeshTools.LoopCut();
                 break;

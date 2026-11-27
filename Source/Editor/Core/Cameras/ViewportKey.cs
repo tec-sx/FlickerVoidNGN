@@ -21,4 +21,7 @@ public enum ViewportKey
     I,
     C,
     B,
+    X,
+    L,
+    M,
 }

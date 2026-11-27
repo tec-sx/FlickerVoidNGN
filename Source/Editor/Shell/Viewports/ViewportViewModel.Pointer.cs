@@ -17,7 +17,11 @@ public sealed partial class ViewportViewModel
 
         if (Creator is { MeshSelection: not null } creator)
         {
-            creator.PressMesh(pixel, width, height, additive, loop);
+            if (!creator.BeginGizmoDrag(pixel, width, height))
+            {
+                creator.PressMesh(pixel, width, height, additive, loop);
+            }
+
             return;
         }
 

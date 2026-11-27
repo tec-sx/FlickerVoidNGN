@@ -105,7 +105,7 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         int points = ViewModel.CreatorPanel!.FindMesh("body")!.Points.Count;
         Viewport.PointerMoved(new Vector2(300, 300), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
 
-        Viewport.KeyPressed(ViewportKey.E, ViewportButtons.None);
+        Viewport.KeyPressed(ViewportKey.X, ViewportButtons.None);
         Viewport.PointerMoved(new Vector2(300, 260), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
         Viewport.PointerMoved(new Vector2(300, 200), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
         bool dragging = tools.IsDragging;
@@ -142,7 +142,7 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     public void ANumberTypedWhileAToolIsHeldSetsItsAmountAndTheMouseLetsGo()
     {
         MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
-        Viewport.KeyPressed(ViewportKey.E, ViewportButtons.None);
+        Viewport.KeyPressed(ViewportKey.X, ViewportButtons.None);
 
         tools.Amount = 0.75;
         Viewport.PointerMoved(new Vector2(300, 100), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);

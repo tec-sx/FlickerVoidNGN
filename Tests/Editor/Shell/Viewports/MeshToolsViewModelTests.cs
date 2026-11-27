@@ -15,6 +15,9 @@ public sealed class MeshToolsViewModelTests
     [InlineData(Key.I, ViewportKey.I)]
     [InlineData(Key.C, ViewportKey.C)]
     [InlineData(Key.B, ViewportKey.B)]
+    [InlineData(Key.X, ViewportKey.X)]
+    [InlineData(Key.L, ViewportKey.L)]
+    [InlineData(Key.M, ViewportKey.M)]
     public void TheMeshKeysAreMappedToTheViewport(Key key, ViewportKey expected)
     {
         ViewportKey? mapped = ViewportKeys.From(key);
