@@ -51,7 +51,12 @@ public sealed partial class MainWindowViewModel
                 return LucideIcons.Tree;
             }
 
-            if (CreatorPanel is PropPanelViewModel || Viewport.Creator?.Placement == CreatorPlacement.Piece)
+            if (CreatorPanel is PropPanelViewModel)
+            {
+                return LucideIcons.Prop;
+            }
+
+            if (Viewport.Creator?.Placement == CreatorPlacement.Piece)
             {
                 return LucideIcons.Cube;
             }

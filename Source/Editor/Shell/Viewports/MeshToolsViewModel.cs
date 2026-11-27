@@ -187,6 +187,9 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
     public bool ShowsBevel => ActiveTool == MeshDragTool.Bevel;
 
+    /// <summary>What the thickness is called for the held tool: a hollow's wall, else a width.</summary>
+    public string ThicknessName => ActiveTool == MeshDragTool.Hollow ? "Wall" : "Width";
+
     /// <summary>Whether no tool is held, so the options of the tools that act at once and the numeric transform show.</summary>
     public bool ShowsResting => IsMeshMode && ActiveTool is null && !IsDoorTool;
 
@@ -202,6 +205,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowsAmount));
         OnPropertyChanged(nameof(ShowsCutThrough));
         OnPropertyChanged(nameof(ShowsThickness));
+        OnPropertyChanged(nameof(ThicknessName));
         OnPropertyChanged(nameof(ShowsBevel));
         OnPropertyChanged(nameof(ShowsResting));
         OnPropertyChanged(nameof(IsCreating));

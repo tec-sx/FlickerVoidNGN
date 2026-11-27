@@ -75,7 +75,7 @@ public sealed record EntityPreset(string Name, IReadOnlyList<string> Components,
         string name = Path.GetFileNameWithoutExtension(path);
         JsonEncodedText file = JsonEncodedText.Encode(path);
         Dictionary<string, string> values = new() { ["prop"] = $$"""{ "file": "{{file}}" }""" };
-        return new EntityPreset(name, ["transform", "prop"]) { Values = values, Icon = "Cube" };
+        return new EntityPreset(name, ["transform", "prop"]) { Values = values, Icon = "Prop" };
     }
 
     /// <summary>A building entity named after a building file in the content folder, whose parts it spawns.</summary>
