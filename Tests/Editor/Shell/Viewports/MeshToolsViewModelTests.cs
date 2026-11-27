@@ -32,6 +32,7 @@ public sealed class MeshToolsViewModelTests
         tools.Test();
 
         tools.IsMeshMode.Should().BeFalse();
+        tools.IsCreating.Should().BeFalse();
         tools.Mirror.Should().BeFalse();
         messages.Should().ContainSingle().Which.Should().Contain("door");
     }
