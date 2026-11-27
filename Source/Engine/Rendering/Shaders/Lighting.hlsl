@@ -363,19 +363,21 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     float3 toSun = -normalize(frame.SunDirection);
     float3 sunDiffuse = Diffuse(material, dot(normal, toSun));
     float sunSpecular = Specular(material, normal, toSun, toCamera);
-    float sun = 1 - frame.Ambient;
+    float shadow = 1;
     if (frame.RayShadows != None)
     {
-        sun *= RayShadow(frame, texel, ShadowRaySun);
+        shadow = RayShadow(frame, texel, ShadowRaySun);
     }
     else
     {
-        sun *= screenShadows.g;
-        if (sun > 0 && (any(sunDiffuse > 0) || sunSpecular > 0) && frame.SunShadow != None)
+        shadow = screenShadows.g;
+        if (shadow > 0 && (any(sunDiffuse > 0) || sunSpecular > 0) && frame.SunShadow != None)
         {
-            sun *= SampleShadow(frame, frame.SunShadow, worldPosition, normal, 0);
+            shadow *= SampleShadow(frame, frame.SunShadow, worldPosition, normal, 0);
         }
     }
+
+    float sun = (1 - frame.Ambient) * lerp(1, shadow, frame.ShadowDarkness);
 
     float occlusion = screenShadows.r;
     if (frame.RayOcclusion != None)
@@ -392,7 +394,7 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     // A near object stands in a cast shadow: its direct light goes by its object depth, its ambient light stays.
     float objectDepth = Textures[frame.GBufferObjectDepth].Load(texel).r;
     float keep = NearShadow(frame, objectDepth);
-    float3 diffuse = ambient * occlusion + direct * keep;
+    float3 diffuse = (ambient * occlusion + direct * keep) * lerp(1, frame.ShadowColor, 1 - shadow);
     specular *= keep;
     float sheen;
     float3 reflection = ReflectionAt(frame, material, normal, toCamera, ambient, occlusion, sheen);

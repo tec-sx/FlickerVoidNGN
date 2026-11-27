@@ -105,9 +105,12 @@ struct FrameData
     uint Reflection;
     uint ReflectionSampler;
     float ReflectionIntensity;
+    // The colour light in the sun's shadow is multiplied by, and how much of the sun's light the shadow takes away.
+    float3 ShadowColor;
+    float ShadowDarkness;
 };
 
-static const uint FrameDataSize = 608;
+static const uint FrameDataSize = 624;
 static const uint None = 0xFFFFFFFF;
 
 // PCG's output hash (Jarzynski and Olano 2020, "Hash Functions for GPU Rendering").
@@ -203,6 +206,8 @@ FrameData LoadFrame(uint index)
     frame.Reflection = buffer.Load<uint>(596);
     frame.ReflectionSampler = buffer.Load<uint>(600);
     frame.ReflectionIntensity = buffer.Load<float>(604);
+    frame.ShadowColor = buffer.Load<float3>(608);
+    frame.ShadowDarkness = buffer.Load<float>(620);
     frame.Buffer = index;
     return frame;
 }

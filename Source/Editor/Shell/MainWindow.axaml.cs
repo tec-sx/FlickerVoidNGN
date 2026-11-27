@@ -273,12 +273,18 @@ public sealed partial class MainWindow : Window
         if (main.Documents.Find(path) is { Content: FlowEditorView open } document)
         {
             open.DataContext = graph;
+            if (document.Side is Control shownSide)
+            {
+                shownSide.DataContext = graph;
+            }
+
             main.Documents.Show(document);
             return;
         }
 
         FlowEditorView view = new() { DataContext = graph, History = main.GetFlowHistory(path) };
-        EditorDocument created = new(path, graph.Title, view, () => main.CloseFlow(path), icon: "Flow");
+        FlowSideView side = new() { DataContext = graph };
+        EditorDocument created = new(path, graph.Title, view, () => main.CloseFlow(path), icon: "Flow") { Side = side };
         main.Documents.Show(created);
     }
 

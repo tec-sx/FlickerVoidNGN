@@ -225,7 +225,9 @@
         </Panel>
       </Grid>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-      <Grid Grid.Column="2" RowDefinitions="*,1,*" Background="{DynamicResource EditorPanelBrush}">
+      <ContentControl Grid.Column="2" Content="{Binding Documents.Selected.Side}" IsVisible="{Binding Documents.HasSide}"
+                      Background="{DynamicResource EditorPanelBrush}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+      <Grid Grid.Column="2" RowDefinitions="*,1,*" Background="{DynamicResource EditorPanelBrush}" IsVisible="{Binding !Documents.HasSide}">
         <!-- The context panel holds only what is selected or open, the newest in front; empty, it says how to fill it. -->
         <Panel Grid.Row="{Binding ContextRow}">
           <TextBlock Classes="hint" IsVisible="{Binding !HasContext}" TextWrapping="Wrap" Margin="12" VerticalAlignment="Top"

@@ -293,6 +293,16 @@ public sealed partial class FlowGraphViewModel : ObservableObject
         }
     }
 
+    /// <summary>Raised when something outside the canvas, such as the node list, wants the selected node brought into view.</summary>
+    public event Action? RevealRequested;
+
+    /// <summary>Selects the node and asks for it to be framed.</summary>
+    public void Reveal(FlowNodeViewModel node)
+    {
+        Select(node);
+        RevealRequested?.Invoke();
+    }
+
     public void Select(FlowNodeViewModel? node)
     {
         if (Selected is { } previous)

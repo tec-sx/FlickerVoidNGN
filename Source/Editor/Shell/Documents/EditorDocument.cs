@@ -19,6 +19,9 @@ public sealed class EditorDocument(string key, string title, object content, Act
     /// <summary>The view shown in place of the viewport while the tab is selected.</summary>
     public object Content { get; } = content;
 
+    /// <summary>What takes the side column while the tab is shown, in place of the context panel and the outliner; null to leave them.</summary>
+    public object? Side { get; init; }
+
     /// <summary>Runs once when the tab is closed.</summary>
     public Action Closed { get; } = closed;
 
