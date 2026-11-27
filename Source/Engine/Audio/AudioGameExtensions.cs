@@ -23,6 +23,7 @@ public static class AudioGameExtensions
     {
         game.Spawner.Register("audioListener", AudioJsonContext.Default.AudioListener);
         game.Spawner.Register("soundEmitter", AudioJsonContext.Default.SoundEmitter);
+        game.Spawner.Register("roomReverb", AudioJsonContext.Default.RoomReverb);
         game.Data.AddResolver(AudioJsonContext.Default);
         game.Data.Register<SoundDefinition>("sound");
         game.Data.RegisterDerived<Effect, PlaySoundEffect>("playSound");

@@ -215,6 +215,36 @@ public sealed class AudioSystemTests : IDisposable
     }
 
     [Fact]
+    public void RingsTheWorldsSoundsOnInARoomWithAReverb()
+    {
+        _builder.SpawnListener(0);
+        _builder.Spawn("""{ "name": "Hall", "components": { "transform": {}, "indoorVolume": { "size": [4, 3, 4] }, "roomReverb": { "wet": 0.5, "size": 0.8 } } }""");
+        string knock = _builder.WithSound("Knock", "\"spatial\": false", 0.5f);
+        _builder.Audio.Play(knock);
+        _builder.Run();
+        _builder.Hear(48000 + 1000);
+
+        (double left, double right) = _builder.HearEnergy(48000);
+
+        (left + right).Should().BeGreaterThan(1);
+    }
+
+    [Fact]
+    public void LeavesNoTailOutdoors()
+    {
+        _builder.SpawnListener(10);
+        _builder.Spawn("""{ "name": "Hall", "components": { "transform": {}, "indoorVolume": { "size": [4, 3, 4] }, "roomReverb": { "wet": 0.5, "size": 0.8 } } }""");
+        string knock = _builder.WithSound("Knock", "\"spatial\": false", 0.5f);
+        _builder.Audio.Play(knock);
+        _builder.Run();
+        _builder.Hear(48000 + 1000);
+
+        (double left, double right) = _builder.HearEnergy(48000);
+
+        (left + right).Should().Be(0);
+    }
+
+    [Fact]
     public void HoldsTheWorldsSoundsButNotTheMusicWhileTheGameIsPaused()
     {
         string music = _builder.WithSound("Song", "\"spatial\": false, \"loop\": true, \"bus\": \"Music\"", 0.25f);

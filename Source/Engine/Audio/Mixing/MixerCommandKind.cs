@@ -9,4 +9,5 @@ public enum MixerCommandKind
     StopAt,
     SetBus,
     PauseBus,
+    SetReverb,
 }
