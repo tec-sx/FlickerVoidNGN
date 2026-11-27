@@ -108,6 +108,30 @@ public sealed class TextureImporterTests : IDisposable
     }
 
     [Fact]
+    public void RaisesAReliefFromTheImagesBrightness()
+    {
+        _files.WithImage("Paint.tga", 8, 4, HalfWhiteHalfBlack());
+        _files.WithSource("Paint.tga.fvtexture", """{ "relief": true }""");
+
+        DdsImage relief = BuildOne("Paint.relief.dds");
+
+        relief.Format.Should().Be(PixelFormat.Bc7UNorm, "a relief is heights, not colours");
+        ColorRgba32[] texels = Decode(relief);
+        texels[0].r.Should().BeGreaterThan(250, "white paint stands highest");
+        texels[7].r.Should().BeLessThan(5, "black paint lies flat");
+    }
+
+    [Fact]
+    public void RaisesNoReliefUnlessTheSettingsAskForOne()
+    {
+        _files.WithImage("Paint.tga", 8, 4, HalfWhiteHalfBlack());
+
+        BuildOne();
+
+        File.Exists(_files.OutputPath("Paint.relief.dds")).Should().BeFalse();
+    }
+
+    [Fact]
     public void KeepsEveryTexelWhenUncompressed()
     {
         _files.WithImage("Paint.tga", 8, 4, HalfRedHalfBlue());
@@ -147,6 +171,21 @@ public sealed class TextureImporterTests : IDisposable
     }
 
     /// <summary>An 8 by 4 image, its left half red and its right half blue.</summary>
+    private static byte[] HalfWhiteHalfBlack()
+    {
+        byte[] rgba = new byte[8 * 4 * 4];
+        for (int texel = 0; texel < 32; texel++)
+        {
+            byte grey = texel % 8 < 4 ? (byte)255 : (byte)0;
+            rgba[texel * 4] = grey;
+            rgba[(texel * 4) + 1] = grey;
+            rgba[(texel * 4) + 2] = grey;
+            rgba[(texel * 4) + 3] = 255;
+        }
+
+        return rgba;
+    }
+
     private static byte[] HalfRedHalfBlue()
     {
         byte[] rgba = new byte[8 * 4 * 4];

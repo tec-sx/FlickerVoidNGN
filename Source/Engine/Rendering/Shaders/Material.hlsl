@@ -31,6 +31,8 @@ struct Material
     float TextureScale;
     float ReliefDepth;
     float Cutoff;
+    uint Palette;
+    float PaletteRow;
     uint ShadingModel;
     float4 ModelValues;
 };
@@ -57,8 +59,10 @@ Material LoadMaterial(uint index)
     material.TextureScale = buffer.Load<float>(84);
     material.ReliefDepth = buffer.Load<float>(88);
     material.Cutoff = buffer.Load<float>(92);
-    material.ShadingModel = buffer.Load<uint>(96);
-    material.ModelValues = buffer.Load<float4>(100);
+    material.Palette = buffer.Load<uint>(96);
+    material.PaletteRow = buffer.Load<float>(104);
+    material.ShadingModel = buffer.Load<uint>(108);
+    material.ModelValues = buffer.Load<float4>(112);
     return material;
 }
 

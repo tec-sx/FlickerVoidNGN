@@ -573,6 +573,73 @@ public sealed class SceneRendererTests : IDisposable
         behind.Should().BeInRange(195, 203, "the floor shows where the blocker stands");
     }
 
+    [Theory]
+    [InlineData(0, 255, 0, 0, 255, 255, 0)]
+    [InlineData(1, 0, 0, 255, 0, 255, 0)]
+    public void ColorsAPaintingThroughARowOfItsPalette(int row, byte darkRed, byte darkGreen, byte darkBlue, byte lightRed, byte lightGreen, byte lightBlue)
+    {
+        uint black = SceneRendererTestsBuilder.Rgba(0, 0, 0, 255);
+        uint white = SceneRendererTestsBuilder.Rgba(255, 255, 255, 255);
+        uint red = SceneRendererTestsBuilder.Rgba(255, 0, 0, 255);
+        uint yellow = SceneRendererTestsBuilder.Rgba(255, 255, 0, 255);
+        uint blue = SceneRendererTestsBuilder.Rgba(0, 0, 255, 255);
+        uint green = SceneRendererTestsBuilder.Rgba(0, 255, 0, 255);
+        _builder.WithTexture("Front.tga", 4, 1, [black, black, white, white]);
+        _builder.WithTexture("Palette.tga", 2, 2, [red, yellow, blue, green]);
+        _builder.WithFile("Front.fvmat", $$"""{ "parameters": { "texture": "Front.tga", "palette": "Palette.tga", "paletteRow": {{row}} } }""");
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Vector4.One));
+        _builder.WithScene(Camera, """{ "name": "Front", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb", "materials": ["Front.fvmat"] } } }""");
+
+        uint[] pixels = _builder.Render();
+
+        (byte red0, byte green0, byte blue0) = SceneRendererTestsBuilder.Channels(pixels[4]);
+        (byte red3, byte green3, byte blue3) = SceneRendererTestsBuilder.Channels(pixels[7]);
+        red0.Should().BeCloseTo(darkRed, 3, "the dark paint takes the row's first colour");
+        green0.Should().BeCloseTo(darkGreen, 3);
+        blue0.Should().BeCloseTo(darkBlue, 3);
+        red3.Should().BeCloseTo(lightRed, 3, "the bright paint takes the row's last colour");
+        green3.Should().BeCloseTo(lightGreen, 3);
+        blue3.Should().BeCloseTo(lightBlue, 3);
+    }
+
+    [Fact]
+    public void LightensSunShadowsByTheMoodsShadowDarkness()
+    {
+        WithSunBlocker();
+        _builder.WithMood(static mood =>
+        {
+            mood.ShadowDarkness = 0.5f;
+            return mood;
+        });
+
+        uint[] pixels = _builder.Render();
+
+        (byte shadowed, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        (byte lit, _, _) = SceneRendererTestsBuilder.Channels(pixels[9]);
+        shadowed.Should().BeInRange(126, 136, "a half dark shadow keeps half the sun's light over the ambient");
+        lit.Should().BeInRange(195, 203, "the lit floor is as before");
+    }
+
+    [Fact]
+    public void ColorsSunShadowsByTheMoodsShadowColor()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Vector4.One));
+        _builder.WithScene(Camera, Quad, """{ "name": "Blocker", "components": { "transform": { "position": [0.75, 0.25, 1], "scale": [0.25, 0.25, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+        _builder.WithMood(static mood =>
+        {
+            mood.ShadowColor = new Vector3(0.5f, 0.5f, 1);
+            return mood;
+        });
+
+        uint[] pixels = _builder.Render();
+
+        (byte red, _, byte blue) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        (byte litRed, _, byte litBlue) = SceneRendererTestsBuilder.Channels(pixels[9]);
+        blue.Should().BeGreaterThan((byte)(red + 15), "the shadow takes the mood's cool colour");
+        litBlue.Should().Be(litRed, "light in the sun stays white");
+    }
+
     [Fact]
     public void KeepsShadowTilesWhileNothingChanges()
     {
