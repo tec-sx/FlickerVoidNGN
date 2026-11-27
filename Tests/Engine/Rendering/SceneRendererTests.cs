@@ -59,6 +59,25 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void ProfilesEachPassOnTheCpuAndTheGpu()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, """{ "name": "Quad", "components": { "transform": {}, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithRenderer(static renderer => renderer.Profiling = true);
+
+        _builder.RenderFrames(RenderProfile.DefaultWindow);
+
+        RenderProfile profile = _builder.Profile;
+        profile.Passes.Select(pass => pass.Name).Should().StartWith(["Extract", "SkinningPass"]).And.Contain(["GeometryPass", "LightingPass", "FrameData"]);
+        profile.CpuMilliseconds.Should().BeGreaterThan(0);
+        if (_builder.HasTimestamps)
+        {
+            profile.Passes.Single(pass => pass.Name == "GeometryPass").GpuMilliseconds.Should().BeGreaterThan(0);
+            profile.GpuMilliseconds.Should().BeGreaterThan(0);
+        }
+    }
+
+    [Fact]
     public void PlacesMeshesByTheirTransform()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));

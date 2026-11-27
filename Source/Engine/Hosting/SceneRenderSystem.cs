@@ -165,7 +165,13 @@ public sealed class SceneRenderSystem : ISystem<GameTime>
         ICommandList commands = _commandLists[Frames % FramesInFlight];
         commands.Begin();
         _renderer.Render(commands, _world, backBuffer);
-        _overlay?.Draw(commands, backBuffer);
+        if (_overlay is not null)
+        {
+            commands.BeginTimer("Overlay");
+            _overlay.Draw(commands, backBuffer);
+            commands.EndTimer();
+        }
+
         commands.Barrier(backBuffer, ResourceState.Present);
         commands.End();
         _device.Submit(commands);

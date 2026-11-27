@@ -111,6 +111,12 @@ public sealed class RenderContext
     public RenderStatistics Statistics { get; } = new();
 
     /// <summary>
+    /// Where the passes' CPU and GPU times go while the renderer profiles (<see cref="SceneRenderer.Profiling"/>); null leaves
+    /// the passes untimed.
+    /// </summary>
+    public RenderProfile? Profile { get; internal set; }
+
+    /// <summary>
     /// The scene's depth at the render size, which passes after the geometry pass can test against, such as overlays drawn over
     /// the output, reading it at their pixel scaled from the output's size to the render size.
     /// </summary>

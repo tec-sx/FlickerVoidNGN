@@ -85,4 +85,43 @@ public sealed class RenderPipelineTests
 
         _builder.Calls.Should().Equal("Shadows.Dispose", "Opaque.Dispose");
     }
+
+    [Fact]
+    public void TimesEachPassOnTheGpuWhileProfiling()
+    {
+        RenderPipeline pipeline = _builder.WithProfile().Build("ShadowPass", "GeometryPass");
+
+        pipeline.Execute(_builder.Context);
+
+        _builder.Calls.Should().Equal(
+            "Timer ShadowPass",
+            "ShadowPass.Execute",
+            "Timer end",
+            "Timer GeometryPass",
+            "GeometryPass.Execute",
+            "Timer end");
+    }
+
+    [Fact]
+    public void TimesEachPassOnTheCpuWhileProfiling()
+    {
+        RenderPipeline pipeline = _builder.WithProfile().WithWindow(1).Build("ShadowPass", "GeometryPass");
+
+        pipeline.Prepare(_builder.Context);
+        pipeline.Execute(_builder.Context);
+        _builder.Profile.EndFrame();
+
+        _builder.Profile.Passes.Select(pass => pass.Name).Should().Equal("ShadowPass", "GeometryPass");
+        _builder.Profile.Passes.Should().OnlyContain(pass => pass.CpuMilliseconds >= 0);
+    }
+
+    [Fact]
+    public void LeavesTheGpuUntimedWithoutAProfile()
+    {
+        RenderPipeline pipeline = _builder.WithCommands().Build("ShadowPass");
+
+        pipeline.Execute(_builder.Context);
+
+        _builder.Calls.Should().Equal("ShadowPass.Execute");
+    }
 }

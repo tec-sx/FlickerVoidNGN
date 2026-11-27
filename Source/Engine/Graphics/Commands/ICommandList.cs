@@ -1,5 +1,6 @@
 using FlickerVoid.Engine.Graphics.AccelerationStructures;
 using FlickerVoid.Engine.Graphics.Buffers;
+using FlickerVoid.Engine.Graphics.Devices;
 using FlickerVoid.Engine.Graphics.Pipelines;
 using FlickerVoid.Engine.Graphics.Textures;
 
@@ -14,7 +15,24 @@ public interface ICommandList : IDisposable
     /// <summary>Starts recording; waits for the GPU to finish the list's previous submission.</summary>
     void Begin();
 
+    /// <summary>Ends recording; throws when a timer is still open.</summary>
     void End();
+
+    /// <summary>
+    /// The GPU times of the timers recorded in the list's last submission, in the order they began, read when <see cref="Begin"/>
+    /// has waited for it, so reading them never stalls; empty before the first submission and without
+    /// <see cref="GraphicsFeatures.Timestamps"/>.
+    /// </summary>
+    IReadOnlyList<GpuTiming> Timings { get; }
+
+    /// <summary>
+    /// Starts timing the GPU work recorded next under the given name, inside the timer that is open, if any; at most
+    /// <see cref="GraphicsLimits.TimersPerCommandList"/> per recording.
+    /// </summary>
+    void BeginTimer(string name);
+
+    /// <summary>Ends the timer begun last; throws when none is open.</summary>
+    void EndTimer();
 
     void Barrier(ITexture texture, ResourceState state);
 

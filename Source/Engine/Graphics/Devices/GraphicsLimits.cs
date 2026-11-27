@@ -17,5 +17,8 @@ public static class GraphicsLimits
 
     /// <summary>Bindless slots for top-level acceleration structures, on devices with ray queries.</summary>
     public const int BindlessAccelerationStructureCapacity = 256;
+
+    /// <summary>GPU timers a command list records between Begin and End; those past it are dropped.</summary>
+    public const int TimersPerCommandList = 128;
 }
 

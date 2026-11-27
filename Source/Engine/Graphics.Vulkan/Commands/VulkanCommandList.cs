@@ -20,8 +20,9 @@ using Viewport = FlickerVoid.Engine.Graphics.Commands.Viewport;
 namespace FlickerVoid.Engine.Graphics.Vulkan.Commands;
 
 /// <summary>
-/// A command buffer with its own pool, reset on Begin once the GPU has finished its previous submission, and the scratch memory its
-/// acceleration structure builds share, kept until the builds recorded with it have run.
+/// A command buffer with its own pool, reset on Begin once the GPU has finished its previous submission, the scratch memory its
+/// acceleration structure builds share, kept until the builds recorded with it have run, and a timestamp query pool for its
+/// timers, read back on Begin.
 /// </summary>
 internal sealed unsafe class VulkanCommandList : ICommandList
 {
@@ -35,12 +36,33 @@ internal sealed unsafe class VulkanCommandList : ICommandList
     private readonly List<VulkanBuffer> _replacedScratch = [];
     private VulkanBuffer? _scratch;
     private ulong _scratchAddress;
+    // Timers recorded since Begin, a start and an end query each, and those still open, -1 for one past the capacity.
+    private readonly List<TimerRecord> _timers = [];
+    private readonly Stack<int> _openTimers = new();
+    private readonly List<GpuTiming> _timings = [];
+    private readonly ulong[] _timestamps = new ulong[GraphicsLimits.TimersPerCommandList * QueriesPerTimer];
+    private readonly QueryPool _queries;
+    private readonly bool _timed;
+    private ulong _readSubmission;
     private bool _disposed;
 
     public VulkanCommandList(VulkanGraphicsDevice device)
     {
         _device = device;
         _vk = device.Vk;
+        _timed = device.Features.HasFlag(GraphicsFeatures.Timestamps);
+        if (_timed)
+        {
+            QueryPoolCreateInfo queryInfo = new()
+            {
+                SType = StructureType.QueryPoolCreateInfo,
+                QueryType = QueryType.Timestamp,
+                QueryCount = (uint)_timestamps.Length,
+            };
+            VulkanResult.Check(_vk.CreateQueryPool(device.Handle, &queryInfo, null, out QueryPool queries));
+            _queries = queries;
+        }
+
         CommandPoolCreateInfo poolInfo = new()
         {
             SType = StructureType.CommandPoolCreateInfo,
@@ -61,14 +83,20 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         Handle = buffer;
     }
 
+    /// <summary>Queries per timer: its start and its end.</summary>
+    private const int QueriesPerTimer = 2;
+
     public CommandBuffer Handle { get; }
 
     /// <summary>The device timeline value its last submission signals; 0 before the first.</summary>
     public ulong SubmissionValue { get; set; }
 
+    public IReadOnlyList<GpuTiming> Timings => _timings;
+
     public void Begin()
     {
         _device.WaitFor(SubmissionValue);
+        ReadTimings();
         ReleaseReplacedScratch();
         VulkanResult.Check(_vk.ResetCommandPool(_device.Handle, _pool, 0));
         CommandBufferBeginInfo info = new()
@@ -79,11 +107,47 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         VulkanResult.Check(_vk.BeginCommandBuffer(Handle, &info));
         _device.Bindless.Bind(Handle, PipelineBindPoint.Graphics);
         _device.Bindless.Bind(Handle, PipelineBindPoint.Compute);
+        if (_timed)
+        {
+            _vk.CmdResetQueryPool(Handle, _queries, 0, (uint)_timestamps.Length);
+        }
     }
 
     public void End()
     {
+        if (_openTimers.Count > 0)
+        {
+            throw new InvalidOperationException("A timer is still open; end every timer before ending the command list.");
+        }
+
         VulkanResult.Check(_vk.EndCommandBuffer(Handle));
+    }
+
+    public void BeginTimer(string name)
+    {
+        int index = _timers.Count;
+        if (index >= GraphicsLimits.TimersPerCommandList)
+        {
+            _openTimers.Push(-1);
+            return;
+        }
+
+        _timers.Add(new TimerRecord(name, _openTimers.Count));
+        _openTimers.Push(index);
+        WriteTimestamp(index * QueriesPerTimer);
+    }
+
+    public void EndTimer()
+    {
+        if (!_openTimers.TryPop(out int index))
+        {
+            throw new InvalidOperationException("No timer is open.");
+        }
+
+        if (index >= 0)
+        {
+            WriteTimestamp((index * QueriesPerTimer) + 1);
+        }
     }
 
     public void Barrier(ITexture texture, ResourceState state)
@@ -445,8 +509,72 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         ReleaseReplacedScratch();
         _scratch?.Dispose();
         CommandPool pool = _pool;
+        QueryPool queries = _queries;
+        bool timed = _timed;
         VulkanGraphicsDevice device = _device;
-        device.ReleaseLater(() => device.Vk.DestroyCommandPool(device.Handle, pool, null));
+        device.ReleaseLater(() =>
+        {
+            device.Vk.DestroyCommandPool(device.Handle, pool, null);
+            if (timed)
+            {
+                device.Vk.DestroyQueryPool(device.Handle, queries, null);
+            }
+        });
+    }
+
+    /// <summary>Writes the query once the GPU has finished everything recorded before it.</summary>
+    private void WriteTimestamp(int query)
+    {
+        if (_timed)
+        {
+            _vk.CmdWriteTimestamp2(Handle, PipelineStageFlags2.AllCommandsBit, _queries, (uint)query);
+        }
+    }
+
+    /// <summary>
+    /// Turns the timestamps of the last recording into timings when that recording was submitted, which Begin has waited for, and
+    /// forgets its timers.
+    /// </summary>
+    private void ReadTimings()
+    {
+        _timings.Clear();
+        bool submitted = SubmissionValue != _readSubmission;
+        _readSubmission = SubmissionValue;
+        int count = _timers.Count;
+        if (_timed && submitted && count > 0)
+        {
+            int queryCount = count * QueriesPerTimer;
+            Result result;
+            fixed (ulong* data = _timestamps)
+            {
+                nuint size = (nuint)(queryCount * sizeof(ulong));
+                result = _vk.GetQueryPoolResults(_device.Handle, _queries, 0, (uint)queryCount, size, data, sizeof(ulong), QueryResultFlags.Result64Bit);
+            }
+
+            if (result == Result.Success)
+            {
+                AddTimings(count);
+            }
+        }
+
+        _timers.Clear();
+        _openTimers.Clear();
+    }
+
+    private void AddTimings(int count)
+    {
+        ulong mask = _device.TimestampMask;
+        double millisecondsPerTick = _device.TimestampPeriod / 1_000_000.0;
+        ulong first = _timestamps[0] & mask;
+        for (int index = 0; index < count; index++)
+        {
+            ulong start = _timestamps[index * QueriesPerTimer] & mask;
+            ulong end = _timestamps[(index * QueriesPerTimer) + 1] & mask;
+            double startMilliseconds = (start - first) * millisecondsPerTick;
+            double milliseconds = (end - start) * millisecondsPerTick;
+            TimerRecord timer = _timers[index];
+            _timings.Add(new GpuTiming(timer.Name, timer.Depth, startMilliseconds, milliseconds));
+        }
     }
 
     private static VulkanAccelerationStructure CheckBottomLevel(in BottomLevelBuild build)
@@ -661,5 +789,7 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         };
         _vk.CmdPipelineBarrier2(Handle, &dependency);
     }
-}
 
+    /// <summary>A timer recorded since Begin: its queries are at twice its index and the one after.</summary>
+    private readonly record struct TimerRecord(string Name, int Depth);
+}

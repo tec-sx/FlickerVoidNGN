@@ -6,4 +6,7 @@
     <ProjectReference Include="../Graphics/FlickerVoid.Engine.Graphics.csproj" />
     <ProjectReference Include="../Runtime/FlickerVoid.Engine.Runtime.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="FlickerVoid.Engine.Rendering.Tests" />
+  </ItemGroup>
 </Project>
