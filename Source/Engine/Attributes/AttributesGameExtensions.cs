@@ -30,6 +30,7 @@ public static class AttributesGameExtensions
         game.Services.AddService(attributes);
         CheckSystem checks = new(attributes, random ?? game.Random);
         game.Services.AddService(checks);
+        game.Localization.Declare(CheckSystem.RollLabel);
         return attributes;
     }
 }

@@ -9,6 +9,7 @@ using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Debugging;
 using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Events;
+using FlickerVoid.Engine.Runtime.Localization;
 using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Serialization;
@@ -27,7 +28,7 @@ public sealed partial class Game : IDisposable
     private readonly List<Action> _deferred = [];
     private bool _initialized;
 
-    /// <summary>Creates the world and registers it, the logger factory, the scene spawner (with the transform, saveable, greybox and traveller components), the debug console, the events, the facts, the world clock and the transform hierarchy as services, and saves the transforms, the random source and the clock.</summary>
+    /// <summary>Creates the world and registers it, the logger factory, the scene spawner (with the transform, saveable, greybox and traveller components), the debug console, the text localizer, the events, the facts, the world clock and the transform hierarchy as services, and saves the transforms, the random source and the clock.</summary>
     public Game(ILoggerFactory loggerFactory)
     {
         LoggerFactory = loggerFactory;
@@ -57,7 +58,10 @@ public sealed partial class Game : IDisposable
         Schemas.Add("data", Data.GetAssetSchema);
         Schemas.Add("table", Data.GetTableSchema);
         Schemas.Add(SettingsFile.SchemaName, () => SettingsFile.CreateSchema(DebugConsole));
+        Schemas.AddFile(StringTable.SchemaName, StringTable.Extension, static () => RuntimeJsonContext.Default.StringTable);
+        DebugConsole.Add(Localization.Culture);
         Services.AddService(DebugConsole);
+        Services.AddService(Localization);
         Services.AddService(Events);
         Services.AddService(Facts);
         Services.AddService(Clock);
@@ -96,6 +100,9 @@ public sealed partial class Game : IDisposable
 
     /// <summary>Debugging commands and variables; modules add theirs to it.</summary>
     public IDebugConsole DebugConsole { get; } = new DebugConsole();
+
+    /// <summary>Shows texts in the chosen culture; they show as written until <see cref="TextLocalizer.Load"/> reads the content's string tables.</summary>
+    public TextLocalizer Localization { get; } = new();
 
     /// <summary>Moves nested entities with their parents after each fixed step and before each frame.</summary>
     public TransformHierarchy Hierarchy { get; } = new();

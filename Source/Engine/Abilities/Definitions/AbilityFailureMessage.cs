@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Gameplay.Tags;
 
 namespace FlickerVoid.Engine.Abilities.Definitions;
@@ -7,5 +8,5 @@ public sealed class AbilityFailureMessage
 {
     public Tag Reason { get; set; }
 
-    public string Text { get; set; } = string.Empty;
+    public LocalizedText Text { get; set; } = new();
 }

@@ -2,8 +2,10 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Data;
+using FlickerVoid.Engine.Runtime.Localization;
 using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Saves;
 using FlickerVoid.Engine.Runtime.Scenes;
@@ -14,13 +16,17 @@ namespace FlickerVoid.Engine.Runtime.Content;
 /// <summary>
 /// Reads every text content file of a source folder as the game reads it, and lists what would fail or go unfound while playing:
 /// files that can't be read, components no module registers, content files named that the folder lacks or of a kind their property
-/// doesn't take, entities named that their scene lacks, and names or save ids two entities of a scene share. Games' tests run it.
+/// doesn't take, entities named that their scene lacks, names or save ids two entities of a scene share, texts without a key, keys
+/// given to two texts and translations of keys no text has. Games' tests run it.
 /// </summary>
 public sealed class ContentCheck
 {
     /// <summary>Content files may hold comments and trailing commas, as the game's readers skip them.</summary>
     /// <summary>The folder of the built content that holds the engine's own, which content may name.</summary>
     public const string EngineFolder = "Engine";
+
+    /// <summary>Where problems of the texts written in code are reported, as their path.</summary>
+    public const string CodePath = "(code)";
 
     private static readonly JsonDocumentOptions ParseOptions = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
 
@@ -29,6 +35,8 @@ public sealed class ContentCheck
     private readonly string _root;
     private readonly EntityTemplates _templates;
     private readonly List<ContentProblem> _problems = [];
+    private readonly Dictionary<string, KeyedText> _texts = new(StringComparer.Ordinal);
+    private readonly List<(string Path, StringTable Table)> _translations = [];
     private string _path = "";
 
     private ContentCheck(Game game, string folder)
@@ -56,11 +64,13 @@ public sealed class ContentCheck
         }
 
         paths.Sort(StringComparer.Ordinal);
+        check.CheckDeclaredTexts();
         foreach (string path in paths)
         {
             check.CheckFile(path);
         }
 
+        check.CheckTranslations();
         return check._problems;
     }
 
@@ -94,6 +104,9 @@ public sealed class ContentCheck
                 break;
             case DataAssets.TableExtension:
                 CheckTable();
+                break;
+            case StringTable.Extension:
+                CheckStrings();
                 break;
             default:
                 if (_game.Schemas.Files.TryGetValue(extension, out Func<JsonTypeInfo>? typeInfo))
@@ -311,6 +324,68 @@ public sealed class ContentCheck
         CheckFiles(typeInfo, file, "");
     }
 
+    private void CheckStrings()
+    {
+        if (Parse() is not { } file || Read(file, RuntimeJsonContext.Default.StringTable, null) is not StringTable table)
+        {
+            return;
+        }
+
+        if (table.Culture.Length == 0)
+        {
+            Report("It names no culture to translate into.");
+            return;
+        }
+
+        _translations.Add((_path, table));
+    }
+
+    private void CheckText(string key, string text, string at)
+    {
+        if (key.Length == 0)
+        {
+            if (text.Length > 0)
+            {
+                Report($"{at} has no key, so it can't be translated.");
+            }
+
+            return;
+        }
+
+        if (!_texts.TryGetValue(key, out KeyedText keyed))
+        {
+            _texts.Add(key, new KeyedText(text, _path));
+        }
+        else if (keyed.Text != text)
+        {
+            Report($"{at} is keyed {key}, which {keyed.Path} gives to another text: {keyed.Text}");
+        }
+    }
+
+    private void CheckDeclaredTexts()
+    {
+        _path = CodePath;
+        foreach (LocalizedText text in _game.Localization.Declared)
+        {
+            CheckText(text.Key, text.Text, $"The text {text.Text}");
+        }
+    }
+
+    private void CheckTranslations()
+    {
+        foreach ((string path, StringTable table) in _translations)
+        {
+            _path = path;
+            foreach (string key in table.Texts.Keys)
+            {
+                if (!_texts.ContainsKey(key))
+                {
+                    Report($"It translates {key}, which no text has.");
+                }
+            }
+        }
+    }
+
     /// <summary>The file as JSON, or null, reported, when it isn't.</summary>
     private JsonElement? Parse()
     {
@@ -366,9 +441,19 @@ public sealed class ContentCheck
         }
     }
 
-    /// <summary>Checks every content file the value names, at any depth, through the properties marked <see cref="ContentFileAttribute"/>.</summary>
+    /// <summary>Checks every content file and text the value names, at any depth, through the properties marked <see cref="ContentFileAttribute"/>.</summary>
     private void CheckFiles(JsonTypeInfo typeInfo, JsonElement value, string at)
     {
+        if (typeInfo.Type == typeof(LocalizedText))
+        {
+            if (value.ValueKind == JsonValueKind.Object && value.Deserialize(typeInfo) is LocalizedText text)
+            {
+                CheckText(text.Key, text.Text, at);
+            }
+
+            return;
+        }
+
         switch (typeInfo.Kind)
         {
             case JsonTypeInfoKind.Object when value.ValueKind == JsonValueKind.Object:
@@ -575,4 +660,7 @@ public sealed class ContentCheck
         ContentProblem problem = new(_path, message);
         _problems.Add(problem);
     }
+
+    /// <summary>The first text given a key, and the file that gives it.</summary>
+    private readonly record struct KeyedText(string Text, string Path);
 }

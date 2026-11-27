@@ -6,6 +6,7 @@ using FlickerVoid.Engine.Attributes.Modifiers;
 using FlickerVoid.Engine.Attributes.Values;
 using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Facts;
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Entities;
@@ -154,7 +155,7 @@ public sealed partial class AbilitySystem
     {
         if (!CanActivate(owner, spec, target, out Tag reason))
         {
-            string message = GetFailureMessage(spec.Ability, reason);
+            LocalizedText message = GetFailureMessage(spec.Ability, reason);
             _events.Send(new AbilityFailedEvent(owner, spec.Ability, reason, message));
             return false;
         }
@@ -407,10 +408,10 @@ public sealed partial class AbilitySystem
         return new ConditionContext(_facts) { Instigator = instigator, Target = targetView, Services = _services };
     }
 
-    private static string GetFailureMessage(AbilityDefinition ability, Tag reason)
+    private static LocalizedText GetFailureMessage(AbilityDefinition ability, Tag reason)
     {
         AbilityFailureMessage? message = ability.FailureMessages.FirstOrDefault(failure => reason.MatchesTag(failure.Reason));
-        return message?.Text ?? string.Empty;
+        return message?.Text ?? new LocalizedText();
     }
 
     private T? Load<T>(DataAssets data, string? path)

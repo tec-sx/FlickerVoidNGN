@@ -30,7 +30,7 @@ public sealed class MapSystemTests : IDisposable
 
         MarkerView marker = facingNorth.Markers.Should().ContainSingle().Subject;
         marker.Handle.Should().Be(maps.FindMarker(shop));
-        marker.Label.Should().Be("Fishmonger");
+        marker.Label.Text.Should().Be("Fishmonger");
         marker.Position.X.Should().BeApproximately(0.5f, 1e-4f);
         marker.Position.Y.Should().BeApproximately(-0.5f, 1e-4f);
         marker.Distance.Should().BeApproximately(MathF.Sqrt(200), 1e-3f);

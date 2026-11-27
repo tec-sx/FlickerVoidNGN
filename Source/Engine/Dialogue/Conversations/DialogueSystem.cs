@@ -6,6 +6,7 @@ using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Entities;
 using FlickerVoid.Engine.Gameplay.Facts;
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Events;
@@ -228,7 +229,7 @@ public sealed partial class DialogueSystem : BaseSystem<World, GameTime>
         float duration = line.Duration;
         if (duration <= 0)
         {
-            duration = MathF.Max(_settings.MinLineDuration, line.Text.Length * _settings.SecondsPerCharacter);
+            duration = MathF.Max(_settings.MinLineDuration, line.Text.Text.Length * _settings.SecondsPerCharacter);
         }
 
         CurrentLine = line with { SpeakerEntity = speaker, Duration = duration };
@@ -269,7 +270,7 @@ public sealed partial class DialogueSystem : BaseSystem<World, GameTime>
         _waits.Add(wait);
     }
 
-    internal void Bark(Entity speaker, string row, string text, float duration)
+    internal void Bark(Entity speaker, string row, LocalizedText text, float duration)
     {
         _lastBarks[speaker] = row;
         BarkEvent bark = new(speaker, text, duration);

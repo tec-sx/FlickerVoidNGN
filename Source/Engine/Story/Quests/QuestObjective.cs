@@ -1,4 +1,5 @@
 using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Gameplay.Tags;
 
 namespace FlickerVoid.Engine.Story.Quests;
@@ -9,7 +10,7 @@ public sealed class QuestObjective
     /// <summary>The fact set to 1 when the objective is done.</summary>
     public Tag Fact { get; set; }
 
-    public string Description { get; set; } = "";
+    public LocalizedText Description { get; set; } = new();
 
     /// <summary>Checked whenever a fact changes while the quest is active; empty means only a flow or effect completes it.</summary>
     public ConditionSet CompleteWhen { get; set; } = new();

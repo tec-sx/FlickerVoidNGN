@@ -5,6 +5,7 @@ using Arch.System;
 
 using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Gameplay.Facts;
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Interaction.Interactables;
 using FlickerVoid.Engine.Platform.Input;
@@ -91,13 +92,13 @@ public sealed partial class InteractionSystem : BaseSystem<World, GameTime>
                 continue;
             }
 
-            string reason = string.Empty;
+            LocalizedText reason = new();
             if (!available && presentation == ConditionFailurePresentation.ShowLockedWithReason)
             {
                 reason = offer.Conditions.FailureReason;
-                if (reason.Length == 0)
+                if (reason.IsEmpty)
                 {
-                    reason = offer.Conditions.Describe();
+                    reason = new LocalizedText("", offer.Conditions.Describe());
                 }
             }
 

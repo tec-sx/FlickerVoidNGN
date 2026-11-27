@@ -1,4 +1,5 @@
 using FlickerVoid.Engine.Flow.Graphs;
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Gameplay.Tags;
 
 namespace FlickerVoid.Engine.Dialogue.Conversations;
@@ -9,7 +10,7 @@ public sealed class LineNode : FlowNode<FlowOutput>
     /// <summary>The speaker's character id; none means the conversation's owner.</summary>
     public Tag Speaker { get; set; }
 
-    public string Text { get; set; } = "";
+    public LocalizedText Text { get; set; } = new();
 
     public Tag Mood { get; set; }
 
