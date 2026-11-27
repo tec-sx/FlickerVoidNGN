@@ -206,11 +206,20 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
     }
 
     /// <summary>Writes a new building's file and lists it in the asset browser.</summary>
-    public void WriteHouse()
+    public void WriteHouse(bool climbs = false)
     {
         string folder = Path.Combine(_contentFolder, "Houses");
         Directory.CreateDirectory(folder);
         BuildingFile house = BuildingFile.Create();
+        if (climbs)
+        {
+            FlickerVoid.Editor.Core.Buildings.BuildingTools.AddStoreyAbove(house);
+            Vector2 foot = FlickerVoid.Editor.Core.Buildings.BuildingTools.GetStairsFoot(house, 0);
+            FlickerVoid.Editor.Core.Buildings.BuildingTools.AddStairs(house, 0, foot, 0, StairsKind.Straight);
+            Vector2 shaft = FlickerVoid.Editor.Core.Buildings.BuildingTools.GetElevatorPlace(house);
+            FlickerVoid.Editor.Core.Buildings.BuildingTools.AddElevator(house, shaft, 0);
+        }
+
         FlickerVoid.Editor.Core.Buildings.BuildingTools.Rebuild(house);
         string json = JsonSerializer.Serialize(house, BuildingsJsonContext.Default.BuildingFile);
         WriteFile(House, json);

@@ -27,7 +27,6 @@ public sealed partial class BuildingToolViewModel : ObservableObject
     private readonly Func<(Vector3 Position, Quaternion Rotation)?> _view;
     private readonly Action<BuildingShot> _lookThrough;
     private int _trigger;
-    private float _pushed;
 
     /// <param name="view">Where the viewport's camera stands in the building's space, for Set from view.</param>
     /// <param name="lookThrough">Shows the viewport through the shot.</param>
@@ -95,11 +94,6 @@ public sealed partial class BuildingToolViewModel : ObservableObject
         {
             Sections.Clear();
             return;
-        }
-
-        if (!_editor.IsPending)
-        {
-            _pushed = 0;
         }
 
         List<ToolSection> sections = [];
@@ -271,7 +265,7 @@ public sealed partial class BuildingToolViewModel : ObservableObject
         int id = wall.Id;
         if (_editor.Tool == BuildingTool.PushWall)
         {
-            ToolRow distance = new NumberRow("Distance", _pushed, "m", value => Push(level, id, value), step: 0.1);
+            ToolRow distance = new NumberRow("Distance", _editor.Pushed, "m", value => Push(level, id, value), step: 0.1);
             ToolRow snap = new ToggleRow("Snap to grid", _editor.SnapOn, on => _editor.SnapOn = on);
             ToolRow carry = new ToggleRow("Carry openings", _editor.CarryOpenings, on => _editor.CarryOpenings = on);
             sections.Add(new ToolSection("Push wall", "PushWall", [distance, snap, carry]));
@@ -306,7 +300,8 @@ public sealed partial class BuildingToolViewModel : ObservableObject
                 }
 
                 float otherLength = PlanGeometry.GetLength(PlanGeometry.GetPath(storey, other));
-                follows.Add(new ListRow(WallName(other), $"{Format(otherLength)} m", "Line", () => _editor.Pick(new PlanPick(PlanPickKind.Wall, level, other.Id))));
+                string changed = Changed($"wall.{other.Id}", otherLength, Format);
+                follows.Add(new ListRow(WallName(other), $"{changed} m", "Line", () => _editor.Pick(new PlanPick(PlanPickKind.Wall, level, other.Id))));
             }
         }
 
@@ -316,26 +311,43 @@ public sealed partial class BuildingToolViewModel : ObservableObject
             if (room.Record >= 0)
             {
                 string name = storey.Rooms[room.Record].Name;
-                follows.Add(new ListRow(name, $"{room.Area.ToString("0.0", CultureInfo.InvariantCulture)} m²", "Room", () => _editor.Pick(new PlanPick(PlanPickKind.Room, level, 0, name))));
+                string area = Changed($"room.{name}", room.Area, static value => value.ToString("0.0", CultureInfo.InvariantCulture));
+                follows.Add(new ListRow(name, $"{area} m²", "Room", () => _editor.Pick(new PlanPick(PlanPickKind.Room, level, 0, name))));
             }
         }
 
         sections.Add(new ToolSection("Follows", "Network", follows));
     }
 
+    // A value with what it was before the pending edit, "6.00 → 7.20", when the edit changed it.
+    private string Changed(string key, float now, Func<float, string> format)
+    {
+        string after = format(now);
+        if (!_editor.Before.TryGetValue(key, out float before))
+        {
+            return after;
+        }
+
+        string was = format(before);
+        if (was == after)
+        {
+            return after;
+        }
+
+        return $"{was} → {after}";
+    }
+
     private static string WallName(PlanWall wall) => wall.Outside ? $"Outside wall {wall.Id}" : $"Wall {wall.Id}";
 
     private void Push(int level, int id, float value)
     {
-        float step = value - _pushed;
-        _pushed = value;
+        float step = value - _editor.Pushed;
         if (MathF.Abs(step) < 1e-5f)
         {
             return;
         }
 
-        bool carry = _editor.CarryOpenings;
-        _editor.Edit($"Push wall · {value.ToString("+0.00;-0.00", CultureInfo.InvariantCulture)} m", building => PlanEdits.PushWall(Storey(building, level), id, step, carry));
+        _editor.Push(level, id, step);
     }
 
     private static void SetLength(BuildingStorey storey, int id, float length)
@@ -600,7 +612,7 @@ public sealed partial class BuildingToolViewModel : ObservableObject
             }
         }
 
-        cameras.Add(new ActionsRow("", [new ToolAction("Add a shot of the stairs", "Camera", () => AddStairsShot(file, stairs)), new ToolAction("Remove stairs", "Delete", Remove)]));
+        cameras.Add(new ActionsRow("", [new ToolAction("Add a shot", "Camera", () => AddStairsShot(file, stairs)), new ToolAction("Remove stairs", "Delete", Remove)]));
         sections.Add(new ToolSection("Camera", "Camera", cameras));
     }
 
@@ -692,7 +704,7 @@ public sealed partial class BuildingToolViewModel : ObservableObject
             ToolRow when = new ChoiceRow("When", ["Enter", "Leave", "Both"], (int)trigger.When, value => Change("Trigger", building => Shot(building, id).Triggers[index].When = (TriggerMoment)value));
             ToolRow changeRow = new ChoiceRow("Change", ["Cut", "Blend", "Fade"], (int)trigger.Change, value => Change("Trigger", building => Shot(building, id).Triggers[index].Change = (TriggerChange)value));
             ToolRow time = new NumberRow("Time", trigger.Time, "s", value => Change("Trigger", building => Shot(building, id).Triggers[index].Time = Math.Max(value, 0)), 0, 10, 0.05);
-            ToolRow back = new ChoiceRow("Back to", ["The room entered", "The shot before"], (int)trigger.Return, value => Change("Trigger", building => Shot(building, id).Triggers[index].Return = (TriggerReturn)value));
+            ToolRow back = new ChoiceRow("Back to", ["Room's shot", "Shot before"], (int)trigger.Return, value => Change("Trigger", building => Shot(building, id).Triggers[index].Return = (TriggerReturn)value));
             ToolRow drop = new ActionsRow("", [new ToolAction("Remove trigger", "Delete", () => Change("Remove trigger", building => Shot(building, id).Triggers.RemoveAt(index)))]);
             sections.Add(new ToolSection("Picked trigger", "Room", [when, changeRow, time, back, drop]));
         }

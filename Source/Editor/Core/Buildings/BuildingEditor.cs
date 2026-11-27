@@ -44,6 +44,7 @@ public sealed class BuildingEditor : ICreatorTool
     private Vector2 _dragEnd;
     private Vector2 _pixelStart;
     private float _dragValue;
+    private readonly Dictionary<string, float> _before = [];
     private float _grab;
     private int _width = 1;
     private int _height = 1;
@@ -152,11 +153,17 @@ public sealed class BuildingEditor : ICreatorTool
     /// <summary>What the pending edit is, as the confirm bar names it: "Push wall · +1.20 m".</summary>
     public string PendingName { get; private set; } = string.Empty;
 
+    /// <summary>How far the pending edit has pushed the picked wall.</summary>
+    public float Pushed { get; private set; }
+
+    /// <summary>The storey's wall lengths (<c>wall.{id}</c>) and room areas (<c>room.{name}</c>) from before the pending edit.</summary>
+    public IReadOnlyDictionary<string, float> Before => _before;
+
     /// <summary>Picks something of the building, as a click in the Parts tab does.</summary>
     public void Pick(PlanPick? pick)
     {
         Picked = pick;
-        if (pick is not null && pick.Kind != PlanPickKind.Roof && pick.Kind != PlanPickKind.Stairs && pick.Kind != PlanPickKind.Elevator && pick.Kind != PlanPickKind.Shot)
+        if (pick is not null && pick.Kind != PlanPickKind.Roof && pick.Kind != PlanPickKind.Elevator)
         {
             _level = pick.Level;
         }
@@ -175,6 +182,8 @@ public sealed class BuildingEditor : ICreatorTool
         _grouped = false;
         _drag = Drag.None;
         PendingName = string.Empty;
+        Pushed = 0;
+        _before.Clear();
         _history.EndGroup();
         Changed?.Invoke();
     }
@@ -190,8 +199,19 @@ public sealed class BuildingEditor : ICreatorTool
         _grouped = false;
         _drag = Drag.None;
         PendingName = string.Empty;
+        Pushed = 0;
+        _before.Clear();
         _history.CancelGroup();
         Changed?.Invoke();
+    }
+
+    /// <summary>Pushes a wall a step further along its normal, as one step of the pending edit.</summary>
+    public void Push(int level, int id, float step)
+    {
+        Pushed += step;
+        bool carry = CarryOpenings;
+        string name = $"Push wall · {Format(Pushed, "+0.00;-0.00")} m";
+        Edit(name, building => PlanEdits.PushWall(building.FindStorey(level)!, id, step, carry));
     }
 
     /// <summary>Edits the building as one step of the pending edit, which starts with it when none waits.</summary>
@@ -199,6 +219,7 @@ public sealed class BuildingEditor : ICreatorTool
     {
         if (!_grouped)
         {
+            Remember();
             _history.BeginGroup(name);
             _grouped = true;
         }
@@ -668,11 +689,30 @@ public sealed class BuildingEditor : ICreatorTool
         }
 
         _dragValue = distance;
-        int level = _level;
-        int id = pick.Id;
-        bool carry = CarryOpenings;
-        string name = $"Push wall · {Format(distance, "+0.00;-0.00")} m";
-        Edit(name, building => PlanEdits.PushWall(building.FindStorey(level)!, id, step, carry));
+        Push(_level, pick.Id, step);
+    }
+
+    private void Remember()
+    {
+        _before.Clear();
+        if (_file()?.FindStorey(_level) is not { } storey)
+        {
+            return;
+        }
+
+        foreach (PlanWall wall in storey.Walls)
+        {
+            List<Vector2> path = PlanGeometry.GetPath(storey, wall);
+            _before[$"wall.{wall.Id}"] = PlanGeometry.GetLength(path);
+        }
+
+        foreach (RoomShape room in PlanGeometry.FindRooms(storey))
+        {
+            if (room.Record >= 0)
+            {
+                _before[$"room.{storey.Rooms[room.Record].Name}"] = room.Area;
+            }
+        }
     }
 
     private void DragArc(BuildingStorey storey, Vector2 point)

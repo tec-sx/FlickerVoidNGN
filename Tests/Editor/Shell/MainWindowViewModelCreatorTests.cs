@@ -11,6 +11,7 @@ using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Editor.Viewports;
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Greyboxes;
@@ -35,6 +36,13 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     private VehiclePanelViewModel VehiclePanel => (VehiclePanelViewModel)_builder.ViewModel.CreatorPanel!;
 
     public void Dispose() => _builder.Dispose();
+
+    private bool IsHidden(string part)
+    {
+        CreationParts parts = _builder.Scene.Game.Services.GetService<CreationParts>()!;
+        Entity entity = parts.Find(Viewport.Creator!.Root, part);
+        return _builder.Scene.IsHidden(entity);
+    }
 
     [Fact]
     public void DoubleClickingAPlacedVehicleEditsItInPlace()
@@ -533,6 +541,68 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         Viewport.Creator!.SelectedPart.Should().Be("storey.0.door.9");
         Viewport.Building.Tool.Title.Should().Be("Camera");
         Viewport.Building.Tool.Subtitle.Should().Be("Front door, Ground");
+    }
+
+    [Fact]
+    public void TheStoreysAboveTheOneEditedAreHiddenUntilTheirEyeIsOn()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        BuildingPanelViewModel panel = (BuildingPanelViewModel)ViewModel.CreatorPanel!;
+        panel.AddStoreyAboveCommand.Execute(null);
+        Viewport.Building!.ShowLevel(0);
+
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+        bool[] hidden = [IsHidden("storey.1.floor"), IsHidden("storey.1.walls"), IsHidden("roof"), IsHidden("storey.0.walls")];
+        panel.ShowsAbove = true;
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        hidden.Should().Equal(true, true, true, false);
+        IsHidden("storey.1.walls").Should().BeFalse("the eye shows the storeys above");
+    }
+
+    [Fact]
+    public void TheRailingsRoundOpeningsAboveAreHiddenWithTheStoreysAbove()
+    {
+        _builder.WriteHouse(climbs: true);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        Viewport.Building!.ShowLevel(0);
+
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        bool[] hidden = [IsHidden("stairs.1"), IsHidden("stairs.1.railing"), IsHidden("elevator.1.railing")];
+        hidden.Should().Equal(false, true, true);
+    }
+
+    [Fact]
+    public void APushedWallMovesTheBoundsItIsPickedBy()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        CreationParts parts = _builder.Scene.Game.Services.GetService<CreationParts>()!;
+        Entity walls = parts.Find(Viewport.Creator!.Root, "storey.0.walls");
+        _builder.Scene.Picker.TryGetBounds(_builder.Scene.Game.World, walls, out Vector3 low, out Vector3 high);
+        int east = FlickerVoid.Engine.Buildings.BuildingFile.Create().Storeys[0].Walls[1].Id;
+
+        Viewport.Building!.Editor.Push(0, east, 1);
+        Viewport.Building.Editor.Apply();
+
+        walls = parts.Find(Viewport.Creator!.Root, "storey.0.walls");
+        _builder.Scene.Picker.TryGetBounds(_builder.Scene.Game.World, walls, out Vector3 newLow, out Vector3 newHigh);
+        (newLow, newHigh).Should().NotBe((low, high));
+    }
+
+    [Fact]
+    public void WalkingNamesTheShotItDraws()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+
+        Viewport.Building!.ToggleWalk();
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        Viewport.Building.LiveShot.Should().Be("Walk Outside");
+        Viewport.Building.ToggleWalk();
     }
 
     [Fact]

@@ -144,24 +144,23 @@
       </ItemsControl.ItemsPanel>
       <ItemsControl.Styles>
         <Style Selector="ContentPresenter" x:DataType="buildings:PlanLabelView">
-          <Setter Property="Canvas.Left" Value="{Binding X}" />
-          <Setter Property="Canvas.Top" Value="{Binding Y}" />
-          <Setter Property="RenderTransform" Value="translate(-50%, -50%)" />
+          <Setter Property="Canvas.Left" Value="{Binding Left}" />
+          <Setter Property="Canvas.Top" Value="{Binding Top}" />
         </Style>
       </ItemsControl.Styles>
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="buildings:PlanLabelView">
-          <Panel>
-            <Border Classes="planRoom" IsVisible="{Binding IsRoom}">
+          <Panel Width="320" Height="80">
+            <Border Classes="planRoom" IsVisible="{Binding IsRoom}" HorizontalAlignment="Center" VerticalAlignment="Center">
               <StackPanel>
                 <TextBlock Classes="title" Text="{Binding Title}" />
-                <TextBlock Classes="faint small" Text="{Binding Detail}" HorizontalAlignment="Center" />
+                <TextBlock Classes="muted small" Text="{Binding Detail}" HorizontalAlignment="Center" />
               </StackPanel>
             </Border>
-            <Border Classes="planTag" Classes.drag="{Binding IsDrag}" IsVisible="{Binding IsTag}">
+            <Border Classes="planTag" Classes.drag="{Binding IsDrag}" IsVisible="{Binding IsTag}" HorizontalAlignment="Center" VerticalAlignment="Center">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <TextBlock Classes="title small" Text="{Binding Title}" />
-                <TextBlock Classes="faint small" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" />
+                <TextBlock Classes="muted small" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" />
               </StackPanel>
             </Border>
           </Panel>
@@ -169,7 +168,7 @@
       </ItemsControl.ItemTemplate>
     </ItemsControl>
     <!-- The building's storeys under the navigation gizmo, top first: the one being edited lit, with its eye showing the ones above; add, duplicate, remove. -->
-    <Border Classes="viewportBar" Height="NaN" Margin="0,182,12,0" Padding="4" Width="68" HorizontalAlignment="Right" VerticalAlignment="Top"
+    <Border Classes="viewportBar" Height="NaN" Margin="0,182,12,0" Padding="4" Width="84" HorizontalAlignment="Right" VerticalAlignment="Top"
             IsVisible="{Binding IsBuildingPlan}">
       <StackPanel Spacing="2" DataContext="{Binding Building.Panel}" x:DataType="buildingModels:BuildingPanelViewModel">
         <TextBlock Text="STOREY" Classes="faint small" HorizontalAlignment="Center" Margin="0,2,0,2" />
@@ -231,7 +230,7 @@
         <PathIcon Classes="accent" Data="{x:Static shell:LucideIcons.Walk}" />
         <TextBlock Text="Walking: click the floor to walk, a door, platform or call button to use it" VerticalAlignment="Center" />
         <Border Classes="vsep" Margin="0" />
-        <TextBlock Text="{Binding Walk.LiveShot, FallbackValue=''}" Classes="faint" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding LiveShot}" Classes="faint" VerticalAlignment="Center" />
         <Button Classes="viewportIcon text accent" Height="26" Padding="10,0" Content="Stop" Command="{Binding ToggleWalkCommand}" ToolTip.Tip="Back to the plan (Escape)" />
       </StackPanel>
     </Border>

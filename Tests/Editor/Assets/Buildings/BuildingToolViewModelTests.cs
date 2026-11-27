@@ -53,6 +53,35 @@ public sealed class BuildingToolViewModelTests : IDisposable
     }
 
     [Fact]
+    public void WhileAPushWaitsTheFollowsShowWhatTheyWereAndWhatTheyBecome()
+    {
+        BuildingToolViewModel tool = _builder.Build();
+        _builder.Editor.Tool = BuildingTool.PushWall;
+        _builder.Editor.Pick(new PlanPick(PlanPickKind.Wall, 0, FrontWall));
+        NumberRow distance = (NumberRow)tool.Sections[0].Rows[0];
+
+        distance.Value = 1.2;
+
+        ((NumberRow)tool.Sections[0].Rows[0]).Value.Should().BeApproximately(1.2, 1e-4);
+        ListRow side = (ListRow)tool.Sections[2].Rows.First(static row => row.Label == "Outside wall 6");
+        side.Value.Should().MatchRegex(@"^\d+\.\d\d → \d+\.\d\d m$");
+        ListRow hall = (ListRow)tool.Sections[2].Rows.First(static row => row.Label == "Hall");
+        hall.Value.Should().Contain("→");
+    }
+
+    [Fact]
+    public void PickingStairsOrAShotOnAnotherStoreyGoesToThatStorey()
+    {
+        _builder.Build();
+        int level = BuildingTools.AddStoreyAbove(_builder.Document.Building);
+        int shot = BuildingTools.AddShot(_builder.Document.Building, level, new Vector3(0, 5, 0), Quaternion.Identity);
+
+        _builder.Editor.Pick(new PlanPick(PlanPickKind.Shot, level, shot));
+
+        _builder.Editor.Level.Should().Be(level);
+    }
+
+    [Fact]
     public void AppliedPushIsOneUndoStep()
     {
         BuildingToolViewModel tool = _builder.Build();

@@ -104,6 +104,10 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
 
     public bool IsWalking => Walk is not null;
 
+    /// <summary>The name of the shot Walk draws now.</summary>
+    [ObservableProperty]
+    public partial string LiveShot { get; private set; } = string.Empty;
+
     /// <summary>The picked shot's name, as the live view's header shows it; empty when no shot is picked.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasPreview))]
@@ -230,6 +234,7 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
         if (Walk is { } walk)
         {
             walk.Update(seconds);
+            LiveShot = walk.LiveShot;
             return;
         }
 
@@ -368,10 +373,13 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
         }
     }
 
-    /// <summary>Hides the storeys above the one edited and the roof over them, unless they are shown; the parts made again are hidden too.</summary>
+    /// <summary>
+    /// Hides the parts of the storeys above the one edited, the roof, and the stairs, call buttons and shots on those storeys, unless they
+    /// are shown; the parts made again are hidden too.
+    /// </summary>
     private void ShowStoreys()
     {
-        if (GetFile() is not { } file || _scene.Game.Services.GetService<CreationParts>() is not { } parts)
+        if (GetFile() is not { } file || _scene.Game.Services.GetService<CreationParts>() is not { } parts || !_scene.Game.World.IsAlive(_creator.Root))
         {
             return;
         }
@@ -379,15 +387,23 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
         int level = Editor.Level;
         List<Entity> hide = [];
         List<Entity> show = [];
-        foreach (BuildingStorey storey in file.Storeys)
+        foreach (Entity entity in parts.FindAll(_creator.Root))
         {
-            Sort(parts, BuildingFile.GetStoreyId(storey.Level), !ShowsAbove && storey.Level > level, hide, show);
-        }
+            if (!_scene.Game.World.TryGet(entity, out CreationPart part))
+            {
+                continue;
+            }
 
-        Sort(parts, BuildingFile.RoofId, !ShowsAbove && file.Storeys.Count > 0 && level < file.Storeys[^1].Level + 1, hide, show);
-        foreach (BuildingStairs stairs in file.Stairs)
-        {
-            Sort(parts, BuildingFile.GetStairsId(stairs), !ShowsAbove && stairs.Level > level, hide, show);
+            bool hidden = !ShowsAbove && IsAbove(file, part.Id, level);
+            bool shown = !_scene.IsHidden(entity);
+            if (hidden && shown)
+            {
+                hide.Add(entity);
+            }
+            else if (!hidden && !shown)
+            {
+                show.Add(entity);
+            }
         }
 
         if (hide.Count > 0)
@@ -401,23 +417,65 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
         }
     }
 
-    private void Sort(CreationParts parts, string id, bool hidden, List<Entity> hide, List<Entity> show)
+    private const string RailingSuffix = ".railing";
+
+    /// <summary>Whether the part with the id stands above the level: on a storey over it, the roof, or stairs, a railing, a call button or a shot there.</summary>
+    private static bool IsAbove(BuildingFile file, string id, int level)
     {
-        Entity entity = parts.Find(_creator.Root, id);
-        if (entity == Entity.Null)
+        if (id == BuildingFile.RoofId)
         {
-            return;
+            return true;
         }
 
-        bool shown = !_scene.IsHidden(entity);
-        if (hidden && shown)
+        foreach (BuildingStorey storey in file.Storeys)
         {
-            hide.Add(entity);
+            string storeyId = BuildingFile.GetStoreyId(storey.Level);
+            if (id == storeyId || id.StartsWith(storeyId + ".", StringComparison.Ordinal))
+            {
+                return storey.Level > level;
+            }
         }
-        else if (!hidden && !shown)
+
+        foreach (BuildingStairs stairs in file.Stairs)
         {
-            show.Add(entity);
+            string stairsId = BuildingFile.GetStairsId(stairs);
+            if (id == stairsId + RailingSuffix)
+            {
+                return stairs.Level + 1 > level;
+            }
+
+            if (id == stairsId || id.StartsWith(stairsId + ".", StringComparison.Ordinal))
+            {
+                return stairs.Level > level;
+            }
         }
+
+        foreach (BuildingShot shot in file.Shots)
+        {
+            string shotId = BuildingFile.GetShotId(shot);
+            if (id == shotId || id.StartsWith(shotId + ".", StringComparison.Ordinal))
+            {
+                return shot.Level > level;
+            }
+        }
+
+        foreach (BuildingElevator elevator in file.Elevators)
+        {
+            if (id == BuildingFile.GetElevatorId(elevator) + RailingSuffix)
+            {
+                return elevator.To > level;
+            }
+
+            for (int stop = level + 1; stop <= elevator.To; stop++)
+            {
+                if (id == BuildingFile.GetCallId(elevator, stop))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private void ShowAll()

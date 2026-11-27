@@ -37,7 +37,8 @@ public sealed partial class ViewportViewModel
         {
             if (creator.FindSelectedPart() is { } part && world.TryGet(part, out Transform placed))
             {
-                if (creator.MeshSelection is null)
+                // A building's plan tools draw what they picked themselves.
+                if (creator.MeshSelection is null && Building is null)
                 {
                     DrawSelection(overlay, world, part, placed);
                 }

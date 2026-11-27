@@ -8,6 +8,7 @@ using FlickerVoid.Engine.Buildings;
 using FlickerVoid.Engine.Buildings.Plans;
 using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Interaction.Toggles;
+using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Editor.Core.Tests.Buildings;
 
@@ -26,6 +27,46 @@ public sealed class BuildingWalkSessionTests : IDisposable
 
         start.X.Should().BeApproximately(0, 1e-3f);
         start.Z.Should().BeApproximately(-4.85f, 1e-3f, "two metres out from the front wall's middle");
+    }
+
+    [Fact]
+    public void TheShotOutsideLooksAtTheWalkerAndTheBuilding()
+    {
+        BuildingFile building = BuildingFile.Create();
+        BuildingWalk walk = _builder.Build(building);
+        FlickerVoid.Engine.Rendering.Extraction.RenderCamera view = walk.View!.Value;
+        FlickerVoid.Engine.Rendering.Cameras.CameraView drawn = FlickerVoid.Engine.Rendering.Cameras.CameraView.Create(view.Camera, view.Transform, 800, 600);
+
+        Vector4 walker = Vector4.Transform(new Vector4(_builder.PlaceOf(walk), 1), drawn.ViewProjection);
+        Vector4 middle = Vector4.Transform(new Vector4(0, 1, 0, 1), drawn.ViewProjection);
+
+        bool[] seen = [IsSeen(walker), IsSeen(middle)];
+        seen.Should().Equal(true, true);
+    }
+
+    [Fact]
+    public void TheWalkersBodyStandsOnTheWalker()
+    {
+        BuildingWalk walk = _builder.Build(BuildingFile.Create());
+        Vector3 walker = _builder.PlaceOf(walk);
+        Vector3 body = Vector3.Zero;
+        walk.World.Query(new QueryDescription().WithAll<EntityName, Transform>(), (ref EntityName name, ref Transform transform) =>
+        {
+            if (name.Value == "Walker Look")
+            {
+                body = transform.Position;
+            }
+        });
+
+        Vector2 apart = new(body.X - walker.X, body.Z - walker.Z);
+        apart.Length().Should().BeLessThan(0.01f);
+        body.Y.Should().BeApproximately(walker.Y + 0.85f, 0.05f);
+    }
+
+    private static bool IsSeen(Vector4 clip)
+    {
+        Vector3 device = new Vector3(clip.X, clip.Y, clip.Z) / clip.W;
+        return MathF.Abs(device.X) <= 1 && MathF.Abs(device.Y) <= 1 && device.Z >= 0 && device.Z <= 1;
     }
 
     [Fact]

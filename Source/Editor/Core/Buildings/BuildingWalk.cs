@@ -42,6 +42,8 @@ public sealed class BuildingWalk : IDisposable
 {
     private const float Reach = 0.6f;
     private const float StartDistance = 2;
+    private const float OutsideDistance = 30;
+    private const float BodyHeight = 1.7f;
     private const float RayLength = 500;
     private const float ButtonReach = 0.4f;
 
@@ -73,12 +75,12 @@ public sealed class BuildingWalk : IDisposable
         string name = JsonSerializer.Serialize(file, RuntimeJsonContext.Default.String);
         Spawn("""{ "name": "Walk Ground", "components": { "transform": { "position": [0, -0.1, 0] }, "staticBody": { "collider": { "type": "box", "size": [80, 0.2, 80] } }, "greybox": { "size": [80, 0.2, 80] } } }""");
         Building = Spawn($$"""{ "name": "Walk Building", "components": { "transform": {}, "building": { "file": {{name}} } } }""");
-        Walker = Spawn($$"""{ "name": "Walker", "components": { "transform": { "position": [{{Format(start.X)}}, {{Format(start.Y)}}, {{Format(start.Z)}}] }, "characterMover": { "speed": 2.5 }, "triggerActivator": {}, "cameraTarget": {} } }""");
-        Spawn("""{ "name": "Walker Look", "parent": "Walker", "components": { "transform": { "position": [0, 0.85, 0] }, "greybox": { "size": [0.45, 1.7, 0.45] } } }""");
+        Walker = Spawn($$"""{ "name": "Walker", "components": { "transform": { "position": [{{Format(start.X)}}, {{Format(start.Y)}}, {{Format(start.Z)}}] }, "characterMover": { "speed": 2.5 }, "triggerActivator": {}, "cameraTarget": {} } }, { "name": "Walker Look", "parent": "Walker", "components": { "transform": { "position": [{{Format(start.X)}}, {{Format(start.Y + BodyHeight / 2)}}, {{Format(start.Z)}}] }, "greybox": { "size": [0.45, {{Format(BodyHeight)}}, 0.45], "solid": false } } }""");
         Entity outside = Spawn("""{ "name": "Walk Outside", "components": { "transform": {}, "camera": {}, "shot": { "start": true } } }""");
-        Quaternion down = Quaternion.CreateFromYawPitchRoll(0, -MathF.PI / 4, 0);
-        World.Set(outside, new Transform { Position = start + new Vector3(0, 14, -14), Rotation = down });
-        World.Set(outside, new Camera { Projection = CameraProjection.Orthographic, OrthographicHeight = 12, FarPlane = 200 });
+        (Vector3 position, Quaternion rotation) = LookOver(start, building);
+        World.Set(outside, new Transform { Position = position, Rotation = rotation });
+        float height = MathF.Max(12, MathF.Max(building.Size.X, building.Size.Z) * 1.5f);
+        World.Set(outside, new Camera { Projection = CameraProjection.Orthographic, OrthographicHeight = height, FarPlane = 200 });
         Game.Lifecycle.Play(Game.World);
         Run(0.2f);
     }
@@ -181,6 +183,20 @@ public sealed class BuildingWalk : IDisposable
     public void Dispose() => Game.Dispose();
 
     private bool IsStoodOn(Entity target) => World.TryGet(target, out UsePoint use) && use.StandOn;
+
+    // From behind the walker, looking down over it at the building's middle.
+    private static (Vector3 Position, Quaternion Rotation) LookOver(Vector3 start, BuildingFile building)
+    {
+        Vector2 toward = -new Vector2(start.X, start.Z);
+        if (toward.LengthSquared() < 1e-6f)
+        {
+            toward = Vector2.UnitY;
+        }
+
+        float yaw = MathF.Atan2(-toward.X, -toward.Y);
+        Vector3 focus = new(start.X / 2, building.GetFloorHeight(0) + 1, start.Z / 2);
+        return BuildingTools.LookAt(focus, yaw, -MathF.PI / 4, OutsideDistance);
+    }
 
     /// <summary>Outside the ground floor's first door, facing it; outside the front wall's middle when the building has no door.</summary>
     public static Vector3 GetStart(BuildingFile building)
@@ -296,6 +312,7 @@ public sealed class BuildingWalk : IDisposable
 
     private static string Format(float value) => value.ToString("0.###", CultureInfo.InvariantCulture);
 
+    // Spawns the entities, given as JSON one after another, as one scene (positions in world space); returns the first.
     private Entity Spawn(string entityJson)
     {
         string json = $$"""{ "entities": [ {{entityJson}} ] }""";

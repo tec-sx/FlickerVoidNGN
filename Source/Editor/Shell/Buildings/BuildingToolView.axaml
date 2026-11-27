@@ -49,7 +49,7 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="rows:ChoiceOption">
               <ToggleButton Classes="segment" Content="{Binding Name}" IsChecked="{Binding IsChosen, Mode=OneWay}" Command="{Binding ChooseCommand}"
-                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="2,3" />
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
