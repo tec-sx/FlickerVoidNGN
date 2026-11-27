@@ -105,3 +105,10 @@ Used in: `Source/Native/Manifold` and `Source/Editor/Core/Meshes/Booleans` (the 
 - Source: https://github.com/NVorbis/NVorbis
 - Licence: MIT
 - Copyright (c) Andrew Ward
+
+## Steam Audio
+
+https://github.com/ValveSoftware/steam-audio (v4.6.1), Copyright (c) Valve Corporation
+
+Used in: `Source/Engine/Audio/Spatial` (a thin binding to its C API for head-related 3D sound) and `Source/Native/SteamAudio` (the build script fetches Valve's release and copies `phonon` beside programs). Nothing of it is in this repository. Licence: Apache 2.0.
+

@@ -2,6 +2,7 @@ using FlickerVoid.Engine.Audio.Music;
 using FlickerVoid.Engine.Audio.Scripting;
 using FlickerVoid.Engine.Audio.Serialization;
 using FlickerVoid.Engine.Audio.Sounds;
+using FlickerVoid.Engine.Audio.Spatial;
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Gameplay.Conditions;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -26,7 +27,7 @@ public static class AudioGameExtensions
         game.Data.Register<SoundDefinition>("sound");
         game.Data.RegisterDerived<Effect, PlaySoundEffect>("playSound");
         game.Data.RegisterDerived<FlowNode, PlaySoundNode>("playSound");
-        AudioSystem audio = new(game);
+        AudioSystem audio = new(game) { SteamAudio = SteamAudio.TryCreate() };
         audio.Settings.Register(game.DebugConsole);
         game.FrameSystems.Add(audio);
         game.Services.AddService(audio);

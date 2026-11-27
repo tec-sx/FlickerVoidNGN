@@ -4,6 +4,7 @@ using Arch.Core;
 using Arch.System;
 
 using FlickerVoid.Engine.Audio.Mixing;
+using FlickerVoid.Engine.Audio.Spatial;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Lighting;
@@ -39,9 +40,13 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
     private readonly Dictionary<Entity, SoundHandle> _emitters = [];
     private readonly Dictionary<string, SoundState> _states = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _warned = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<int, SpatialSource> _spatialSources = [];
     private SoundLibrary? _library;
+    private SteamAudio? _steam;
     private Vector3 _listener;
     private Vector3 _right = Vector3.UnitX;
+    private Vector3 _up = Vector3.UnitY;
+    private Vector3 _forward = -Vector3.UnitZ;
     private TimeSpan _now;
     private int _lastId;
     private bool _paused;
@@ -64,6 +69,13 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
     public Mixer Mixer { get; } = new();
 
     public AudioSettings Settings { get; } = new();
+
+    /// <summary>Steam Audio, which gives 3D sounds their head-related direction; null where its library is not there and they are panned.</summary>
+    public SteamAudio? SteamAudio
+    {
+        get => _steam;
+        set => _steam = value;
+    }
 
     /// <summary>The ambience's gain while the listener stands in an indoor volume.</summary>
     public float IndoorAmbienceGain { get; set; } = 0.6f;
@@ -110,6 +122,12 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
         {
             if (!playing.Spatial)
             {
+                continue;
+            }
+
+            if (_spatialSources.TryGetValue(id, out SpatialSource? spatial))
+            {
+                PlaceBinaural(playing, spatial);
                 continue;
             }
 
@@ -203,7 +221,8 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
         float quieter = _random.NextSingle() * definition.GainVariation;
         float detune = ((_random.NextSingle() * 2) - 1) * definition.PitchVariation;
         float pitch = definition.Pitch * (1 + detune);
-        ClipSource source = new(clip, definition.Loop, pitch);
+        ClipSource clipSource = new(clip, definition.Loop, pitch);
+        ISoundSource source = clipSource;
         bool placed = position is not null || entity != Entity.Null;
         Playing playing = new()
         {
@@ -214,8 +233,22 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
             Spatial = definition.Spatial && placed,
         };
         FindListener();
-        (playing.Left, playing.Right) = Place(playing);
         _lastId++;
+        SpatialSource? spatial = null;
+        if (playing.Spatial && _steam is not null)
+        {
+            spatial = new SpatialSource(clipSource, _steam);
+            source = spatial;
+            _spatialSources[_lastId] = spatial;
+            PlaceBinaural(playing, spatial);
+            playing.Left = 1;
+            playing.Right = 1;
+        }
+        else
+        {
+            (playing.Left, playing.Right) = Place(playing);
+        }
+
         MixerCommand play = MixerCommand.Play(_lastId, source, definition.Bus, playing.Left, playing.Right);
         Mixer.Send(in play);
         _playing[_lastId] = playing;
@@ -238,6 +271,20 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
         SoundDefinition definition = playing.Definition;
         (float left, float right) = Panning.Compute(_listener, _right, playing.Position, definition.MinDistance, definition.MaxDistance);
         return (left * playing.Gain, right * playing.Gain);
+    }
+
+    /// <summary>Points a sound's binaural effect at where it is now, and fades it by its distance as the plain panning does.</summary>
+    private void PlaceBinaural(Playing playing, SpatialSource spatial)
+    {
+        if (playing.Entity != Entity.Null && World.IsAlive(playing.Entity) && World.TryGet(playing.Entity, out Transform transform))
+        {
+            playing.Position = transform.Position;
+        }
+
+        SoundDefinition definition = playing.Definition;
+        Vector3 toSource = playing.Position - _listener;
+        spatial.Direction = Spatial.SteamAudio.ToListenerSpace(toSource, _right, _up, _forward);
+        spatial.Gain = Panning.GetAttenuation(toSource.Length(), definition.MinDistance, definition.MaxDistance) * playing.Gain;
     }
 
     private int PickVariation(int count, int last)
@@ -327,6 +374,10 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
         while (Mixer.TryTakeFinished(out int voice))
         {
             _playing.Remove(voice);
+            if (_spatialSources.Remove(voice, out SpatialSource? spatial))
+            {
+                spatial.Dispose();
+            }
         }
     }
 
@@ -343,6 +394,8 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
         if (camera is { } view)
         {
             _right = Vector3.Transform(Vector3.UnitX, view.Transform.Rotation);
+            _up = Vector3.Transform(Vector3.UnitY, view.Transform.Rotation);
+            _forward = Vector3.Transform(-Vector3.UnitZ, view.Transform.Rotation);
             ears ??= view.Transform.Position;
         }
 

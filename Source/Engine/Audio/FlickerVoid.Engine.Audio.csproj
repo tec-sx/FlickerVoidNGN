@@ -12,4 +12,19 @@
     <ProjectReference Include="../Flow/FlickerVoid.Engine.Flow.csproj" />
     <ProjectReference Include="../Rendering/FlickerVoid.Engine.Rendering.csproj" />
   </ItemGroup>
+  <!-- Valve's Steam Audio library, fetched on the first build (Source/Native/SteamAudio) and copied beside every program that uses the audio. -->
+  <PropertyGroup>
+    <NativeLibraryName>SteamAudio</NativeLibraryName>
+    <NativeLibraryFile>phonon</NativeLibraryFile>
+  </PropertyGroup>
+  <Import Project="../../Native/Native.targets" />
+  <ItemGroup>
+    <None Include="$(NativeOutput)*phonon*" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+  <Target Name="TakeFetchedSteamAudio" AfterTargets="BuildNativeLibrary" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <None Remove="$(NativeOutput)*phonon*" />
+      <None Include="$(NativeOutput)*phonon*" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+    </ItemGroup>
+  </Target>
 </Project>
