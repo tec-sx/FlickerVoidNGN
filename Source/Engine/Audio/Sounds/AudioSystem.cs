@@ -256,8 +256,14 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
     private SoundDefinition? FindDefinition(string sound)
     {
         DataAssets? data = _game.Services.GetService<DataAssets>();
-        if (data is null || string.IsNullOrEmpty(sound))
+        if (string.IsNullOrEmpty(sound))
         {
+            return null;
+        }
+
+        if (data is null)
+        {
+            WarnOnce(sound, "the game has no data assets service to read it from.");
             return null;
         }
 
@@ -279,6 +285,7 @@ public sealed partial class AudioSystem : BaseSystem<World, GameTime>, IAudioEng
             IContentManager? content = _game.Services.GetService<IContentManager>();
             if (content is null)
             {
+                WarnOnce(file, "the game has no content manager service to read it from.");
                 return null;
             }
 
