@@ -10,4 +10,8 @@ public enum VehicleType
 
     [JsonStringEnumMemberName("motorcycle")]
     Motorcycle,
+
+    /// <summary>Towed, never driven: it has no engine and no steering.</summary>
+    [JsonStringEnumMemberName("trailer")]
+    Trailer,
 }

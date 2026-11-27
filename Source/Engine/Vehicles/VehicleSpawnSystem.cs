@@ -28,6 +28,7 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
     private readonly IContentManager? _content;
     private readonly VehicleLooks _looks;
     private readonly List<(Entity Root, string File)> _changed = [];
+    private readonly HashSet<Entity> _driven = [];
 
     public VehicleSpawnSystem(World world, CreationParts parts, VehicleFiles files, VehicleLooks looks, IContentManager? content)
         : base(world)
@@ -37,7 +38,7 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
         _content = content;
         _looks = looks;
         _looks.Changed += HandleLooksChanged;
-        _parts.AddKind<Vehicle>(vehicle => Describe(vehicle.File));
+        _parts.AddKind<Vehicle>(vehicle => Describe(vehicle.File, true));
         if (_content is not null)
         {
             _content.Changed += HandleChanged;
@@ -55,8 +56,22 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
         base.Dispose();
     }
 
+    /// <summary>
+    /// Whether the vehicle's parts are solid, as they are while it stands; a driven vehicle's are not, as its body on wheels is its
+    /// collision.
+    /// </summary>
+    public void SetSolid(Entity root, bool solid)
+    {
+        bool changed = solid ? _driven.Remove(root) : _driven.Add(root);
+        if (changed && World.IsAlive(root) && World.TryGet(root, out Vehicle vehicle))
+        {
+            IReadOnlyList<PartData> parts = Describe(vehicle.File, solid);
+            _parts.Patch(root, parts);
+        }
+    }
+
     /// <summary>The parts of the file as it last could be read; none without content or a file that never could be.</summary>
-    private IReadOnlyList<PartData> Describe(string path)
+    private IReadOnlyList<PartData> Describe(string path, bool solid)
     {
         if (_content is null || _files.Read(_content, path) is not { } file)
         {
@@ -72,10 +87,14 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
             if (part.Joint is { } joint)
             {
                 data.With(joint);
+            }
+
+            if (solid && part.Joint is not null)
+            {
                 RigidBody door = GetMovingBody(part);
                 data.With(door);
             }
-            else
+            else if (solid)
             {
                 StaticBody standing = GetStandingBody(part);
                 data.With(standing);
@@ -139,7 +158,8 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
         });
         foreach ((Entity root, string file) in _changed)
         {
-            IReadOnlyList<PartData> parts = Describe(file);
+            bool solid = !_driven.Contains(root);
+            IReadOnlyList<PartData> parts = Describe(file, solid);
             _parts.Patch(root, parts);
         }
     }

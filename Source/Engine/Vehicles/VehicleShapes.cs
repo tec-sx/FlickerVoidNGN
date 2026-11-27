@@ -27,7 +27,7 @@ internal static class VehicleShapes
         Sizes sizes = GetSizes(type);
         SolidMesh mesh = CreateWheel(sizes);
         List<VehiclePart> wheels = [];
-        float[] axles = [sizes.AxleFromCentre, -sizes.AxleFromCentre];
+        float[] axles = [sizes.FrontAxle, sizes.RearAxle];
         foreach (float z in axles)
         {
             if (perAxle == 1)
@@ -70,11 +70,14 @@ internal static class VehicleShapes
         switch (type)
         {
             case VehicleType.Motorcycle:
-                return new Sizes(new Vector3(0.4f, 0.7f, 1.8f), WheelRadius: 0.32f, WheelWidth: 0.12f, WheelFromCentre: 0.45f, AxleFromCentre: 0.7f);
+                return new Sizes(new Vector3(0.4f, 0.7f, 1.8f), WheelRadius: 0.32f, WheelWidth: 0.12f, WheelFromCentre: 0.45f, FrontAxle: 0.7f, RearAxle: -0.7f);
+            case VehicleType.Trailer:
+                // Its first axle sits just behind its middle, so it leans on its hitch, and a second follows close behind.
+                return new Sizes(new Vector3(1.6f, 0.5f, 2.6f), WheelRadius: 0.3f, WheelWidth: 0.2f, WheelFromCentre: 0.9f, FrontAxle: -0.2f, RearAxle: -1.1f);
             default:
-                return new Sizes(new Vector3(1.8f, 1.3f, 4.4f), WheelRadius: 0.35f, WheelWidth: 0.25f, WheelFromCentre: 0.8f, AxleFromCentre: 1.35f);
+                return new Sizes(new Vector3(1.8f, 1.3f, 4.4f), WheelRadius: 0.35f, WheelWidth: 0.25f, WheelFromCentre: 0.8f, FrontAxle: 1.35f, RearAxle: -1.35f);
         }
     }
 
-    private readonly record struct Sizes(Vector3 Body, float WheelRadius, float WheelWidth, float WheelFromCentre, float AxleFromCentre);
+    private readonly record struct Sizes(Vector3 Body, float WheelRadius, float WheelWidth, float WheelFromCentre, float FrontAxle, float RearAxle);
 }

@@ -45,5 +45,11 @@ public static class VehiclesGameExtensions
         VehicleSpawnSystem spawner = new(game.World, parts, files, looks, content);
         game.FrameSystems.Add(spawner);
         game.Services.AddService(spawner);
+        if (content is not null)
+        {
+            VehicleDriveSystem drive = new(game.World, parts, spawner, files, content, () => game.Services.GetService<IPhysicsSystem>());
+            game.FixedSystems.Add(drive);
+            game.Services.AddService(drive);
+        }
     }
 }

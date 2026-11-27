@@ -14,7 +14,7 @@ public sealed class VehiclePanelViewModelTests : IDisposable
     {
         VehiclePanelViewModel panel = _builder.Build();
 
-        panel.Types.Should().Equal(VehicleType.Car, VehicleType.Motorcycle);
+        panel.Types.Should().Equal(VehicleType.Car, VehicleType.Motorcycle, VehicleType.Trailer);
         panel.Type.Should().Be(VehicleType.Car);
         panel.WheelCounts.Should().Equal(4, 6, 8);
         panel.WheelCount.Should().Be(4);
@@ -47,6 +47,46 @@ public sealed class VehiclePanelViewModelTests : IDisposable
         panel.WheelCount.Should().Be(4, "the nearest count a motorcycle takes");
         _builder.Load().Type.Should().Be(VehicleType.Motorcycle);
         panel.Parts.Should().HaveCount(5);
+    }
+
+    [Fact]
+    public void ShowsTheDriveAVehicleOfItsTypeStartsWith()
+    {
+        VehiclePanelViewModel panel = _builder.Build();
+
+        panel.Mass.Should().Be(1500);
+        panel.EngineTorque.Should().Be(500);
+        panel.Driven.Should().Be(DrivenAxles.Rear);
+        panel.Steer.Should().Be(35);
+        panel.DrivenChoices.Should().Equal(DrivenAxles.Rear, DrivenAxles.Front, DrivenAxles.All);
+        _builder.Content.IsUnsaved("Van.fvvehicle").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ChangingADriveValueWritesTheDriveToTheFile()
+    {
+        VehiclePanelViewModel panel = _builder.Build();
+
+        panel.Mass = 900;
+        panel.Driven = DrivenAxles.All;
+
+        VehicleDrive drive = _builder.Load().GetDrive();
+        drive.Mass.Should().Be(900);
+        drive.Driven.Should().Be(DrivenAxles.All);
+        drive.EngineTorque.Should().Be(500, "the values left alone are kept");
+    }
+
+    [Fact]
+    public void PutsBackADriveValueAVehicleCantDriveWith()
+    {
+        VehiclePanelViewModel panel = _builder.Build();
+
+        panel.Mass = 0;
+        panel.SuspensionDamping = 2;
+
+        panel.Mass.Should().Be(1500);
+        panel.SuspensionDamping.Should().Be(0.5f);
+        _builder.Content.IsUnsaved("Van.fvvehicle").Should().BeFalse();
     }
 
     [Fact]

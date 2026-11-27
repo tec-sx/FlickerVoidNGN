@@ -38,6 +38,22 @@ public sealed class VehicleFileTests
     }
 
     [Fact]
+    public void ANewTrailerHasOneAxleOfTwoWheelsBehindItsMiddleAndTakesTwoOrFour()
+    {
+        VehicleFile trailer = VehicleFile.Create(VehicleType.Trailer);
+
+        trailer.GetParts().Select(part => part.Id).Should().Equal("body", "wheel.1L", "wheel.1R");
+        trailer.Wheels[0].Place.Position.Z.Should().BeLessThan(0);
+        VehicleFile.GetWheelCounts(VehicleType.Trailer).Should().Equal(2, 4);
+        trailer.CanBeDriven.Should().BeFalse();
+        trailer.GetDrive().EngineTorque.Should().Be(0);
+        trailer.SetWheelCount(4);
+        trailer.GetParts().Select(part => part.Id).Should().Equal("body", "wheel.1L", "wheel.1R", "wheel.2L", "wheel.2R");
+        VehicleFile read = VehicleFileTestsBuilder.Read(VehicleFileTestsBuilder.Write(trailer));
+        read.Type.Should().Be(VehicleType.Trailer);
+    }
+
+    [Fact]
     public void ANewMotorcycleHasTwoWheelsInLine()
     {
         VehicleFile motorcycle = VehicleFile.Create(VehicleType.Motorcycle);
@@ -228,7 +244,7 @@ public sealed class VehicleFileTests
         JsonObject schema = JsonSchemas.CreateFile(VehiclesJsonContext.Default.VehicleFile);
 
         JsonNode properties = schema["properties"]!;
-        properties["type"]!["enum"]!.AsArray().Select(value => value!.GetValue<string>()).Should().Equal("car", "motorcycle");
+        properties["type"]!["enum"]!.AsArray().Select(value => value!.GetValue<string>()).Should().Equal("car", "motorcycle", "trailer");
         properties["body"]!["properties"]!["mesh"]!["required"]!.AsArray().Should().HaveCount(2);
         properties["wheels"]!["type"]!.ToString().Should().Contain("array");
     }
