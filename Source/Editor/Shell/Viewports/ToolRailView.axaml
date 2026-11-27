@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="using:FlickerVoid.Editor"
              xmlns:viewports="using:FlickerVoid.Editor.Viewports"
              x:Class="FlickerVoid.Editor.Viewports.ToolRailView"
              x:DataType="viewports:ToolRailViewModel">
@@ -15,7 +16,7 @@
                 <DataTemplate x:DataType="viewports:ToolItem">
                   <ToggleButton Classes="viewportIcon rail" Width="26" Height="26" IsChecked="{Binding IsActive, Mode=OneWay}" Command="{Binding Command}"
                                 ToolTip.Tip="{Binding Tip}">
-                    <PathIcon Data="{Binding Icon}" Width="15" Height="15" />
+                    <PathIcon Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}" Width="15" Height="15" />
                   </ToggleButton>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>

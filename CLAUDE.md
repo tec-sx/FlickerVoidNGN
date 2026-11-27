@@ -30,7 +30,7 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 
 Each module's behaviour, API and decisions are in `Docs/Modules`; read the one you work on first, and keep it in step with the code in the same pull request.
 
-- `Design/EditorUi.md`: the 24 rules every editor UI follows (R1 to R24); read and follow them for any editor UI work, and check a UI pull request against them.
+- `Design/EditorUi.md`: the 25 rules every editor UI follows (R1 to R25); read and follow them for any editor UI work, and check a UI pull request against them.
 - `Editor.md`: the editor's projects, MVVM, viewport, outliner, inspector, undo, unsaved content, asset browser and the material, texture and flow editors.
 - `Rendering.md`: extraction, the pass pipeline, culling, the sky, outlines and outline requests, indoors, cutaways and doorways.
 - `Content.md`: the builder and its importers, textures, canvases, models and shaders, hot reload, schemas and the content check.

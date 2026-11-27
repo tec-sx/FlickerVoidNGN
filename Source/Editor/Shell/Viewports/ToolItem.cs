@@ -1,5 +1,3 @@
-using Avalonia.Media;
-
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -8,7 +6,7 @@ namespace FlickerVoid.Editor.Viewports;
 /// <summary>One tool of the <see cref="ToolRailViewModel"/>: a name, an icon, a key and what it does, lit while it is the tool in hand.</summary>
 public sealed partial class ToolItem : ObservableObject
 {
-    public ToolItem(string name, string? key, Geometry icon, Action run, bool isActive)
+    public ToolItem(string name, string? key, string icon, Action run, bool isActive)
     {
         Name = name;
         Key = key;
@@ -22,7 +20,8 @@ public sealed partial class ToolItem : ObservableObject
     /// <summary>The key that chooses the tool, as the tooltip shows it; null for none.</summary>
     public string? Key { get; }
 
-    public Geometry Icon { get; }
+    /// <summary>The icon's name in <see cref="LucideIcons"/>.</summary>
+    public string Icon { get; }
 
     public IRelayCommand Command { get; }
 

@@ -99,6 +99,53 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     }
 
     [Fact]
+    public void TheMeshToolsJoinTheRailAndTheToolTabComesInFrontOnlyInTheMesh()
+    {
+        EnterBodyWithAFaceSelected();
+        List<string> tools = [.. Viewport.ToolRail.Groups.SelectMany(group => group.Items).Select(item => item.Name)];
+
+        ViewModel.ShowsTool.Should().BeTrue();
+        ViewModel.SideTab.Should().Be(MainWindowViewModel.ToolTab);
+        tools.Should().Contain(["Extrude", "Inset", "Bevel", "Loop cut", "Cut", "Door", "Mirror"]);
+        Viewport.MeshTools.Leave();
+        ViewModel.ShowsTool.Should().BeFalse();
+        Viewport.ToolRail.Groups.Should().ContainSingle("only the transform tools are left outside the mesh");
+    }
+
+    [Fact]
+    public void AToolInHandIsLitInTheRailAndApplyKeepsItsWork()
+    {
+        MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
+        int points = ViewModel.CreatorPanel!.FindMesh("body")!.Points.Count;
+
+        Viewport.KeyPressed(ViewportKey.X, ViewportButtons.None);
+        Viewport.PointerMoved(new Vector2(300, 260), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
+        Viewport.PointerMoved(new Vector2(300, 200), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
+        bool lit = Viewport.ToolRail.Groups.SelectMany(group => group.Items).Single(item => item.IsActive && item.Name == "Extrude") is not null;
+        bool asking = tools.ShowsAmount && !tools.ShowsResting;
+        tools.ApplyCommand.Execute(null);
+
+        lit.Should().BeTrue();
+        asking.Should().BeTrue("the Tool tab shows the extrude's amount while it is held");
+        tools.IsDragging.Should().BeFalse();
+        ViewModel.CreatorPanel.FindMesh("body")!.Points.Should().HaveCount(points + 4);
+    }
+
+    [Fact]
+    public void CancelPutsTheMeshBack()
+    {
+        MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
+        int points = ViewModel.CreatorPanel!.FindMesh("body")!.Points.Count;
+        Viewport.KeyPressed(ViewportKey.X, ViewportButtons.None);
+        Viewport.PointerMoved(new Vector2(300, 200), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
+
+        tools.CancelCommand.Execute(null);
+
+        ViewModel.CreatorPanel.FindMesh("body")!.Points.Should().HaveCount(points);
+        tools.IsDragging.Should().BeFalse();
+    }
+
+    [Fact]
     public void ExtrudeFollowsTheMouseUntilAClickKeepsIt()
     {
         MeshToolsViewModel tools = EnterBodyWithAFaceSelected();

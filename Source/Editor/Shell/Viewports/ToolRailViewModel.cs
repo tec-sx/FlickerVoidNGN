@@ -41,10 +41,10 @@ public sealed partial class ToolRailViewModel : ObservableObject
         [
             new ToolGroup(
             [
-                new ToolItem("Select", "Q", LucideIcons.Select, () => _viewport.GizmoMode = GizmoMode.Select, mode == GizmoMode.Select),
-                new ToolItem("Move", "W", LucideIcons.Move, () => _viewport.GizmoMode = GizmoMode.Move, mode == GizmoMode.Move),
-                new ToolItem("Rotate", "E", LucideIcons.Rotate, () => _viewport.GizmoMode = GizmoMode.Rotate, mode == GizmoMode.Rotate),
-                new ToolItem("Scale", "R", LucideIcons.Scale, () => _viewport.GizmoMode = GizmoMode.Scale, mode == GizmoMode.Scale),
+                new ToolItem("Select", "Q", nameof(LucideIcons.Select), () => _viewport.GizmoMode = GizmoMode.Select, mode == GizmoMode.Select),
+                new ToolItem("Move", "W", nameof(LucideIcons.Move), () => _viewport.GizmoMode = GizmoMode.Move, mode == GizmoMode.Move),
+                new ToolItem("Rotate", "E", nameof(LucideIcons.Rotate), () => _viewport.GizmoMode = GizmoMode.Rotate, mode == GizmoMode.Rotate),
+                new ToolItem("Scale", "R", nameof(LucideIcons.Scale), () => _viewport.GizmoMode = GizmoMode.Scale, mode == GizmoMode.Scale),
             ], false),
         ];
         if (tools.IsMeshMode)
@@ -52,16 +52,16 @@ public sealed partial class ToolRailViewModel : ObservableObject
             MeshDragTool? active = tools.ActiveTool;
             groups.Add(new ToolGroup(
             [
-                new ToolItem("Extrude", "X", LucideIcons.Extrude, tools.DragExtrude, active == MeshDragTool.Extrude),
-                new ToolItem("Inset", "I", LucideIcons.Inset, tools.DragInset, active == MeshDragTool.Inset),
-                new ToolItem("Bevel", "B", LucideIcons.Bevel, tools.DragBevel, active == MeshDragTool.Bevel),
-                new ToolItem("Loop cut", "L", LucideIcons.LoopCut, tools.LoopCut, false),
-                new ToolItem("Cut", "C", LucideIcons.Cut, tools.DragCut, active == MeshDragTool.Cut),
+                new ToolItem("Extrude", "X", nameof(LucideIcons.Extrude), tools.DragExtrude, active == MeshDragTool.Extrude),
+                new ToolItem("Inset", "I", nameof(LucideIcons.Inset), tools.DragInset, active == MeshDragTool.Inset),
+                new ToolItem("Bevel", "B", nameof(LucideIcons.Bevel), tools.DragBevel, active == MeshDragTool.Bevel),
+                new ToolItem("Loop cut", "L", nameof(LucideIcons.LoopCut), tools.LoopCut, false),
+                new ToolItem("Cut", "C", nameof(LucideIcons.Cut), tools.DragCut, active == MeshDragTool.Cut),
             ], true));
             groups.Add(new ToolGroup(
             [
-                new ToolItem("Door", "D", LucideIcons.Door, tools.HangDoor, false),
-                new ToolItem("Mirror", "M", LucideIcons.Mirror, () => tools.Mirror = !tools.Mirror, tools.Mirror),
+                new ToolItem("Door", "D", nameof(LucideIcons.Door), tools.HangDoor, false),
+                new ToolItem("Mirror", "M", nameof(LucideIcons.Mirror), () => tools.Mirror = !tools.Mirror, tools.Mirror),
             ], true));
         }
 
