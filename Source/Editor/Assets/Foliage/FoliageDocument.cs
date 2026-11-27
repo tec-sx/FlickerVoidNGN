@@ -44,6 +44,6 @@ public sealed class FoliageDocument(UnsavedContent content, string path)
         return true;
     }
 
-    /// <summary>Plants have no doors, so none is hung.</summary>
-    public override string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options) => null;
+    /// <summary>Plants have no doors, so no part is a wall for one.</summary>
+    public override bool IsDoorWall(string partId) => false;
 }

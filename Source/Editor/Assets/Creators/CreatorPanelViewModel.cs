@@ -23,7 +23,7 @@ public abstract partial class CreatorPanelViewModel(ICreationDocument document) 
     public bool FindMirror(string id) => FindPart(id)?.Mirror == true;
 
     /// <summary>Hangs a door in the part's face on the edge; the new door's id, or null.</summary>
-    public string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options) => document.HangDoor(partId, face, hinge, options);
+    public ICreationDocument Creation => document;
 
     public void SetMirror(string id, bool mirror) => document.SetMirror(id, mirror);
 

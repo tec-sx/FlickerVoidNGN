@@ -83,13 +83,13 @@ public sealed class FoliageDocumentTests : IDisposable
     }
 
     [Fact]
-    public void HangsNoDoorInAPlant()
+    public void NoPartOfAPlantIsAWallForADoor()
     {
         FoliageDocument document = _builder.Build();
 
-        string? id = document.HangDoor("trunk", 0, new SolidEdge(0, 1), new DoorOptions());
+        bool wall = document.IsDoorWall("trunk");
 
-        id.Should().BeNull();
+        wall.Should().BeFalse();
         _builder.Content.IsUnsaved(FoliageDocumentTestsBuilder.Oak).Should().BeFalse();
     }
 }

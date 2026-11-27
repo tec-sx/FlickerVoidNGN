@@ -254,7 +254,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
         AssetBrowserViewModel browser = _builder.Build();
 
         browser.NewChoices.Select(static choice => $"{choice.Group}/{choice.Name}").Should()
-            .Equal("/Folder", "/Scene", "/Vehicle", "/Building", "/Tree", "Look/Material", "Look/Mood", "Look/Environment", "Look/Lens", "Look/Canvas", "Flow/Flow Graph");
+            .Equal("/Folder", "/Scene", "/Vehicle", "/Building", "/Prop", "/Tree", "Look/Material", "Look/Mood", "Look/Environment", "Look/Lens", "Look/Canvas", "Flow/Flow Graph");
     }
 
     [Fact]

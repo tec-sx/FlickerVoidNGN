@@ -109,7 +109,26 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         tools.Should().Contain(["Extrude", "Inset", "Bevel", "Loop cut", "Cut", "Door", "Mirror"]);
         Viewport.MeshTools.Leave();
         ViewModel.ShowsTool.Should().BeFalse();
-        Viewport.ToolRail.Groups.Should().ContainSingle("only the transform tools are left outside the mesh");
+        List<string> outside = [.. Viewport.ToolRail.Groups.SelectMany(group => group.Items).Select(item => item.Name)];
+        outside.Should().Equal("Select", "Move", "Rotate", "Scale", "Door");
+    }
+
+    [Fact]
+    public void TheDoorToolIsLitInTheRailAndOpensTheToolTabUntilItIsCancelled()
+    {
+        Assert.SkipUnless(FlickerVoid.Editor.Core.Meshes.Doors.DoorFitter.IsAvailable, "Manifold's library is not built.");
+        EnterBodyWithAFaceSelected();
+        Viewport.MeshTools.Leave();
+
+        Viewport.KeyPressed(ViewportKey.D, ViewportButtons.None);
+
+        Viewport.MeshTools.IsDoorTool.Should().BeTrue();
+        Viewport.MeshTools.IsConfirming.Should().BeTrue("Apply and Cancel wait at the bottom");
+        ViewModel.ShowsTool.Should().BeTrue();
+        Viewport.ToolRail.Groups.SelectMany(group => group.Items).Single(item => item.Name == "Door").IsActive.Should().BeTrue();
+        Viewport.KeyPressed(ViewportKey.Escape, ViewportButtons.None);
+        Viewport.MeshTools.IsDoorTool.Should().BeFalse();
+        ViewModel.ShowsTool.Should().BeFalse();
     }
 
     [Fact]
@@ -146,7 +165,7 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     }
 
     [Fact]
-    public void ExtrudeFollowsTheMouseUntilAClickKeepsIt()
+    public void ExtrudeFollowsTheMouseUntilAClickSetsItAndEnterKeepsIt()
     {
         MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
         int points = ViewModel.CreatorPanel!.FindMesh("body")!.Points.Count;
@@ -157,12 +176,15 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         Viewport.PointerMoved(new Vector2(300, 200), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
         bool dragging = tools.IsDragging;
         Viewport.PointerPressed(new Vector2(300, 200), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height, additive: false, loop: false);
+        bool pending = tools.IsDragging;
+        Viewport.KeyPressed(ViewportKey.Enter, ViewportButtons.None);
 
         dragging.Should().BeTrue();
+        pending.Should().BeTrue("a click only sets the tool");
         tools.IsDragging.Should().BeFalse();
         tools.Amount.Should().BeGreaterThan(0);
         ViewModel.CreatorPanel.FindMesh("body")!.Points.Should().HaveCount(points + 4);
-        Viewport.Creator!.MeshSelection!.Faces.Should().ContainSingle("the click kept the tool's work and selected nothing else");
+        Viewport.Creator!.MeshSelection!.Faces.Should().ContainSingle("Enter kept the tool's work and the click selected nothing else");
         Viewport.Mode.History.Undo();
         ViewModel.CreatorPanel.FindMesh("body")!.Points.Should().HaveCount(points, "the whole drag is one undo step");
     }
@@ -222,10 +244,35 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         menu.Single(choice => choice.Name == "Cut Through: Off").Run();
         menu.Single(choice => choice.Name == "Extrude").Run();
 
-        menu.Select(choice => choice.Name).Should().Contain(["Inset", "Cut", "Bevel", "Loop Cut", "Hang Door", "Test Door", "Mirror: Off"]);
+        menu.Select(choice => choice.Name).Should().Contain(["Inset", "Cut", "Bevel", "Loop Cut", "Mirror: Off"]);
         tools.Through.Should().BeTrue();
         tools.GetMenu().Select(choice => choice.Name).Should().Contain("Cut Through: On");
         tools.IsDragging.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AClickSetsAPendingToolAndItsNumbersStillChangeItUntilEnter()
+    {
+        MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
+        int points = ViewModel.CreatorPanel!.FindMesh("body")!.Points.Count;
+        int width = MainWindowViewModelTestsBuilder.Width;
+        int height = MainWindowViewModelTestsBuilder.Height;
+
+        Viewport.KeyPressed(ViewportKey.I, ViewportButtons.None);
+        Viewport.PointerMoved(new Vector2(300, 260), width, height);
+        Viewport.PointerMoved(new Vector2(300, 250), width, height);
+        Viewport.PointerPressed(new Vector2(300, 250), width, height, additive: false, loop: false);
+        bool pending = tools.IsDragging && !tools.IsFollowing;
+        Viewport.PointerMoved(new Vector2(300, 100), width, height);
+        tools.Thickness = 0.02;
+        Viewport.KeyPressed(ViewportKey.X, ViewportButtons.None);
+        bool stillPending = tools.IsDragging && tools.ActiveTool == FlickerVoid.Editor.Core.Creators.MeshDragTool.Inset;
+        Viewport.KeyPressed(ViewportKey.Enter, ViewportButtons.None);
+
+        pending.Should().BeTrue("a click sets the tool but does not apply it");
+        stillPending.Should().BeTrue("only Enter, Apply, Escape or Cancel end it");
+        tools.IsDragging.Should().BeFalse();
+        ViewModel.CreatorPanel.FindMesh("body")!.Points.Should().HaveCount(points + 4);
     }
 
     private MeshToolsViewModel EnterBodyWithAFaceSelected()

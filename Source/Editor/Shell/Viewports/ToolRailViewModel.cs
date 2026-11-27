@@ -57,12 +57,17 @@ public sealed partial class ToolRailViewModel : ObservableObject
                 new ToolItem("Bevel", "B", nameof(LucideIcons.Bevel), tools.DragBevel, active == MeshDragTool.Bevel),
                 new ToolItem("Loop cut", "L", nameof(LucideIcons.LoopCut), tools.LoopCut, false),
                 new ToolItem("Cut", "C", nameof(LucideIcons.Cut), tools.DragCut, active == MeshDragTool.Cut),
+                new ToolItem("Hollow", "H", nameof(LucideIcons.Hollow), tools.DragHollow, active == MeshDragTool.Hollow),
             ], true));
             groups.Add(new ToolGroup(
             [
-                new ToolItem("Door", "D", nameof(LucideIcons.Door), tools.HangDoor, false),
                 new ToolItem("Mirror", "M", nameof(LucideIcons.Mirror), () => tools.Mirror = !tools.Mirror, tools.Mirror),
             ], true));
+        }
+
+        if (tools.CanDoor)
+        {
+            groups.Add(new ToolGroup([new ToolItem("Door", "D", nameof(LucideIcons.Door), tools.ToggleDoor, tools.IsDoorTool)], true));
         }
 
         return groups;
@@ -78,7 +83,7 @@ public sealed partial class ToolRailViewModel : ObservableObject
 
     private void HandleToolsChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MeshToolsViewModel.IsMeshMode) or nameof(MeshToolsViewModel.ActiveTool) or nameof(MeshToolsViewModel.Mirror))
+        if (e.PropertyName is nameof(MeshToolsViewModel.IsMeshMode) or nameof(MeshToolsViewModel.ActiveTool) or nameof(MeshToolsViewModel.Mirror) or nameof(MeshToolsViewModel.IsDoorTool) or nameof(MeshToolsViewModel.CanDoor))
         {
             Refresh();
         }

@@ -12,6 +12,8 @@
         xmlns:vehicleModels="using:FlickerVoid.Editor.Assets.Vehicles"
         xmlns:buildings="using:FlickerVoid.Editor.Buildings"
         xmlns:buildingModels="using:FlickerVoid.Editor.Assets.Buildings"
+        xmlns:props="using:FlickerVoid.Editor.Props"
+        xmlns:propModels="using:FlickerVoid.Editor.Assets.Props"
         xmlns:foliage="using:FlickerVoid.Editor.Foliage"
         xmlns:foliageModels="using:FlickerVoid.Editor.Assets.Foliage"
         xmlns:environments="using:FlickerVoid.Editor.Environments"
@@ -261,6 +263,7 @@
                 <ContentControl.DataTemplates>
                   <DataTemplate DataType="vehicleModels:VehiclePanelViewModel"><vehicles:VehiclePanelView /></DataTemplate>
                   <DataTemplate DataType="buildingModels:BuildingPanelViewModel"><buildings:BuildingPanelView /></DataTemplate>
+                  <DataTemplate DataType="propModels:PropPanelViewModel"><props:PropPanelView /></DataTemplate>
                   <DataTemplate DataType="foliageModels:FoliagePanelViewModel"><foliage:FoliagePanelView /></DataTemplate>
                 </ContentControl.DataTemplates>
               </ContentControl>

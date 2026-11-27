@@ -1,5 +1,7 @@
 using System.Numerics;
 
+using FlickerVoid.Editor.Core.Meshes.Doors;
+
 using Arch.Core;
 
 using FlickerVoid.Editor.Core.Creators;
@@ -7,6 +9,7 @@ using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Geometry;
+using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Core.Tests.Creators;
@@ -450,6 +453,44 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
+    public void AHollowDragNeedsNoSelectionAndIsOneUndoStep()
+    {
+        Assert.SkipUnless(FlickerVoid.Editor.Core.Meshes.Booleans.SolidBoolean.IsAvailable, "Manifold's library is not built.");
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        int faces = _builder.FindMesh("body")!.Faces.Count;
+
+        bool started = mode.BeginMeshDrag(MeshDragTool.Hollow, new MeshDragOptions());
+        bool shown = mode.DragMesh(0.05f);
+        mode.EndMeshDrag(keep: true);
+
+        started.Should().BeTrue();
+        shown.Should().BeTrue();
+        _builder.FindMesh("body")!.Faces.Count.Should().Be(faces * 2, "the inner copy is the shell's inside");
+    }
+
+    [Fact]
+    public void NewOptionsRemakeAPendingBevelAtTheSameAmount()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Edge);
+        SolidEdge edge = new SolidTopology(_builder.FindMesh("body")!).GetFaceEdges(2).First();
+        mode.MeshSelection.SelectEdges([edge]);
+        mode.BeginMeshDrag(MeshDragTool.Bevel, new MeshDragOptions(1, false));
+        mode.DragMesh(0.05f);
+        int oneRow = _builder.FindMesh("body")!.Faces.Count;
+
+        bool remade = mode.SetMeshDragOptions(new MeshDragOptions(3, true));
+
+        remade.Should().BeTrue();
+        _builder.FindMesh("body")!.Faces.Count.Should().Be(oneRow + 2, "two more strips");
+        mode.MeshDrag.Should().Be(MeshDragTool.Bevel, "the tool waits for Apply");
+    }
+
+    [Fact]
     public void TheMouseSetsADragsAmountByHowFarUpItMoved()
     {
         using CreatorMode mode = _builder.EnterAlone();
@@ -618,34 +659,84 @@ public sealed class CreatorModeTests : IDisposable
     }
 
     [Fact]
-    public void AdoorHungInTheFaceUnderTheMouseIsAPartTheCreatorCanSwing()
+    public void ADoorFollowsTheMouseOntoTheWallAndAClickPlacesItBeforeApplyCutsTheWall()
     {
+        Assert.SkipUnless(DoorFitter.IsAvailable, "Manifold's library is not built.");
         using CreatorMode mode = _builder.EnterAlone();
-        mode.SelectPart("body");
-        mode.EnterMesh();
         Vector2 side = _builder.PixelOf(new Vector3(0.9f, 1, 0));
 
-        string? door = mode.HangDoor(side, Width, Height, new FlickerVoid.Editor.Core.Meshes.Doors.DoorOptions());
-        bool swung = mode.SwingDoor("door.1");
-        bool missing = mode.SwingDoor("door.9");
+        bool started = mode.BeginDoor();
+        mode.PointerMoved(side, Width, Height);
 
-        door.Should().Be("door.1");
-        mode.MeshSelection.Should().BeNull("the mesh is left once the door is made");
-        swung.Should().BeTrue();
-        missing.Should().BeFalse();
-        _builder.World.Get<FlickerVoid.Engine.Interaction.Toggles.Toggle>(_builder.Parts.Find(mode.Root, "door.1")).Open.Should().BeTrue();
+        started.Should().BeTrue();
+        mode.Door!.HasTarget.Should().BeTrue();
+        mode.Door.IsPlaced.Should().BeFalse();
+        mode.Door.Fit.Normal.X.Should().BeGreaterThan(0.99f, "the door turns to the face normal");
+        _builder.Car.Doors.Should().BeEmpty("nothing is cut before Apply");
+
+        mode.PointerPressed(side, Width, Height);
+        mode.Door.IsPlaced.Should().BeTrue();
+        mode.ApplyDoor().Should().BeTrue();
+
+        mode.Door.Should().BeNull();
+        _builder.Car.Doors.Should().ContainSingle();
+        _builder.Car.Body.Source.Should().NotBeNull();
+        mode.SwingDoor("door.1").Should().BeTrue();
+        mode.SwingDoor("door.9").Should().BeFalse();
     }
 
     [Fact]
-    public void ADoorBesideTheSolidIsNotHung()
+    public void CancellingTheDoorLeavesTheCarAsItWas()
     {
+        Assert.SkipUnless(DoorFitter.IsAvailable, "Manifold's library is not built.");
         using CreatorMode mode = _builder.EnterAlone();
-        mode.SelectPart("body");
-        mode.EnterMesh();
+        Vector2 side = _builder.PixelOf(new Vector3(0.9f, 1, 0));
+        mode.BeginDoor();
+        mode.PointerMoved(side, Width, Height);
+        mode.PointerPressed(side, Width, Height);
 
-        string? door = mode.HangDoor(new Vector2(5, 5), Width, Height, new FlickerVoid.Editor.Core.Meshes.Doors.DoorOptions());
+        bool cancelled = mode.CancelDoor();
 
-        door.Should().BeNull();
+        cancelled.Should().BeTrue();
+        mode.Door.Should().BeNull();
+        _builder.Car.Doors.Should().BeEmpty();
+        _builder.Car.Body.Source.Should().BeNull();
+    }
+
+    [Fact]
+    public void AClickBesideTheSolidDoesNotPlaceTheDoor()
+    {
+        Assert.SkipUnless(DoorFitter.IsAvailable, "Manifold's library is not built.");
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.BeginDoor();
+
+        mode.PointerPressed(new Vector2(5, 5), Width, Height);
+
+        mode.Door!.HasTarget.Should().BeFalse();
+        mode.ApplyDoor().Should().BeFalse();
+    }
+
+    [Fact]
+    public void ChangingAPlacedDoorCutsTheWallAgainAndRemovingItClosesTheWall()
+    {
+        Assert.SkipUnless(DoorFitter.IsAvailable, "Manifold's library is not built.");
+        using CreatorMode mode = _builder.EnterAlone();
+        Vector2 side = _builder.PixelOf(new Vector3(0.9f, 1, 0));
+        mode.BeginDoor();
+        mode.PointerMoved(side, Width, Height);
+        mode.PointerPressed(side, Width, Height);
+        mode.ApplyDoor();
+
+        mode.SelectPart("door.1");
+        mode.Door!.DoorId.Should().Be("door.1");
+        mode.Door.Fit.Width = 0.6f;
+        mode.ApplyDoor().Should().BeTrue();
+
+        _builder.Car.Doors[0].Fit!.Width.Should().Be(0.6f);
+        mode.SelectPart("door.1");
+        mode.RemoveDoor().Should().BeTrue();
+        _builder.Car.Doors.Should().BeEmpty();
+        _builder.Car.Body.Source.Should().BeNull();
     }
 
     [Fact]

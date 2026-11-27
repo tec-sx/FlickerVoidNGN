@@ -6,6 +6,7 @@ public enum MixerCommandKind
     Play,
     SetVoice,
     Stop,
+    StopAt,
     SetBus,
     PauseBus,
 }
