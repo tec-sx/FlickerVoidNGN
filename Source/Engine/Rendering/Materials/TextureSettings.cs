@@ -27,6 +27,12 @@ public sealed record TextureSettings
     /// </summary>
     public bool Mask { get; set; }
 
+    /// <summary>
+    /// Also raises a relief from the image's brightness (<c>Name.relief.dds</c>, as a painting's impasto makes), so light catches
+    /// its brush strokes: the brightest paint stands highest, as deep as the material's <c>reliefDepth</c>.
+    /// </summary>
+    public bool Relief { get; set; }
+
     /// <summary>The largest width or height the texture keeps; a larger image is halved until it fits. 0 keeps its size.</summary>
     [Range(0, 16384)]
     public int MaxSize { get; set; }

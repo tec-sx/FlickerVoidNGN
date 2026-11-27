@@ -245,6 +245,18 @@ internal sealed unsafe class VulkanCommandList : ICommandList
         _vk.CmdCopyImage(Handle, from.Handle, ImageLayout.TransferSrcOptimal, to.Handle, ImageLayout.TransferDstOptimal, 1, &region);
     }
 
+    public void CopyTextureRegion(ITexture source, ITexture destination, int x, int y, int width, int height)
+    {
+        VulkanTexture from = (VulkanTexture)source;
+        VulkanTexture to = (VulkanTexture)destination;
+        ImageSubresourceLayers fromLevel = new(from.Aspect, 0, 0, 1);
+        ImageSubresourceLayers toLevel = new(to.Aspect, 0, 0, 1);
+        Offset3D offset = new(x, y, 0);
+        Extent3D extent = new((uint)width, (uint)height, 1);
+        ImageCopy region = new() { SrcSubresource = fromLevel, SrcOffset = offset, DstSubresource = toLevel, DstOffset = offset, Extent = extent };
+        _vk.CmdCopyImage(Handle, from.Handle, ImageLayout.TransferSrcOptimal, to.Handle, ImageLayout.TransferDstOptimal, 1, &region);
+    }
+
     public void BeginRendering(ReadOnlySpan<ColorTarget> colorTargets, DepthTarget? depthTarget = null)
     {
         RenderingAttachmentInfo* colors = stackalloc RenderingAttachmentInfo[colorTargets.Length];
@@ -294,6 +306,15 @@ internal sealed unsafe class VulkanCommandList : ICommandList
     public void EndRendering()
     {
         _vk.CmdEndRendering(Handle);
+    }
+
+    public void ClearDepth(int x, int y, int width, int height, float depth = 1)
+    {
+        ClearValue value = new(depthStencil: new ClearDepthStencilValue(depth, 0));
+        ClearAttachment attachment = new(ImageAspectFlags.DepthBit, 0, value);
+        Rect2D area = new(new Offset2D(x, y), new Extent2D((uint)width, (uint)height));
+        ClearRect rect = new(area, 0, 1);
+        _vk.CmdClearAttachments(Handle, 1, &attachment, 1, &rect);
     }
 
     public void SetViewport(in Viewport viewport)

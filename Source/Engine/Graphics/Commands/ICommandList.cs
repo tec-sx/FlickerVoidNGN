@@ -53,9 +53,18 @@ public interface ICommandList : IDisposable
     /// </summary>
     void CopyTexture(ITexture source, ITexture destination, int destinationX = 0, int destinationY = 0);
 
+    /// <summary>
+    /// Copies a rectangle of a texture's top level to the same place in another of the same format, such as a tile of a shadow
+    /// atlas; the source must be in the CopySource state and the destination in CopyDestination.
+    /// </summary>
+    void CopyTextureRegion(ITexture source, ITexture destination, int x, int y, int width, int height);
+
     void BeginRendering(ReadOnlySpan<ColorTarget> colorTargets, DepthTarget? depthTarget = null);
 
     void EndRendering();
+
+    /// <summary>Clears a rectangle of the depth target being drawn to, leaving the rest as it is.</summary>
+    void ClearDepth(int x, int y, int width, int height, float depth = 1);
 
     void SetViewport(in Viewport viewport);
 

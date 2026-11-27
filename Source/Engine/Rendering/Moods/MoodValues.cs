@@ -66,6 +66,8 @@ public static class MoodValues
         new MoodChoice<string?>("reflection", MoodGroup.Sky, Environment, mood => mood.Reflection, (mood, value) => mood.Reflection = value),
         new MoodNumber("reflectionIntensity", MoodGroup.Sky, Environment, mood => mood.ReflectionIntensity, (mood, value) => mood.ReflectionIntensity = value),
         new MoodNumber("contactShadowLength", MoodGroup.Sun, Environment, mood => mood.ContactShadowLength, (mood, value) => mood.ContactShadowLength = value),
+        new MoodNumber("shadowDarkness", MoodGroup.Sun, Environment, mood => mood.ShadowDarkness, (mood, value) => mood.ShadowDarkness = value),
+        new MoodColor("shadowColor", MoodGroup.Sun, Environment, mood => mood.ShadowColor, (mood, value) => mood.ShadowColor = value),
         new MoodNumber("bloom", MoodGroup.Bloom, Lens, mood => mood.Bloom, (mood, value) => mood.Bloom = value),
         new MoodNumber("bloomRadius", MoodGroup.Bloom, Lens, mood => mood.BloomRadius, (mood, value) => mood.BloomRadius = value),
         new MoodChoice<string?>("dirt", MoodGroup.Bloom, Lens, mood => mood.Dirt, (mood, value) => mood.Dirt = value),

@@ -22,6 +22,11 @@
     { "name": "reliefDepth", "type": "float", "default": 0.01, "minimum": 0, "maximum": 0.1 },
     // The paint's coverage (its texture's alpha times the base color's) below which the surface is a hole, as in a cutout card:
     // nothing is drawn there, outlined or shadowed; 0 keeps the whole surface.
-    { "name": "cutoff", "type": "float", "default": 0, "minimum": 0, "maximum": 1 }
+    { "name": "cutoff", "type": "float", "default": 0, "minimum": 0, "maximum": 1 },
+    // Colours the painting through a row of this palette (uncompressed, one colour a texel): its brightness picks the colour along
+    // the row, the darkest the first, so one grey painting gives many fronts, cars or coats.
+    { "name": "palette", "type": "texture", "default": null },
+    // The palette's row, from the top.
+    { "name": "paletteRow", "type": "float", "default": 0, "minimum": 0, "maximum": 255 }
   ]
 }

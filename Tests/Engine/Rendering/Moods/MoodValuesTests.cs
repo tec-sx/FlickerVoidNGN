@@ -47,6 +47,14 @@ public sealed class MoodValuesTests
     }
 
     [Fact]
+    public void GivesTheSunItsShadowsDarknessAndColor()
+    {
+        IEnumerable<string> sun = MoodValues.All.Where(value => value.Group == MoodGroup.Sun).Select(value => value.Name);
+
+        sun.Should().Contain(["shadowDarkness", "shadowColor"]);
+    }
+
+    [Fact]
     public void GroupsRainAndDustAsTheWeather()
     {
         IEnumerable<string> weather = MoodValues.All.Where(value => value.Group == MoodGroup.Weather).Select(value => value.Name);

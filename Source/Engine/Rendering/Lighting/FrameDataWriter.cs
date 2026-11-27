@@ -249,7 +249,9 @@ internal sealed class FrameDataWriter : IDisposable
             context.Targets.Behind.BindlessIndex,
             reflection,
             context.Sampler.BindlessIndex,
-            mood.ReflectionIntensity);
+            mood.ReflectionIntensity,
+            mood.ShadowColor,
+            mood.ShadowDarkness);
 
         IBuffer frame = _frames.Get(size);
         ReadOnlySpan<FrameData> header = new(in data);

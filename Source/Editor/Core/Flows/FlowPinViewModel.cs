@@ -14,7 +14,7 @@ public sealed class FlowPinViewModel(FlowNodeViewModel node, string name, int in
     {
         get
         {
-            double y = Node.Y + FlowNodeViewModel.HeaderHeight + ((index + 0.5) * FlowNodeViewModel.RowHeight);
+            double y = Node.Y + FlowNodeViewModel.HeaderHeight + Node.BodyHeight + ((index + 0.5) * FlowNodeViewModel.RowHeight);
             if (IsOutput)
             {
                 return new FlowPoint(Node.X + FlowNodeViewModel.Width, y);

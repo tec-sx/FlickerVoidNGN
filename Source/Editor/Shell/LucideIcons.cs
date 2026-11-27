@@ -134,6 +134,10 @@ public static class LucideIcons
     public static Geometry Outline { get; } = Parse("M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0z");
     public static Geometry Path { get; } = Parse("M9 5h8.5a1 1 0 010 7h-11a1 1 0 000 7H15 M15 19a3 3 0 1 0 6 0a3 3 0 1 0 -6 0z M3 5a3 3 0 1 0 6 0a3 3 0 1 0 -6 0z");
     public static Geometry Stop { get; } = Parse("M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z");
+    public static Geometry Branch { get; } = Parse("M9 18a3 3 0 1 0 6 0a3 3 0 1 0 -6 0z M3 6a3 3 0 1 0 6 0a3 3 0 1 0 -6 0z M15 6a3 3 0 1 0 6 0a3 3 0 1 0 -6 0z M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9 M12 12v3");
+    public static Geometry Flag { get; } = Parse("M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528");
+    public static Geometry Effects { get; } = Parse("M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z M20 2v4 M22 4h-4 M2 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0z");
+    public static Geometry Fit { get; } = Parse("M3 7V5a2 2 0 0 1 2-2h2 M17 3h2a2 2 0 0 1 2 2v2 M21 17v2a2 2 0 0 1-2 2h-2 M7 21H5a2 2 0 0 1-2-2v-2");
     public static Geometry Clock { get; } = Parse("M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0z M12 6v6l4 2");
     public static Geometry Project { get; } = Parse("M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z M8 10v4 M12 10v2 M16 10v6");
 
@@ -262,6 +266,10 @@ public static class LucideIcons
         [nameof(Outline)] = Outline,
         [nameof(Path)] = Path,
         [nameof(Stop)] = Stop,
+        [nameof(Branch)] = Branch,
+        [nameof(Flag)] = Flag,
+        [nameof(Effects)] = Effects,
+        [nameof(Fit)] = Fit,
         [nameof(Clock)] = Clock,
         [nameof(Project)] = Project,
     }.ToFrozenDictionary();
