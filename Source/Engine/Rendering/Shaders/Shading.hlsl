@@ -102,9 +102,9 @@ float ShadowTap(FrameData frame, float2 uv, float depth)
     return lerp(top, bottom, blend.y);
 }
 
-// 1 where the shadow's view sees the point, 0 where something hides it, softened over a 3x3 texel filter, or over the
-// four texels round it when not soft (fog takes many samples, each blurred by the march anyway).
-float SampleShadow(FrameData frame, uint index, float3 worldPosition, float3 normal, float distance, bool soft)
+// 1 where the shadow's view sees the point, 0 where something hides it, softened over a 3x3 texel filter, for surfaces and fog
+// alike: a harder lookup made neighbouring froxels flicker between lit and shaded.
+float SampleShadow(FrameData frame, uint index, float3 worldPosition, float3 normal, float distance)
 {
     Shadow shadow = LoadShadow(frame, index);
     float texelSize = shadow.TexelPerDistance * distance + shadow.TexelConstant;
@@ -118,11 +118,6 @@ float SampleShadow(FrameData frame, uint index, float3 worldPosition, float3 nor
     }
 
     float depth = atlas.z - DepthBias;
-    if (!soft)
-    {
-        return ShadowTap(frame, atlas.xy, depth);
-    }
-
     float lit = 0;
     for (int y = -1; y <= 1; y++)
     {
@@ -172,7 +167,7 @@ float3 IncomingLight(FrameData frame, Light light, float3 worldPosition, float3 
             shadow += PointFace(-direction);
         }
 
-        color *= SampleShadow(frame, shadow, worldPosition, normal, distance, surface);
+        color *= SampleShadow(frame, shadow, worldPosition, normal, distance);
     }
 
     return color;
@@ -213,7 +208,7 @@ float3 FogLight(FrameData frame, float2 pixel, float3 position, float3 towardCam
     float3 sun = (1 - frame.Ambient) * frame.SunLight * Phase(dot(sunDirection, towardCamera), frame.FogAnisotropy);
     if (frame.SunShadow != None)
     {
-        sun *= SampleShadow(frame, frame.SunShadow, position, 0, 0, false);
+        sun *= SampleShadow(frame, frame.SunShadow, position, 0, 0);
     }
 
     light += sun;

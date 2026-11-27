@@ -84,7 +84,7 @@ float4 TransparentMain(VertexOutput input, bool front : SV_IsFrontFace) : SV_Tar
     float sun = 1 - frame.Ambient;
     if (frame.SunShadow != None)
     {
-        sun *= SampleShadow(frame, frame.SunShadow, position, normal, 0, true);
+        sun *= SampleShadow(frame, frame.SunShadow, position, normal, 0);
     }
 
     float3 sunLight = sun * frame.SunLight;
