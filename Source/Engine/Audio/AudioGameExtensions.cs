@@ -25,7 +25,7 @@ public static class AudioGameExtensions
         game.Spawner.Register("soundEmitter", AudioJsonContext.Default.SoundEmitter);
         game.Spawner.Register("roomReverb", AudioJsonContext.Default.RoomReverb);
         game.Data.AddResolver(AudioJsonContext.Default);
-        game.Data.Register<SoundDefinition>("sound");
+        game.Data.Register<SoundDefinition>("sound", SoundDefinition.Extension);
         game.Data.RegisterDerived<Effect, PlaySoundEffect>("playSound");
         game.Data.RegisterDerived<FlowNode, PlaySoundNode>("playSound");
         AudioSystem audio = new(game) { SteamAudio = SteamAudio.TryCreate() };
@@ -35,7 +35,7 @@ public static class AudioGameExtensions
         game.Services.AddService<IAudioEngine>(audio);
         game.Spawner.Register("musicArea", AudioJsonContext.Default.MusicArea);
         game.Spawner.Register("sceneMusic", AudioJsonContext.Default.SceneMusic);
-        game.Data.Register<MusicCue>("music");
+        game.Data.Register<MusicCue>("music", MusicCue.Extension);
         game.Data.RegisterDerived<Effect, PlayMusicEffect>("playMusic");
         game.Data.RegisterDerived<FlowNode, PlayMusicNode>("playMusic");
         game.Data.RegisterDerived<Effect, PlayStingerEffect>("playStinger");

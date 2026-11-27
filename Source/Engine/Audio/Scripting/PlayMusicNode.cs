@@ -8,7 +8,7 @@ namespace FlickerVoid.Engine.Audio.Scripting;
 public sealed class PlayMusicNode : FlowNode<FlowOutput>
 {
     /// <summary>The <c>music</c> data asset.</summary>
-    [ContentFile(".fvdata")]
+    [ContentFile(".fvmusic", ".fvdata")]
     public string Cue { get; set; } = string.Empty;
 
     public override string Describe() => $"Play the music {Cue}";

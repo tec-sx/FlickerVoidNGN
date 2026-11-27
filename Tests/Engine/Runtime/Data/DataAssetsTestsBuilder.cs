@@ -41,7 +41,7 @@ internal sealed class DataAssetsTestsBuilder : IDisposable
         DataTypes types = new();
         types.AddResolver(TestDataJsonContext.Default);
         types.Register<TestItem>("item");
-        types.Register<TestFaction>("faction");
+        types.Register<TestFaction>("faction", ".fvfaction");
         types.RegisterDerived<TestItemFragment, PickupFragment>("pickup");
         types.RegisterDerived<TestItemFragment, UsableFragment>("usable");
         types.RegisterRow<PriceRow>("price");

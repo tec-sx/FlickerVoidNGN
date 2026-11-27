@@ -59,7 +59,7 @@ public sealed class MusicTrack
     public float FadeOut { get; set; }
 
     /// <summary>A <c>sound</c> data asset played around the listener at random while the track is wanted, in place of a loop.</summary>
-    [ContentFile(".fvdata")]
+    [ContentFile(".fvsound", ".fvdata")]
     public string Scatter { get; set; } = string.Empty;
 
     /// <summary>The shortest wait in seconds between two scattered sounds.</summary>

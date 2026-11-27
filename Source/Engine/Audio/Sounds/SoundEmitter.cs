@@ -10,6 +10,6 @@ public struct SoundEmitter
     }
 
     /// <summary>The <c>sound</c> data asset to play, usually a looping one.</summary>
-    [ContentFile(".fvdata")]
+    [ContentFile(".fvsound", ".fvdata")]
     public string Sound { get; set; } = string.Empty;
 }

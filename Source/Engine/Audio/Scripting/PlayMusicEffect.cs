@@ -8,7 +8,7 @@ namespace FlickerVoid.Engine.Audio.Scripting;
 public sealed class PlayMusicEffect : Effect
 {
     /// <summary>The <c>music</c> data asset.</summary>
-    [ContentFile(".fvdata")]
+    [ContentFile(".fvmusic", ".fvdata")]
     public string Cue { get; set; } = string.Empty;
 
     public override void Apply(ConditionContext context)

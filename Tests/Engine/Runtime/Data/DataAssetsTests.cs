@@ -39,6 +39,17 @@ public sealed class DataAssetsTests : IDisposable
     }
 
     [Fact]
+    public void LoadsAnAssetOfATypeWithItsOwnExtensionWithoutATypeProperty()
+    {
+        DataAssets data = _builder.WithFile("Factions/Guild.fvfaction", """{ "id": "Faction.Guild" }""").Build();
+
+        object faction = data.Load<object>("Factions/Guild.fvfaction");
+
+        faction.Should().BeOfType<TestFaction>();
+        data.FindFiles().Should().Contain("Factions/Guild.fvfaction");
+    }
+
+    [Fact]
     public void LoadsAnAssetAsABaseOfItsType()
     {
         DataAssets data = _builder.WithFile("Items/Key.fvdata", Key).Build();

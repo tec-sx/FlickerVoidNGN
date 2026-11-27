@@ -13,6 +13,9 @@ namespace FlickerVoid.Engine.Audio.Music;
 /// </summary>
 public sealed class MusicCue
 {
+    /// <summary>The extension of music cue files; a <c>.fvdata</c> file of type <c>music</c> reads the same.</summary>
+    public const string Extension = ".fvmusic";
+
     /// <summary>Beats a minute; 0 for no grid.</summary>
     [Range(0, 400)]
     public float Tempo { get; set; } = 120;
