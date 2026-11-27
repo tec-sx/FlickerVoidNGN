@@ -10,6 +10,8 @@
     <ProjectReference Include="../../../Source/Editor/Assets/FlickerVoid.Editor.Assets.csproj" />
     <!-- The inspector's tests edit a body's polymorphic collider. -->
     <ProjectReference Include="../../../Source/Engine/Physics/FlickerVoid.Engine.Physics.csproj" />
+    <!-- The building tools' tests walk a character up the stairs they add. -->
+    <ProjectReference Include="../../../Source/Engine/Ai/FlickerVoid.Engine.Ai.csproj" />
   </ItemGroup>
   <!-- Builds the engine's and the editor's shaders and icons into Content/Engine, where the renderer and the editor's passes load them. -->
   <ItemGroup>

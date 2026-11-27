@@ -10,7 +10,7 @@ namespace FlickerVoid.Engine.Buildings;
 public static class BuildingShapes
 {
     /// <summary>The rise of one step, at most, in metres: low enough for characters to walk up.</summary>
-    public const float StepRise = 0.2f;
+    public const float StepRise = 0.15f;
 
     /// <summary>
     /// A storey's shell standing on its origin, centred across: a floor slab with walls round it up to the storey's height, open at

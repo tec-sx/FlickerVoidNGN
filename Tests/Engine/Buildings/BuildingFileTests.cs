@@ -39,9 +39,9 @@ public sealed class BuildingFileTests
         stairs.Points.Max(point => point.Y).Should().BeApproximately(3, 1e-4f);
         stairs.Points.Max(point => point.Z).Should().BeApproximately(4, 1e-4f);
         float[] heights = [.. stairs.Points.Select(point => MathF.Round(point.Y, 3)).Distinct().Order()];
-        heights.Should().HaveCount(16, "fifteen steps of 0.2 and the ground");
+        heights.Should().HaveCount(21, "twenty steps of 0.15 and the ground");
         SolidTriangles triangles = stairs.Triangulate();
-        triangles.Vertices.Count(vertex => vertex.Normal.Y > 0.9f).Should().Be(60, "each of the fifteen treads looks up");
+        triangles.Vertices.Count(vertex => vertex.Normal.Y > 0.9f).Should().Be(80, "each of the twenty treads looks up");
     }
 
     [Fact]

@@ -26,6 +26,7 @@ public static class SceneIcons
         ("indoorVolume", "Layers"),
         ("interactable", "Interact"),
         ("vehicle", "Vehicle"),
+        ("building", "Building"),
         ("meshRenderer", "Model"),
         ("greybox", "Cube"),
     ];

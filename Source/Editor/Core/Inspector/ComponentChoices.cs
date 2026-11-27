@@ -25,6 +25,7 @@ public static class ComponentChoices
         ["perception"] = "Visible",
         ["outline"] = "Outline",
         ["vehicle"] = "Vehicle",
+        ["building"] = "Building",
     };
 
     private static readonly Dictionary<string, string> ByModule = new()
@@ -45,6 +46,7 @@ public static class ComponentChoices
         ["Maps"] = "Pin",
         ["Runtime"] = "Transform",
         ["Vehicles"] = "Vehicle",
+        ["Buildings"] = "Building",
         ["Creations"] = "Cube",
     };
 

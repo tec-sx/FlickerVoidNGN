@@ -4,6 +4,8 @@ using Arch.Core;
 
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Cameras;
+using FlickerVoid.Editor.Assets.Buildings;
+using FlickerVoid.Editor.Assets.Vehicles;
 using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Meshes;
@@ -27,6 +29,8 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
 
     private ViewportViewModel Viewport => _builder.ViewModel.Viewport;
 
+    private VehiclePanelViewModel VehiclePanel => (VehiclePanelViewModel)_builder.ViewModel.CreatorPanel!;
+
     public void Dispose() => _builder.Dispose();
 
     [Fact]
@@ -41,7 +45,7 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         Viewport.Mode.Should().BeSameAs(creator);
         Viewport.CreatorFile.Should().Be(MainWindowViewModelTestsBuilder.Van);
         ViewModel.CreatorPanel.Should().NotBeNull();
-        ViewModel.CreatorPanel!.Type.Should().Be(VehicleType.Car);
+        VehiclePanel.Type.Should().Be(VehicleType.Car);
         ViewModel.SideTab.Should().Be(MainWindowViewModel.CreatorTab, "the creator's tools come in front");
         ViewModel.ShowsInspector.Should().BeFalse("nothing in the level is selected");
         ViewModel.OutlinerTab.Should().Be(MainWindowViewModel.PartsTab, "the parts take the scene's place");
@@ -189,17 +193,17 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     public void ALookBuiltForTheCreationShowsInItsPanelAndEnteringAMeshShowsTheGreyboxes()
     {
         _builder.DoubleClick(_builder.MiddleOf("Van"));
-        bool before = ViewModel.CreatorPanel!.HasLook;
+        bool before = VehiclePanel.HasLook;
 
         _builder.WriteLook(MainWindowViewModelTestsBuilder.Van, "body");
-        bool lookShown = ViewModel.CreatorPanel.ShowsLook;
+        bool lookShown = VehiclePanel.ShowsLook;
         ViewModel.CreatorPart = "body";
         Viewport.MeshTools.ToggleMesh();
 
         before.Should().BeFalse();
-        ViewModel.CreatorPanel.HasLook.Should().BeTrue();
+        VehiclePanel.HasLook.Should().BeTrue();
         lookShown.Should().BeTrue();
-        ViewModel.CreatorPanel.ShowsLook.Should().BeFalse("the mesh tools work on the greybox");
+        VehiclePanel.ShowsLook.Should().BeFalse("the mesh tools work on the greybox");
         Viewport.KeyPressed(ViewportKey.Escape, ViewportButtons.None);
         Viewport.KeyPressed(ViewportKey.Escape, ViewportButtons.None);
         VehicleLooks looks = _builder.Scene.Game.Services.GetService<VehicleLooks>()!;
@@ -291,13 +295,13 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     public void UndoRedoAndSaveActOnTheVehicleFile()
     {
         _builder.DoubleClick(_builder.MiddleOf("Van"));
-        ViewModel.CreatorPanel!.WheelCount = 6;
+        VehiclePanel.WheelCount = 6;
         string edited = ViewModel.CreatorHeading;
 
         ViewModel.Undo();
-        int undone = ViewModel.CreatorPanel!.WheelCount;
+        int undone = VehiclePanel.WheelCount;
         ViewModel.Redo();
-        int redone = ViewModel.CreatorPanel!.WheelCount;
+        int redone = VehiclePanel.WheelCount;
         Viewport.Save();
 
         edited.Should().Be($"{MainWindowViewModelTestsBuilder.Van} *");
@@ -321,10 +325,26 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     }
 
     [Fact]
+    public void OpeningABuildingInTheBrowserMakesItWithItsOwnPanel()
+    {
+        _builder.WriteHouse();
+
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+
+        Viewport.Creator!.Placement.Should().Be(CreatorPlacement.Alone);
+        ViewModel.CreatorKind.Should().Be("Building");
+        BuildingPanelViewModel panel = ViewModel.CreatorPanel.Should().BeOfType<BuildingPanelViewModel>().Subject;
+        ViewModel.CreatorParts.Should().Equal("storey.0", "roof");
+        panel.Storeys = 2;
+        ViewModel.CreatorParts.Should().Equal("storey.0", "storey.1", "roof");
+        ViewModel.CreatorHeading.Should().Be($"{MainWindowViewModelTestsBuilder.House} *");
+    }
+
+    [Fact]
     public void DuplicateAndEditCarriesOnInANewFile()
     {
         _builder.DoubleClick(_builder.MiddleOf("Van"));
-        ViewModel.CreatorPanel!.WheelCount = 6;
+        VehiclePanel.WheelCount = 6;
         const string Copy = "Vans/Van 2.fvvehicle";
 
         ViewModel.DuplicateAndEdit();
@@ -334,7 +354,7 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         world.Get<Vehicle>(van).File.Should().Be(Copy, "the copy entered now names the new file");
         Viewport.Creator!.Root.Should().Be(van);
         Viewport.CreatorFile.Should().Be(Copy);
-        ViewModel.CreatorPanel!.WheelCount.Should().Be(6, "the edits made so far come along");
+        VehiclePanel.WheelCount.Should().Be(6, "the edits made so far come along");
         ViewModel.CreatorHeading.Should().Be($"{Copy} *");
         _builder.WheelsOnDisk(MainWindowViewModelTestsBuilder.Van).Should().Be(4);
         ViewModel.UnsavedPaths.Should().NotContain(MainWindowViewModelTestsBuilder.Van, "the first file goes back to how it was saved");
