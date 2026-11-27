@@ -8,7 +8,7 @@ namespace FlickerVoid.Engine.Rendering.Lighting;
 /// irradiance volume, and where the lights, shadows and clusters follow, the jitter, the camera, the fog, the frame's number for
 /// white noise while it is denoised, the screen shadows, the depth fade, the jitter of the frame before, the cutaway and where the indoor volumes follow, the traced shadows and occlusion,
 /// the view of the frame before, where the draws follow, the scene's depth and G-buffer, and the scene's acceleration structure
-/// while the frame traces rays, then the sun's light (its color times its intensity) and the haze (its color as it looks on screen, its density, start, maximum, height and the height's falloff), the depth axis of the frame before, the fog's range and where the lit fog volume is, how hard it rains, then the lit scene behind glass and the world reflected, 608 bytes so the lights after it stay 16-byte aligned.
+/// while the frame traces rays, then the sun's light (its color times its intensity) and the haze (its color as it looks on screen, its density, start, maximum, height and the height's falloff), the depth axis of the frame before, the fog's range and where the lit fog volume is, how hard it rains, then the lit scene behind glass and the world reflected, and the sun shadow's colour and darkness, 624 bytes so the lights after it stay 16-byte aligned.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
 internal readonly record struct FrameData(
@@ -90,5 +90,7 @@ internal readonly record struct FrameData(
     uint Behind,
     uint Reflection,
     uint ReflectionSampler,
-    float ReflectionIntensity);
+    float ReflectionIntensity,
+    Vector3 ShadowColor,
+    float ShadowDarkness);
 

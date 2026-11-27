@@ -14,6 +14,11 @@ public sealed class RenderStatistics
 
     public int ShadowCulled { get; internal set; }
 
+    /// <summary>Shadow atlas tiles drawn anew this frame, and kept from the frame before as nothing in them changed.</summary>
+    public int ShadowTilesDrawn { get; internal set; }
+
+    public int ShadowTilesKept { get; internal set; }
+
     /// <summary>Instance batches drawn in the view, and skipped as wholly outside it.</summary>
     public int BatchesDrawn { get; internal set; }
 
@@ -49,6 +54,8 @@ public sealed class RenderStatistics
         Culled = 0;
         ShadowDrawn = 0;
         ShadowCulled = 0;
+        ShadowTilesDrawn = 0;
+        ShadowTilesKept = 0;
         BatchesDrawn = 0;
         BatchesCulled = 0;
         CopiesSubmitted = 0;

@@ -284,4 +284,67 @@ public sealed class FlowGraphViewModelTests : IDisposable
         canvas.SelectedForm.Objects.Should().ContainSingle(section => section.Title == "Conditions");
         branch.IsSelected.Should().BeTrue();
     }
+
+    [Fact]
+    public void EachNodeHasAKindAndAnIconAndOnlyNodesWithTextHaveABody()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+
+        canvas.Nodes.Select(node => node.Kind).Should().Equal("Start", "Condition", "Finish");
+        canvas.Nodes.Select(node => node.Icon).Should().Equal("Play", "Branch", "Stop");
+        canvas.Nodes[0].BodyHeight.Should().Be(0);
+        canvas.Nodes[1].BodyHeight.Should().BeGreaterThan(0);
+        canvas.Nodes[1].Inputs[0].Point.Y.Should().Be(canvas.Nodes[1].Y + FlowNodeViewModel.HeaderHeight + canvas.Nodes[1].BodyHeight + (FlowNodeViewModel.RowHeight / 2));
+    }
+
+    [Theory]
+    [InlineData("line", "Dialogue", "Talk")]
+    [InlineData("choice", "Choice", "Branch")]
+    [InlineData("completeObjective", "Quest", "Flag")]
+    [InlineData("switchShot", "Camera", "Camera")]
+    [InlineData("applyEffects", "Effect", "Effects")]
+    [InlineData("somethingNew", "Effect", "Effects")]
+    public void GroupsNodeTypesByWhatTheyDo(string type, string kind, string icon)
+    {
+        FlowNodeLook look = FlowNodeLook.For(type);
+
+        look.Kind.Should().Be(kind);
+        look.Icon.Should().Be(icon);
+    }
+
+    [Fact]
+    public void TheViewSaysItsZoomInPercent()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+
+        canvas.View.ZoomAt(0, 0, 0);
+
+        canvas.View.ZoomText.Should().Be("100%");
+    }
+
+    [Theory]
+    [InlineData("Dialogue", "Innkeeper: Mind the floor.", "Innkeeper", "Mind the floor.")]
+    [InlineData("Dialogue", "Owner: ", "Owner", "")]
+    [InlineData("Quest", "Quest.Cellar: done", "", "Quest.Cellar: done")]
+    [InlineData("Choice", "3 options", "", "3 options")]
+    public void SplitsADialogueLineIntoItsSpeakerAndItsText(string kind, string description, string lead, string text)
+    {
+        (string Lead, string Text) parts = FlowNodeViewModel.SplitDescription(kind, description);
+
+        parts.Lead.Should().Be(lead);
+        parts.Text.Should().Be(text);
+    }
+
+    [Fact]
+    public void RevealingANodeSelectsItAndAsksForItToBeFramed()
+    {
+        FlowGraphViewModel canvas = _builder.Build(Graph);
+        int asked = 0;
+        canvas.RevealRequested += () => asked++;
+
+        canvas.Reveal(canvas.Nodes[2]);
+
+        canvas.Selected.Should().Be(canvas.Nodes[2]);
+        asked.Should().Be(1);
+    }
 }

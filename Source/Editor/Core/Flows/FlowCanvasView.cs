@@ -25,7 +25,10 @@ public sealed partial class FlowCanvasView : ObservableObject
     public partial double OffsetY { get; private set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ZoomText))]
     public partial double Zoom { get; private set; } = 1;
+
+    public string ZoomText => $"{Math.Round(Zoom * 100)}%";
 
     public FlowPoint ToCanvas(double screenX, double screenY)
     {

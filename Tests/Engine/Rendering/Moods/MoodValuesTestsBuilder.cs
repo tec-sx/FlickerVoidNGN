@@ -66,6 +66,8 @@ internal sealed class MoodValuesTestsBuilder
             Reflection = "Sky.png",
             ReflectionIntensity = 0.5f,
             ContactShadowLength = 0.1f,
+            ShadowDarkness = 0.7f,
+            ShadowColor = new Vector3(0.6f, 0.7f, 1),
             Bloom = 0.2f,
             BloomRadius = 0.4f,
             Dirt = "Smudge.png",
