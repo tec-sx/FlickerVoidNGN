@@ -17,4 +17,10 @@ public enum MeshFlags
 
     /// <summary>Drawn black and white (<see cref="Extraction.Greyed"/>).</summary>
     Greyed = 8,
+
+    /// <summary>
+    /// An instance batch's <see cref="Instancing.InstanceBatch.ShadowMesh"/>: drawn only into shadow maps, in place of the batch's
+    /// model, never seen and never traced.
+    /// </summary>
+    ShadowMap = 16,
 }
