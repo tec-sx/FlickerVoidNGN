@@ -22,6 +22,8 @@ struct LightingConstants
     uint KeepsHistory;
     uint Number;
     uint Fog;
+    // The renderer's time in seconds (RenderContext.Time), which rain ripples move by.
+    float Time;
 };
 
 [[vk::push_constant]] ConstantBuffer<LightingConstants> Pass : register(b0, space0);
@@ -246,20 +248,82 @@ void FogIntegrateMain(uint3 id : SV_DispatchThreadID)
     }
 }
 
-// Rain wets a surface outdoors, less where it faces down: wet paint darkens by about a third, and its highlight grows stronger
-// and tighter.
-void Wet(FrameData frame, float3 worldPosition, float3 normal, inout float3 albedo, inout Material material)
+// Puddles lie where the ground is near flat: patches of slow noise over the ground, more of them the harder it rains.
+static const float PuddleScale = 0.6;
+static const float PuddleFlatness = 0.8;
+
+// Rain drops ring outward over wet ground: one ring at a time in each cell of this size, each living a fraction of a second.
+static const float RippleCell = 0.5;
+static const float RippleRate = 1.6;
+static const float RippleRadius = 0.15;
+static const float RippleWidth = 0.02;
+
+// How the rain's rings tilt the ground's normal at a point: the rings of its own cell and the cells round it, those that rain
+// has started, each widening and fading over its life.
+float2 RippleTilt(float2 ground, float rain, float time)
+{
+    float2 tilt = 0;
+    int2 home = int2(floor(ground / RippleCell));
+    for (int y = -1; y <= 1; y++)
+    {
+        for (int x = -1; x <= 1; x++)
+        {
+            int2 cell = home + int2(x, y);
+            uint hash = Hash(uint(cell.x) * 73856093u ^ uint(cell.y) * 19349663u);
+            float2 offset = float2(HashToUnit(hash), HashToUnit(Hash(hash)));
+            float phase = HashToUnit(Hash(hash + 1u));
+            float cycle = time * RippleRate + phase;
+            uint drop = uint(floor(cycle));
+            float chance = HashToUnit(Hash(hash ^ drop));
+            if (chance > rain)
+            {
+                continue;
+            }
+
+            float life = cycle - floor(cycle);
+            float2 center = (float2(cell) + 0.1 + 0.8 * offset) * RippleCell;
+            float2 away = ground - center;
+            float reach = length(away);
+            float ring = (reach - life * RippleRadius) / RippleWidth;
+            float strength = exp(-ring * ring) * (1 - life);
+            tilt += away / max(reach, 1e-4) * strength;
+        }
+    }
+
+    return tilt;
+}
+
+// Rain wets a surface outdoors, less where it faces down: wet paint darkens by almost half and its highlight grows stronger and
+// tighter. On near flat ground it gathers in puddles, darker still, glossy as a mirror and flat, and drops ring over it.
+void Wet(FrameData frame, float3 worldPosition, inout float3 normal, inout float3 albedo, inout Material material)
 {
     if (frame.Rain <= 0 || IsIndoors(frame, worldPosition))
     {
         return;
     }
 
+    float rain = saturate(frame.Rain);
     float facing = lerp(0.4, 1, saturate(normal.y * 0.5 + 0.5));
-    float wet = saturate(frame.Rain) * facing;
-    albedo *= 1 - 0.35 * wet;
+    float wet = rain * facing;
+    albedo *= 1 - 0.45 * wet;
     material.Specular = lerp(material.Specular, max(material.Specular, 1), wet);
-    material.Glossiness = lerp(material.Glossiness, max(material.Glossiness, 0.85), wet);
+    material.Glossiness = lerp(material.Glossiness, max(material.Glossiness, 0.7), wet);
+    float flat = saturate((normal.y - PuddleFlatness) / (1 - PuddleFlatness));
+    if (flat <= 0)
+    {
+        return;
+    }
+
+    float2 ground = worldPosition.xz;
+    float3 place = float3(ground * PuddleScale, 0);
+    float noise = 0.65 * FogValueNoise(place) + 0.35 * FogValueNoise(place * 2.7 + 5.3);
+    float threshold = lerp(0.8, 0.52, rain);
+    float puddle = smoothstep(threshold, threshold + 0.04, noise) * flat;
+    albedo *= 1 - 0.6 * puddle;
+    material.Glossiness = lerp(material.Glossiness, 0.97, puddle);
+    float2 tilt = RippleTilt(ground, rain, Pass.Time) * lerp(0.04, 0.35, puddle) * flat;
+    float3 level = normalize(lerp(normal, float3(0, 1, 0), puddle));
+    normal = normalize(level + float3(tilt.x, 0, tilt.y));
 }
 
 [numthreads(8, 8, 1)]
