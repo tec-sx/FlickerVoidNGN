@@ -7,6 +7,7 @@ using FlickerVoid.Engine.Cameras.Directing;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Loop;
 
 namespace FlickerVoid.Engine.Cameras.Cutaways;
@@ -204,7 +205,7 @@ public sealed class CutawaySystem : BaseSystem<World, GameTime>
     private Entity FindTop(Entity entity, Dictionary<string, Entity> byName)
     {
         Entity top = entity;
-        for (int depth = 0; depth < 64 && World.TryGet(top, out EntityParent parent) && byName.TryGetValue(parent.Name, out Entity above); depth++)
+        for (int depth = 0; depth < 64 && TryGetParent(top, byName, out Entity above); depth++)
         {
             top = above;
         }
@@ -215,7 +216,7 @@ public sealed class CutawaySystem : BaseSystem<World, GameTime>
     private bool IsUnder(Entity entity, Entity ancestor, Dictionary<string, Entity> byName)
     {
         Entity current = entity;
-        for (int depth = 0; depth < 64 && World.TryGet(current, out EntityParent parent) && byName.TryGetValue(parent.Name, out Entity above); depth++)
+        for (int depth = 0; depth < 64 && TryGetParent(current, byName, out Entity above); depth++)
         {
             if (above == ancestor)
             {
@@ -226,5 +227,18 @@ public sealed class CutawaySystem : BaseSystem<World, GameTime>
         }
 
         return false;
+    }
+
+    /// <summary>The entity this one is nested under: the one it names by entity, as a creation's parts do, else the one it names by name.</summary>
+    private bool TryGetParent(Entity entity, Dictionary<string, Entity> byName, out Entity parent)
+    {
+        if (World.TryGet(entity, out NestedUnder nested) && World.IsAlive(nested.Parent))
+        {
+            parent = nested.Parent;
+            return true;
+        }
+
+        parent = Entity.Null;
+        return World.TryGet(entity, out EntityParent named) && byName.TryGetValue(named.Name, out parent);
     }
 }

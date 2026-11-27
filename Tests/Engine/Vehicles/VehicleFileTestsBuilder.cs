@@ -25,7 +25,7 @@ internal static class VehicleFileTestsBuilder
     {
         VehicleFile car = VehicleFile.Create(VehicleType.Car);
         PartJoint joint = new() { Kind = JointKind.Hinge, Pivot = new Vector3(1, 0.5f, 1), Axis = Vector3.UnitY, Min = 0, Max = 90, Speed = 120 };
-        VehiclePart door = new() { Mesh = SolidMesh.Box(new Vector3(0.1f, 1, 1)), Joint = joint, Toggle = new Tag("Interaction.Action.Toggle") };
+        SolidPart door = new() { Mesh = SolidMesh.Box(new Vector3(0.1f, 1, 1)), Joint = joint, Toggle = new Tag("Interaction.Action.Toggle") };
         car.Doors.Add(door);
         return car;
     }

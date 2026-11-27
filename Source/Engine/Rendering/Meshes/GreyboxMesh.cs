@@ -1,17 +1,68 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
 
+using FlickerVoid.Engine.Runtime.Greyboxes;
+using FlickerVoid.Engine.Runtime.Serialization;
 using FlickerVoid.Engine.Runtime.Solids;
 
 namespace FlickerVoid.Engine.Rendering.Meshes;
 
 /// <summary>
-/// The box a greybox draws, made rather than loaded: a mesh name naming its size, which <see cref="MeshSources"/> turns into a grey
+/// The box or shape a greybox draws, made rather than loaded: a mesh name naming its size, or holding its shaped solid, which <see cref="MeshSources"/> turns into a grey
 /// box standing on its origin, its texture coordinates in metres on every face.
 /// </summary>
 public static class GreyboxMesh
 {
     private const string Prefix = "$greybox:";
+    private const string SolidPrefix = "$solid:";
+
+    private static readonly ConditionalWeakTable<SolidMesh, string> SolidNames = [];
+
+    /// <summary>The mesh a greybox is drawn and picked as: the swap shown in its place, else its shape, else the box of its size.</summary>
+    public static string GetName(in Greybox greybox)
+    {
+        if (greybox.GetShownSwap() is { } swap)
+        {
+            return swap;
+        }
+
+        if (greybox.Mesh is { } solid)
+        {
+            return GetName(solid);
+        }
+
+        return GetName(greybox.Size);
+    }
+
+    /// <summary>The mesh name of a solid: its points and faces written out, so the name alone makes it; made once for each solid.</summary>
+    public static string GetName(SolidMesh solid)
+    {
+        return SolidNames.GetValue(solid, static solid => SolidPrefix + JsonSerializer.Serialize(solid, RuntimeJsonContext.Default.SolidMesh));
+    }
+
+    /// <summary>Reads the solid a mesh name holds; false for any other mesh, or a name that holds no closed solid.</summary>
+    public static bool TryGetSolid(string mesh, [NotNullWhen(true)] out SolidMesh? solid)
+    {
+        solid = null;
+        if (!mesh.StartsWith(SolidPrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        try
+        {
+            solid = JsonSerializer.Deserialize(mesh.AsSpan(SolidPrefix.Length), RuntimeJsonContext.Default.SolidMesh);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        return solid is not null;
+    }
 
     /// <summary>The mesh name of a box of <paramref name="size"/>.</summary>
     public static string GetName(Vector3 size)

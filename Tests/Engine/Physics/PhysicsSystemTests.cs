@@ -196,6 +196,27 @@ public sealed class PhysicsSystemTests : IDisposable
     }
 
     [Fact]
+    public void AShapedGreyboxBlocksAsItsShapeNotItsSize()
+    {
+        _game.Lifecycle.Play(_game.World);
+        IReadOnlyList<Entity> entities = Spawn("""
+            { "name": "Crate", "components": {
+                "transform": { "position": [0, 5, 0] },
+                "rigidBody": { "mass": 10, "collider": { "type": "box", "offset": [0, 0.5, 0] } } } },
+            { "name": "Floor", "components": {
+                "transform": { "position": [0, -1, 0] },
+                "greybox": { "size": [20, 1, 20], "mesh": {
+                    "points": [[-10, 0, -10], [10, 0, -10], [10, 0, 10], [-10, 0, 10], [-10, 3, -10], [10, 3, -10], [10, 3, 10], [-10, 3, 10]],
+                    "faces": [[0, 1, 2, 3], [7, 6, 5, 4], [0, 4, 5, 1], [1, 5, 6, 2], [2, 6, 7, 3], [3, 7, 4, 0]] } } } }
+            """);
+
+        Run(seconds: 3);
+
+        Transform crate = _game.World.Get<Transform>(entities[0]);
+        crate.Position.Y.Should().BeInRange(1.95f, 2.05f, "the floor was raised to three metres, two above the origin");
+    }
+
+    [Fact]
     public void ShapesSitAtTheirCollidersOffsetInTheEntitysSpace()
     {
         IReadOnlyList<Entity> entities = Spawn("""

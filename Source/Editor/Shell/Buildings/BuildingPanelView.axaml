@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:buildings="using:FlickerVoid.Editor.Assets.Buildings"
+             x:Class="FlickerVoid.Editor.Buildings.BuildingPanelView"
+             x:DataType="buildings:BuildingPanelViewModel">
+  <!-- The building's storeys and cellar, then what crosses them: stairs and an elevator; its parts are listed in the outliner. -->
+  <StackPanel Margin="4,2">
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+      <TextBlock Text="Storeys" VerticalAlignment="Center" />
+      <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding StoreyCounts}" SelectedItem="{Binding Storeys}"
+                ToolTip.Tip="Storeys on the ground, the ground floor among them; they are added and taken off at the top, under the roof." />
+      <TextBlock Grid.Row="1" Text="Cellar" VerticalAlignment="Center" />
+      <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding HasCellar}"
+                    ToolTip.Tip="A storey under the ground floor." />
+    </Grid>
+    <TextBlock Classes="muted" Text="Between storeys" Margin="0,8,0,2" />
+    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+      <TextBlock Text="Stairs" VerticalAlignment="Center" />
+      <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding StairsFrom}" SelectedItem="{Binding StairsStorey}"
+                ToolTip.Tip="The storey the flight climbs from, to the one above." />
+      <Button Grid.Column="2" Content="Add" Command="{Binding AddStairsCommand}"
+              ToolTip.Tip="Add a flight from this storey and open the floor above over it." />
+      <TextBlock Grid.Row="1" Text="Elevator" VerticalAlignment="Center" />
+      <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding HasElevator}"
+                    ToolTip.Tip="A platform that stops at every storey; its shaft is cut through the floors." />
+    </Grid>
+  </StackPanel>
+</UserControl>

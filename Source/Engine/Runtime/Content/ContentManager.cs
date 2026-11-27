@@ -196,6 +196,12 @@ public sealed class ContentManager : IContentManager
         File.WriteAllBytes(fullPath, contents);
     }
 
+    public string GetSourcePath(string path)
+    {
+        string fullPath = GetFullPath(path);
+        return FindSourcePath(fullPath) ?? fullPath;
+    }
+
     /// <summary>The source file a built file comes from, when the build manifest names a game source folder that holds it.</summary>
     private string? FindSourcePath(string fullPath)
     {

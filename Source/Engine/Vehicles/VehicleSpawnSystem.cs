@@ -4,6 +4,7 @@ using Arch.Core;
 using Arch.System;
 
 using FlickerVoid.Engine.Creations;
+using FlickerVoid.Engine.Interaction.Interactables;
 using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Physics;
 using FlickerVoid.Engine.Physics.Colliders;
@@ -24,17 +25,21 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
     private static readonly QueryDescription Vehicles = new QueryDescription().WithAll<Vehicle>();
 
     private readonly CreationParts _parts;
-    private readonly VehicleFiles _files;
+    private readonly CreationFiles<VehicleFile> _files;
     private readonly IContentManager? _content;
+    private readonly VehicleLooks _looks;
     private readonly List<(Entity Root, string File)> _changed = [];
+    private readonly HashSet<Entity> _driven = [];
 
-    public VehicleSpawnSystem(World world, CreationParts parts, VehicleFiles files, IContentManager? content)
+    public VehicleSpawnSystem(World world, CreationParts parts, CreationFiles<VehicleFile> files, VehicleLooks looks, IContentManager? content)
         : base(world)
     {
         _parts = parts;
         _files = files;
         _content = content;
-        _parts.AddKind<Vehicle>(vehicle => Describe(vehicle.File));
+        _looks = looks;
+        _looks.Changed += HandleLooksChanged;
+        _parts.AddKind<Vehicle>(vehicle => Describe(vehicle.File, true));
         if (_content is not null)
         {
             _content.Changed += HandleChanged;
@@ -43,6 +48,7 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
 
     public override void Dispose()
     {
+        _looks.Changed -= HandleLooksChanged;
         if (_content is not null)
         {
             _content.Changed -= HandleChanged;
@@ -51,8 +57,22 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
         base.Dispose();
     }
 
+    /// <summary>
+    /// Whether the vehicle's parts are solid, as they are while it stands; a driven vehicle's are not, as its body on wheels is its
+    /// collision.
+    /// </summary>
+    public void SetSolid(Entity root, bool solid)
+    {
+        bool changed = solid ? _driven.Remove(root) : _driven.Add(root);
+        if (changed && World.IsAlive(root) && World.TryGet(root, out Vehicle vehicle))
+        {
+            IReadOnlyList<PartData> parts = Describe(vehicle.File, solid);
+            _parts.Patch(root, parts);
+        }
+    }
+
     /// <summary>The parts of the file as it last could be read; none without content or a file that never could be.</summary>
-    private IReadOnlyList<PartData> Describe(string path)
+    private IReadOnlyList<PartData> Describe(string path, bool solid)
     {
         if (_content is null || _files.Read(_content, path) is not { } file)
         {
@@ -60,18 +80,22 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
         }
 
         List<PartData> parts = [];
-        foreach ((string id, VehiclePart part) in file.GetParts())
+        foreach ((string id, SolidPart part) in file.GetParts())
         {
-            string mesh = VehicleMeshSource.GetName(path, id);
+            string mesh = VehicleMeshSource.GetName(path, id, _looks.ShowGreyboxes);
             MeshRenderer renderer = new() { Mesh = mesh };
             PartData data = new PartData(id, part.Place).With(renderer);
             if (part.Joint is { } joint)
             {
                 data.With(joint);
+            }
+
+            if (solid && part.Joint is not null)
+            {
                 RigidBody door = GetMovingBody(part);
                 data.With(door);
             }
-            else
+            else if (solid)
             {
                 StaticBody standing = GetStandingBody(part);
                 data.With(standing);
@@ -81,6 +105,8 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
             {
                 Toggle toggle = new() { Action = action };
                 data.With(toggle);
+                UsePoint middle = new() { Offset = part.GetMiddle() };
+                data.With(middle);
             }
 
             parts.Add(data);
@@ -90,7 +116,7 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
     }
 
     /// <summary>A standing part's collision is its own triangles, so walls, floors and openings are exact.</summary>
-    private static StaticBody GetStandingBody(VehiclePart part)
+    private static StaticBody GetStandingBody(SolidPart part)
     {
         SolidTriangles triangles = part.Mesh.Triangulate();
         Vector3[] positions = [.. triangles.Vertices.Select(vertex => vertex.Position)];
@@ -100,7 +126,7 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
     }
 
     /// <summary>A part that moves is a kinematic hull of its points that paths go around, which follows it as its joint swings it.</summary>
-    private static RigidBody GetMovingBody(VehiclePart part)
+    private static RigidBody GetMovingBody(SolidPart part)
     {
         HullCollider collider = new() { Points = [.. part.Mesh.Points] };
         return new RigidBody { Collider = collider, Kinematic = true, Obstacle = true };
@@ -113,18 +139,30 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
             return;
         }
 
+        Patch(vehicle =>
+        {
+            string vehiclePath = _content!.GetFullPath(vehicle.File);
+            return ContentManager.PathComparer.Equals(vehiclePath, fullPath);
+        });
+    }
+
+    /// <summary>Every vehicle's parts change between their looks and their greyboxes.</summary>
+    private void HandleLooksChanged() => Patch(_ => true);
+
+    private void Patch(Func<Vehicle, bool> matches)
+    {
         _changed.Clear();
         World.Query(in Vehicles, (Entity entity, ref Vehicle vehicle) =>
         {
-            string vehiclePath = _content!.GetFullPath(vehicle.File);
-            if (ContentManager.PathComparer.Equals(vehiclePath, fullPath))
+            if (matches(vehicle))
             {
                 _changed.Add((entity, vehicle.File));
             }
         });
         foreach ((Entity root, string file) in _changed)
         {
-            IReadOnlyList<PartData> parts = Describe(file);
+            bool solid = !_driven.Contains(root);
+            IReadOnlyList<PartData> parts = Describe(file, solid);
             _parts.Patch(root, parts);
         }
     }

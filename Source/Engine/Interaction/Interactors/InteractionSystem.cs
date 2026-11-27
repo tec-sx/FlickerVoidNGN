@@ -43,6 +43,7 @@ public sealed partial class InteractionSystem : BaseSystem<World, GameTime>
         _services = game.Services;
         _logger = game.LoggerFactory.CreateLogger<InteractionSystem>();
         ArrayRegistry.Add<ActiveInteractable>();
+        ArrayRegistry.Add<UsePoint>();
         ArrayRegistry.Add<InteractorFocus>();
         ArrayRegistry.Add<InteractionCommit>();
         game.Lifecycle.OnActivate((Entity entity, ref Interactable interactable) => Activate(entity, interactable));
@@ -459,14 +460,28 @@ public sealed partial class InteractionSystem : BaseSystem<World, GameTime>
 
     private bool IsInReach(Entity interactor, Entity target)
     {
-        if (!World.TryGet(interactor, out Transform from) || !World.TryGet(target, out Transform to))
+        if (!World.TryGet(interactor, out Transform from) || !World.Has<Transform>(target))
         {
             return true;
         }
 
         float reach = World.Get<Interactor>(interactor).Reach;
-        float distance = Vector3.Distance(from.Position, to.Position);
+        Vector3 point = GetUsePoint(World, target);
+        float distance = Vector3.Distance(from.Position, point);
         return distance <= reach;
+    }
+
+    /// <summary>Where the entity is used, in the world: its <see cref="UsePoint"/> when it has one, else where it stands.</summary>
+    public static Vector3 GetUsePoint(World world, Entity target)
+    {
+        Transform transform = world.Get<Transform>(target);
+        if (!world.TryGet(target, out UsePoint point))
+        {
+            return transform.Position;
+        }
+
+        Matrix4x4 toWorld = transform.ToMatrix();
+        return Vector3.Transform(point.Offset, toWorld);
     }
 
     private bool IsInteractable(Entity entity) => entity != Entity.Null && World.IsAlive(entity) && World.Has<ActiveInteractable>(entity);

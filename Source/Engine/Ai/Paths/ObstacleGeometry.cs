@@ -9,7 +9,10 @@ using FlickerVoid.Engine.Runtime.Geometry;
 
 namespace FlickerVoid.Engine.Ai.Paths;
 
-/// <summary>The triangles paths are built over: the box around the collider of each body that is an obstacle, posed like the body.</summary>
+/// <summary>
+/// The triangles paths are built over, posed like their bodies: the box around the collider of each body that is an obstacle, and
+/// for a triangle collider its own triangles, so the floors, walls and openings of a standing thing are walked as they are.
+/// </summary>
 public static class ObstacleGeometry
 {
     private static readonly QueryDescription StaticBodies = new QueryDescription().WithAll<StaticBody, Transform>();
@@ -73,9 +76,8 @@ public static class ObstacleGeometry
     /// <summary>The axis-aligned box around a collider's box posed by the transform.</summary>
     public static Bounds GetBounds(Collider collider, in Transform transform)
     {
-        Vector3 halfSize = GetHalfSize(collider);
+        Bounds box = GetLocalBounds(collider);
         Vector3 centre = transform.Position + Vector3.Transform(collider.Offset, transform.Rotation);
-        Bounds box = new(-halfSize, halfSize);
         Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(transform.Rotation);
         Matrix4x4 placed = rotation * Matrix4x4.CreateTranslation(centre);
         return box.Transform(placed);
@@ -83,9 +85,18 @@ public static class ObstacleGeometry
 
     private static void Add(Entity entity, Collider collider, in Transform transform, List<float> vertices, List<int> triangles, Action<Entity, Bounds>? found)
     {
-        Vector3 halfSize = GetHalfSize(collider);
         Vector3 centre = transform.Position + Vector3.Transform(collider.Offset, transform.Rotation);
-        AddBox(centre, transform.Rotation, halfSize, vertices, triangles);
+        if (collider is TriangleCollider mesh)
+        {
+            AddTriangles(mesh, centre, transform.Rotation, vertices, triangles);
+        }
+        else
+        {
+            Bounds box = GetLocalBounds(collider);
+            Vector3 boxCentre = centre + Vector3.Transform(box.Center, transform.Rotation);
+            AddBox(boxCentre, transform.Rotation, box.Extents, vertices, triangles);
+        }
+
         if (found is not null)
         {
             Bounds bounds = GetBounds(collider, transform);
@@ -93,20 +104,62 @@ public static class ObstacleGeometry
         }
     }
 
-    /// <summary>Half the size of the box around a collider in its own space; capsules stand along their Y axis.</summary>
-    private static Vector3 GetHalfSize(Collider collider)
+    /// <summary>The box around a collider in its own space, about its offset; capsules stand along their Y axis.</summary>
+    private static Bounds GetLocalBounds(Collider collider)
     {
         switch (collider)
         {
             case BoxCollider box:
-                return box.Size / 2;
+                return new Bounds(-box.Size / 2, box.Size / 2);
             case SphereCollider sphere:
-                return new Vector3(sphere.Radius);
+                Vector3 radius = new(sphere.Radius);
+                return new Bounds(-radius, radius);
             case CapsuleCollider capsule:
                 float halfHeight = (capsule.Length / 2) + capsule.Radius;
-                return new Vector3(capsule.Radius, halfHeight, capsule.Radius);
+                Vector3 half = new(capsule.Radius, halfHeight, capsule.Radius);
+                return new Bounds(-half, half);
+            case HullCollider hull:
+                return GetBoundsOf(hull.Points);
+            case TriangleCollider mesh:
+                return GetBoundsOf(mesh.Positions);
             default:
-                return Vector3.Zero;
+                return new Bounds(Vector3.Zero, Vector3.Zero);
+        }
+    }
+
+    private static Bounds GetBoundsOf(Vector3[] points)
+    {
+        if (points.Length == 0)
+        {
+            return new Bounds(Vector3.Zero, Vector3.Zero);
+        }
+
+        Bounds bounds = Bounds.Empty;
+        foreach (Vector3 point in points)
+        {
+            bounds = bounds.Include(point);
+        }
+
+        return bounds;
+    }
+
+    /// <summary>The collider's own triangles; the engine winds them clockwise from the front, and paths want the other way.</summary>
+    private static void AddTriangles(TriangleCollider mesh, Vector3 centre, Quaternion rotation, List<float> vertices, List<int> triangles)
+    {
+        int first = vertices.Count / 3;
+        foreach (Vector3 position in mesh.Positions)
+        {
+            Vector3 point = centre + Vector3.Transform(position, rotation);
+            vertices.Add(point.X);
+            vertices.Add(point.Y);
+            vertices.Add(point.Z);
+        }
+
+        for (int index = 0; index + 2 < mesh.Indices.Length; index += 3)
+        {
+            triangles.Add(first + mesh.Indices[index]);
+            triangles.Add(first + mesh.Indices[index + 2]);
+            triangles.Add(first + mesh.Indices[index + 1]);
         }
     }
 

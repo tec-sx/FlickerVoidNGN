@@ -9,6 +9,9 @@
         xmlns:scenes="using:FlickerVoid.Editor.Scenes"
         xmlns:controls="using:FlickerVoid.Editor.Controls"
         xmlns:vehicles="using:FlickerVoid.Editor.Vehicles"
+        xmlns:vehicleModels="using:FlickerVoid.Editor.Assets.Vehicles"
+        xmlns:buildings="using:FlickerVoid.Editor.Buildings"
+        xmlns:buildingModels="using:FlickerVoid.Editor.Assets.Buildings"
         xmlns:environments="using:FlickerVoid.Editor.Environments"
         xmlns:documents="using:FlickerVoid.Editor.Documents"
         x:Class="FlickerVoid.Editor.MainWindow"
@@ -195,7 +198,7 @@
           <!-- While a creation is made: its file, carrying on in a copy of it, and the way back to the level. -->
           <Border Classes="viewportBar" Margin="12" HorizontalAlignment="Center" VerticalAlignment="Top" IsVisible="{Binding Viewport.IsCreating}">
             <StackPanel Orientation="Horizontal" Spacing="4" Margin="6,0,0,0">
-              <PathIcon Data="{x:Static shell:LucideIcons.Vehicle}" />
+              <PathIcon Data="{Binding CreatorIcon}" />
               <TextBlock Text="{Binding CreatorHeading}" VerticalAlignment="Center" FontWeight="Medium" Margin="2,0,4,0" />
               <Button Classes="viewportIcon text" Content="Duplicate and Edit" Command="{Binding DuplicateAndEditCommand}"
                       ToolTip.Tip="Carry on in a copy of the file, which this placed one then names; the first file keeps how it was saved." />
@@ -222,7 +225,7 @@
         <!-- The context panel holds only what is selected or open, the newest in front; empty, it says how to fill it. -->
         <Panel Grid.Row="{Binding ContextRow}">
           <TextBlock Classes="hint" IsVisible="{Binding !HasContext}" TextWrapping="Wrap" Margin="12" VerticalAlignment="Top"
-                     Text="Select an entity, or open a data asset or a vehicle in the content drawer, to edit it here." />
+                     Text="Select an entity, or open a data asset, a vehicle or a building in the content drawer, to edit it here." />
           <TabControl x:Name="SidePanel" SelectedIndex="{Binding SideTab}" IsVisible="{Binding HasContext}">
             <TabItem IsVisible="{Binding ShowsInspector}">
               <TabItem.Header>
@@ -248,11 +251,16 @@
             <TabItem IsVisible="{Binding ShowsCreator}">
               <TabItem.Header>
                 <StackPanel Classes="tabHeader">
-                  <PathIcon Data="{x:Static shell:LucideIcons.Vehicle}" />
-                  <TextBlock Text="Vehicle" ToolTip.Tip="{Binding CreatorHeading}" />
+                  <PathIcon Data="{Binding CreatorIcon}" />
+                  <TextBlock Text="{Binding CreatorKind}" ToolTip.Tip="{Binding CreatorHeading}" />
                 </StackPanel>
               </TabItem.Header>
-              <vehicles:VehiclePanelView DataContext="{Binding CreatorPanel}" />
+              <ContentControl Content="{Binding CreatorPanel}">
+                <ContentControl.DataTemplates>
+                  <DataTemplate DataType="vehicleModels:VehiclePanelViewModel"><vehicles:VehiclePanelView /></DataTemplate>
+                  <DataTemplate DataType="buildingModels:BuildingPanelViewModel"><buildings:BuildingPanelView /></DataTemplate>
+                </ContentControl.DataTemplates>
+              </ContentControl>
             </TabItem>
           </TabControl>
         </Panel>

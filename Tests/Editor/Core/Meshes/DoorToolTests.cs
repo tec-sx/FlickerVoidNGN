@@ -74,7 +74,7 @@ public sealed class DoorToolTests
         VehicleFile fresh = VehicleFile.Create(VehicleType.Car);
         SolidEdge edge = new SolidTopology(fresh.Body.Mesh).GetFaceEdges(Side).First();
         DoorTool.Hang(fresh, "body", Side, edge, new DoorOptions());
-        VehiclePart first = fresh.Doors[0];
+        SolidPart first = fresh.Doors[0];
         VehicleFile again = VehicleFile.Create(VehicleType.Car);
         again.Doors.Add(first);
 
@@ -114,7 +114,7 @@ public sealed class DoorToolTests
     }
 
     // How far the door's face centre moves along the face's outward direction (+X) when the door stands open.
-    private static float GetSwing(VehiclePart door, Vector3 centre)
+    private static float GetSwing(SolidPart door, Vector3 centre)
     {
         PartJoint joint = door.Joint!.Value;
         Transform opened = JointSystem.Pose(door.Place, joint, joint.GetOpenPosition());

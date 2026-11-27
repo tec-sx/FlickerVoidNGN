@@ -107,7 +107,8 @@ public sealed partial class MainWindowViewModel
             [AssetTypes.Flow] = asset => OpenFlow(asset.Path),
             [AssetTypes.Environment] = asset => OpenEnvironment(asset.Path),
             [AssetTypes.Code] = OpenCode,
-            [AssetTypes.Vehicle] = asset => OpenVehicle(asset.Path),
+            [AssetTypes.Vehicle] = asset => OpenCreation(asset.Path),
+            [AssetTypes.Building] = asset => OpenCreation(asset.Path),
         };
     }
 
@@ -336,6 +337,7 @@ public sealed partial class MainWindowViewModel
     /// <summary>Shows the open mood or creation again when its file changed other than by an edit here: discarded or changed on disk.</summary>
     private void HandleContentChanged(string fullPath)
     {
+        ShowCreationLook(fullPath);
         if (Viewport.CreatorFile is { } creation && !_content.IsUnsaved(creation))
         {
             ShowCreation(fullPath);

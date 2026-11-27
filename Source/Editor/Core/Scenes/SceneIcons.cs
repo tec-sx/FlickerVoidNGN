@@ -27,6 +27,7 @@ public static class SceneIcons
         ("fogVolume", "Environment"),
         ("interactable", "Interact"),
         ("vehicle", "Vehicle"),
+        ("building", "Building"),
         ("meshRenderer", "Model"),
         ("greybox", "Cube"),
     ];

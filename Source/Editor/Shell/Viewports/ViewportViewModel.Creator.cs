@@ -9,6 +9,8 @@ using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Engine.Runtime.Geometry;
+using FlickerVoid.Engine.Runtime.Greyboxes;
+using FlickerVoid.Engine.Buildings;
 using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Viewports;
@@ -29,8 +31,11 @@ public sealed partial class ViewportViewModel
     /// <summary>Raised when a placed creation is double-clicked, with its entity and file, to make it in place.</summary>
     public event Action<Entity, string>? CreationRequested;
 
+    /// <summary>Raised when a greybox of the level is double-clicked, with its entity, to shape it in place.</summary>
+    public event Action<Entity>? PieceRequested;
+
     /// <summary>
-    /// A double-click: on a placed creation it asks to make it in place; in the creator, one that misses the creation leaves it. The
+    /// A double-click: on a placed creation it asks to make it in place, and on a greybox of the level to shape it; in the creator, one that misses the creation leaves it. The
     /// game view only selects.
     /// </summary>
     public void DoubleClicked(Vector2 pixel, int width, int height)
@@ -55,6 +60,14 @@ public sealed partial class ViewportViewModel
         if (world.TryGet(picked, out Vehicle vehicle) && !string.IsNullOrEmpty(vehicle.File))
         {
             CreationRequested?.Invoke(picked, vehicle.File);
+        }
+        else if (world.TryGet(picked, out Building building) && !string.IsNullOrEmpty(building.File))
+        {
+            CreationRequested?.Invoke(picked, building.File);
+        }
+        else if (world.TryGet(picked, out Greybox greybox) && greybox.GetShownSwap() is null)
+        {
+            PieceRequested?.Invoke(picked);
         }
     }
 
@@ -89,22 +102,24 @@ public sealed partial class ViewportViewModel
 
     /// <summary>
     /// The mesh keys of the creator: Tab enters and leaves the mesh, then 1, 2 and 3 pick points, edges or faces, E extrudes, I
-    /// insets, C cuts, Ctrl+B bevels, Ctrl+R cuts a loop and D hangs a door where the mouse is. Escape leaves the mesh before the
+    /// insets, C cuts and Ctrl+B bevels by an amount the mouse then sets (any key keeps it, Escape cancels it), Ctrl+R cuts a loop and D hangs a door where the mouse is. Escape leaves the mesh before the
     /// creator. True when the key was taken.
     /// </summary>
     private bool PressMeshKey(ViewportKey key, bool ctrl)
     {
-        if (key == ViewportKey.Tab)
+        if (MeshTools.IsDragging)
         {
-            if (MeshTools.IsMeshMode)
+            if (key == ViewportKey.Escape)
             {
-                MeshTools.Leave();
-            }
-            else
-            {
-                MeshTools.Enter();
+                return MeshTools.CancelDrag();
             }
 
+            MeshTools.ConfirmDrag();
+        }
+
+        if (key == ViewportKey.Tab)
+        {
+            MeshTools.ToggleMesh();
             return true;
         }
 
@@ -125,16 +140,16 @@ public sealed partial class ViewportViewModel
                 MeshTools.Element = MeshElement.Face;
                 break;
             case ViewportKey.E:
-                MeshTools.Extrude();
+                MeshTools.DragExtrude();
                 break;
             case ViewportKey.I:
-                MeshTools.Inset();
+                MeshTools.DragInset();
                 break;
             case ViewportKey.C:
-                MeshTools.Cut();
+                MeshTools.DragCut();
                 break;
             case ViewportKey.B when ctrl:
-                MeshTools.Bevel();
+                MeshTools.DragBevel();
                 break;
             case ViewportKey.R when ctrl:
                 MeshTools.LoopCut();
@@ -158,5 +173,7 @@ public sealed partial class ViewportViewModel
         OnPropertyChanged(nameof(Mode));
         OnPropertyChanged(nameof(IsCreating));
         OnPropertyChanged(nameof(CreatorFile));
+        NotifyPieces();
+        MeshTools.Refresh();
     }
 }

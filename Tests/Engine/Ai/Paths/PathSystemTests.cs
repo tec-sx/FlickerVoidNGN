@@ -77,6 +77,45 @@ public sealed class PathSystemTests : IDisposable
     }
 
     [Fact]
+    public void GoesAroundAWallOfTrianglesAndThroughItsOpening()
+    {
+        PathSystem paths = _builder.WithFloor().Build();
+        _builder.AddTriangleBox(new Vector3(0, 0, -3.5f), new Vector3(0.4f, 2, 3));
+        _builder.AddTriangleBox(new Vector3(0, 0, 1.5f), new Vector3(0.4f, 2, 5));
+        _builder.Run(0.1f);
+        List<Vector3> corners = [];
+
+        bool found = paths.TryFindPath(West, East, corners);
+
+        found.Should().BeTrue();
+        corners.Should().Contain(corner => MathF.Abs(corner.X) < 1 && corner.Z < -1 && corner.Z > -2, "the only way is the opening between z -2 and -1");
+    }
+
+    [Fact]
+    public void WalksOnTopOfStandingTriangles()
+    {
+        PathSystem paths = _builder.Build();
+        _builder.AddTriangleBox(new Vector3(0, -0.2f, 0), new Vector3(10, 0.2f, 10));
+        _builder.Run(0.1f);
+        List<Vector3> corners = [];
+
+        paths.TryFindPath(West, East, corners).Should().BeTrue();
+    }
+
+    [Fact]
+    public void GoesAroundAMovingPartsHull()
+    {
+        PathSystem paths = _builder.WithFloor().Build();
+        _builder.AddHullBox(new Vector3(0, 0, 0), new Vector3(0.4f, 2, 6));
+        _builder.Run(0.5f);
+        List<Vector3> corners = [];
+
+        paths.TryFindPath(West, East, corners).Should().BeTrue();
+
+        corners.Should().Contain(corner => MathF.Abs(corner.Z) >= 3, "the way round passes the hull's end");
+    }
+
+    [Fact]
     public void EndsAsNearAsItCanGetToAPointItCannotReach()
     {
         PathSystem paths = _builder.WithFloor().WithWall().Build();

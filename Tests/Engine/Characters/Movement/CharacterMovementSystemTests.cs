@@ -4,6 +4,7 @@ using Arch.Core;
 
 using FlickerVoid.Engine.Characters.Movement;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Events;
 
 using NSubstitute;
@@ -259,6 +260,26 @@ public sealed class CharacterMovementSystemTests : IDisposable
         _builder.Run(2);
 
         _builder.Game.World.Get<Transform>(entities[0]).Position.Y.Should().BeApproximately(0.2f, 1e-3f);
+    }
+
+    [Fact]
+    public void ACharacterCarriedByAnotherEntityRidesWithItInsteadOfFalling()
+    {
+        _builder.WithPhysics().Build();
+        IReadOnlyList<Entity> entities = _builder.Spawn("""
+            { "name": "Hero", "components": { "transform": {}, "characterMover": {} } },
+            { "name": "Cart", "components": { "transform": { "position": [0, 3, 0] } } },
+            { "name": "Ground", "components": {
+                "transform": { "position": [0, 0.1, 0] },
+                "staticBody": { "collider": { "type": "box", "size": [40, 0.2, 40] } } } }
+            """);
+        World world = _builder.Game.World;
+        TransformHierarchy.Attach(world, entities[0], entities[1], new Transform());
+
+        world.Get<Transform>(entities[1]).Position = new Vector3(5, 3, 0);
+        _builder.Run(1);
+
+        world.Get<Transform>(entities[0]).Position.Should().Be(new Vector3(5, 3, 0));
     }
 
     [Fact]

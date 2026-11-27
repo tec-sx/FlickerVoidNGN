@@ -11,7 +11,7 @@ public sealed class ModelImporter : IAssetImporter
 {
     public string Name => "Model";
 
-    public int Version => 2;
+    public int Version => 3;
 
     public IReadOnlyList<string> Extensions { get; } = [".glb", ".gltf"];
 
