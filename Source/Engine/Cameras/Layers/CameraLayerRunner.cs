@@ -41,9 +41,9 @@ internal sealed partial class CameraLayerRunner
     /// The view moved by the shot's layers for a frame of the given seconds; a frame of no time (a switch between frames) leaves the
     /// requests for the next.
     /// </summary>
-    public RenderCamera Apply(Entity shot, string rig, RenderCamera view, Vector3? target, Vector2? pointer, float seconds)
+    public RenderCamera Apply(Entity shot, string rig, CameraRig? placed, RenderCamera view, Vector3? target, Vector2? pointer, float seconds)
     {
-        FindLayers(rig);
+        FindLayers(rig, placed);
         _frame.Seconds = seconds;
         _frame.View = view;
         _frame.Target = target;
@@ -104,11 +104,15 @@ internal sealed partial class CameraLayerRunner
         return new RenderCamera(lens, pose);
     }
 
-    /// <summary>Fills the layers to run: the rig's, then each default whose kind the rig lacks.</summary>
-    private void FindLayers(string rig)
+    /// <summary>Fills the layers to run: the placed shot's or the rig's, then each default whose kind they lack.</summary>
+    private void FindLayers(string rig, CameraRig? placed)
     {
         _layers.Clear();
-        if (!string.IsNullOrEmpty(rig) && LoadRig(rig) is { } loaded)
+        if (placed is not null)
+        {
+            _layers.AddRange(placed.Layers);
+        }
+        else if (!string.IsNullOrEmpty(rig) && LoadRig(rig) is { } loaded)
         {
             _layers.AddRange(loaded.Layers);
         }

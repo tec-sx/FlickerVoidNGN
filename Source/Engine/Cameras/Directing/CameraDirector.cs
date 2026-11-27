@@ -589,7 +589,13 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
 
         if (_driver.LayersEnabled(Live))
         {
-            view = _layers.Apply(Live, shot.Rig, view, target, Pointer, seconds);
+            CameraRig? placed = null;
+            if (World.TryGet(Live, out PlacedShot inline))
+            {
+                placed = inline.Rig;
+            }
+
+            view = _layers.Apply(Live, shot.Rig, placed, view, target, Pointer, seconds);
         }
 
         Vector3? focus = target;
@@ -648,13 +654,18 @@ public sealed class CameraDirector : BaseSystem<World, GameTime>
         return to ?? from;
     }
 
-    /// <summary>The earliest created shot marked to start, else the earliest created shot.</summary>
+    /// <summary>The earliest created shot marked to start, else the earliest created shot; a shot placed in a creation never starts.</summary>
     private Entity FindStart()
     {
         Entity first = Entity.Null;
         Entity start = Entity.Null;
         World.Query(in Shots, (Entity entity, ref Shot shot) =>
         {
+            if (World.Has<PlacedShot>(entity))
+            {
+                return;
+            }
+
             if (first == Entity.Null || entity.Id < first.Id)
             {
                 first = entity;
