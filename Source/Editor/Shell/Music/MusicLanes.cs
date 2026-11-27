@@ -101,6 +101,7 @@ public sealed class MusicLanes : Control
         DrawGrid(context, editor, bar, barsEnd, linePen, text);
         DrawRows(context, editor, linePen);
         DrawNotifiers(context, editor, linePen);
+        DrawSections(context, editor);
         double top = TracksTop;
         context.DrawLine(linePen, new Point(0, top), new Point(width, top));
         for (int index = 0; index < editor.Tracks.Count; index++)
@@ -154,6 +155,37 @@ public sealed class MusicLanes : Control
 
             top += MusicLayout.RehearsalHeight;
             context.DrawLine(linePen, new Point(0, top), new Point(Bounds.Width, top));
+        }
+    }
+
+    private void DrawSections(DrawingContext context, MusicEditorViewModel editor)
+    {
+        foreach (SectionBand band in editor.SectionBands)
+        {
+            double x = band.Start * editor.BarWidth;
+            double width = band.Length * editor.BarWidth;
+            Color tint = Tint(band.Index);
+            context.FillRectangle(new SolidColorBrush(tint), new Rect(x + 1, 0, Math.Max(0, width - 2), 4));
+            if (editor.BarWidth >= 18)
+            {
+                context.DrawText(Label(band.Name, Brush("EditorHintBrush"), 9), new Point(x + 26, 12));
+            }
+        }
+
+        IBrush accent = Brush("EditorAccentBrush");
+        foreach (ContinuePointViewModel point in editor.ContinuePoints)
+        {
+            double x = (point.Point.Bar - 1) * editor.BarWidth;
+            StreamGeometry flag = new();
+            using (StreamGeometryContext shape = flag.Open())
+            {
+                shape.BeginFigure(new Point(x - 4, MusicLayout.RulerHeight), true);
+                shape.LineTo(new Point(x + 4, MusicLayout.RulerHeight));
+                shape.LineTo(new Point(x, MusicLayout.RulerHeight - 7));
+                shape.EndFigure(true);
+            }
+
+            context.DrawGeometry(accent, null, flag);
         }
     }
 

@@ -78,6 +78,54 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <DockPanel Margin="0,10,0,3">
+              <Button DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="Add a section after the last" Command="{Binding AddSectionCommand}"><PathIcon Data="{x:Static shell:LucideIcons.Add}" /></Button>
+              <TextBlock Text="SECTIONS" Classes="caps" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock Classes="hint small" TextWrapping="Wrap" Text="The parts of a song, one after the other from bar 1. The game gets a MusicSectionEvent as the music enters each." />
+            <ItemsControl ItemsSource="{Binding Sections}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="coremusic:SectionViewModel">
+                  <Grid ColumnDefinitions="*,6,56,4,Auto" Margin="0,2">
+                    <TextBox Grid.Column="0" Text="{Binding Name}" />
+                    <TextBox Grid.Column="2" Text="{Binding Bars}" ToolTip.Tip="Length in bars" />
+                    <Button Grid.Column="4" Classes="icon delete" Click="HandleRemoveSection"><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></Button>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <DockPanel Margin="0,10,0,3">
+              <Button DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="Add a continue point at the playhead" Command="{Binding AddContinuePointCommand}"><PathIcon Data="{x:Static shell:LucideIcons.Add}" /></Button>
+              <TextBlock Text="CONTINUE POINTS" Classes="caps" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock Classes="hint small" TextWrapping="Wrap" Text="When another cue is taken off this one, it continues at the first point at or after where it stopped, else the first." />
+            <ItemsControl ItemsSource="{Binding ContinuePoints}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="coremusic:ContinuePointViewModel">
+                  <Grid ColumnDefinitions="*,6,56,4,Auto" Margin="0,2">
+                    <TextBox Grid.Column="0" Text="{Binding Name}" />
+                    <TextBox Grid.Column="2" Text="{Binding Bar}" ToolTip.Tip="The bar it picks up from" />
+                    <Button Grid.Column="4" Classes="icon delete" Click="HandleRemoveContinuePoint"><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></Button>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <DockPanel Margin="0,10,0,3">
+              <Button DockPanel.Dock="Right" Classes="quiet" Command="{Binding PopCueCommand}"><TextBlock Text="Pop" /></Button>
+              <TextBlock Text="CUE STACK" Classes="caps" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock Classes="hint small" TextWrapping="Wrap" Text="What the game keeps while it plays. Push a cue over this one from the Cues list; each cue below remembers its bar and layers." />
+            <ItemsControl ItemsSource="{Binding StackEntries}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="coremusic:StackEntryViewModel">
+                  <DockPanel Margin="0,2">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding State}" Classes="hint small" VerticalAlignment="Center" />
+                    <PathIcon Classes="small" DockPanel.Dock="Left" Margin="0,0,7,0" Data="{x:Static shell:LucideIcons.Music}" />
+                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                  </DockPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </StackPanel>
         </ScrollViewer>
       </DockPanel>
@@ -116,6 +164,7 @@
                 <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Music}" />
                 <TextBlock Text="{Binding Name}" />
                 <TextBlock Text="{Binding Path}" Classes="hint small" VerticalAlignment="Center" />
+                <Button Classes="quiet" Click="HandlePushCue" ToolTip.Tip="Push over the playing cue"><TextBlock Text="Push over" /></Button>
               </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>

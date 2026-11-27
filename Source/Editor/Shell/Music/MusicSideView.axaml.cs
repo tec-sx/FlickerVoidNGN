@@ -44,6 +44,30 @@ public partial class MusicSideView : UserControl
         }
     }
 
+    private void HandleRemoveSection(object? sender, RoutedEventArgs args)
+    {
+        if (sender is Control { DataContext: SectionViewModel section } && Editor is { } editor)
+        {
+            editor.RemoveSection(section);
+        }
+    }
+
+    private void HandleRemoveContinuePoint(object? sender, RoutedEventArgs args)
+    {
+        if (sender is Control { DataContext: ContinuePointViewModel point } && Editor is { } editor)
+        {
+            editor.RemoveContinuePoint(point);
+        }
+    }
+
+    private void HandlePushCue(object? sender, RoutedEventArgs args)
+    {
+        if (sender is Control { DataContext: SoundItem item } && Editor is { } editor)
+        {
+            editor.PushCueCommand.Execute(item.Path);
+        }
+    }
+
     private void HandleSoundDoubleTapped(object? sender, TappedEventArgs args)
     {
         if (sender is ListBox { SelectedItem: SoundItem item } && Editor is { } editor)
