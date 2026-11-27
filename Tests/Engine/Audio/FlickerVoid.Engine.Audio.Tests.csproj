@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../Source/Engine/Audio/FlickerVoid.Engine.Audio.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- A quarter second of a 440 Hz tone, stereo at 44.1 kHz, for the Ogg reader. -->
+    <None Include="Sounds/Tone.ogg" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

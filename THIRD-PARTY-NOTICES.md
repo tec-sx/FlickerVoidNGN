@@ -97,3 +97,11 @@ Used in: `Source/Native/Dlss` (the engine's DLSS library links the SDK's NGX sta
 https://github.com/elalish/manifold (v3.5.5)
 
 Used in: `Source/Native/Manifold` and `Source/Editor/Core/Meshes/Booleans` (the editor's mesh Booleans call its C binding). Nothing of it is in this repository: the build scripts fetch and build it. Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0), Copyright The Manifold Authors.
+
+## NVorbis
+
+`Source/Engine/Audio` decodes Ogg Vorbis files through the NVorbis package.
+
+- Source: https://github.com/NVorbis/NVorbis
+- Licence: MIT
+- Copyright (c) Andrew Ward
