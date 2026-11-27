@@ -68,6 +68,13 @@ public sealed partial class ViewportViewModel : ObservableObject
         Mode = SceneMode;
         MeshTools = new MeshToolsViewModel(() => Creator, message => Status = message);
         ToolRail = new ToolRailViewModel(this);
+        MeshTools.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MeshToolsViewModel.IsMeshMode))
+            {
+                OnPropertyChanged(nameof(IsBuildingPlan));
+            }
+        };
         Selection.Changed += HandleSelectionChanged;
         scene.Content.Changed += HandleContentChanged;
         scene.Opened += HandleSceneOpened;
@@ -249,6 +256,11 @@ public sealed partial class ViewportViewModel : ObservableObject
     public void KeyPressed(ViewportKey key, ViewportButtons held, bool ctrl = false)
     {
         if ((held & ViewportButtons.Right) != 0)
+        {
+            return;
+        }
+
+        if (PressBuildingKey(key))
         {
             return;
         }

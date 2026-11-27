@@ -117,6 +117,7 @@ public static class LucideIcons
     public static Geometry Elevator { get; } = Parse("M21 16l-4 4-4-4 M17 20V4 M3 8l4-4 4 4 M7 4v16");
     public static Geometry Window { get; } = Parse("M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M12 3v18 M3 12h18");
     public static Geometry Floor { get; } = Parse("M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z");
+    public static Geometry Walk { get; } = Parse("M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z M16 17h4 M4 13h4");
     public static Geometry TopView { get; } = Parse("M3 7V5a2 2 0 0 1 2-2h2 M17 3h2a2 2 0 0 1 2 2v2 M21 17v2a2 2 0 0 1-2 2h-2 M7 21H5a2 2 0 0 1-2-2v-2");
     public static Geometry Steps { get; } = Parse("M3 20h5v-5h5v-5h5V5h3");
     public static Geometry Warning { get; } = Parse("M21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3 M12 9v4 M12 17h.01");
@@ -259,6 +260,7 @@ public static class LucideIcons
         [nameof(Window)] = Window,
         [nameof(Floor)] = Floor,
         [nameof(TopView)] = TopView,
+        [nameof(Walk)] = Walk,
         [nameof(Steps)] = Steps,
         [nameof(Warning)] = Warning,
         [nameof(Walls)] = Walls,

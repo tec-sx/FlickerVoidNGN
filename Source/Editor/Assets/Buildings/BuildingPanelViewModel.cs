@@ -39,6 +39,10 @@ public sealed partial class BuildingPanelViewModel : CreatorPanelViewModel
     [NotifyCanExecuteChangedFor(nameof(RemoveStoreyCommand))]
     public partial BuildingStoreyItem? Storey { get; set; }
 
+    /// <summary>Whether the storeys above the one edited are shown in the viewport; off, they are hidden as the game's cutaway hides them.</summary>
+    [ObservableProperty]
+    public partial bool ShowsAbove { get; set; }
+
     /// <summary>The building's parts as a tree, flattened in order with each line's depth.</summary>
     [ObservableProperty]
     public partial IReadOnlyList<BuildingNode> Nodes { get; private set; } = [];

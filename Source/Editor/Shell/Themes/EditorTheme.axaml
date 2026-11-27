@@ -1522,4 +1522,87 @@
     <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
     <Setter Property="BoxShadow" Value="0 0 0 1 #F5A639" />
   </Style>
+
+  <!-- The building creator's Tool tab (rule R3: hairlines, warm colours): segmented choices, row actions, list rows. -->
+  <Style Selector="ToggleButton.segment">
+    <Setter Property="MinHeight" Value="22" />
+    <Setter Property="Padding" Value="4,1" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1,1,0,1" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+  <Style Selector="ToggleButton.segment:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentLineBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.segment:checked">
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="Button.toolAction">
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="Padding" Value="6,2" />
+    <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+  <Style Selector="Button.toolAction.accentOutline">
+    <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
+  <Style Selector="Button.listRow">
+    <Setter Property="MinHeight" Value="22" />
+    <Setter Property="Padding" Value="2,2" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Button.listRow PathIcon.rowIcon">
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="Button.listRow.chosen /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
+  </Style>
+  <Style Selector="Button.listRow.warning TextBlock.rowLabel">
+    <Setter Property="Foreground" Value="{StaticResource EditorDeleteBrush}" />
+  </Style>
+  <Style Selector="Button.listRow.warning PathIcon.rowIcon">
+    <Setter Property="Foreground" Value="{StaticResource EditorDeleteBrush}" />
+  </Style>
+
+  <!-- The building creator over the viewport: labels of rooms, sizes and drags, and the storey switcher. -->
+  <Style Selector="Border.planRoom">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.planRoom TextBlock.title">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.planTag">
+    <Setter Property="Background" Value="{StaticResource EditorOverlayBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorOverlayLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Padding" Value="6,1" />
+  </Style>
+  <Style Selector="Border.planTag.drag">
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentLineBrush}" />
+  </Style>
+  <Style Selector="Border.planTag.drag TextBlock.title">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="ListBox.storeys ListBoxItem">
+    <Setter Property="MinHeight" Value="22" />
+    <Setter Property="Padding" Value="8,2" />
+    <Setter Property="CornerRadius" Value="3" />
+  </Style>
+  <Style Selector="ListBox.storeys ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
+  </Style>
+  <Style Selector="ListBox.storeys ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{StaticResource EditorAccentBrush}" />
+  </Style>
 </Styles>

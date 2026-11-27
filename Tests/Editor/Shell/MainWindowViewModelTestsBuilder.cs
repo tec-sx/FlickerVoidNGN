@@ -211,6 +211,7 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
         string folder = Path.Combine(_contentFolder, "Houses");
         Directory.CreateDirectory(folder);
         BuildingFile house = BuildingFile.Create();
+        FlickerVoid.Editor.Core.Buildings.BuildingTools.Rebuild(house);
         string json = JsonSerializer.Serialize(house, BuildingsJsonContext.Default.BuildingFile);
         WriteFile(House, json);
         ViewModel.Assets.Refresh();

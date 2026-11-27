@@ -408,6 +408,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(DataHeading));
         OnPropertyChanged(nameof(DataTitle));
         OnPropertyChanged(nameof(CreatorHeading));
+        OnPropertyChanged(nameof(IsCreatorUnsaved));
         SaveAssetsCommand.NotifyCanExecuteChanged();
         DiscardAssetsCommand.NotifyCanExecuteChanged();
     }

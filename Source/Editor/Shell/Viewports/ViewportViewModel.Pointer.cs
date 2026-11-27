@@ -5,12 +5,18 @@ namespace FlickerVoid.Editor.Viewports;
 public sealed partial class ViewportViewModel
 {
     /// <summary>A left click without Alt, which the open mode takes.</summary>
-    public void PointerPressed(Vector2 pixel, int width, int height) => Mode.PointerPressed(pixel, width, height);
+    public void PointerPressed(Vector2 pixel, int width, int height)
+    {
+        if (!PressBuilding(pixel, width, height))
+        {
+            Mode.PointerPressed(pixel, width, height);
+        }
+    }
 
     /// <summary>A left click in the creator's mesh sets a pending tool where the mouse put it (Apply keeps it), else selects: Shift adds to the selection, Ctrl selects the loop through what is hit.</summary>
     public void PointerPressed(Vector2 pixel, int width, int height, bool additive, bool loop)
     {
-        if (MeshTools.Settle())
+        if (PressBuilding(pixel, width, height) || MeshTools.Settle())
         {
             return;
         }

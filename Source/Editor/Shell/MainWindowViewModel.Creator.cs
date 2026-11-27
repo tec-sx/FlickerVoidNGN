@@ -13,6 +13,8 @@ using FlickerVoid.Editor.Assets.Props;
 using FlickerVoid.Editor.Assets.Creators;
 using FlickerVoid.Editor.Assets.Foliage;
 using FlickerVoid.Editor.Assets.Vehicles;
+using FlickerVoid.Editor.Buildings;
+using FlickerVoid.Editor.Core.Buildings;
 using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Meshes.Doors;
 using FlickerVoid.Editor.Core.Scenes;
@@ -78,6 +80,9 @@ public sealed partial class MainWindowViewModel
         }
 
         OnPropertyChanged(nameof(CreatorParts));
+        OnPropertyChanged(nameof(CreatorNodes));
+        OnPropertyChanged(nameof(ShowsBuildingParts));
+        OnPropertyChanged(nameof(CreatorNode));
     }
 
     private void HandleCreatorPanelChanged(object? sender, PropertyChangedEventArgs e)
@@ -85,8 +90,63 @@ public sealed partial class MainWindowViewModel
         if (e.PropertyName == nameof(CreatorPanelViewModel.Parts))
         {
             OnPropertyChanged(nameof(CreatorParts));
+            OnPropertyChanged(nameof(IsCreatorUnsaved));
+        }
+
+        if (e.PropertyName == nameof(BuildingPanelViewModel.Nodes))
+        {
+            OnPropertyChanged(nameof(CreatorNodes));
+            OnPropertyChanged(nameof(CreatorNode));
         }
     }
+
+    /// <summary>A building's parts as a tree, for the outliner's Parts tab; empty for other creations.</summary>
+    public IReadOnlyList<BuildingNode> CreatorNodes => (CreatorPanel as BuildingPanelViewModel)?.Nodes ?? [];
+
+    /// <summary>Whether the Parts tab shows a building's tree rather than a list of part ids.</summary>
+    public bool ShowsBuildingParts => CreatorPanel is BuildingPanelViewModel;
+
+    /// <summary>The line of the building's tree that stands for what is picked in its plan, or null; choosing one picks it.</summary>
+    public BuildingNode? CreatorNode
+    {
+        get
+        {
+            if (Viewport.Building?.Editor.Picked is not { } pick)
+            {
+                return null;
+            }
+
+            return CreatorNodes.FirstOrDefault(node => node.Pick == pick);
+        }
+        set
+        {
+            if (Viewport.Building is not { } plan || value is null)
+            {
+                return;
+            }
+
+            if (value.Pick is { } pick)
+            {
+                plan.Editor.Pick(pick);
+            }
+
+            if (value.PartId is { } part)
+            {
+                Viewport.Creator?.SelectPart(part);
+            }
+        }
+    }
+
+    /// <summary>The scene the creation is made from, as the breadcrumb starts: Main.</summary>
+    public string CreatorScene => Path.GetFileNameWithoutExtension(Viewport.Scene.ScenePath ?? "Scene");
+
+    /// <summary>The creation's file name, as the breadcrumb ends: Inn.fvbuilding.</summary>
+    public string CreatorFileName => Path.GetFileName(Viewport.CreatorFile ?? "");
+
+    /// <summary>Whether the creation's file has unsaved edits, as the breadcrumb's dot shows.</summary>
+    public bool IsCreatorUnsaved => Viewport.CreatorFile is { } file && _content.IsUnsaved(file);
+
+    private void HandleBuildingPicked() => OnPropertyChanged(nameof(CreatorNode));
 
     /// <summary>The ids of the creation's parts, for the outliner's Parts tab; empty in the scene.</summary>
     public IReadOnlyList<string> CreatorParts => CreatorPanel?.Parts ?? [];
@@ -260,6 +320,15 @@ public sealed partial class MainWindowViewModel
         creator.PartSelected += () => OnPropertyChanged(nameof(CreatorPart));
         creator.MeshModeChanged += ShowGreyboxesInTheMesh;
         ShowContext(CreatorTab);
+        if (panel is BuildingPanelViewModel building)
+        {
+            UndoHistory history = _content.GetHistory(file);
+            BuildingPlanViewModel plan = new(Viewport.Scene, Viewport.Camera, creator, building, history);
+            plan.Editor.Changed += HandleBuildingPicked;
+            Viewport.Building = plan;
+            ShowContext(ToolTab);
+        }
+
         OutlinerTab = PartsTab;
         Viewport.Status = $"Making {file}. Escape, or a double-click beside it, goes back to the level.";
     }
@@ -358,6 +427,10 @@ public sealed partial class MainWindowViewModel
         if (OpenCreatorPanel(file) is { } panel)
         {
             CreatorPanel = panel;
+            if (panel is BuildingPanelViewModel building && Viewport.Building is { } plan)
+            {
+                plan.Panel = building;
+            }
         }
     }
 
@@ -376,6 +449,13 @@ public sealed partial class MainWindowViewModel
                 left.ShowsLook = true;
             }
 
+            if (Viewport.Building is { } plan)
+            {
+                plan.Editor.Changed -= HandleBuildingPicked;
+                Viewport.Building = null;
+                plan.Dispose();
+            }
+
             CreatorPanel = null;
             HideContext(CreatorTab);
             HideContext(ToolTab);
@@ -386,6 +466,9 @@ public sealed partial class MainWindowViewModel
         }
 
         OnPropertyChanged(nameof(CreatorHeading));
+        OnPropertyChanged(nameof(CreatorScene));
+        OnPropertyChanged(nameof(CreatorFileName));
+        OnPropertyChanged(nameof(IsCreatorUnsaved));
         OnPropertyChanged(nameof(CreatorIcon));
         OnPropertyChanged(nameof(CreatorPart));
         DuplicateAndEditCommand.NotifyCanExecuteChanged();

@@ -28,6 +28,11 @@ public sealed partial class ViewportViewModel
         }
 
         World world = Scene.Game.World;
+        if (Building is { IsWalking: true })
+        {
+            return;
+        }
+
         if (Creator is { } creator)
         {
             if (creator.FindSelectedPart() is { } part && world.TryGet(part, out Transform placed))
@@ -80,6 +85,11 @@ public sealed partial class ViewportViewModel
     /// </summary>
     public RenderCamera? GetPreviewCamera()
     {
+        if (Building is { } building)
+        {
+            return building.GetPreview();
+        }
+
         World world = Scene.Game.World;
         if (IsGameView || Selection.Selected is not { } selected || !world.IsAlive(selected) || !world.Has<Camera, Transform>(selected))
         {

@@ -494,7 +494,7 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     }
 
     [Fact]
-    public void OpeningABuildingInTheBrowserMakesItWithItsOwnPanel()
+    public void OpeningABuildingInTheBrowserMakesItWithItsPlanToolsAndTree()
     {
         _builder.WriteHouse();
 
@@ -503,10 +503,48 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         Viewport.Creator!.Placement.Should().Be(CreatorPlacement.Alone);
         ViewModel.CreatorKind.Should().Be("Building");
         BuildingPanelViewModel panel = ViewModel.CreatorPanel.Should().BeOfType<BuildingPanelViewModel>().Subject;
-        ViewModel.CreatorParts.Should().Equal("storey.0", "roof");
-        panel.Storeys = 2;
-        ViewModel.CreatorParts.Should().Equal("storey.0", "storey.1", "roof");
-        ViewModel.CreatorHeading.Should().Be($"{MainWindowViewModelTestsBuilder.House} *");
+        Viewport.Building.Should().NotBeNull();
+        Viewport.IsBuildingPlan.Should().BeTrue();
+        ViewModel.SideTab.Should().Be(MainWindowViewModel.ToolTab, "the Tool tab comes in front, the Building tab beside it");
+        ViewModel.ShowsBuildingParts.Should().BeTrue();
+        ViewModel.CreatorNodes.Select(static node => node.Name).Should().StartWith(["House.fvbuilding", "Ground", "Floor", "Outside walls"]);
+        Viewport.ToolRail.Groups.SelectMany(static group => group.Items).Select(static item => item.Name).Should().Contain(["Push wall", "Opening", "Camera"]);
+        panel.AddStoreyAboveCommand.Execute(null);
+        ViewModel.CreatorNodes.Select(static node => node.Name).Should().Contain("Storey 1");
+        ViewModel.IsCreatorUnsaved.Should().BeTrue();
+        ViewModel.CreatorFileName.Should().Be("House.fvbuilding");
+    }
+
+    [Fact]
+    public void TheBuildingsKeysTakeItsToolsAndPickingATreeLinePicksInThePlan()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+
+        Viewport.KeyPressed(ViewportKey.D, ViewportButtons.None);
+        FlickerVoid.Editor.Core.Buildings.BuildingTool opening = Viewport.Building!.Editor.Tool;
+        Viewport.KeyPressed(ViewportKey.Y, ViewportButtons.None);
+        FlickerVoid.Editor.Core.Buildings.BuildingTool camera = Viewport.Building.Editor.Tool;
+        ViewModel.CreatorNode = ViewModel.CreatorNodes.Single(static node => node.Name == "Front door");
+
+        opening.Should().Be(FlickerVoid.Editor.Core.Buildings.BuildingTool.Opening);
+        camera.Should().Be(FlickerVoid.Editor.Core.Buildings.BuildingTool.Camera);
+        Viewport.Building.Editor.Picked!.Kind.Should().Be(FlickerVoid.Editor.Core.Buildings.PlanPickKind.Opening);
+        Viewport.Creator!.SelectedPart.Should().Be("storey.0.door.9");
+        Viewport.Building.Tool.Title.Should().Be("Camera");
+        Viewport.Building.Tool.Subtitle.Should().Be("Front door, Ground");
+    }
+
+    [Fact]
+    public void LeavingTheBuildingPutsItsPlanToolsAway()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+
+        Viewport.LeaveCreator();
+
+        Viewport.Building.Should().BeNull();
+        ViewModel.ShowsTool.Should().BeFalse();
     }
 
     [Fact]
