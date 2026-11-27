@@ -116,7 +116,7 @@ public sealed class MusicLanes : Control
     private void DrawGrid(DrawingContext context, MusicEditorViewModel editor, double bar, double barsEnd, Pen linePen, IBrush text)
     {
         Pen faint = new(Brush("EditorPanelBrush"), 1);
-        int phrase = Math.Max(1, (int)editor.PhraseBars);
+        int phrase = editor.IsHours ? 6 : Math.Max(1, (int)editor.PhraseBars);
         for (int index = 0; index <= editor.TotalBars; index++)
         {
             double x = index * bar;
@@ -126,7 +126,11 @@ public sealed class MusicLanes : Control
             if (index < editor.TotalBars && (bar >= 18 || major))
             {
                 IBrush brush = major ? Brush("EditorTextBrush") : text;
-                context.DrawText(Label((index + 1).ToString(CultureInfo.InvariantCulture), brush), new Point(x + 4, 5));
+                string number = editor.IsHours ? $"{index:00}:00" : (index + 1).ToString(CultureInfo.InvariantCulture);
+                if (!editor.IsHours || index % 3 == 0)
+                {
+                    context.DrawText(Label(number, brush), new Point(x + 4, 5));
+                }
             }
         }
 

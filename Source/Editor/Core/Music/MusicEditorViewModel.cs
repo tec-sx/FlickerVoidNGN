@@ -201,6 +201,11 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     {
         get
         {
+            if (IsHours)
+            {
+                return HourText;
+            }
+
             double bar = Math.Floor(Playhead);
             double beats = (Playhead - bar) * _cue.BeatsPerBar;
             double beat = Math.Floor(beats);
@@ -209,10 +214,27 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>Whether the cue has no tempo, so its lanes show the hours of the day: the playhead is the time of day it is heard at.</summary>
+    public bool IsHours => _cue.Tempo <= 0;
+
+    private string HourText
+    {
+        get
+        {
+            int minutes = (int)Math.Round(Playhead * 60);
+            return $"{minutes / 60 % 24:00}:{minutes % 60:00}";
+        }
+    }
+
     public string TimeText
     {
         get
         {
+            if (IsHours)
+            {
+                return HourText;
+            }
+
             double seconds = Playhead * BarSeconds;
             int minutes = (int)(seconds / 60);
             double rest = seconds - (minutes * 60);
@@ -356,6 +378,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(BarSeconds));
         OnPropertyChanged(nameof(HasTracks));
         OnPropertyChanged(nameof(Tempo));
+        OnPropertyChanged(nameof(IsHours));
         OnPropertyChanged(nameof(BeatsPerBar));
         OnPropertyChanged(nameof(PhraseBars));
         OnPropertyChanged(nameof(PositionText));
@@ -745,7 +768,17 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         }
 
         ReleaseRows();
-        _preview.Music.Preview(_path, _cue, Playhead + 1);
+        _preview.Music.IgnoreConditions = !IsHours;
+        if (IsHours)
+        {
+            _preview.SetHour(Playhead);
+            _preview.Music.Preview(_path, _cue, 1);
+        }
+        else
+        {
+            _preview.Music.Preview(_path, _cue, Playhead + 1);
+        }
+
         _startedAt = Playhead;
         foreach (MusicTrackViewModel track in Tracks)
         {
@@ -756,7 +789,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     /// <summary>Moves the playhead to a bar of the lanes, from 0, snapped; playing, the music jumps there.</summary>
     public void SeekTo(double bars)
     {
-        double unit = MusicGrid.GetUnit(_cue, Snap);
+        double unit = IsHours ? 0.25 : MusicGrid.GetUnit(_cue, Snap);
         double clamped = Math.Clamp(bars, 0, TotalBars);
         if (unit > 0)
         {
@@ -767,7 +800,14 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         if (IsPlaying && _preview is not null)
         {
             ReleaseRows();
-            _preview.Music.Seek(Playhead + 1, _cue.Bus);
+            if (IsHours)
+            {
+                _preview.SetHour(Playhead);
+            }
+            else
+            {
+                _preview.Music.Seek(Playhead + 1, _cue.Bus);
+            }
         }
     }
 
@@ -799,7 +839,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         if (IsPlaying)
         {
             MusicPosition position = _preview.Music.GetPosition(_cue.Bus);
-            if (_preview.Music.GetCurrent(_cue.Bus) is not null && position.Bars >= 0)
+            if (!IsHours && _preview.Music.GetCurrent(_cue.Bus) is not null && position.Bars >= 0)
             {
                 Playhead = position.Bars;
             }

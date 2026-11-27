@@ -59,6 +59,13 @@ public sealed class MusicPreview : IDisposable
     public Mixer Mixer => _audio.Mixer;
 
     /// <summary>Runs the game's frames for the time passed; where no device pulls the mixer, renders what it would have played.</summary>
+    /// <summary>Sets the time of day the preview's conditions read, in hours; it does not run on.</summary>
+    public void SetHour(double hour)
+    {
+        _game.Clock.Speed = 0;
+        _game.Clock.Set(0, hour);
+    }
+
     public void Tick(TimeSpan elapsed)
     {
         _game.Tick(elapsed);

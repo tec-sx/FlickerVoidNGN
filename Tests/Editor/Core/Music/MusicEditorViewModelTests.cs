@@ -183,6 +183,19 @@ public sealed class MusicEditorViewModelTests
         }
     }
 
+    [Fact]
+    public void ShowsAnAmbienceCueOnTheHoursOfTheDay()
+    {
+        MusicEditorViewModel editor = Build(new MusicCue { Tempo = 0, Tracks = [new MusicTrack { Name = "Bed", Loop = "Bed.ogg" }] });
+
+        editor.IsHours.Should().BeTrue();
+        editor.TotalBars.Should().Be(24);
+        editor.SeekTo(18.5);
+        editor.PositionText.Should().Be("18:30");
+        editor.TimeText.Should().Be("18:30");
+        Build(new MusicCue()).IsHours.Should().BeFalse();
+    }
+
     private static byte[] Wav(int frames)
     {
         using MemoryStream stream = new();
