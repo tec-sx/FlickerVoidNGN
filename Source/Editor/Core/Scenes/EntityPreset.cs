@@ -69,6 +69,15 @@ public sealed record EntityPreset(string Name, IReadOnlyList<string> Components,
         return new EntityPreset(name, ["transform", "vehicle"]) { Values = values, Icon = "Vehicle" };
     }
 
+    /// <summary>A prop entity named after a prop file in the content folder, whose parts it spawns.</summary>
+    public static EntityPreset ForProp(string path)
+    {
+        string name = Path.GetFileNameWithoutExtension(path);
+        JsonEncodedText file = JsonEncodedText.Encode(path);
+        Dictionary<string, string> values = new() { ["prop"] = $$"""{ "file": "{{file}}" }""" };
+        return new EntityPreset(name, ["transform", "prop"]) { Values = values, Icon = "Prop" };
+    }
+
     /// <summary>A building entity named after a building file in the content folder, whose parts it spawns.</summary>
     public static EntityPreset ForBuilding(string path)
     {

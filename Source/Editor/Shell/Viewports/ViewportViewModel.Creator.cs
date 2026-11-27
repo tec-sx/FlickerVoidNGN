@@ -11,6 +11,7 @@ using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Greyboxes;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Props;
 using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Vehicles;
 
@@ -74,6 +75,10 @@ public sealed partial class ViewportViewModel
         else if (world.TryGet(picked, out Building building) && !string.IsNullOrEmpty(building.File))
         {
             CreationRequested?.Invoke(picked, building.File);
+        }
+        else if (world.TryGet(picked, out Prop prop) && !string.IsNullOrEmpty(prop.File))
+        {
+            CreationRequested?.Invoke(picked, prop.File);
         }
         else if (world.TryGet(picked, out Plant plant) && !string.IsNullOrEmpty(plant.File))
         {
@@ -150,12 +155,16 @@ public sealed partial class ViewportViewModel
 
         if (MeshTools.IsDragging)
         {
-            if (key == ViewportKey.Escape)
+            switch (key)
             {
-                return MeshTools.CancelDrag();
+                case ViewportKey.Escape:
+                    return MeshTools.CancelDrag();
+                case ViewportKey.Enter:
+                    return MeshTools.ConfirmDrag();
+                default:
+                    // A pending tool waits for Apply or Cancel; other keys go to the view (its camera keys still move it).
+                    return false;
             }
-
-            MeshTools.ConfirmDrag();
         }
 
         if (key == ViewportKey.Tab)
@@ -191,6 +200,9 @@ public sealed partial class ViewportViewModel
                 break;
             case ViewportKey.B:
                 MeshTools.DragBevel();
+                break;
+            case ViewportKey.H:
+                MeshTools.DragHollow();
                 break;
             case ViewportKey.M:
                 MeshTools.Mirror = !MeshTools.Mirror;

@@ -28,6 +28,7 @@ public static class SceneIcons
         ("interactable", "Interact"),
         ("vehicle", "Vehicle"),
         ("building", "Building"),
+        ("prop", "Prop"),
         ("foliage", "Tree"),
         ("foliageScatter", "Tree"),
         ("meshRenderer", "Model"),

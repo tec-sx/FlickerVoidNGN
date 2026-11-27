@@ -9,6 +9,7 @@ using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Geometry;
+using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Core.Tests.Creators;
@@ -449,6 +450,44 @@ public sealed class CreatorModeTests : IDisposable
 
         bevel.Should().BeFalse("nothing is selected");
         mode.MeshDrag.Should().BeNull();
+    }
+
+    [Fact]
+    public void AHollowDragNeedsNoSelectionAndIsOneUndoStep()
+    {
+        Assert.SkipUnless(FlickerVoid.Editor.Core.Meshes.Booleans.SolidBoolean.IsAvailable, "Manifold's library is not built.");
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        int faces = _builder.FindMesh("body")!.Faces.Count;
+
+        bool started = mode.BeginMeshDrag(MeshDragTool.Hollow, new MeshDragOptions());
+        bool shown = mode.DragMesh(0.05f);
+        mode.EndMeshDrag(keep: true);
+
+        started.Should().BeTrue();
+        shown.Should().BeTrue();
+        _builder.FindMesh("body")!.Faces.Count.Should().Be(faces * 2, "the inner copy is the shell's inside");
+    }
+
+    [Fact]
+    public void NewOptionsRemakeAPendingBevelAtTheSameAmount()
+    {
+        using CreatorMode mode = _builder.EnterAlone();
+        mode.SelectPart("body");
+        mode.EnterMesh();
+        mode.MeshSelection!.SetElement(FlickerVoid.Editor.Core.Meshes.MeshElement.Edge);
+        SolidEdge edge = new SolidTopology(_builder.FindMesh("body")!).GetFaceEdges(2).First();
+        mode.MeshSelection.SelectEdges([edge]);
+        mode.BeginMeshDrag(MeshDragTool.Bevel, new MeshDragOptions(1, false));
+        mode.DragMesh(0.05f);
+        int oneRow = _builder.FindMesh("body")!.Faces.Count;
+
+        bool remade = mode.SetMeshDragOptions(new MeshDragOptions(3, true));
+
+        remade.Should().BeTrue();
+        _builder.FindMesh("body")!.Faces.Count.Should().Be(oneRow + 2, "two more strips");
+        mode.MeshDrag.Should().Be(MeshDragTool.Bevel, "the tool waits for Apply");
     }
 
     [Fact]

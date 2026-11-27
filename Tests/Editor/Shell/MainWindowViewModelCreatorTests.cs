@@ -165,7 +165,7 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     }
 
     [Fact]
-    public void ExtrudeFollowsTheMouseUntilAClickKeepsIt()
+    public void ExtrudeFollowsTheMouseUntilAClickSetsItAndEnterKeepsIt()
     {
         MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
         int points = ViewModel.CreatorPanel!.FindMesh("body")!.Points.Count;
@@ -176,12 +176,15 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         Viewport.PointerMoved(new Vector2(300, 200), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height);
         bool dragging = tools.IsDragging;
         Viewport.PointerPressed(new Vector2(300, 200), MainWindowViewModelTestsBuilder.Width, MainWindowViewModelTestsBuilder.Height, additive: false, loop: false);
+        bool pending = tools.IsDragging;
+        Viewport.KeyPressed(ViewportKey.Enter, ViewportButtons.None);
 
         dragging.Should().BeTrue();
+        pending.Should().BeTrue("a click only sets the tool");
         tools.IsDragging.Should().BeFalse();
         tools.Amount.Should().BeGreaterThan(0);
         ViewModel.CreatorPanel.FindMesh("body")!.Points.Should().HaveCount(points + 4);
-        Viewport.Creator!.MeshSelection!.Faces.Should().ContainSingle("the click kept the tool's work and selected nothing else");
+        Viewport.Creator!.MeshSelection!.Faces.Should().ContainSingle("Enter kept the tool's work and the click selected nothing else");
         Viewport.Mode.History.Undo();
         ViewModel.CreatorPanel.FindMesh("body")!.Points.Should().HaveCount(points, "the whole drag is one undo step");
     }
@@ -245,6 +248,31 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         tools.Through.Should().BeTrue();
         tools.GetMenu().Select(choice => choice.Name).Should().Contain("Cut Through: On");
         tools.IsDragging.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AClickSetsAPendingToolAndItsNumbersStillChangeItUntilEnter()
+    {
+        MeshToolsViewModel tools = EnterBodyWithAFaceSelected();
+        int points = ViewModel.CreatorPanel!.FindMesh("body")!.Points.Count;
+        int width = MainWindowViewModelTestsBuilder.Width;
+        int height = MainWindowViewModelTestsBuilder.Height;
+
+        Viewport.KeyPressed(ViewportKey.I, ViewportButtons.None);
+        Viewport.PointerMoved(new Vector2(300, 260), width, height);
+        Viewport.PointerMoved(new Vector2(300, 250), width, height);
+        Viewport.PointerPressed(new Vector2(300, 250), width, height, additive: false, loop: false);
+        bool pending = tools.IsDragging && !tools.IsFollowing;
+        Viewport.PointerMoved(new Vector2(300, 100), width, height);
+        tools.Thickness = 0.02;
+        Viewport.KeyPressed(ViewportKey.X, ViewportButtons.None);
+        bool stillPending = tools.IsDragging && tools.ActiveTool == FlickerVoid.Editor.Core.Creators.MeshDragTool.Inset;
+        Viewport.KeyPressed(ViewportKey.Enter, ViewportButtons.None);
+
+        pending.Should().BeTrue("a click sets the tool but does not apply it");
+        stillPending.Should().BeTrue("only Enter, Apply, Escape or Cancel end it");
+        tools.IsDragging.Should().BeFalse();
+        ViewModel.CreatorPanel.FindMesh("body")!.Points.Should().HaveCount(points + 4);
     }
 
     private MeshToolsViewModel EnterBodyWithAFaceSelected()

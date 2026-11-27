@@ -7,6 +7,8 @@ using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Editor.Core.Buildings;
 using FlickerVoid.Engine.Buildings;
 using FlickerVoid.Engine.Buildings.Serialization;
+using FlickerVoid.Engine.Props;
+using FlickerVoid.Engine.Props.Serialization;
 using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Foliage.Serialization;
 using FlickerVoid.Engine.Vehicles;
@@ -43,6 +45,13 @@ public static class AssetTypes
     public static AssetType Building { get; } = new("Building", "Building", "#C9A36B", BuildingFile.Extension)
     {
         New = new AssetNew("Building", "New Building", "building", WriteBuilding),
+        IsCreation = true,
+    };
+
+    /// <summary>A prop: an object with no rules of its own, made of boxes; New makes one metre box.</summary>
+    public static AssetType Prop { get; } = new("Prop", "Prop", "#B5A58C", PropFile.Extension)
+    {
+        New = new AssetNew("Prop", "New Prop", "prop", WriteProp),
         IsCreation = true,
     };
 
@@ -98,13 +107,13 @@ public static class AssetTypes
     public static AssetType Code { get; } = new("Code", "Code", "#6FC2B0", ".cs");
 
     /// <summary>Every type a file can have, in the order the browser's filter and New menu list them.</summary>
-    public static IReadOnlyList<AssetType> Files { get; } = [Other, Scene, Vehicle, Building, Foliage, Model, Material, Texture, Mood, Environment, Lens, Canvas, Shader, Data, Table, Flow, Code];
+    public static IReadOnlyList<AssetType> Files { get; } = [Other, Scene, Vehicle, Building, Prop, Foliage, Model, Material, Texture, Mood, Environment, Lens, Canvas, Shader, Data, Table, Flow, Code];
 
     /// <summary>The content drawer's filter chips (rule R11, categories before long lists): everything, then five kinds of work.</summary>
     public static IReadOnlyList<AssetFilter> Filters { get; } =
     [
         new("All", []),
-        new("Scenes", [Scene, Vehicle, Building, Foliage], Scene.Color),
+        new("Scenes", [Scene, Vehicle, Building, Prop, Foliage], Scene.Color),
         new("Art", [Model, Material, Texture, Canvas, Shader], Model.Color),
         new("Light", [Mood, Environment, Lens], Mood.Color),
         new("Data", [Data, Table, Flow], Flow.Color),
@@ -133,6 +142,20 @@ public static class AssetTypes
         using (Utf8JsonWriter writer = new(stream, WriterOptions))
         {
             JsonSerializer.Serialize(writer, tree, FoliageJsonContext.Default.FoliageFile);
+        }
+
+        byte[] written = stream.ToArray();
+        return Encoding.UTF8.GetString(written) + "\n";
+    }
+
+    private static string WriteProp(string schemaPath)
+    {
+        PropFile prop = PropFile.Create();
+        prop.Schema = schemaPath;
+        using MemoryStream stream = new();
+        using (Utf8JsonWriter writer = new(stream, WriterOptions))
+        {
+            JsonSerializer.Serialize(writer, prop, PropsJsonContext.Default.PropFile);
         }
 
         byte[] written = stream.ToArray();
