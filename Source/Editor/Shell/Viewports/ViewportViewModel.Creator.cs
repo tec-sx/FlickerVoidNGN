@@ -11,6 +11,7 @@ using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Engine.Runtime.Geometry;
 using FlickerVoid.Engine.Runtime.Greyboxes;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Props;
 using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Vehicles;
 
@@ -74,6 +75,10 @@ public sealed partial class ViewportViewModel
         else if (world.TryGet(picked, out Building building) && !string.IsNullOrEmpty(building.File))
         {
             CreationRequested?.Invoke(picked, building.File);
+        }
+        else if (world.TryGet(picked, out Prop prop) && !string.IsNullOrEmpty(prop.File))
+        {
+            CreationRequested?.Invoke(picked, prop.File);
         }
         else if (world.TryGet(picked, out Plant plant) && !string.IsNullOrEmpty(plant.File))
         {

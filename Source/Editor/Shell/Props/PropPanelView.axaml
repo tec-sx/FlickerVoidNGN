@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:props="using:FlickerVoid.Editor.Assets.Props"
+             xmlns:inspector="using:FlickerVoid.Editor.Inspector"
+             x:Class="FlickerVoid.Editor.Props.PropPanelView"
+             x:DataType="props:PropPanelViewModel">
+  <!-- A plain object's boxes: the size of the next one, and one taken out; its parts are listed in the outliner. -->
+  <StackPanel Margin="4,2">
+    <Grid ColumnDefinitions="Auto,*,*,*" ColumnSpacing="4">
+      <TextBlock Text="Box" VerticalAlignment="Center" Margin="0,0,4,0" />
+      <inspector:DragNumberBox Grid.Column="1" Value="{Binding Width}" Minimum="0.01" ToolTip.Tip="Width of the next box, in metres." />
+      <inspector:DragNumberBox Grid.Column="2" Value="{Binding Height}" Minimum="0.01" ToolTip.Tip="Height of the next box, in metres." />
+      <inspector:DragNumberBox Grid.Column="3" Value="{Binding Depth}" Minimum="0.01" ToolTip.Tip="Depth of the next box, in metres." />
+    </Grid>
+    <Button Content="Add box" HorizontalAlignment="Stretch" Margin="0,4,0,0" Command="{Binding AddBoxCommand}"
+            ToolTip.Tip="Add a box of this size beside the others; shape it with the mesh tools, hollow it with H." />
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,8,0,0">
+      <TextBlock Text="Part" VerticalAlignment="Center" />
+      <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Boxes}" SelectedItem="{Binding Chosen}" />
+      <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveCommand}"
+              ToolTip.Tip="Take the part out, with the doors placed on it; the last part stays." />
+    </Grid>
+  </StackPanel>
+</UserControl>

@@ -4,6 +4,7 @@
     <ProjectReference Include="../Core/FlickerVoid.Editor.Core.csproj" />
     <ProjectReference Include="../../Engine/Vehicles/FlickerVoid.Engine.Vehicles.csproj" />
     <ProjectReference Include="../../Engine/Buildings/FlickerVoid.Engine.Buildings.csproj" />
+    <ProjectReference Include="../../Engine/Props/FlickerVoid.Engine.Props.csproj" />
     <ProjectReference Include="../../Engine/Foliage/FlickerVoid.Engine.Foliage.csproj" />
     <PackageReference Include="StbImageSharp" />
     <PackageReference Include="SharpGLTF.Toolkit" />

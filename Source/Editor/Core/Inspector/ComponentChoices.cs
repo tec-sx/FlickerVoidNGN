@@ -26,6 +26,7 @@ public static class ComponentChoices
         ["outline"] = "Outline",
         ["vehicle"] = "Vehicle",
         ["building"] = "Building",
+        ["prop"] = "Cube",
         ["foliage"] = "Tree",
         ["foliageScatter"] = "Tree",
     };
@@ -49,6 +50,7 @@ public static class ComponentChoices
         ["Runtime"] = "Transform",
         ["Vehicles"] = "Vehicle",
         ["Buildings"] = "Building",
+        ["Props"] = "Cube",
         ["Foliage"] = "Tree",
         ["Creations"] = "Cube",
     };

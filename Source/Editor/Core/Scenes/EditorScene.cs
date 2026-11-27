@@ -12,6 +12,7 @@ using FlickerVoid.Engine.Runtime.Loop;
 using FlickerVoid.Engine.Runtime.Scenes;
 using FlickerVoid.Engine.Runtime.Settings;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Props;
 using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Vehicles;
 
@@ -225,6 +226,7 @@ public sealed partial class EditorScene : IDisposable
             game.AddInput();
             game.AddVehicles();
             game.AddBuildings();
+            game.AddProps();
             game.AddFoliage();
             foreach (IGameModule module in modules)
             {
