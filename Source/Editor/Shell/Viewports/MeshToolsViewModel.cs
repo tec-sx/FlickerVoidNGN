@@ -26,6 +26,43 @@ public sealed partial class MeshToolsViewModel : ObservableObject
     {
         _creator = creator;
         _report = report;
+        Door = new DoorToolViewModel(creator);
+    }
+
+    /// <summary>The numbers of the door tool.</summary>
+    public DoorToolViewModel Door { get; }
+
+    /// <summary>Whether the door tool is in hand: a door follows the mouse or waits for Apply.</summary>
+    public bool IsDoorTool => _creator()?.Door is not null;
+
+    /// <summary>Whether a tool waits for Apply or Cancel: a dragged mesh tool or the door.</summary>
+    public bool IsConfirming => IsDragging || IsDoorTool;
+
+    /// <summary>Whether the door tool can start in this creation.</summary>
+    public bool CanDoor => _creator()?.CanPlaceDoor == true;
+
+    /// <summary>Starts the door tool (D), or ends it when it is in hand.</summary>
+    [RelayCommand]
+    public void ToggleDoor()
+    {
+        if (_creator() is not { } creator)
+        {
+            return;
+        }
+
+        if (IsDoorTool)
+        {
+            creator.CancelDoor();
+            return;
+        }
+
+        if (!creator.BeginDoor())
+        {
+            _report("Doors need Manifold's library, built by Source/Native/Manifold.");
+            return;
+        }
+
+        _report("Door: move the mouse onto a wall and click to place it, drag the red handles for the cut's depth, Enter applies, Escape cancels.");
     }
 
     [ObservableProperty]
@@ -44,16 +81,10 @@ public sealed partial class MeshToolsViewModel : ObservableObject
     public partial double Slide { get; set; }
 
     [ObservableProperty]
-    public partial double Angle { get; set; } = 90;
-
-    [ObservableProperty]
     public partial bool Round { get; set; }
 
     [ObservableProperty]
     public partial bool Through { get; set; }
-
-    [ObservableProperty]
-    public partial bool Outward { get; set; } = true;
 
     public double TransformX
     {
@@ -132,10 +163,21 @@ public sealed partial class MeshToolsViewModel : ObservableObject
     public MeshDragTool? ActiveTool => _creator()?.MeshDrag;
 
     /// <summary>Whether the Tool tab has something to show: the mesh is entered.</summary>
-    public bool HasToolOptions => IsMeshMode;
+    public bool HasToolOptions => IsMeshMode || IsDoorTool;
 
     /// <summary>The Tool tab's heading: the tool in hand, or what the gizmo does when none is.</summary>
-    public string ToolName => ActiveTool?.ToString() ?? "Selection";
+    public string ToolName
+    {
+        get
+        {
+            if (IsDoorTool)
+            {
+                return "Door";
+            }
+
+            return ActiveTool?.ToString() ?? "Selection";
+        }
+    }
 
     public bool ShowsAmount => ActiveTool is MeshDragTool.Extrude or MeshDragTool.Cut;
 
@@ -146,11 +188,15 @@ public sealed partial class MeshToolsViewModel : ObservableObject
     public bool ShowsBevel => ActiveTool == MeshDragTool.Bevel;
 
     /// <summary>Whether no tool is held, so the options of the tools that act at once and the numeric transform show.</summary>
-    public bool ShowsResting => IsMeshMode && ActiveTool is null;
+    public bool ShowsResting => IsMeshMode && ActiveTool is null && !IsDoorTool;
 
     public void Refresh()
     {
         OnPropertyChanged(nameof(ActiveTool));
+        OnPropertyChanged(nameof(IsDoorTool));
+        OnPropertyChanged(nameof(IsConfirming));
+        OnPropertyChanged(nameof(CanDoor));
+        Door.Refresh();
         OnPropertyChanged(nameof(HasToolOptions));
         OnPropertyChanged(nameof(ToolName));
         OnPropertyChanged(nameof(ShowsAmount));
@@ -232,11 +278,41 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
     /// <summary>The confirm bar's Apply (Enter).</summary>
     [RelayCommand]
-    public void Apply() => ConfirmDrag();
+    public void Apply()
+    {
+        if (IsDoorTool)
+        {
+            ApplyDoor();
+            return;
+        }
+
+        ConfirmDrag();
+    }
+
+    private void ApplyDoor()
+    {
+        if (_creator() is not { } creator)
+        {
+            return;
+        }
+
+        if (!creator.ApplyDoor())
+        {
+            _report("Click a wall to place the door first.");
+        }
+    }
 
     /// <summary>The confirm bar's Cancel (Escape).</summary>
     [RelayCommand]
-    public void Cancel() => CancelDrag();
+    public void Cancel()
+    {
+        if (_creator()?.CancelDoor() == true)
+        {
+            return;
+        }
+
+        CancelDrag();
+    }
 
     /// <summary>Puts the mesh back as it was before the dragged tool; false when no tool is dragged.</summary>
     public bool CancelDrag() => EndDrag(keep: false);
@@ -268,7 +344,6 @@ public sealed partial class MeshToolsViewModel : ObservableObject
     public IReadOnlyList<MenuChoice> GetMenu()
     {
         const string Tools = "Tools";
-        const string Doors = "Doors";
         const string Switches = "Switches";
         return
         [
@@ -277,12 +352,9 @@ public sealed partial class MeshToolsViewModel : ObservableObject
             new MenuChoice("Cut", DragCut, Tools, null, "C"),
             new MenuChoice("Bevel", DragBevel, Tools, null, "B"),
             new MenuChoice("Loop Cut", LoopCut, Tools, null, "L"),
-            new MenuChoice("Hang Door", HangDoor, Doors, null, "D"),
-            new MenuChoice("Test Door", Test, Doors),
             new MenuChoice(Describe("Mirror", Mirror), () => Mirror = !Mirror, Switches),
             new MenuChoice(Describe("Round Bevels", Round), () => Round = !Round, Switches),
             new MenuChoice(Describe("Cut Through", Through), () => Through = !Through, Switches),
-            new MenuChoice(Describe("Doors Swing Out", Outward), () => Outward = !Outward, Switches),
         ];
     }
 
@@ -369,25 +441,6 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
     [RelayCommand]
     public void ApplyTransform() => Run(creator => _transform.Apply(creator), "Select points, edges or faces first.");
-
-    [RelayCommand]
-    public void HangDoor()
-    {
-        if (_creator() is not { } creator)
-        {
-            return;
-        }
-
-        DoorOptions options = new() { Thickness = (float)Thickness, Angle = (float)Angle, Outward = Outward, Through = Through };
-        string? door = creator.HangDoor(_pointer, _size.Width, _size.Height, options);
-        if (door is null)
-        {
-            _report("Point at a flat face to hang the door in.");
-            return;
-        }
-
-        _report($"Hung {door}; press Test to swing it.");
-    }
 
     /// <summary>Swings the selected door open or shut at once.</summary>
     [RelayCommand]

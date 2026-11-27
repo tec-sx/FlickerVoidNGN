@@ -85,20 +85,26 @@ public sealed class VehicleDocumentTests : IDisposable
     }
 
     [Fact]
-    public void AHungDoorIsOneUndoStepThatPlacedCopiesSee()
+    public void APlacedDoorIsOneUndoStepThatPlacedCopiesSee()
     {
+        Assert.SkipUnless(FlickerVoid.Editor.Core.Meshes.Doors.DoorFitter.IsAvailable, "Manifold's library is not built.");
         VehicleDocument document = _builder.Build();
         UndoHistory history = _builder.Content.GetHistory(VehicleDocumentTestsBuilder.Van);
         SolidMesh body = document.Vehicle.Body.Mesh;
-        SolidEdge hinge = new SolidTopology(body).GetFaceEdges(0).First();
+        float side = body.Points.Max(point => point.X);
+        float floor = body.Points.Min(point => point.Y);
+        Engine.Creations.DoorFit fit = new() { Wall = "body", Centre = new System.Numerics.Vector3(side, floor + 0.1f, 0), Normal = System.Numerics.Vector3.UnitX, Right = -System.Numerics.Vector3.UnitZ, Width = 0.4f, Height = 0.4f };
 
-        string? id = document.HangDoor("body", 0, hinge, new DoorOptions());
+        string? id = document.PlaceDoor(fit);
 
         id.Should().Be("door.1");
         _builder.Load().Doors.Should().ContainSingle();
+        _builder.Load().Doors[0].Fit.Should().NotBeNull();
+        _builder.Load().Body.Source.Should().NotBeNull();
         history.Undo();
         _builder.Load().Doors.Should().BeEmpty();
-        document.HangDoor("roof", 0, hinge, new DoorOptions()).Should().BeNull();
+        _builder.Load().Body.Source.Should().BeNull();
+        document.IsDoorWall("roof").Should().BeFalse("it is not a part of the vehicle");
     }
 
     [Fact]

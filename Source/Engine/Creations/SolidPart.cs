@@ -31,9 +31,22 @@ public sealed class SolidPart
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Tag? Toggle { get; set; }
 
+    /// <summary>A wall's solid before its doors are cut from it; null when no placed door cuts it. <see cref="Mesh"/> is this with the cuts made.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SolidMesh? Source { get; set; }
+
+    /// <summary>How a placed door sits on its wall; null for a door hung the old way and for other parts.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DoorFit? Fit { get; set; }
+
     /// <summary>The middle of the box around the part's mesh, in the pivot's space: where a door is reached.</summary>
     public Vector3 GetMiddle()
     {
+        if (Fit is { } fit)
+        {
+            return fit.GetGrab();
+        }
+
         if (Mesh.Points.Count == 0)
         {
             return Vector3.Zero;

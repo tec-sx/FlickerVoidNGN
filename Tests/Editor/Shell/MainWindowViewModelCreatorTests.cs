@@ -109,7 +109,26 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         tools.Should().Contain(["Extrude", "Inset", "Bevel", "Loop cut", "Cut", "Door", "Mirror"]);
         Viewport.MeshTools.Leave();
         ViewModel.ShowsTool.Should().BeFalse();
-        Viewport.ToolRail.Groups.Should().ContainSingle("only the transform tools are left outside the mesh");
+        List<string> outside = [.. Viewport.ToolRail.Groups.SelectMany(group => group.Items).Select(item => item.Name)];
+        outside.Should().Equal("Select", "Move", "Rotate", "Scale", "Door");
+    }
+
+    [Fact]
+    public void TheDoorToolIsLitInTheRailAndOpensTheToolTabUntilItIsCancelled()
+    {
+        Assert.SkipUnless(FlickerVoid.Editor.Core.Meshes.Doors.DoorFitter.IsAvailable, "Manifold's library is not built.");
+        EnterBodyWithAFaceSelected();
+        Viewport.MeshTools.Leave();
+
+        Viewport.KeyPressed(ViewportKey.D, ViewportButtons.None);
+
+        Viewport.MeshTools.IsDoorTool.Should().BeTrue();
+        Viewport.MeshTools.IsConfirming.Should().BeTrue("Apply and Cancel wait at the bottom");
+        ViewModel.ShowsTool.Should().BeTrue();
+        Viewport.ToolRail.Groups.SelectMany(group => group.Items).Single(item => item.Name == "Door").IsActive.Should().BeTrue();
+        Viewport.KeyPressed(ViewportKey.Escape, ViewportButtons.None);
+        Viewport.MeshTools.IsDoorTool.Should().BeFalse();
+        ViewModel.ShowsTool.Should().BeFalse();
     }
 
     [Fact]
@@ -222,7 +241,7 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         menu.Single(choice => choice.Name == "Cut Through: Off").Run();
         menu.Single(choice => choice.Name == "Extrude").Run();
 
-        menu.Select(choice => choice.Name).Should().Contain(["Inset", "Cut", "Bevel", "Loop Cut", "Hang Door", "Test Door", "Mirror: Off"]);
+        menu.Select(choice => choice.Name).Should().Contain(["Inset", "Cut", "Bevel", "Loop Cut", "Mirror: Off"]);
         tools.Through.Should().BeTrue();
         tools.GetMenu().Select(choice => choice.Name).Should().Contain("Cut Through: On");
         tools.IsDragging.Should().BeTrue();

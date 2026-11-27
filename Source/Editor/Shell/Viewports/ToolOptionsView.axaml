@@ -5,7 +5,8 @@
              x:Class="FlickerVoid.Editor.Viewports.ToolOptionsView"
              x:DataType="viewports:MeshToolsViewModel">
   <!-- The options of the tool in hand, in the inspector's place: its numbers change the result at once, and Apply and Cancel wait at the bottom of the view. -->
-  <StackPanel Margin="4,2" Spacing="4">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+  <StackPanel Margin="4,2,8,2" Spacing="4">
     <TextBlock Text="{Binding ToolName}" FontWeight="SemiBold" Margin="0,2,0,2" />
     <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4" IsVisible="{Binding IsDragging}">
       <TextBlock Text="Amount" VerticalAlignment="Center" IsVisible="{Binding ShowsAmount}" />
@@ -51,19 +52,78 @@
         <TextBlock Grid.Row="1" Text="Slide" VerticalAlignment="Center" />
         <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding Slide}" Minimum="-1" Maximum="1" ToolTip.Tip="Loop slide, -1 to 1" />
       </Grid>
-      <TextBlock Classes="muted" Text="Door (D)" Margin="0,6,0,0" />
-      <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
-        <TextBlock Text="Depth" VerticalAlignment="Center" />
-        <inspector:DragNumberBox Grid.Column="1" Value="{Binding Thickness}" Minimum="0" ToolTip.Tip="Door depth, in metres" />
-        <TextBlock Grid.Row="1" Text="Angle" VerticalAlignment="Center" />
-        <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding Angle}" Minimum="1" Maximum="170" Step="1" ToolTip.Tip="Door angle, in degrees" />
-        <TextBlock Grid.Row="2" Text="Opens" VerticalAlignment="Center" />
-        <ToggleButton Grid.Row="2" Grid.Column="1" Content="Outward" IsChecked="{Binding Outward}" HorizontalAlignment="Left" ToolTip.Tip="Swing out or in" />
-        <TextBlock Grid.Row="3" Text="Cut" VerticalAlignment="Center" />
-        <ToggleButton Grid.Row="3" Grid.Column="1" Content="Through" IsChecked="{Binding Through}" HorizontalAlignment="Left" ToolTip.Tip="Cut through the whole wall" />
-      </Grid>
       <TextBlock Classes="muted" TextWrapping="Wrap" Margin="0,6,0,0"
                  Text="Double-click an edge for its loop, Shift adds. Q W E R switch the gizmo; X, I, C and B start a tool, then Enter applies and Escape cancels." />
     </StackPanel>
+    <!-- The door tool: sizes and cut, hinge, frame, window and grab point; the viewport shows each change at once. -->
+    <StackPanel IsVisible="{Binding IsDoorTool}">
+    <StackPanel Spacing="4" DataContext="{Binding Door}" x:DataType="viewports:DoorToolViewModel">
+    <TextBlock Classes="muted" Text="Door" Margin="0,6,0,0" />
+    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
+      <TextBlock Grid.Row="0" Text="Width" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="0" Grid.Column="1" Value="{Binding Width}" Minimum="0.2" ToolTip.Tip="Door width, in metres" />
+      <TextBlock Grid.Row="1" Text="Height" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding Height}" Minimum="0.3" ToolTip.Tip="Door height, in metres" />
+      <TextBlock Grid.Row="2" Text="Thickness" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="2" Grid.Column="1" Value="{Binding Thickness}" Minimum="0.01" ToolTip.Tip="Door thickness, in metres" />
+      <TextBlock Grid.Row="3" Text="Sill" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="3" Grid.Column="1" Value="{Binding Sill}" Minimum="0" ToolTip.Tip="Door foot above the lowest point of the wall" />
+    </Grid>
+    <TextBlock Classes="muted" Text="Cut" Margin="0,6,0,0" />
+    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
+      <TextBlock Grid.Row="0" Text="Margin" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="0" Grid.Column="1" Value="{Binding Margin}" Minimum="0" ToolTip.Tip="How much larger than the door the cut is on every side" />
+      <TextBlock Grid.Row="1" Text="Behind" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding DepthIn}" Minimum="0.02" ToolTip.Tip="How far the cut reaches into the wall; drag the red square behind the box" />
+      <TextBlock Grid.Row="2" Text="In front" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="2" Grid.Column="1" Value="{Binding DepthOut}" Minimum="0.02" ToolTip.Tip="How far the cut reaches out of the wall face; drag the red square in front" />
+      <TextBlock Grid.Row="3" Text="Through" VerticalAlignment="Center" />
+      <ToggleButton Grid.Row="3" Grid.Column="1" Content="Whole wall" IsChecked="{Binding Through}" HorizontalAlignment="Left" ToolTip.Tip="Cut through the wall whatever its thickness" />
+    </Grid>
+    <TextBlock Classes="muted" Text="Hinge" Margin="0,6,0,0" />
+    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
+      <TextBlock Grid.Row="0" Text="Left" VerticalAlignment="Center" />
+      <ToggleButton Grid.Row="0" Grid.Column="1" Content="Hinge on the left" IsChecked="{Binding HingeLeft}" HorizontalAlignment="Left" ToolTip.Tip="Hinge on the left side as seen from the front" />
+      <TextBlock Grid.Row="1" Text="Right" VerticalAlignment="Center" />
+      <ToggleButton Grid.Row="1" Grid.Column="1" Content="Hinge on the right" IsChecked="{Binding HingeRight}" HorizontalAlignment="Left" ToolTip.Tip="Hinge on the right side as seen from the front" />
+      <TextBlock Grid.Row="2" Text="Opens" VerticalAlignment="Center" />
+      <ToggleButton Grid.Row="2" Grid.Column="1" Content="Outward" IsChecked="{Binding Outward}" HorizontalAlignment="Left" ToolTip.Tip="Swing out of the wall face, or into the wall" />
+      <TextBlock Grid.Row="3" Text="Angle" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="3" Grid.Column="1" Value="{Binding Angle}" Minimum="1" Maximum="170" Step="1" ToolTip.Tip="How far it swings open, in degrees" />
+    </Grid>
+    <TextBlock Classes="muted" Text="Frame" Margin="0,6,0,0" />
+    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto" RowSpacing="4">
+      <TextBlock Grid.Row="0" Text="Frame" VerticalAlignment="Center" />
+      <ToggleButton Grid.Row="0" Grid.Column="1" Content="Frame" IsChecked="{Binding HasFrame}" HorizontalAlignment="Left" ToolTip.Tip="A frame round the opening" />
+      <TextBlock Grid.Row="1" Text="Width" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding FrameWidth}" Minimum="0.01" ToolTip.Tip="Frame width, in metres" />
+    </Grid>
+    <TextBlock Classes="muted" Text="Window" Margin="0,6,0,0" />
+    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="4">
+      <TextBlock Grid.Row="0" Text="Window" VerticalAlignment="Center" />
+      <ToggleButton Grid.Row="0" Grid.Column="1" Content="Window" IsChecked="{Binding HasWindow}" HorizontalAlignment="Left" ToolTip.Tip="A second box that cuts the door itself" />
+      <TextBlock Grid.Row="1" Text="Width" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding WindowWidth}" Minimum="0.05" ToolTip.Tip="Window width, in metres" />
+      <TextBlock Grid.Row="2" Text="Height" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="2" Grid.Column="1" Value="{Binding WindowHeight}" Minimum="0.05" ToolTip.Tip="Window height, in metres" />
+      <TextBlock Grid.Row="3" Text="From floor" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="3" Grid.Column="1" Value="{Binding WindowFrom}" Minimum="0" ToolTip.Tip="Lower edge of the window above the door foot" />
+      <TextBlock Grid.Row="4" Text="Glass" VerticalAlignment="Center" />
+      <ToggleButton Grid.Row="4" Grid.Column="1" Content="Pane of glass" IsChecked="{Binding Glass}" HorizontalAlignment="Left" ToolTip.Tip="A thin pane in the window" />
+    </Grid>
+    <TextBlock Classes="muted" Text="Grab point" Margin="0,6,0,0" />
+    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto" RowSpacing="4">
+      <TextBlock Grid.Row="0" Text="Height" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="0" Grid.Column="1" Value="{Binding GrabHeight}" Minimum="0" ToolTip.Tip="Where a character hand goes, above the door foot (the small sphere)" />
+      <TextBlock Grid.Row="1" Text="From edge" VerticalAlignment="Center" />
+      <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding GrabInset}" Minimum="0" ToolTip.Tip="How far in from the free edge" />
+    </Grid>
+      <Button Content="Remove door" Command="{Binding RemoveCommand}" IsVisible="{Binding IsEditing}" HorizontalAlignment="Left" Margin="0,6,0,0"
+              ToolTip.Tip="Take the door out and close the wall" />
+      <TextBlock Classes="muted" TextWrapping="Wrap" Margin="0,6,0,0"
+                 Text="Click a wall to place the door. Drag the red squares to move the sides of the cut along the wall normal. Enter applies, Escape cancels." />
+    </StackPanel>
+    </StackPanel>
   </StackPanel>
+  </ScrollViewer>
 </UserControl>

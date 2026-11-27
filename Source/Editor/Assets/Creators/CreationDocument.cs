@@ -20,6 +20,7 @@ public abstract class CreationDocument<TFile>(UnsavedContent content, string pat
     public void SetMesh(string id, SolidMesh mesh)
     {
         SolidPart part = FindPart(id);
+        DoorFitter.Bake(Value, id);
         part.Mesh = mesh;
         Hold();
     }
@@ -32,16 +33,66 @@ public abstract class CreationDocument<TFile>(UnsavedContent content, string pat
         Hold();
     }
 
-    /// <summary>Hangs a door in the face of the part, hinged on the edge, held in the file as one undo step; the new door's id, or null when it can't be made.</summary>
-    public virtual string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options)
+    /// <summary>Whether the part is one a door can be placed on: it has no joint and is no placed door.</summary>
+    public virtual bool IsDoorWall(string partId)
     {
-        string? id = DoorTool.Hang(Value, partId, face, hinge, options);
+        SolidPart? part = TryFindPart(partId);
+        return part is not null && part.Joint is null && part.Fit is null;
+    }
+
+    public DoorFit? FindDoorFit(string doorId) => TryFindPart(doorId)?.Fit;
+
+    /// <summary>Places a door on its wall and cuts the wall, held in the file as one undo step; the door's id, or null when it can't be made.</summary>
+    public string? PlaceDoor(DoorFit fit)
+    {
+        string? id = DoorFitter.Place(Value, fit);
         if (id is not null)
         {
             Hold();
         }
 
         return id;
+    }
+
+    /// <summary>Gives a placed door new numbers and cuts its wall again, as one undo step.</summary>
+    public bool ReplaceDoor(string doorId, DoorFit fit)
+    {
+        SolidPart door = FindPart(doorId);
+        DoorFit? old = door.Fit;
+        door.Fit = fit;
+        if (!DoorFitter.Rebuild(Value))
+        {
+            door.Fit = old;
+            return false;
+        }
+
+        Hold();
+        return true;
+    }
+
+    /// <summary>Takes a placed door out and closes its wall, as one undo step.</summary>
+    public bool RemoveDoor(string doorId)
+    {
+        if (!DoorFitter.Remove(Value, doorId))
+        {
+            return false;
+        }
+
+        Hold();
+        return true;
+    }
+
+    private SolidPart? TryFindPart(string id)
+    {
+        foreach ((string partId, SolidPart part) in Value.GetParts())
+        {
+            if (partId == id)
+            {
+                return part;
+            }
+        }
+
+        return null;
     }
 
     private SolidPart FindPart(string id)

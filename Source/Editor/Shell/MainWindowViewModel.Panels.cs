@@ -300,15 +300,21 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(HasContext));
     }
 
-    /// <summary>The Tool tab comes in front while the mesh is entered and goes when it is left.</summary>
+    /// <summary>The Tool tab comes in front while the mesh is entered or the door tool is in hand, and goes when neither is.</summary>
     private void HandleMeshToolsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(MeshToolsViewModel.IsMeshMode))
+        if (e.PropertyName != nameof(MeshToolsViewModel.HasToolOptions))
         {
             return;
         }
 
-        if (Viewport.MeshTools.IsMeshMode)
+        bool wanted = Viewport.MeshTools.HasToolOptions;
+        if (wanted == ShowsTool)
+        {
+            return;
+        }
+
+        if (wanted)
         {
             ShowContext(ToolTab);
         }

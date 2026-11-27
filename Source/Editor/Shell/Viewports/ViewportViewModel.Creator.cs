@@ -98,6 +98,7 @@ public sealed partial class ViewportViewModel
         Mode = creator;
         creator.Gizmo = Gizmo;
         creator.MeshModeChanged += MeshTools.Refresh;
+        creator.DoorChanged += MeshTools.Refresh;
         CreatorFile = file;
         NotifyCreator();
         FrameSelected();
@@ -114,6 +115,7 @@ public sealed partial class ViewportViewModel
 
         Mode = SceneMode;
         creator.MeshModeChanged -= MeshTools.Refresh;
+        creator.DoorChanged -= MeshTools.Refresh;
         CreatorFile = null;
         creator.Dispose();
         NotifyCreator();
@@ -121,11 +123,31 @@ public sealed partial class ViewportViewModel
 
     /// <summary>
     /// The mesh keys of the creator: Tab enters and leaves the mesh, then 1, 2 and 3 pick points, edges or faces, X extrudes, I
-    /// insets, C cuts and B bevels by an amount the mouse then sets (any key keeps it, Escape cancels it), L (or Ctrl+R) cuts a loop and D hangs a door where the mouse is. Escape leaves the mesh before the
+    /// insets, C cuts and B bevels by an amount the mouse then sets (any key keeps it, Escape cancels it), L (or Ctrl+R) cuts a loop and D places a door. Escape leaves the mesh before the
     /// creator. True when the key was taken.
     /// </summary>
     private bool PressMeshKey(ViewportKey key, bool ctrl)
     {
+        if (MeshTools.IsDoorTool && key is ViewportKey.Escape or ViewportKey.Enter)
+        {
+            if (key == ViewportKey.Escape)
+            {
+                MeshTools.Cancel();
+            }
+            else
+            {
+                MeshTools.Apply();
+            }
+
+            return true;
+        }
+
+        if (key == ViewportKey.D && MeshTools.CanDoor && !MeshTools.IsDragging)
+        {
+            MeshTools.ToggleDoor();
+            return true;
+        }
+
         if (MeshTools.IsDragging)
         {
             if (key == ViewportKey.Escape)
@@ -175,9 +197,6 @@ public sealed partial class ViewportViewModel
                 break;
             case ViewportKey.R when ctrl:
                 MeshTools.LoopCut();
-                break;
-            case ViewportKey.D:
-                MeshTools.HangDoor();
                 break;
             case ViewportKey.Escape:
                 MeshTools.Leave();

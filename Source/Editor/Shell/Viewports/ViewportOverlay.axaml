@@ -100,7 +100,7 @@
     <viewports:ToolRailView Margin="12,50,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" DataContext="{Binding ToolRail}" />
     <!-- A tool with a pending result waits here: Apply (Enter) keeps it, Cancel (Escape) puts the mesh back. -->
     <Border Classes="viewportBar" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"
-            IsVisible="{Binding MeshTools.IsDragging}">
+            IsVisible="{Binding MeshTools.IsConfirming}">
       <StackPanel Orientation="Horizontal" Spacing="8" DataContext="{Binding MeshTools}" x:DataType="viewports:MeshToolsViewModel">
         <TextBlock Text="{Binding ToolName}" VerticalAlignment="Center" FontWeight="Medium" />
         <Border Classes="vsep" Margin="0" />
