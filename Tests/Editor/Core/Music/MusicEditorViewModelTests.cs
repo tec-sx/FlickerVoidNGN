@@ -268,6 +268,40 @@ public sealed class MusicEditorViewModelTests
         editor.LiveRows.Select(row => row.IsOn).Should().OnlyContain(on => !on);
     }
 
+    [Fact]
+    public void PlacesACueOnceAtTheBarClickedAndSelectsIt()
+    {
+        MusicCue cue = new() { PhraseBars = 4 };
+        MusicEditorViewModel editor = Build(cue);
+
+        editor.AddNotifierAt(9);
+
+        cue.Notifies.Should().ContainSingle().Which.Bar.Should().Be(10);
+        cue.Notifies[0].Repeat.Should().BeFalse();
+        editor.SelectedCue.Should().BeSameAs(editor.Notifiers[0]);
+        editor.SelectedCue!.Repeat = true;
+        cue.Notifies[0].Repeat.Should().BeTrue();
+        editor.MoveNotifier(editor.Notifiers[0], 14.2);
+        cue.Notifies[0].Bar.Should().BeApproximately(15.25f, 0.01f);
+        editor.RemoveNotifier(editor.Notifiers[0]);
+        editor.SelectedCue.Should().BeNull();
+    }
+
+    [Fact]
+    public void SelectsARangeOfBarsToPlayInALoop()
+    {
+        MusicEditorViewModel editor = Build(new MusicCue());
+
+        editor.SetLoopRange(8, 4);
+
+        editor.HasLoopRange.Should().BeTrue();
+        editor.LoopStart.Should().Be(4);
+        editor.LoopEnd.Should().Be(8);
+        editor.LoopPlayback.Should().BeTrue();
+        editor.ClearLoopRangeCommand.Execute(null);
+        editor.HasLoopRange.Should().BeFalse();
+    }
+
     private static void Pump(MusicEditorViewModel editor, int ticks)
     {
         for (int tick = 0; tick < ticks; tick++)

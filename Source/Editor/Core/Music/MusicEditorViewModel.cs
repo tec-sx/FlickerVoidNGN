@@ -51,6 +51,20 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _loopPlayback;
 
+    /// <summary>The cue of the timeline whose settings the Cue tab shows.</summary>
+    [ObservableProperty]
+    private NotifierViewModel? _selectedCue;
+
+    [ObservableProperty]
+    private bool _hasLoopRange;
+
+    /// <summary>The bars a loop range spans, from 0.</summary>
+    [ObservableProperty]
+    private double _loopStart;
+
+    [ObservableProperty]
+    private double _loopEnd;
+
     /// <summary>Where the playhead is, in bars from the cue's start (0 is the start of bar 1).</summary>
     [ObservableProperty]
     private double _playhead;
@@ -416,16 +430,83 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void AddNotifier() => AddNotifierAt(Math.Floor(Playhead) % Math.Max(1, _cue.PhraseBars));
+    private void AddNotifier() => AddNotifierAt(Math.Floor(Playhead));
 
-    /// <summary>Adds a notifier on the bar of the phrase, counted from 0 with fractions, and selects it in the Cue tab.</summary>
+    /// <summary>Places a cue once on the timeline at a bar counted from 0 with fractions, snapped to a quarter bar, and selects it.</summary>
     public void AddNotifierAt(double bar)
     {
-        MusicNotify notify = new() { Name = $"Notify {Notifiers.Count + 1}", Bar = (float)Math.Max(1, Math.Round((bar + 1) * 4) / 4) };
+        double snapped = Math.Round(Math.Clamp(bar, 0, TotalBars - 0.25) * 4) / 4;
+        MusicNotify notify = new() { Name = $"Cue {Notifiers.Count + 1}", Bar = (float)(snapped + 1) };
         _cue.Notifies.Add(notify);
-        Notifiers.Add(new NotifierViewModel(notify, _edited));
+        NotifierViewModel added = new(notify, _edited);
+        Notifiers.Add(added);
+        SelectedCue = added;
         SideTab = 1;
         _edited();
+    }
+
+    public void RemoveNotifier(NotifierViewModel notifier)
+    {
+        _cue.Notifies.Remove(notifier.Notify);
+        Notifiers.Remove(notifier);
+        if (SelectedCue == notifier)
+        {
+            SelectedCue = null;
+        }
+
+        _edited();
+    }
+
+    [RelayCommand]
+    private void RemoveSelectedCue()
+    {
+        if (SelectedCue is { } cue)
+        {
+            RemoveNotifier(cue);
+        }
+    }
+
+    public void MoveNotifier(NotifierViewModel notifier, double bar)
+    {
+        double snapped = Math.Round(Math.Clamp(bar, 0, TotalBars - 0.25) * 4) / 4;
+        notifier.Notify.Bar = (float)(snapped + 1);
+        notifier.Refresh();
+        _edited();
+    }
+
+    /// <summary>Selects a cue of the timeline and shows its settings in the Cue tab.</summary>
+    public void SelectCue(NotifierViewModel? cue)
+    {
+        SelectedCue = cue;
+        if (cue is not null)
+        {
+            SideTab = 1;
+        }
+    }
+
+    /// <summary>Picks the bars between two points of the timeline to play in a loop; the transport's loop then keeps to them.</summary>
+    public void SetLoopRange(double from, double to)
+    {
+        double start = Math.Clamp(Math.Min(from, to), 0, TotalBars);
+        double end = Math.Clamp(Math.Max(from, to), 0, TotalBars);
+        if (end - start < 0.25)
+        {
+            ClearLoopRange();
+            return;
+        }
+
+        LoopStart = start;
+        LoopEnd = end;
+        HasLoopRange = true;
+        LoopPlayback = true;
+    }
+
+    [RelayCommand]
+    private void ClearLoopRange()
+    {
+        HasLoopRange = false;
+        LoopStart = 0;
+        LoopEnd = 0;
     }
 
     [RelayCommand]
@@ -516,22 +597,6 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
                 ? $"held at bar {entry.HeldBars + 1:0.#} · {entry.Layers} layers"
                 : $"on top · bar {entry.Bars + 1:0.#}";
         }
-    }
-
-    public void RemoveNotifier(NotifierViewModel notifier)
-    {
-        _cue.Notifies.Remove(notifier.Notify);
-        Notifiers.Remove(notifier);
-        _edited();
-    }
-
-    public void MoveNotifier(NotifierViewModel notifier, double bar)
-    {
-        double phrase = Math.Max(1, _cue.PhraseBars);
-        double snapped = Math.Round(Math.Clamp(bar, 0, phrase - 0.25) * 4) / 4;
-        notifier.Notify.Bar = (float)(snapped + 1);
-        notifier.Refresh();
-        _edited();
     }
 
     public void Refresh()
@@ -1032,11 +1097,12 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
                 }
             }
 
-            if (Playhead >= TotalBars)
+            double end = HasLoopRange ? LoopEnd : TotalBars;
+            if (Playhead >= end)
             {
                 if (LoopPlayback)
                 {
-                    SeekTo(0);
+                    SeekTo(HasLoopRange ? LoopStart : 0);
                 }
                 else
                 {

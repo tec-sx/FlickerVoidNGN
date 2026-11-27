@@ -39,8 +39,20 @@ public sealed partial class NotifierViewModel : ObservableObject
         }
     }
 
+    public bool Repeat
+    {
+        get => Notify.Repeat;
+        set
+        {
+            Notify.Repeat = value;
+            OnPropertyChanged();
+            _edited();
+        }
+    }
+
     public void Refresh()
     {
+        OnPropertyChanged(nameof(Repeat));
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(Bar));
     }

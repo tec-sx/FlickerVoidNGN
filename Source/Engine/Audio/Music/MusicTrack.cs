@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
 using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Audio.Music;
@@ -35,6 +36,9 @@ public sealed class MusicTrack
     public string FillOut { get; set; } = string.Empty;
 
     public float Gain { get; set; } = 1;
+
+    /// <summary>Tags that bring the track in while a music area or a script asks for one of them, or for a tag below it; a track with triggers sounds only then.</summary>
+    public List<Tag> Triggers { get; set; } = [];
 
     /// <summary>Whether the track sounds only while a music area or a script asks for it by name.</summary>
     public bool ByRequest { get; set; }

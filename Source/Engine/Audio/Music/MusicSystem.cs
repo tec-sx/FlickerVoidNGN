@@ -7,6 +7,7 @@ using FlickerVoid.Engine.Audio.Mixing;
 using FlickerVoid.Engine.Audio.Sounds;
 using FlickerVoid.Engine.Cameras.Triggers;
 using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Data;
 using FlickerVoid.Engine.Runtime.Entities;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -676,9 +677,28 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         return new ConditionContext(_game.Facts) { Instigator = view, Services = _game.Services };
     }
 
+    private bool IsAsked(MusicTrack track)
+    {
+        if (track.Triggers.Count > 0)
+        {
+            foreach (string asked in _asked)
+            {
+                Tag tag = new(asked);
+                if (track.Triggers.Any(trigger => tag.MatchesTag(trigger)))
+                {
+                    return true;
+                }
+            }
+
+            return track.ByRequest && _asked.Contains(track.Name);
+        }
+
+        return !track.ByRequest || _asked.Contains(track.Name);
+    }
+
     private bool IsWanted(TrackState track, ConditionContext context)
     {
-        if (track.Track.ByRequest && !_asked.Contains(track.Track.Name))
+        if (!IsAsked(track.Track))
         {
             return false;
         }
@@ -900,17 +920,27 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         foreach (MusicNotify notify in cue.Cue.Notifies)
         {
             double offset = notify.Bar - 1;
-            long first = phrase > 0 ? (long)Math.Floor(last / phrase) : 0;
-            long final = phrase > 0 ? (long)Math.Floor(bar / phrase) : 0;
+            if (!notify.Repeat || phrase <= 0)
+            {
+                SendNotify(cue, notify, offset, last, bar);
+                continue;
+            }
+
+            long first = (long)Math.Floor(last / phrase);
+            long final = (long)Math.Floor(bar / phrase);
             for (long round = first; round <= final; round++)
             {
-                double at = (round * phrase) + offset;
-                if (at > last && at <= bar)
-                {
-                    int whole = (int)Math.Floor(at) + 1;
-                    _game.Events.Send(new MusicNotifyEvent(cue.Name, notify.Name, whole));
-                }
+                SendNotify(cue, notify, (round * phrase) + offset, last, bar);
             }
+        }
+    }
+
+    private void SendNotify(CueState cue, MusicNotify notify, double at, double last, double bar)
+    {
+        if (at > last && at <= bar)
+        {
+            int whole = (int)Math.Floor(at) + 1;
+            _game.Events.Send(new MusicNotifyEvent(cue.Name, notify.Name, whole));
         }
     }
 

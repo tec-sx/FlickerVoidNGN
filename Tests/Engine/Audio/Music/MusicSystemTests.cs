@@ -61,6 +61,33 @@ public sealed class MusicSystemTests : IDisposable
     }
 
     [Fact]
+    public void BringsATrackInWhenATagBelowItsTriggerIsAsked()
+    {
+        string cue = _builder.WithCue("Street", Bass + """, { "name": "Drums", "loop": "Drums.wav", "triggers": [ "Music.Drums" ] }""");
+        long first = Start(cue);
+        _builder.PlayUntilBar(1.5);
+
+        _builder.Music.RequestLayer("Music.Drums.Inn");
+        _builder.PlayUntilBar(3);
+
+        _builder.Music.IsLayerOn("Drums").Should().BeTrue();
+        _builder.HeardAtBar(first, 2.5).Should().BeApproximately(0.3f, Close, "the bass plus the drums");
+    }
+
+    [Fact]
+    public void KeepsATrackWithATriggerOutUntilItIsAsked()
+    {
+        string cue = _builder.WithCue("Street", Bass + """, { "name": "Drums", "loop": "Drums.wav", "triggers": [ "Music.Drums" ] }""");
+        Start(cue);
+
+        _builder.PlayUntilBar(3);
+        _builder.Music.RequestLayer("Music.Other");
+        _builder.PlayUntilBar(4);
+
+        _builder.Music.IsLayerOn("Drums").Should().BeFalse();
+    }
+
+    [Fact]
     public void TakesATrackOutOnTheNextBarWithItsFillOut()
     {
         string cue = _builder.WithCue("Street", Bass + """, { "name": "Drums", "loop": "Drums.wav", "fillOut": "FillOut.wav", "byRequest": true }""");
@@ -441,9 +468,23 @@ public sealed class MusicSystemTests : IDisposable
     }
 
     [Fact]
-    public void SendsANotifyEachTimeThePhrasePassesIt()
+    public void SendsANotifyOnceAtItsBarOfTheCue()
     {
-        string cue = _builder.WithCue("Street", Bass, "\"tempo\": 480, \"phraseBars\": 2, \"notifies\": [ { \"name\": \"Drop\", \"bar\": 2 } ]");
+        string cue = _builder.WithCue("Street", Bass, "\"tempo\": 480, \"phraseBars\": 2, \"notifies\": [ { \"name\": \"Drop\", \"bar\": 4 } ]");
+        List<MusicNotifyEvent> notified = [];
+        _builder.Game.Events.Handle((in MusicNotifyEvent notify) => notified.Add(notify));
+        Start(cue);
+
+        _builder.PlayUntilBar(6.5);
+        _builder.PlayFor(1000);
+
+        notified.Should().Equal(new MusicNotifyEvent(cue, "Drop", 4));
+    }
+
+    [Fact]
+    public void SendsARepeatingNotifyEachTimeThePhrasePassesIt()
+    {
+        string cue = _builder.WithCue("Street", Bass, "\"tempo\": 480, \"phraseBars\": 2, \"notifies\": [ { \"name\": \"Drop\", \"bar\": 2, \"repeat\": true } ]");
         List<MusicNotifyEvent> notified = [];
         _builder.Game.Events.Handle((in MusicNotifyEvent notify) => notified.Add(notify));
         Start(cue);
