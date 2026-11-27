@@ -38,6 +38,7 @@ public sealed partial class ViewportViewModel
                 }
             }
 
+            creator.DrawTool(overlay);
             creator.DrawMesh(overlay);
             creator.DrawGizmo(overlay, viewportHeight);
             creator.DrawDoor(overlay);

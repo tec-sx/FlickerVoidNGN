@@ -3,94 +3,110 @@ using System.Numerics;
 using FlickerVoid.Editor.Core.Buildings;
 using FlickerVoid.Editor.Core.Meshes.Booleans;
 using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Buildings.Plans;
 
 namespace FlickerVoid.Editor.Core.Tests.Buildings;
 
 public sealed class BuildingToolsTests
 {
-    private readonly BuildingToolsTestsBuilder _builder = new();
-
     [Fact]
-    public void AddsStairsAndOpensTheFloorAboveThem()
+    public void AddsStoreysOnTopWithTheWallsOfTheTopStoreyAndACellarUnderTheGround()
     {
-        Assert.SkipUnless(SolidBoolean.IsAvailable, "The Booleans' native library is not here.");
-        BuildingFile building = _builder.WithStoreys(2).Build();
-        int faces = building.Storeys[1].Shell.Mesh.Faces.Count;
-        Vector2 foot = BuildingTools.GetStairsFoot(building, 0);
+        BuildingFile building = new BuildingToolsTestsBuilder().Build();
 
-        string? id = BuildingTools.AddStairs(building, 0, foot, BuildingTools.StairsRun);
+        BuildingTools.AddStoreyAbove(building);
+        BuildingTools.AddCellar(building);
 
-        id.Should().Be("stairs.1");
-        building.Storeys[1].Shell.Mesh.Faces.Count.Should().BeGreaterThan(faces, "the floor above has an opening");
-        building.Storeys[0].Shell.Mesh.Faces.Count.Should().Be(faces, "the floor the stairs stand on is whole");
+        building.Storeys.Select(storey => storey.Level).Should().Equal(-1, 0, 1);
+        building.Storeys[2].Walls.Should().HaveCount(4);
+        building.Storeys[2].Openings.Should().BeEmpty("the front door stays on the ground floor");
+        building.Storeys[0].Rooms.Single().Name.Should().Be("Cellar");
     }
 
     [Fact]
-    public void AddsNoStairsFromTheTopStorey()
+    public void DuplicatesAStoreyOnTopWithItsOpenings()
     {
-        BuildingFile building = _builder.WithStoreys(2).Build();
+        BuildingFile building = new BuildingToolsTestsBuilder().WithStoreys(2).Build();
+        BuildingStorey first = building.FindStorey(1)!;
+        (PlanWall wall, float along) = BuildingToolsTestsBuilder.WallAt(first, new Vector2(0, -2.85f));
+        PlanEdits.AddOpening(first, wall.Id, along, OpeningKind.Window);
 
-        string? id = BuildingTools.AddStairs(building, 1, Vector2.Zero, BuildingTools.StairsRun);
+        int level = BuildingTools.DuplicateStorey(building, 1);
 
-        id.Should().BeNull();
+        level.Should().Be(2);
+        building.FindStorey(2)!.Openings.Single().Kind.Should().Be(OpeningKind.Window);
+    }
+
+    [Fact]
+    public void TakingAStoreyAwayMovesTheOnesAboveDownAndTakesItsStairsAndShots()
+    {
+        BuildingFile building = new BuildingToolsTestsBuilder().WithStoreys(3).Build();
+        BuildingTools.AddStairs(building, 0, new Vector2(-2, -1), 0, StairsKind.Straight);
+        BuildingTools.AddStairs(building, 1, new Vector2(-2, -1), 0, StairsKind.Straight);
+        BuildingTools.AddShot(building, 1, Vector3.Zero, Quaternion.Identity);
+        BuildingTools.AddElevator(building, new Vector2(2, 0), 0);
+
+        BuildingTools.RemoveStorey(building, 1);
+
+        building.Storeys.Select(storey => storey.Level).Should().Equal(0, 1);
         building.Stairs.Should().BeEmpty();
+        building.Shots.Should().BeEmpty();
+        building.Elevators.Single().To.Should().Be(1);
     }
 
     [Fact]
-    public void StartsFlightsOfNeighbouringLevelsInDifferentLanes()
-    {
-        BuildingFile building = _builder.WithStoreys(3).Build();
-
-        Vector2 ground = BuildingTools.GetStairsFoot(building, 0);
-        Vector2 first = BuildingTools.GetStairsFoot(building, 1);
-        Vector2 second = BuildingTools.GetStairsFoot(building, 2);
-
-        MathF.Abs(first.X - ground.X).Should().BeGreaterThan(1.2f, "a flight's foot stands clear of the opening below it");
-        second.Should().Be(ground);
-    }
-
-    [Fact]
-    public void AddsAnElevatorAndCutsItsShaftThroughEveryFloorAboveTheLowest()
+    public void RebuildingCutsTheOpeningsThroughTheWallsAndTheStairsThroughTheFloorAbove()
     {
         Assert.SkipUnless(SolidBoolean.IsAvailable, "The Booleans' native library is not here.");
-        BuildingFile building = _builder.WithStoreys(3).Build();
-        int faces = building.Storeys[0].Shell.Mesh.Faces.Count;
-        Vector2 place = BuildingTools.GetElevatorPlace(building);
+        BuildingFile building = new BuildingToolsTestsBuilder().WithStoreys(2).Build();
+        BuildingFile uncut = new BuildingToolsTestsBuilder().WithStoreys(2).Build();
+        BuildingTools.AddStairs(building, 0, new Vector2(-2, -1.5f), 0, StairsKind.Straight);
+        BuildingMaker.Make(uncut, null);
 
-        BuildingTools.AddElevator(building, place);
+        BuildingTools.Rebuild(building);
 
-        building.Elevator.Should().NotBeNull();
-        building.Storeys[0].Shell.Mesh.Faces.Count.Should().Be(faces);
-        building.Storeys[1].Shell.Mesh.Faces.Count.Should().BeGreaterThan(faces);
-        building.Storeys[2].Shell.Mesh.Faces.Count.Should().BeGreaterThan(faces);
+        BuildingStorey ground = building.FindStorey(0)!;
+        ground.Parts["walls"].Mesh.Points.Count.Should().BeGreaterThan(uncut.FindStorey(0)!.Parts["walls"].Mesh.Points.Count, "the door is cut through the front wall");
+        building.FindStorey(1)!.Parts["floor"].Mesh.Points.Count.Should().BeGreaterThan(uncut.FindStorey(1)!.Parts["floor"].Mesh.Points.Count, "the stairs come up through the floor");
+        ground.Parts.Should().ContainKey("door.9");
+        building.Stairs.Single().RailingPart.Should().NotBeNull();
     }
 
     [Fact]
-    public void KeepsTheElevatorOnTheLowestFloorWhenACellarIsAdded()
+    public void PillarsStandInTheRoomsAndAtTheOutsideCornersOnRequest()
     {
-        Assert.SkipUnless(SolidBoolean.IsAvailable, "The Booleans' native library is not here.");
-        BuildingFile building = _builder.WithStoreys(2).Build();
-        int faces = building.Storeys[0].Shell.Mesh.Faces.Count;
-        Vector2 place = BuildingTools.GetElevatorPlace(building);
-        BuildingTools.AddElevator(building, place);
+        BuildingFile building = new BuildingToolsTestsBuilder().Build();
+        BuildingStorey ground = BuildingToolsTestsBuilder.Ground(building);
+        PlanEdits.AddPillar(ground, new Vector2(1, 1), 0.4f, round: true);
+        ground.CornerPillars = true;
 
-        BuildingTools.SetStoreys(building, 2, true);
+        BuildingMaker.Make(building, null);
 
-        float rest = building.GetFloorHeight(-1);
-        building.Elevator!.Platform.Place.Position.Y.Should().BeApproximately(rest, 1e-4f);
-        building.Storeys[0].Shell.Mesh.Faces.Count.Should().Be(faces, "the cellar's floor is whole");
-        building.Storeys[1].Shell.Mesh.Faces.Count.Should().BeGreaterThan(faces, "the ground floor is cut for the shaft");
+        ground.Parts.Keys.Should().Contain(["pillar.10", "corner.1", "corner.2", "corner.3", "corner.4"]);
+        ground.Parts["pillar.10"].Place.Position.Should().Be(new Vector3(1, 0.2f, 1));
+        ground.Parts["corner.1"].Mesh.Points.Max(point => point.Y).Should().BeApproximately(2.8f, 1e-4f);
     }
 
     [Fact]
-    public void TakesAwayStairsThatLostTheirFloor()
+    public void AnElevatorStopsAtEveryStoreyAndHasACallButtonOnEach()
     {
-        BuildingFile building = _builder.WithStoreys(3).Build();
-        BuildingTools.AddStairs(building, 0, BuildingTools.GetStairsFoot(building, 0), BuildingTools.StairsRun);
-        BuildingTools.AddStairs(building, 1, BuildingTools.GetStairsFoot(building, 1), BuildingTools.StairsRun);
+        BuildingFile building = new BuildingToolsTestsBuilder().WithStoreys(3).WithCellar().Build();
 
-        BuildingTools.SetStoreys(building, 2, false);
+        BuildingTools.AddElevator(building, new Vector2(2, 0), 0);
+        BuildingMaker.Make(building, null);
 
-        building.Stairs.Should().ContainSingle("only the flight from the ground floor still has a floor above");
+        BuildingElevator elevator = building.Elevators.Single();
+        (elevator.From, elevator.To).Should().Be((-1, 2));
+        building.GetParts().Select(part => part.Id).Count(id => id.StartsWith("elevator.1.call.", StringComparison.Ordinal)).Should().Be(4);
+    }
+
+    [Fact]
+    public void AShotLooksAtThePointFromItsDirection()
+    {
+        (Vector3 position, Quaternion rotation) = BuildingTools.LookAt(new Vector3(0, 0, 0), 0, -0.5f, 10);
+
+        Vector3 forward = Vector3.Transform(-Vector3.UnitZ, rotation);
+        (position + (forward * 10)).Length().Should().BeLessThan(1e-4f);
+        position.Y.Should().BeGreaterThan(0, "it looks down");
     }
 }

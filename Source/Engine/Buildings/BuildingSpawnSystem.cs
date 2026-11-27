@@ -200,12 +200,15 @@ internal sealed class BuildingSpawnSystem : BaseSystem<World, GameTime>
         return data.With(body);
     }
 
-    /// <summary>A part that moves: drawn as its solid, with a kinematic hull of its points that paths go around.</summary>
-    private static PartData Move(string path, string id, SolidPart part)
+    /// <summary>
+    /// A part that moves: drawn as its solid, with a kinematic hull of its points that paths go around when it is an obstacle (a door
+    /// leaf); a platform is not, so paths keep the floor under and around it and a rider walks off it at any stop.
+    /// </summary>
+    private static PartData Move(string path, string id, SolidPart part, bool obstacle)
     {
         PartData data = Draw(path, id, part);
         HullCollider collider = new() { Points = [.. part.Mesh.Points] };
-        RigidBody body = new() { Collider = collider, Kinematic = true, Obstacle = true };
+        RigidBody body = new() { Collider = collider, Kinematic = true, Obstacle = obstacle };
         return data.With(body);
     }
 
@@ -224,7 +227,7 @@ internal sealed class BuildingSpawnSystem : BaseSystem<World, GameTime>
             return Stand(path, id, door);
         }
 
-        PartData data = Move(path, id, door).With(joint);
+        PartData data = Move(path, id, door, obstacle: true).With(joint);
         if (door.Toggle is { } action)
         {
             Toggle toggle = new() { Action = action };
@@ -266,7 +269,7 @@ internal sealed class BuildingSpawnSystem : BaseSystem<World, GameTime>
             Vector3 top = platform.GetMiddle();
             top.Y *= 2;
             UsePoint stand = new() { Offset = top, StandOn = true };
-            parts.Add(Move(path, id, platform).With(joint).With(toggle).With(stopsAt).With(stand));
+            parts.Add(Move(path, id, platform, obstacle: false).With(joint).With(toggle).With(stopsAt).With(stand));
         }
 
         if (elevator.RailingPart is { } railing)

@@ -165,7 +165,7 @@ public static class AssetTypes
     private static string WriteBuilding(string schemaPath)
     {
         BuildingFile building = BuildingFile.Create();
-        BuildingTools.AddEntrance(building);
+        BuildingTools.Rebuild(building);
         building.Schema = schemaPath;
         using MemoryStream stream = new();
         using (Utf8JsonWriter writer = new(stream, WriterOptions))
