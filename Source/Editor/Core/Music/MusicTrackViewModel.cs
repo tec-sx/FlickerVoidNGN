@@ -11,12 +11,12 @@ namespace FlickerVoid.Editor.Core.Music;
 /// <summary>One track of a cue as a lane: its clips on the grid, and its values in sections for the side panel.</summary>
 public sealed partial class MusicTrackViewModel : ObservableObject
 {
-    private static readonly string[] AllNames = ["name", "loop", "bars", "fillIn", "fillOut", "gain", "byRequest", "when", "start", "stop", "phase", "fadeIn", "fadeOut", "scatter", "everyMin", "everyMax", "nearDistance", "farDistance"];
+    private static readonly string[] AllNames = ["name", "loop", "tempo", "bars", "fillIn", "fillOut", "gain", "byRequest", "when", "start", "stop", "phase", "fadeIn", "fadeOut", "scatter", "everyMin", "everyMax", "nearDistance", "farDistance"];
 
     private static readonly string[][] Sections =
     [
         ["name", "byRequest", "when"],
-        ["loop", "fillIn", "fillOut", "bars"],
+        ["loop", "fillIn", "fillOut", "tempo", "bars"],
         ["start", "stop", "phase", "fadeIn", "fadeOut"],
         ["gain"],
         ["scatter", "everyMin", "everyMax", "nearDistance", "farDistance"],
