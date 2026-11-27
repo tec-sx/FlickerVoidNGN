@@ -15,10 +15,13 @@ public sealed partial class DocumentTabs : ObservableObject
 
     /// <summary>The document shown in place of the viewport, or null while the level is.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsLevelShown))]
+    [NotifyPropertyChangedFor(nameof(IsLevelShown), nameof(HasSide))]
     public partial EditorDocument? Selected { get; set; }
 
     public bool IsLevelShown => Selected is null;
+
+    /// <summary>Whether the shown document brings its own side column.</summary>
+    public bool HasSide => Selected?.Side is not null;
 
     /// <summary>Whether the tab strip shows: only once a document is open, so the level alone takes the whole height.</summary>
     public bool HasDocuments => Documents.Count > 0;

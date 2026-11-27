@@ -58,6 +58,28 @@
     <!-- The bar of every other number box, which drags like the axes do. -->
     <SolidColorBrush x:Key="EditorValueBrush" Color="#D9B23A" />
 
+    <!-- The flow graph's nodes: a header tint and an icon colour for each kind (FlowNodeLook). -->
+    <SolidColorBrush x:Key="FlowDialogueHeaderBrush" Color="#2E3A44" />
+    <SolidColorBrush x:Key="FlowDialogueIconBrush" Color="#6FA8DC" />
+    <SolidColorBrush x:Key="FlowChoiceHeaderBrush" Color="#4E3519" />
+    <SolidColorBrush x:Key="FlowChoiceIconBrush" Color="#F5A639" />
+    <SolidColorBrush x:Key="FlowQuestHeaderBrush" Color="#4A401C" />
+    <SolidColorBrush x:Key="FlowQuestIconBrush" Color="#E0C040" />
+    <SolidColorBrush x:Key="FlowStartHeaderBrush" Color="#34401F" />
+    <SolidColorBrush x:Key="FlowStartIconBrush" Color="#A6C33F" />
+    <SolidColorBrush x:Key="FlowFinishHeaderBrush" Color="#4A2822" />
+    <SolidColorBrush x:Key="FlowFinishIconBrush" Color="#E0664A" />
+    <SolidColorBrush x:Key="FlowCameraHeaderBrush" Color="#3B2F4A" />
+    <SolidColorBrush x:Key="FlowCameraIconBrush" Color="#B48EC9" />
+    <SolidColorBrush x:Key="FlowConditionHeaderBrush" Color="#2E3F3C" />
+    <SolidColorBrush x:Key="FlowConditionIconBrush" Color="#5FB8A8" />
+    <SolidColorBrush x:Key="FlowEffectHeaderBrush" Color="#3A2F26" />
+    <SolidColorBrush x:Key="FlowEffectIconBrush" Color="#B6AB99" />
+    <SolidColorBrush x:Key="FlowWireBrush" Color="#8F8372" />
+    <SolidColorBrush x:Key="FlowDotBrush" Color="#2E241B" />
+    <SolidColorBrush x:Key="FlowMapNodeBrush" Color="#4A3D31" />
+    <SolidColorBrush x:Key="FlowMapFrameFillBrush" Color="#14F5A639" />
+
     <!-- Colours the code views draw with: the curve palette, code assets, the splash track and shadows. -->
     <Color x:Key="EditorCurveBlue">#5ACCFF</Color>
     <Color x:Key="EditorCurvePink">#D97BA6</Color>
@@ -976,6 +998,43 @@
   <Style Selector="TextBlock.menuDetail">
     <Setter Property="FontSize" Value="{StaticResource EditorSmallFontSize}" />
     <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+
+  <!-- The flow graph: nodes with a tinted header, ring pins, the pill over the canvas and the minimap. -->
+  <Style Selector="Border.flowNode">
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="BoxShadow" Value="0 4 14 0 #99000000" />
+  </Style>
+  <Style Selector="Border.flowNode.selected">
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BoxShadow" Value="0 0 14 0 #66F5A639" />
+  </Style>
+  <Style Selector="Border.flowHeader">
+    <Setter Property="Height" Value="24" />
+    <Setter Property="CornerRadius" Value="4,4,0,0" />
+    <Setter Property="Padding" Value="8,0" />
+  </Style>
+  <Style Selector="Border.flowHeader TextBlock">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.minimap">
+    <Setter Property="Background" Value="{StaticResource EditorOverlayBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorOverlayLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource EditorFloatCornerRadius}" />
+    <Setter Property="BoxShadow" Value="{StaticResource EditorFloatShadow}" />
+    <Setter Property="Width" Value="168" />
+    <Setter Property="Height" Value="104" />
+    <Setter Property="Padding" Value="6" />
+  </Style>
+  <Style Selector="ListBox.nodeList ListBoxItem">
+    <Setter Property="MinHeight" Value="22" />
+    <Setter Property="Padding" Value="8,0" />
   </Style>
 
   <!-- The scene outline: type icons in the hint colour, folders warmer; nested entities dimmer, hidden ones faint. -->
