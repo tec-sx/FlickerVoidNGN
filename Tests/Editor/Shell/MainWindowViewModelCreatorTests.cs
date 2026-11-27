@@ -11,6 +11,7 @@ using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Editor.Viewports;
 using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Runtime.Greyboxes;
 using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Tests;
@@ -219,9 +220,9 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     }
 
     [Fact]
-    public void DoubleClickingWhatIsNoCreationEntersNothing()
+    public void DoubleClickingBesideEverythingEntersNothing()
     {
-        _builder.DoubleClick(_builder.MiddleOf("Crate"));
+        _builder.DoubleClickSky();
 
         Viewport.Creator.Should().BeNull();
         Viewport.Mode.Should().BeSameAs(Viewport.SceneMode);
@@ -322,6 +323,54 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         creator!.Placement.Should().Be(CreatorPlacement.Alone);
         Viewport.CreatorFile.Should().Be(MainWindowViewModelTestsBuilder.Van);
         ViewModel.DuplicateAndEditCommand.CanExecute(null).Should().BeFalse("only a placed copy carries on in a new file");
+    }
+
+    [Fact]
+    public void DoubleClickingAGreyboxShapesItInPlaceWithItsMeshEntered()
+    {
+        _builder.DoubleClick(_builder.MiddleOf("Crate"));
+
+        CreatorMode? creator = Viewport.Creator;
+        creator.Should().NotBeNull();
+        creator!.Placement.Should().Be(CreatorPlacement.Piece);
+        creator.Root.Should().Be(_builder.Find("Crate"));
+        creator.MeshSelection.Should().NotBeNull("the mesh tools are ready at once");
+        Viewport.MeshTools.IsMeshMode.Should().BeTrue();
+        ViewModel.CreatorPanel.Should().BeNull("a greybox has no creator panel");
+        ViewModel.CreatorHeading.Should().Be("Crate");
+        ViewModel.DuplicateAndEditCommand.CanExecute(null).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShapingAGreyboxIsUndoneAndSavedWithTheLevel()
+    {
+        _builder.DoubleClick(_builder.MiddleOf("Crate"));
+        CreatorMode creator = Viewport.Creator!;
+        creator.MeshSelection!.SelectAll();
+        creator.MoveMesh(new Vector3(0, 1, 0));
+        World world = _builder.Scene.Game.World;
+        bool shaped = world.Get<Greybox>(_builder.Find("Crate")).Mesh is not null;
+
+        Viewport.Save();
+        string saved = _builder.ReadFile(MainWindowViewModelTestsBuilder.Street);
+        ViewModel.Undo();
+
+        shaped.Should().BeTrue();
+        saved.Should().Contain("\"mesh\"", "the shape is kept in the level's file");
+        world.Get<Greybox>(_builder.Find("Crate")).Mesh.Should().BeNull("undo is the level's");
+    }
+
+    [Fact]
+    public void EscapeLeavesTheMeshAndThenTheGreybox()
+    {
+        _builder.DoubleClick(_builder.MiddleOf("Crate"));
+
+        Viewport.KeyPressed(ViewportKey.Escape, ViewportButtons.None);
+        bool stillShaping = Viewport.Creator is not null;
+        Viewport.KeyPressed(ViewportKey.Escape, ViewportButtons.None);
+
+        stillShaping.Should().BeTrue("the first Escape leaves the mesh");
+        Viewport.Creator.Should().BeNull();
     }
 
     [Fact]

@@ -9,6 +9,7 @@ using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Engine.Runtime.Geometry;
+using FlickerVoid.Engine.Runtime.Greyboxes;
 using FlickerVoid.Engine.Buildings;
 using FlickerVoid.Engine.Vehicles;
 
@@ -30,8 +31,11 @@ public sealed partial class ViewportViewModel
     /// <summary>Raised when a placed creation is double-clicked, with its entity and file, to make it in place.</summary>
     public event Action<Entity, string>? CreationRequested;
 
+    /// <summary>Raised when a greybox of the level is double-clicked, with its entity, to shape it in place.</summary>
+    public event Action<Entity>? PieceRequested;
+
     /// <summary>
-    /// A double-click: on a placed creation it asks to make it in place; in the creator, one that misses the creation leaves it. The
+    /// A double-click: on a placed creation it asks to make it in place, and on a greybox of the level to shape it; in the creator, one that misses the creation leaves it. The
     /// game view only selects.
     /// </summary>
     public void DoubleClicked(Vector2 pixel, int width, int height)
@@ -60,6 +64,10 @@ public sealed partial class ViewportViewModel
         else if (world.TryGet(picked, out Building building) && !string.IsNullOrEmpty(building.File))
         {
             CreationRequested?.Invoke(picked, building.File);
+        }
+        else if (world.TryGet(picked, out Greybox greybox) && greybox.GetShownSwap() is null)
+        {
+            PieceRequested?.Invoke(picked);
         }
     }
 

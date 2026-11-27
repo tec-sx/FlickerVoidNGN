@@ -96,6 +96,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         viewport.Scene.UnsavedChanged += HandleUnsavedChanged;
         viewport.Scene.Edited += HandleSceneEdited;
         viewport.CreationRequested += EditCreation;
+        viewport.PieceRequested += ShapePiece;
         viewport.PropertyChanged += HandleViewportChanged;
         viewport.Selection.Changed += HandleSelectionChanged;
         ShowSceneMood();
