@@ -1,0 +1,73 @@
+using FlickerVoid.Engine.Audio;
+using FlickerVoid.Engine.Audio.Devices;
+using FlickerVoid.Engine.Audio.Mixing;
+using FlickerVoid.Engine.Audio.Music;
+using FlickerVoid.Engine.Audio.Sounds;
+using FlickerVoid.Engine.Runtime.Content;
+using FlickerVoid.Engine.Runtime.Data;
+using FlickerVoid.Engine.Runtime.Loop;
+
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace FlickerVoid.Editor.Core.Music;
+
+/// <summary>
+/// A small game of its own with the audio the music editor listens through: the cue being edited plays on its music system, and
+/// the project's sound files are read through the content manager. It plays to the system's output device, or to SDL's dummy
+/// one, or to nowhere, and then the time still runs with <see cref="Tick"/>.
+/// </summary>
+public sealed class MusicPreview : IDisposable
+{
+    private readonly Game _game = new(NullLoggerFactory.Instance);
+    private readonly SdlAudioDevice? _device;
+    private readonly NullAudioDevice? _silent;
+    private readonly MusicSystem _music;
+    private readonly AudioSystem _audio;
+
+    public MusicPreview(IContentManager content)
+    {
+        _game.Services.AddService(content);
+        DataAssets data = new(content, _game.Data);
+        _game.Services.AddService(data);
+        _audio = _game.AddAudio();
+        _audio.SteamAudio = null;
+        _music = _game.Services.GetService<MusicSystem>()!;
+        _music.IgnoreConditions = true;
+        _device = SdlAudioDevice.TryOpen(_audio.Mixer, out string problem);
+        if (_device is null)
+        {
+            _device = SdlAudioDevice.TryOpen(_audio.Mixer, out problem, "dummy");
+            Problem = "No sound device: the music plays to nowhere.";
+        }
+
+        if (_device is null)
+        {
+            _silent = new NullAudioDevice(_audio.Mixer);
+            Problem = $"No sound device ({problem}).";
+        }
+
+        _game.Lifecycle.Play(_game.World);
+    }
+
+    /// <summary>Why nothing can be heard, or empty when the output device is open.</summary>
+    public string Problem { get; } = string.Empty;
+
+    public MusicSystem Music => _music;
+
+    public AudioSystem Audio => _audio;
+
+    public Mixer Mixer => _audio.Mixer;
+
+    /// <summary>Runs the game's frames for the time passed; where no device pulls the mixer, renders what it would have played.</summary>
+    public void Tick(TimeSpan elapsed)
+    {
+        _game.Tick(elapsed);
+        _silent?.Render(elapsed);
+    }
+
+    public void Dispose()
+    {
+        _device?.Dispose();
+        _game.Dispose();
+    }
+}

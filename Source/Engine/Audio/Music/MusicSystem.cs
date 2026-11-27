@@ -64,6 +64,9 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         game.SaveStates.AddGlobal<MusicSaveState>("music", Save, Restore);
     }
 
+    /// <summary>Whether the tracks' <c>when</c> conditions are taken as true, as an editor auditioning a cue wants them.</summary>
+    public bool IgnoreConditions { get; set; }
+
     private Mixer Mixer => _audio.Mixer;
 
     public void Play(string cue)
@@ -636,7 +639,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
             return false;
         }
 
-        return track.Track.When.IsEmpty || track.Track.When.Evaluate(context);
+        return IgnoreConditions || track.Track.When.IsEmpty || track.Track.When.Evaluate(context);
     }
 
     /// <summary>Brings a track in: at once with a cue that is starting or continuing, else on its line of the grid after its fill-in.</summary>
