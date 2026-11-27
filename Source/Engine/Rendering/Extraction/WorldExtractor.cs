@@ -84,7 +84,7 @@ public sealed class WorldExtractor : IRenderExtractor
             Matrix4x4 meshWorld = transform.ToMatrix();
             Outline? outline = FindOutline(world, entity);
             string? swap = greybox.GetShownSwap();
-            string mesh = swap ?? GreyboxMesh.GetName(greybox.Size);
+            string mesh = GreyboxMesh.GetName(greybox);
             string[]? materials = null;
             if (swap is null && greybox.Material is { } material)
             {

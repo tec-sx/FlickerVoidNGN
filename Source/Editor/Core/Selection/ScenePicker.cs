@@ -261,7 +261,7 @@ public sealed class ScenePicker : IDisposable
     /// <summary>The model a greybox shows: the swap in its place, or its box.</summary>
     private static string GetMesh(in Greybox greybox)
     {
-        return greybox.GetShownSwap() ?? GreyboxMesh.GetName(greybox.Size);
+        return GreyboxMesh.GetName(greybox);
     }
 
     private PickModel? Load(string mesh)
