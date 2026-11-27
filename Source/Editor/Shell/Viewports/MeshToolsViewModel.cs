@@ -19,7 +19,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
     private Vector2 _pointer;
     private (int Width, int Height) _size = (1, 1);
     private Vector2 _dragFrom;
-    private bool _dragTyped;
+    private bool _dragSettled;
     private bool _dragWrites;
 
     public MeshToolsViewModel(Func<CreatorMode?> creator, Action<string> report)
@@ -183,7 +183,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
     public bool ShowsCutThrough => ActiveTool == MeshDragTool.Cut;
 
-    public bool ShowsThickness => ActiveTool is MeshDragTool.Inset or MeshDragTool.Bevel;
+    public bool ShowsThickness => ActiveTool is MeshDragTool.Inset or MeshDragTool.Bevel or MeshDragTool.Hollow;
 
     public bool ShowsBevel => ActiveTool == MeshDragTool.Bevel;
 
@@ -206,6 +206,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowsResting));
         OnPropertyChanged(nameof(IsCreating));
         OnPropertyChanged(nameof(IsDragging));
+        OnPropertyChanged(nameof(IsFollowing));
         OnPropertyChanged(nameof(IsMeshMode));
         OnPropertyChanged(nameof(Element));
         OnPropertyChanged(nameof(IsPoint));
@@ -222,7 +223,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
     {
         _pointer = pixel;
         _size = (width, height);
-        if (_dragTyped || _creator() is not { MeshDrag: { } tool } creator)
+        if (_dragSettled || _creator() is not { MeshDrag: { } tool } creator)
         {
             return;
         }
@@ -268,13 +269,37 @@ public sealed partial class MeshToolsViewModel : ObservableObject
         }
 
         _dragFrom = _pointer;
-        _dragTyped = false;
-        _report($"{tool}: move the mouse up or down, click or Enter to apply, right-click or Escape to cancel.");
+        _dragSettled = false;
+        _report($"{tool}: move the mouse up or down and click to set it, then tune it in the Tool tab; Enter applies, Escape cancels.");
         Refresh();
     }
 
-    /// <summary>Keeps what the dragged tool shows; false when no tool is dragged.</summary>
+    /// <summary>Keeps what the pending tool shows; false when no tool is pending.</summary>
     public bool ConfirmDrag() => EndDrag(keep: true);
+
+    /// <summary>Whether the pending tool's amount still follows the mouse; a click or a typed number lets go of it.</summary>
+    public bool IsFollowing => IsDragging && !_dragSettled;
+
+    /// <summary>
+    /// A click in the view while a tool is pending: the first one stops the mouse setting its amount, so its numbers can be tuned in
+    /// the Tool tab before Apply (Enter); the tool stays pending either way. False when no tool is pending, so the click selects.
+    /// </summary>
+    public bool Settle()
+    {
+        if (!IsDragging)
+        {
+            return false;
+        }
+
+        if (!_dragSettled)
+        {
+            _dragSettled = true;
+            _report($"{ToolName}: tune it in the Tool tab, then Enter or Apply keeps it and Escape cancels.");
+            OnPropertyChanged(nameof(IsFollowing));
+        }
+
+        return true;
+    }
 
     /// <summary>The confirm bar's Apply (Enter).</summary>
     [RelayCommand]
@@ -340,6 +365,10 @@ public sealed partial class MeshToolsViewModel : ObservableObject
     [RelayCommand]
     public void DragBevel() => BeginDrag(MeshDragTool.Bevel);
 
+    /// <summary>Hollows the entered mesh to a wall the mouse sets; the selected faces are left open.</summary>
+    [RelayCommand]
+    public void DragHollow() => BeginDrag(MeshDragTool.Hollow);
+
     /// <summary>The right-click menu of the mesh: the tools, then the switches with what each is set to.</summary>
     public IReadOnlyList<MenuChoice> GetMenu()
     {
@@ -352,6 +381,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
             new MenuChoice("Cut", DragCut, Tools, null, "C"),
             new MenuChoice("Bevel", DragBevel, Tools, null, "B"),
             new MenuChoice("Loop Cut", LoopCut, Tools, null, "L"),
+            new MenuChoice("Hollow", DragHollow, Tools, null, "H"),
             new MenuChoice(Describe("Mirror", Mirror), () => Mirror = !Mirror, Switches),
             new MenuChoice(Describe("Round Bevels", Round), () => Round = !Round, Switches),
             new MenuChoice(Describe("Cut Through", Through), () => Through = !Through, Switches),
@@ -362,9 +392,20 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
     partial void OnThicknessChanged(double value) => TypeDragAmount(value, thickness: true);
 
+    partial void OnRowsChanged(double value) => RefreshDragOptions();
+
+    partial void OnRoundChanged(bool value) => RefreshDragOptions();
+
+    // Rows and roundness reach a pending bevel at once.
+    private void RefreshDragOptions()
+    {
+        MeshDragOptions options = new((int)Rows, Round);
+        _creator()?.SetMeshDragOptions(options);
+    }
+
     private static string Describe(string name, bool on) => on ? $"{name}: On" : $"{name}: Off";
 
-    private static bool UsesThickness(MeshDragTool tool) => tool is MeshDragTool.Inset or MeshDragTool.Bevel;
+    private static bool UsesThickness(MeshDragTool tool) => tool is MeshDragTool.Inset or MeshDragTool.Bevel or MeshDragTool.Hollow;
 
     // A number typed while its tool is dragged sets the amount, and the mouse lets go of it.
     private void TypeDragAmount(double value, bool thickness)
@@ -374,7 +415,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
             return;
         }
 
-        _dragTyped = true;
+        _dragSettled = true;
         creator.DragMesh((float)value);
     }
 

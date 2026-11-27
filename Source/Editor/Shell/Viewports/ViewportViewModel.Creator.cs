@@ -150,12 +150,16 @@ public sealed partial class ViewportViewModel
 
         if (MeshTools.IsDragging)
         {
-            if (key == ViewportKey.Escape)
+            switch (key)
             {
-                return MeshTools.CancelDrag();
+                case ViewportKey.Escape:
+                    return MeshTools.CancelDrag();
+                case ViewportKey.Enter:
+                    return MeshTools.ConfirmDrag();
+                default:
+                    // A pending tool waits for Apply or Cancel; other keys go to the view (its camera keys still move it).
+                    return false;
             }
-
-            MeshTools.ConfirmDrag();
         }
 
         if (key == ViewportKey.Tab)
@@ -191,6 +195,9 @@ public sealed partial class ViewportViewModel
                 break;
             case ViewportKey.B:
                 MeshTools.DragBevel();
+                break;
+            case ViewportKey.H:
+                MeshTools.DragHollow();
                 break;
             case ViewportKey.M:
                 MeshTools.Mirror = !MeshTools.Mirror;
