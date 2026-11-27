@@ -24,6 +24,7 @@ public static class SceneIcons
         ("pickup", "Item"),
         ("triggerArea", "Trigger"),
         ("indoorVolume", "Layers"),
+        ("fogVolume", "Environment"),
         ("interactable", "Interact"),
         ("vehicle", "Vehicle"),
         ("building", "Building"),

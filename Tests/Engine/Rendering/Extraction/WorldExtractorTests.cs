@@ -50,6 +50,21 @@ public sealed class WorldExtractorTests : IDisposable
     }
 
     [Fact]
+    public void CopiesFogVolumesWithWhereTheyStand()
+    {
+        FogVolume volume = new() { Shape = FogShape.Ball, Density = 0.5f };
+        Transform transform = new() { Position = new Vector3(1, 0, 2), Rotation = Quaternion.CreateFromYawPitchRoll(0.5f, 0, 0) };
+
+        RenderScene scene = _builder.WithFogVolume(volume, transform).Extract();
+
+        scene.FogVolumes.Should().ContainSingle();
+        scene.FogVolumes[0].Position.Should().Be(new Vector3(1, 0, 2));
+        scene.FogVolumes[0].Rotation.Should().Be(transform.Rotation);
+        scene.FogVolumes[0].Volume.Shape.Should().Be(FogShape.Ball);
+        scene.FogVolumes[0].Volume.Density.Should().Be(0.5f);
+    }
+
+    [Fact]
     public void DrawsAShapedGreyboxAsItsShape()
     {
         SolidMesh shape = SolidMesh.Box(new Vector3(1, 2, 1));

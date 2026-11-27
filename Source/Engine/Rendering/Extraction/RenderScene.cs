@@ -23,6 +23,9 @@ public sealed class RenderScene
     /// <summary>Indoor volumes' boxes, which scale the ambient light inside them.</summary>
     public List<RenderIndoor> Indoors { get; } = [];
 
+    /// <summary>Fog volumes, whose fog adds to the mood's in the lit fog.</summary>
+    public List<RenderFogVolume> FogVolumes { get; } = [];
+
     /// <summary>The indoor volume the camera looks into, cutting away what stands in front of it, if any.</summary>
     public RenderIndoor? Cutaway { get; set; }
 
@@ -46,6 +49,7 @@ public sealed class RenderScene
         SpotLights.Clear();
         ProbeVolumes.Clear();
         Indoors.Clear();
+        FogVolumes.Clear();
         Cutaway = null;
         Transition = default;
         Focus = null;
@@ -63,6 +67,7 @@ public sealed class RenderScene
         SpotLights.AddRange(other.SpotLights);
         ProbeVolumes.AddRange(other.ProbeVolumes);
         Indoors.AddRange(other.Indoors);
+        FogVolumes.AddRange(other.FogVolumes);
         Cutaway = other.Cutaway;
         Transition = other.Transition;
         Focus = other.Focus;

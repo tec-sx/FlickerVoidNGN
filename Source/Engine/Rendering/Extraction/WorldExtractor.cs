@@ -29,6 +29,7 @@ public sealed class WorldExtractor : IRenderExtractor
     private static readonly QueryDescription SpotLights = new QueryDescription().WithAll<SpotLight, Transform>().WithNone<Hidden, Undrawn>();
     private static readonly QueryDescription Doorways = new QueryDescription().WithAll<Doorway, Transform>().WithNone<Hidden, Undrawn, Greyed>();
     private static readonly QueryDescription IndoorVolumes = new QueryDescription().WithAll<IndoorVolume, Transform>();
+    private static readonly QueryDescription FogVolumes = new QueryDescription().WithAll<FogVolume, Transform>();
     private static readonly QueryDescription Volumes = new QueryDescription().WithAll<IrradianceVolume, Transform>();
     private static readonly QueryDescription Environments = new QueryDescription().WithAll<SceneEnvironment>();
 
@@ -118,6 +119,10 @@ public sealed class WorldExtractor : IRenderExtractor
             {
                 scene.Cutaway = indoor;
             }
+        });
+        world.Query(in FogVolumes, (ref FogVolume volume, ref Transform transform) =>
+        {
+            scene.FogVolumes.Add(new RenderFogVolume(transform.Position, transform.Rotation, volume));
         });
         world.Query(in Volumes, (ref IrradianceVolume volume, ref Transform transform) =>
         {

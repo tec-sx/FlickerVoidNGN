@@ -127,7 +127,7 @@ internal sealed class LightGatherPass : IRenderPass
     /// <summary>Whether the fog marches through the air, where traced shadows don't reach, so it needs shadow maps.</summary>
     private static bool NeedsFogShadows(RenderContext context)
     {
-        return context.Mood.FogDensity > 0;
+        return FogVolumePass.HasFog(context);
     }
 
     private static uint AddShadow(RenderContext context, Matrix4x4 viewProjection, ShadowTile tile, bool orthographic)
