@@ -2,6 +2,7 @@ using System.Numerics;
 
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Shadows;
+using FlickerVoid.Engine.Runtime.Geometry;
 
 namespace FlickerVoid.Engine.Rendering.Tests;
 
@@ -51,6 +52,74 @@ public sealed class ShadowProjectionsTests
 
         float texels = (projectedAfter.X - projectedBefore.X) * ShadowAtlas.SunTileSize / 2;
         texels.Should().BeApproximately(MathF.Round(texels), 1e-2f);
+    }
+
+    [Fact]
+    public void FitsTheSunShadowOnlyToTheWorldTheViewSees()
+    {
+        Bounds world = new(new Vector3(-2), new Vector3(2));
+        Matrix4x4 loose = _builder.FitSun(Slanted);
+        Matrix4x4 tight = _builder.WithWorld(world).FitSun(Slanted);
+
+        for (int index = 0; index < 8; index++)
+        {
+            Vector3 corner = new((index & 1) == 0 ? -2 : 2, (index & 2) == 0 ? -2 : 2, (index & 4) == 0 ? -2 : 2);
+            Vector3 projected = ShadowProjectionsTestsBuilder.Project(tight, corner);
+            projected.X.Should().BeInRange(-1, 1);
+            projected.Y.Should().BeInRange(-1, 1);
+            projected.Z.Should().BeInRange(0, 1);
+        }
+
+        float looseDetail = ShadowProjectionsTestsBuilder.Detail(loose);
+        float tightDetail = ShadowProjectionsTestsBuilder.Detail(tight);
+        tightDetail.Should().BeGreaterThan(2 * looseDetail, "a world smaller than the view gets the map's texels to itself");
+    }
+
+    [Fact]
+    public void FitsTheSunShadowToWhereTheViewCutsTheWorld()
+    {
+        Bounds ground = new(new Vector3(-1000, -1000, -1), new Vector3(1000, 1000, 0));
+        Matrix4x4 tight = _builder.WithWorld(ground).FitSun(-Vector3.UnitZ);
+        Vector3[] corners = [.. _builder.ViewCorners()];
+        Vector3 center = corners.Aggregate(Vector3.Zero, static (sum, corner) => sum + corner) / corners.Length;
+        float radius = corners.Max(corner => Vector3.Distance(corner, center));
+
+        Vector3 corner = ShadowProjectionsTestsBuilder.Project(tight, new Vector3(8.8f, 4.9f, -0.5f));
+        corner.X.Should().BeInRange(-1, 1, "the ground the view sees is in the map");
+        corner.Y.Should().BeInRange(-1, 1);
+        float sphereDetail = ShadowAtlas.SunTileSize / (2 * radius);
+        float tightDetail = ShadowProjectionsTestsBuilder.Detail(tight);
+        tightDetail.Should().BeGreaterThan(1.2f * sphereDetail, "the map no longer wraps a sphere round the whole depth of the view");
+    }
+
+    [Fact]
+    public void HasNoSunShadowWhereTheViewMissesTheWorld()
+    {
+        Bounds away = new(new Vector3(500), new Vector3(510));
+
+        Matrix4x4? shadow = _builder.WithWorld(away).TryFitSun(Slanted);
+
+        shadow.Should().BeNull();
+    }
+
+    [Fact]
+    public void KeepsTheSunShadowStillWhileTheCameraMovesALittle()
+    {
+        Matrix4x4 before = _builder.FitSun(Slanted);
+        Matrix4x4 after = _builder.WithCameraOffset(new Vector3(0.05f, 0.05f, 0)).FitSun(Slanted);
+
+        after.Should().Be(before, "the map moves in steps, so a kept shadow tile stays good while the camera moves within one");
+    }
+
+    [Fact]
+    public void FollowsTheCameraWhenItMovesFurther()
+    {
+        Matrix4x4 before = _builder.FitSun(Slanted);
+        Matrix4x4 after = _builder.WithCameraOffset(new Vector3(5, 0, 0)).FitSun(Slanted);
+
+        Vector3 corner = ShadowProjectionsTestsBuilder.Project(after, new Vector3(13.8f, 4.9f, 0));
+        after.Should().NotBe(before);
+        corner.X.Should().BeInRange(-1, 1, "the moved view's corner is in the map");
     }
 
     [Fact]

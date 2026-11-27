@@ -485,6 +485,93 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void KeepsShadowTilesWhileNothingChanges()
+    {
+        WithSunBlocker();
+        uint[] first = _builder.Render();
+
+        uint[] second = _builder.Render();
+
+        RenderStatistics statistics = _builder.Statistics;
+        statistics.ShadowTilesKept.Should().Be(1, "neither the sun nor a caster moved, so the sun's tile is still good");
+        statistics.ShadowTilesDrawn.Should().Be(0);
+        statistics.ShadowDrawn.Should().Be(0, "a kept tile draws nothing");
+        second.Should().Equal(first);
+    }
+
+    [Fact]
+    public void RedrawsAShadowTileWhenACasterInItMoves()
+    {
+        WithSunBlocker();
+        _builder.Render();
+
+        uint[] pixels = _builder.WithPosition("Blocker", new Vector3(0.75f, -0.25f, 1)).Render();
+
+        (byte left, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        (byte fallen, _, _) = SceneRendererTestsBuilder.Channels(pixels[9]);
+        _builder.Statistics.ShadowTilesDrawn.Should().Be(1);
+        left.Should().BeInRange(195, 203, "the shadow leaves with its caster");
+        fallen.Should().BeInRange(62, 66, "and falls where it went");
+    }
+
+    [Fact]
+    public void KeepsTheSunsShadowUntilTheSunTurnsPastAQuarterOfADegree()
+    {
+        WithSunBlocker();
+        _builder.Render();
+
+        _builder.WithLight(Turn(new Vector3(-1, 0, -1), 0.1f), ambient: 0.25f).Render();
+        int keptAfterASmallTurn = _builder.Statistics.ShadowTilesKept;
+        _builder.WithLight(Turn(new Vector3(-1, 0, -1), 1), ambient: 0.25f).Render();
+
+        keptAfterASmallTurn.Should().Be(1, "a tenth of a degree moves no shadow edge by a texel");
+        _builder.Statistics.ShadowTilesDrawn.Should().Be(1, "the sun moves through the day, so its shadow follows");
+    }
+
+    [Fact]
+    public void DrawsAPosedCastersShadowAnewOverTheKeptTile()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithModel("Walker.glb", static model => model.WithQuad(0.25f).WithBaseColor(Red).WithMovingJoint(Vector3.Zero, new Vector3(1, 1, 0), 2));
+        string walker = """{ "name": "Walker", "components": { "transform": { "position": [0.25, -0.25, 1] }, "meshRenderer": { "mesh": "Walker.glb" }, "meshAnimator": { "time": 0 } } }""";
+        _builder.WithScene(Camera, Quad, walker);
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+        uint[] standing = _builder.RenderFrames(2);
+
+        uint[] moved = _builder.WithAnimationTime(1).Render();
+        (byte before, _, _) = SceneRendererTestsBuilder.Channels(standing[8]);
+        (byte left, _, _) = SceneRendererTestsBuilder.Channels(moved[8]);
+        (byte fallen, _, _) = SceneRendererTestsBuilder.Channels(moved[5]);
+        before.Should().BeInRange(62, 66, "the walker's shadow falls to its left");
+        left.Should().BeInRange(195, 203, "the walker moved, and its shadow with it");
+        fallen.Should().BeInRange(62, 66);
+        _builder.Statistics.ShadowTilesKept.Should().Be(1, "the floor's shadow tile stays; only the posed walker is drawn again over it");
+    }
+
+    [Fact]
+    public void CastsABatchsShadowFromItsShadowMesh()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithModel("Tiny.glb", static model => model.WithQuad(0.01f).WithBaseColor(Red));
+        _builder.WithModel("Shade.glb", static model => model.WithQuad(1).WithBaseColor(new Vector4(0, 0, 1, 1)));
+        _builder.WithScene(Camera, Quad);
+        InstanceBatch batch = Batch(new Instance(new Vector3(0.75f, 0.25f, 1), 0, 0, 0, 0));
+        batch.Mesh = "Tiny.glb";
+        batch.ShadowMesh = "Shade.glb";
+        batch.MinScale = 0.25f;
+        batch.MaxScale = 0.25f;
+        _builder.WithBatch(batch);
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+
+        uint[] pixels = _builder.Render();
+
+        (byte shadowed, _, _) = SceneRendererTestsBuilder.Channels(pixels[5]);
+        (_, _, byte blue) = SceneRendererTestsBuilder.Channels(pixels[7]);
+        shadowed.Should().BeInRange(62, 66, "the copy's shadow mesh casts in place of its tiny model");
+        blue.Should().Be(0, "the blue shadow mesh is never seen where the copy stands");
+    }
+
+    [Fact]
     public void DrawsGreyedMeshesInBlackAndWhite()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
@@ -2585,6 +2672,19 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     /// <summary>A batch of Quad.glb copies at half size.</summary>
+    private static Vector3 Turn(Vector3 direction, float degrees)
+    {
+        Quaternion turn = Quaternion.CreateFromAxisAngle(Vector3.UnitY, float.DegreesToRadians(degrees));
+        return Vector3.Transform(direction, turn);
+    }
+
+    private void WithSunBlocker()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(1).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad, """{ "name": "Blocker", "components": { "transform": { "position": [0.75, 0.25, 1], "scale": [0.25, 0.25, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""");
+        _builder.WithLight(sunDirection: new Vector3(-1, 0, -1), ambient: 0.25f);
+    }
+
     private static InstanceBatch Batch(params Instance[] copies)
     {
         InstanceBatch batch = new("Quad.glb") { MinScale = 0.5f, MaxScale = 0.5f };
