@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:flows="using:FlickerVoid.Editor.Core.Flows"
+             xmlns:shellflows="using:FlickerVoid.Editor.Flows"
+             xmlns:data="using:FlickerVoid.Editor.Data"
+             xmlns:shell="using:FlickerVoid.Editor"
+             x:Class="FlickerVoid.Editor.Flows.FlowSideView"
+             x:DataType="flows:FlowGraphViewModel">
+  <!-- The flow's side column, in place of the context panel and the outliner while its tab is shown: the selected node's values over
+       the list of every node. -->
+  <Border Classes="well">
+  <Grid RowDefinitions="*,1,220">
+    <DockPanel>
+      <Border DockPanel.Dock="Top" Classes="entityHeader" IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <DockPanel>
+          <Border DockPanel.Dock="Left" Classes="iconTile">
+            <PathIcon Data="{Binding Selected.Icon, Converter={x:Static shell:LucideIcons.ByName}, FallbackValue={x:Null}}"
+                      Foreground="{Binding Selected.Kind, Converter={x:Static shellflows:FlowNodeBrushes.Icon}}" />
+          </Border>
+          <StackPanel VerticalAlignment="Center" Margin="8,0,0,0">
+            <TextBlock Text="{Binding Selected.Title}" Classes="title" />
+            <TextBlock Text="{Binding Selected.Kind, StringFormat='{}{0} node'}" Classes="hint small" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+      <TextBlock Text="Select a node to edit it here." Classes="hint" Margin="12,10"
+                 IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNull}}" />
+      <ScrollViewer>
+        <Border Classes="sectionBody" IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <data:DataView DataContext="{Binding SelectedForm}" />
+        </Border>
+      </ScrollViewer>
+    </DockPanel>
+    <Border Grid.Row="1" Background="{DynamicResource EditorLineBrush}" />
+    <DockPanel Grid.Row="2">
+      <Border DockPanel.Dock="Top" Classes="searchRow" Padding="10,0">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Right" Classes="hint small" VerticalAlignment="Center" Text="{Binding Nodes.Count}" />
+          <TextBlock Text="NODES" Classes="caps" VerticalAlignment="Center" />
+        </DockPanel>
+      </Border>
+      <ListBox x:Name="NodeList" Classes="nodeList" ItemsSource="{Binding Nodes}" SelectedItem="{Binding Selected, Mode=OneWay}"
+               SelectionChanged="HandleNodeListSelected">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="flows:FlowNodeViewModel">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <PathIcon Classes="small" Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}"
+                        Foreground="{Binding Kind, Converter={x:Static shellflows:FlowNodeBrushes.Icon}}" />
+              <TextBlock Text="{Binding Title}" />
+              <TextBlock Text="{Binding Description}" Classes="muted" TextTrimming="CharacterEllipsis" MaxWidth="150" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+  </Grid>
+</Border>
+</UserControl>

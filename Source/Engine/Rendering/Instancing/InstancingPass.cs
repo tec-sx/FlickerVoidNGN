@@ -183,10 +183,29 @@ internal sealed class InstancingPass : IRenderPass
             context.Draws.Add(draw);
         }
 
+        if (batch.ShadowMesh is { Length: > 0 } shadowMesh)
+        {
+            AddShadowDraws(context, id, shadowMesh, new InstancedDraw(batch, copies, visible, arguments, 0), bounds);
+        }
+
         if (inView)
         {
             uint scales = batch.PackScales();
             _culls.Add(new Cull(copies, visible, arguments, batch.Count, model.Parts.Count, scales, sphere));
+        }
+    }
+
+    /// <summary>Adds the shadow mesh's parts, drawn with the batch's copies into shadow maps alone.</summary>
+    private void AddShadowDraws(RenderContext context, int id, string shadowMesh, InstancedDraw batchDraw, in Bounds bounds)
+    {
+        GpuModel model = _meshes.Get(shadowMesh, context.Meshes);
+        GpuMaterial material = _materials.Get(null, context.Textures);
+        for (int index = 0; index < model.Parts.Count; index++)
+        {
+            GpuMeshPart part = model.Parts[index];
+            InstancedDraw instanced = batchDraw with { Part = index };
+            MeshDraw draw = new(id, Matrix4x4.Identity, Matrix4x4.Identity, part, part.Vertices, part.Vertices, material, null, MeshFlags.ShadowMap, bounds, false, instanced);
+            context.Draws.Add(draw);
         }
     }
 

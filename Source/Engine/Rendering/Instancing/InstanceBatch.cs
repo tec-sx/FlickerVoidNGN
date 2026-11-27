@@ -32,6 +32,12 @@ public sealed class InstanceBatch
     /// <summary>How far from the focus (else the camera) the batch's box may be before it draws its <see cref="StandIn"/>.</summary>
     public float StandInDistance { get; set; } = float.PositiveInfinity;
 
+    /// <summary>
+    /// A simpler model the shadow maps draw in place of <see cref="Mesh"/> at every distance, if any, such as a shell round a tree's
+    /// canopy in place of its leaf cards; traced shadows still see the model.
+    /// </summary>
+    public string? ShadowMesh { get; set; }
+
     public int Count { get; private set; }
 
     /// <summary>The copies, to read or change in place; call <see cref="Changed"/> after changing them.</summary>
