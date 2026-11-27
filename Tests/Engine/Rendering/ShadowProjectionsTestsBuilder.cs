@@ -3,6 +3,7 @@ using System.Numerics;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Shadows;
 using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Geometry;
 
 namespace FlickerVoid.Engine.Rendering.Tests;
 
@@ -14,6 +15,7 @@ internal sealed class ShadowProjectionsTestsBuilder
 
     private Camera _camera = new() { OrthographicHeight = 10, FieldOfView = 60, NearPlane = 0.1f, FarPlane = 100 };
     private Vector3 _position = new(0, 0, 10);
+    private Bounds _world = new(new Vector3(-1000), new Vector3(1000));
 
     public ShadowProjectionsTestsBuilder WithProjection(CameraProjection projection)
     {
@@ -27,10 +29,30 @@ internal sealed class ShadowProjectionsTestsBuilder
         return this;
     }
 
+    /// <summary>Without a call, the world reaches far beyond the view.</summary>
+    public ShadowProjectionsTestsBuilder WithWorld(Bounds world)
+    {
+        _world = world;
+        return this;
+    }
+
     public Matrix4x4 FitSun(Vector3 sunDirection)
     {
+        Matrix4x4? shadow = TryFitSun(sunDirection);
+        return shadow ?? throw new InvalidOperationException("The view sees nothing of the world.");
+    }
+
+    public Matrix4x4? TryFitSun(Vector3 sunDirection)
+    {
         CameraView view = BuildView();
-        return ShadowProjections.FitSun(_camera, view, sunDirection, ShadowDistance, CasterReach);
+        return ShadowProjections.FitSun(_camera, view, sunDirection, ShadowDistance, CasterReach, _world);
+    }
+
+    /// <summary>How many shadow map texels a world unit across the light covers.</summary>
+    public static float Detail(Matrix4x4 shadow)
+    {
+        Vector3 xAxis = new(shadow.M11, shadow.M21, shadow.M31);
+        return xAxis.Length() * ShadowAtlas.SunTileSize / 2;
     }
 
     /// <summary>The corners of the camera's view, cut at the shadow distance.</summary>

@@ -42,9 +42,11 @@ internal sealed class TextureImporterTestsBuilder : IDisposable
 
     public BuildReport BuildAll(AssetBuilder builder) => _files.BuildAll(builder);
 
+    public string OutputPath(string path) => Path.Combine(_files.OutputDirectory, path);
+
     public DdsImage ReadOutput(string path)
     {
-        string fullPath = Path.Combine(_files.OutputDirectory, path);
+        string fullPath = OutputPath(path);
         using FileStream stream = File.OpenRead(fullPath);
         return DdsImage.Read(stream);
     }

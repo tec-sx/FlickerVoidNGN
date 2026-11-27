@@ -230,6 +230,13 @@ public sealed record LightingMood
     /// </summary>
     public float ContactShadowLength { get; set; } = 0.3f;
 
+    /// <summary>How much of the sun's light a cast shadow takes away, from 0 (none) to 1 (all of it, the default).</summary>
+    [Range(0, 1)]
+    public float ShadowDarkness { get; set; } = 1;
+
+    /// <summary>The colour all light in the sun's shadow is multiplied by, as deep as the shadow is; white leaves it as it is.</summary>
+    public Vector3 ShadowColor { get; set; } = Vector3.One;
+
     /// <summary>How much of the image is replaced by its blurred glow, from 0 to 1.</summary>
     [Range(0, 1)]
     public float Bloom { get; set; }

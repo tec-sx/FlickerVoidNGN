@@ -12,13 +12,13 @@ namespace FlickerVoid.Tools.Builder.Textures;
 /// <summary>
 /// Makes an image (PNG, JPEG, TGA or BMP) an sRGB texture with its full mip chain, in <c>Name.dds</c>: as its
 /// <c>Name.png.fvtexture</c> settings say, when it has them (cropped, shrunk, tinted, BC7 or uncompressed, or a 16-bit linear
-/// mask), else whole as BC7.
+/// mask), else whole as BC7; and its relief from its brightness, in <c>Name.relief.dds</c>, when its settings ask for one.
 /// </summary>
 public sealed class TextureImporter : IAssetImporter
 {
     public string Name => "Texture";
 
-    public int Version => 3;
+    public int Version => 4;
 
     public IReadOnlyList<string> Extensions { get; } = [".png", ".jpg", ".jpeg", ".tga", ".bmp"];
 
@@ -48,11 +48,34 @@ public sealed class TextureImporter : IAssetImporter
         }
 
         Write(context, image);
+        if (settings.Relief)
+        {
+            byte[] heights = RaiseRelief(edited.Rgba);
+            DdsImage relief = TextureCompressor.Compress(heights, edited.Width, edited.Height, PixelFormat.Bc7UNorm);
+            Write(context, relief, ".relief.dds");
+        }
     }
 
-    private static void Write(AssetImportContext context, DdsImage image)
+    /// <summary>The image's brightness as grey heights, the brightest paint highest.</summary>
+    private static byte[] RaiseRelief(byte[] rgba)
     {
-        string outputPath = Path.ChangeExtension(context.SourcePath, ".dds");
+        byte[] heights = new byte[rgba.Length];
+        for (int texel = 0; texel < rgba.Length; texel += 4)
+        {
+            float brightness = (0.2126f * rgba[texel]) + (0.7152f * rgba[texel + 1]) + (0.0722f * rgba[texel + 2]);
+            byte height = (byte)MathF.Round(brightness);
+            heights[texel] = height;
+            heights[texel + 1] = height;
+            heights[texel + 2] = height;
+            heights[texel + 3] = 255;
+        }
+
+        return heights;
+    }
+
+    private static void Write(AssetImportContext context, DdsImage image, string extension = ".dds")
+    {
+        string outputPath = Path.ChangeExtension(context.SourcePath, extension);
         string fullOutputPath = context.GetOutputPath(outputPath);
         using FileStream output = File.Create(fullOutputPath);
         image.Write(output);

@@ -63,4 +63,21 @@ public sealed class DocumentTabsTests
         _tabs.IsLevelShown.Should().BeTrue();
         _tabs.Documents.Should().ContainSingle();
     }
+
+    [Fact]
+    public void ADocumentCanTakeTheSideColumnWhileItIsShown()
+    {
+        EditorDocument flow = new("Flow", "Flow", new object(), () => { }) { Side = new object() };
+        EditorDocument texture = new("Tex", "Tex", new object(), () => { });
+
+        _tabs.Show(flow);
+        bool whileFlow = _tabs.HasSide;
+        _tabs.Show(texture);
+        bool whileTexture = _tabs.HasSide;
+        _tabs.ShowLevel();
+
+        whileFlow.Should().BeTrue();
+        whileTexture.Should().BeFalse();
+        _tabs.HasSide.Should().BeFalse();
+    }
 }
