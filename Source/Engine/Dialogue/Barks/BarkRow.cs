@@ -1,4 +1,5 @@
 using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Gameplay.Tags;
 
 namespace FlickerVoid.Engine.Dialogue.Barks;
@@ -6,7 +7,7 @@ namespace FlickerVoid.Engine.Dialogue.Barks;
 /// <summary>One ambient line of a bark table, said only by speakers its tags and conditions fit.</summary>
 public sealed class BarkRow
 {
-    public string Text { get; set; } = "";
+    public LocalizedText Text { get; set; } = new();
 
     /// <summary>Seconds the line shows.</summary>
     public float DisplayDuration { get; set; } = 3;

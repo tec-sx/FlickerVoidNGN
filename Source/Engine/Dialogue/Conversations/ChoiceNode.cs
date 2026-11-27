@@ -1,5 +1,6 @@
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Localization;
 
 namespace FlickerVoid.Engine.Dialogue.Conversations;
 
@@ -45,10 +46,14 @@ public sealed class ChoiceNode : FlowNode<ChoiceNode.Out>
                 continue;
             }
 
-            string reason = "";
+            LocalizedText reason = new();
             if (!available && conditions.FailurePresentation == ConditionFailurePresentation.ShowLockedWithReason)
             {
-                reason = conditions.FailureReason.Length > 0 ? conditions.FailureReason : conditions.Describe();
+                reason = conditions.FailureReason;
+                if (reason.IsEmpty)
+                {
+                    reason = new LocalizedText("", conditions.Describe());
+                }
             }
 
             DialogueChoice choice = new(index, Options[index].Text, available, reason);

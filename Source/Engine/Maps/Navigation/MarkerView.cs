@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Maps.Markers;
 
 namespace FlickerVoid.Engine.Maps.Navigation;
@@ -15,7 +16,7 @@ public sealed record MarkerView
 
     public MarkerDefinition? Definition { get; init; }
 
-    public string Label { get; init; } = string.Empty;
+    public LocalizedText Label { get; init; } = new();
 
     public Vector2 Position { get; init; }
 

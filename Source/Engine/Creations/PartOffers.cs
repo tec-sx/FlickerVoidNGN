@@ -1,5 +1,6 @@
 using Arch.Core;
 
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Interaction.Interactables;
 using FlickerVoid.Engine.Interaction.Toggles;
@@ -28,7 +29,7 @@ public sealed class PartOffers
     public Tag Input { get; set; } = new("Input.Use");
 
     /// <summary>The name prompts show for the offer.</summary>
-    public string Name { get; set; } = "Use";
+    public LocalizedText Name { get; set; } = new("Creation.Part.Use", "Use", "The prompt's button for using a part of a creation, such as opening a door.");
 
     private void Offer(Entity entity, in Toggle toggle)
     {

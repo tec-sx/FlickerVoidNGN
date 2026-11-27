@@ -1,5 +1,6 @@
 using FlickerVoid.Engine.Attributes.Checks;
 using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Localization;
 
 namespace FlickerVoid.Engine.Attributes.Tests.Checks;
 
@@ -52,9 +53,9 @@ public sealed class CheckSystemTests : IDisposable
     {
         _builder.WithFile("Checks/Sneak.fvdata", """
             { "type": "check", "roll": "None", "modifiers": [
-                { "label": "Dark", "bonus": 2 },
-                { "label": "Quiet", "bonus": 3 },
-                { "label": "Never", "bonus": 100, "conditions": { "conditions": [ { "$type": "group", "invert": true } ] } } ] }
+                { "label": { "key": "Test.Dark", "text": "Dark" }, "bonus": 2 },
+                { "label": { "key": "Test.Quiet", "text": "Quiet" }, "bonus": 3 },
+                { "label": { "key": "Test.Never", "text": "Never" }, "bonus": 100, "conditions": { "conditions": [ { "$type": "group", "invert": true } ] } } ] }
             """).Build();
         CheckDefinition sneak = _builder.Load("Checks/Sneak.fvdata");
         ConditionContext context = _builder.Context();
@@ -63,7 +64,7 @@ public sealed class CheckSystemTests : IDisposable
         CheckResult six = _builder.Checks.Preview(sneak, context, 6);
 
         five.Total.Should().Be(5);
-        five.Breakdown.Should().Equal(new CheckLine("Dark", 2), new CheckLine("Quiet", 3));
+        five.Breakdown.Should().Equal(new CheckLine(new LocalizedText("Test.Dark", "Dark"), 2), new CheckLine(new LocalizedText("Test.Quiet", "Quiet"), 3));
         five.Success.Should().BeTrue();
         six.Success.Should().BeFalse();
     }
@@ -79,7 +80,7 @@ public sealed class CheckSystemTests : IDisposable
         float chance = _builder.Checks.SuccessChance(sneak, context, 11);
 
         rolled.Breakdown.Should().HaveCount(2);
-        rolled.Breakdown[0].Should().Be(new CheckLine("Stealth", 4));
+        rolled.Breakdown[0].Should().Be(new CheckLine(new LocalizedText("Test.Stealth", "Stealth"), 4));
         rolled.Breakdown[1].Label.Should().Be(CheckSystem.RollLabel);
         rolled.Breakdown[1].Value.Should().BeInRange(2, 12);
         rolled.Total.Should().Be(4 + rolled.Breakdown[1].Value);

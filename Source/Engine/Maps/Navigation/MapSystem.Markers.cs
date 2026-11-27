@@ -3,6 +3,7 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Maps.Markers;
 using FlickerVoid.Engine.Runtime.Components;
 
@@ -11,7 +12,7 @@ namespace FlickerVoid.Engine.Maps.Navigation;
 public sealed partial class MapSystem
 {
     /// <summary>Marks a place with no entity, such as a quest area; the definition is a marker data asset.</summary>
-    public MarkerHandle AddMarker(string definition, Vector3 location, string label = "")
+    public MarkerHandle AddMarker(string definition, Vector3 location, LocalizedText? label = null)
     {
         MarkerDefinition? loaded = LoadDefinition(definition);
         if (loaded is null)
@@ -19,7 +20,7 @@ public sealed partial class MapSystem
             return MarkerHandle.None;
         }
 
-        return Add(new Marker(NextHandle(), loaded) { Location = location, Label = label });
+        return Add(new Marker(NextHandle(), loaded) { Location = location, Label = label ?? new LocalizedText() });
     }
 
     public bool RemoveMarker(MarkerHandle handle)
@@ -203,9 +204,9 @@ public sealed partial class MapSystem
         return _facts.GetFact(marker.DiscoveredFact) > 0;
     }
 
-    private string GetLabel(Marker marker)
+    private static LocalizedText GetLabel(Marker marker)
     {
-        if (!string.IsNullOrEmpty(marker.Label))
+        if (!marker.Label.IsEmpty)
         {
             return marker.Label;
         }

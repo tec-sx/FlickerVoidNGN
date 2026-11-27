@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Gameplay.Localization;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Maps.Definitions;
@@ -12,7 +13,7 @@ public sealed class MapLayer
 {
     public string Name { get; set; } = string.Empty;
 
-    public string DisplayName { get; set; } = string.Empty;
+    public LocalizedText DisplayName { get; set; } = new();
 
     [ContentFile(".png")]
     public string Image { get; set; } = string.Empty;

@@ -12,7 +12,7 @@ public sealed class DataAssetsTests : IDisposable
           "$schema": "../.schemas/data.schema.json",
           "type": "item",
           "id": "Item.Key.Cellar",
-          "display": { "name": "Cellar key" },
+          "display": { "name": { "key": "Test.CellarKey", "text": "Cellar key" } },
           "fragments": [
             { "$type": "pickup", "mesh": "Props/Key.glb" },
             { "$type": "usable", "uses": 3 }
@@ -32,7 +32,7 @@ public sealed class DataAssetsTests : IDisposable
         TestItem key = data.Load<TestItem>("Items/Key.fvdata");
 
         key.Id.Should().Be(new Tag("Item.Key.Cellar"));
-        key.Display.Name.Should().Be("Cellar key");
+        key.Display.Name.Text.Should().Be("Cellar key");
         key.Fragments.Should().HaveCount(2);
         key.Fragments[0].Should().BeOfType<PickupFragment>().Which.Mesh.Should().Be("Props/Key.glb");
         key.Fragments[1].Should().BeOfType<UsableFragment>().Which.Uses.Should().Be(3);

@@ -98,4 +98,58 @@ public sealed class ContentCheckTests : IDisposable
         problems.Should().Contain(problem => problem.Message.Contains("seat"));
         problems.Should().HaveCount(4).And.OnlyContain(problem => problem.Path == "Scenes/Town.fvscene");
     }
+
+    [Fact]
+    public void FindsNothingWrongWithKeyedTextsAndTheirTranslations()
+    {
+        _builder
+            .WithFile("Journeys/Home.fvdata", """{ "type": "journey", "title": { "key": "Journey.Home", "text": "Home", "note": "A journey's name." } }""")
+            .WithFile("Journeys/Back.fvdata", """{ "type": "journey", "title": { "key": "Journey.Home", "text": "Home" } }""")
+            .WithFile("Journeys/Untitled.fvdata", """{ "type": "journey" }""")
+            .WithDeclaredText("Hub.Close", "Close")
+            .WithFile("Localization/Polish.fvstrings", """
+                { "culture": "pl", "texts": { "Journey.Home": { "text": "Dom", "source": "Home" }, "Hub.Close": { "text": "Zamknij", "source": "Close" } } }
+                """);
+
+        IReadOnlyList<ContentProblem> problems = _builder.Check();
+
+        problems.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ReportsTextsWithoutKeysAndKeysGivenToTwoTextsInContentOrCode()
+    {
+        _builder
+            .WithFile("Journeys/Home.fvdata", """{ "type": "journey", "title": { "text": "Home" } }""")
+            .WithFile("Journeys/Away.fvdata", """{ "type": "journey", "title": { "key": "Journey.Name", "text": "Away" } }""")
+            .WithFile("Journeys/Back.fvdata", """{ "type": "journey", "title": { "key": "Journey.Name", "text": "Back" } }""")
+            .WithDeclaredText("Journey.Away", "Away")
+            .WithFile("Journeys/Off.fvdata", """{ "type": "journey", "title": { "key": "Journey.Away", "text": "Off" } }""");
+
+        IReadOnlyList<ContentProblem> problems = _builder.Check();
+
+        problems.Should().Contain(problem => problem.Path == "Journeys/Home.fvdata" && problem.Message.Contains("title") && problem.Message.Contains("key"));
+        problems.Should().Contain(problem => problem.Path == "Journeys/Back.fvdata" && problem.Message.Contains("Journey.Name") && problem.Message.Contains("Journeys/Away.fvdata"));
+        problems.Should().Contain(problem => problem.Path == "Journeys/Off.fvdata" && problem.Message.Contains("Journey.Away") && problem.Message.Contains(ContentCheck.CodePath));
+        problems.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void ReportsTranslationsOfKeysNoTextHas()
+    {
+        _builder
+            .WithFile("Journeys/Home.fvdata", """{ "type": "journey", "title": { "key": "Journey.Home", "text": "Home" } }""")
+            .WithFile("Localization/Polish.fvstrings", """
+                { "culture": "pl", "texts": { "Journey.Home": { "text": "Dom" }, "Journey.Gone": { "text": "Precz" } } }
+                """)
+            .WithFile("Localization/Broken.fvstrings", """{ "culture": "de", "texts": [] }""")
+            .WithFile("Localization/Nowhere.fvstrings", """{ "texts": {} }""");
+
+        IReadOnlyList<ContentProblem> problems = _builder.Check();
+
+        problems.Should().Contain(problem => problem.Path == "Localization/Polish.fvstrings" && problem.Message.Contains("Journey.Gone"));
+        problems.Should().Contain(problem => problem.Path == "Localization/Broken.fvstrings");
+        problems.Should().Contain(problem => problem.Path == "Localization/Nowhere.fvstrings" && problem.Message.Contains("culture"));
+        problems.Should().HaveCount(3);
+    }
 }

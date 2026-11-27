@@ -32,13 +32,13 @@ internal sealed class AttributeSystemTestsBuilder : IDisposable
         _folder = Path.Combine(tempPath, folderName);
         Directory.CreateDirectory(_folder);
         WithFile("Attributes/Stealth.fvdata", """
-            { "type": "attribute", "id": "Attribute.Skill.Stealth", "display": { "name": "Stealth" }, "category": "Attribute.Skill", "min": 0, "max": 10, "integer": true }
+            { "type": "attribute", "id": "Attribute.Skill.Stealth", "display": { "name": { "key": "Test.Stealth", "text": "Stealth" } }, "category": "Attribute.Skill", "min": 0, "max": 10, "integer": true }
             """);
         WithFile("Attributes/Health.fvdata", """
-            { "type": "attribute", "id": "Attribute.Physical.Health", "display": { "name": "Health" }, "max": 100 }
+            { "type": "attribute", "id": "Attribute.Physical.Health", "display": { "name": { "key": "Test.Health", "text": "Health" } }, "max": 100 }
             """);
         WithFile("Modifiers/Drunk.fvdata", """
-            { "type": "modifier", "display": { "name": "Drunk" }, "grantedTags": [ "Status.Drunk" ], "changes": [
+            { "type": "modifier", "display": { "name": { "key": "Test.Drunk", "text": "Drunk" } }, "grantedTags": [ "Status.Drunk" ], "changes": [
                 { "attribute": "Attribute.Skill.Stealth", "operation": "Add", "value": -2 },
                 { "attribute": "Attribute.Physical.Health", "operation": "Multiply", "value": 0.5 } ] }
             """);
