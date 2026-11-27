@@ -9,4 +9,7 @@ namespace FlickerVoid.Engine.Interaction.Interactables;
 public struct UsePoint
 {
     public Vector3 Offset;
+
+    /// <summary>Whether the interactor stands on the point to use it, as on an elevator's platform, instead of within reach of it.</summary>
+    public bool StandOn;
 }

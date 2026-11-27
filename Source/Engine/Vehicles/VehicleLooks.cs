@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
 
@@ -10,10 +11,10 @@ namespace FlickerVoid.Engine.Vehicles;
 /// </summary>
 public sealed class VehicleLooks
 {
-    private readonly VehicleFiles _files;
+    private readonly CreationFiles<VehicleFile> _files;
     private bool _showGreyboxes;
 
-    internal VehicleLooks(VehicleFiles files)
+    internal VehicleLooks(CreationFiles<VehicleFile> files)
     {
         _files = files;
     }

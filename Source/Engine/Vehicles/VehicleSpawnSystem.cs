@@ -25,13 +25,13 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
     private static readonly QueryDescription Vehicles = new QueryDescription().WithAll<Vehicle>();
 
     private readonly CreationParts _parts;
-    private readonly VehicleFiles _files;
+    private readonly CreationFiles<VehicleFile> _files;
     private readonly IContentManager? _content;
     private readonly VehicleLooks _looks;
     private readonly List<(Entity Root, string File)> _changed = [];
     private readonly HashSet<Entity> _driven = [];
 
-    public VehicleSpawnSystem(World world, CreationParts parts, VehicleFiles files, VehicleLooks looks, IContentManager? content)
+    public VehicleSpawnSystem(World world, CreationParts parts, CreationFiles<VehicleFile> files, VehicleLooks looks, IContentManager? content)
         : base(world)
     {
         _parts = parts;

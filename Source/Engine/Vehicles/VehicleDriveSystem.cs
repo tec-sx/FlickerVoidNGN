@@ -29,14 +29,14 @@ public sealed class VehicleDriveSystem : BaseSystem<World, GameTime>
 
     private readonly CreationParts _parts;
     private readonly VehicleSpawnSystem _spawner;
-    private readonly VehicleFiles _files;
+    private readonly CreationFiles<VehicleFile> _files;
     private readonly IContentManager _content;
     private readonly Func<IPhysicsSystem?> _findPhysics;
     private readonly Dictionary<Entity, string[]> _wheelIds = [];
     private readonly List<Entity> _changing = [];
     private IPhysicsSystem? _physics;
 
-    internal VehicleDriveSystem(World world, CreationParts parts, VehicleSpawnSystem spawner, VehicleFiles files, IContentManager content, Func<IPhysicsSystem?> findPhysics)
+    internal VehicleDriveSystem(World world, CreationParts parts, VehicleSpawnSystem spawner, CreationFiles<VehicleFile> files, IContentManager content, Func<IPhysicsSystem?> findPhysics)
         : base(world)
     {
         _parts = parts;
