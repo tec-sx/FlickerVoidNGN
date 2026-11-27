@@ -11,6 +11,8 @@ using FlickerVoid.Editor.Controls;
 using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Environments;
 using FlickerVoid.Editor.Core.Flows;
+using FlickerVoid.Editor.Core.Music;
+using FlickerVoid.Editor.Music;
 using FlickerVoid.Editor.Core.Settings;
 using FlickerVoid.Editor.Core.Undo;
 using FlickerVoid.Editor.Documents;
@@ -142,6 +144,7 @@ public sealed partial class MainWindow : Window
         {
             main.MaterialRequested += ShowMaterial;
             main.FlowRequested += ShowFlow;
+            main.MusicRequested += ShowMusic;
             main.EnvironmentRequested += ShowEnvironment;
             EnvironmentEditorView dayDock = this.GetControl<EnvironmentEditorView>("DayDock");
             dayDock.CloseRequested += main.CloseDayDock;
@@ -279,6 +282,26 @@ public sealed partial class MainWindow : Window
 
         FlowEditorView view = new() { DataContext = graph, History = main.GetFlowHistory(path) };
         EditorDocument created = new(path, graph.Title, view, () => main.CloseFlow(path), icon: "Flow");
+        main.Documents.Show(created);
+    }
+
+    /// <summary>Shows the music cue in its file's document tab, opening one unless the file has one already.</summary>
+    private void ShowMusic(string path, MusicEditorViewModel editor)
+    {
+        if (DataContext is not MainWindowViewModel main)
+        {
+            return;
+        }
+
+        if (main.Documents.Find(path) is { Content: MusicEditorView open } document)
+        {
+            open.DataContext = editor;
+            main.Documents.Show(document);
+            return;
+        }
+
+        MusicEditorView view = new() { DataContext = editor, History = main.GetMusicHistory(path) };
+        EditorDocument created = new(path, editor.Title, view, () => main.CloseMusic(path), icon: "Music");
         main.Documents.Show(created);
     }
 

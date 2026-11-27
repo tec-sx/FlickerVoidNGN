@@ -11,6 +11,7 @@ using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Assets.Moods;
 using FlickerVoid.Editor.Assets.Textures;
 using FlickerVoid.Editor.Core.Flows;
+using FlickerVoid.Editor.Core.Music;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Scenes;
@@ -54,6 +55,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string? _sceneMood;
 
     private readonly HashSet<string> _openFlows = new(ContentManager.PathComparer);
+    private readonly HashSet<string> _openMusic = new(ContentManager.PathComparer);
     private readonly Dictionary<string, Core.Environments.EnvironmentEditorViewModel> _openEnvironments = new(ContentManager.PathComparer);
     private Dictionary<AssetType, Action<AssetEntry>>? _openers;
 
@@ -107,6 +109,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     /// <summary>Raised to show a flow graph opened in the content browser in a graph editor window.</summary>
     public event Action<string, FlowGraphViewModel>? FlowRequested;
+
+    public event Action<string, MusicEditorViewModel>? MusicRequested;
 
     /// <summary>Asks the window to show an environment in its editor window, the one it has already when it has one.</summary>
     public event Action<string, Core.Environments.EnvironmentEditorViewModel>? EnvironmentRequested;

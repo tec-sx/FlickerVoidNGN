@@ -56,6 +56,7 @@ public static class LucideIcons
     public static Geometry Shader { get; } = Parse("M18 16l4-4-4-4 M6 8l-4 4 4 4 M14.5 4l-5 16");
     public static Geometry Data { get; } = Parse("M15 12h-5 M15 8h-5 M19 17V5a2 2 0 0 0-2-2H4 M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3");
     public static Geometry Table { get; } = Parse("M12 3v18 M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z M3 9h18 M3 15h18");
+    public static Geometry Music { get; } = Parse("M9 18V5l12-2v13 M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0z M21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z");
     public static Geometry Flow { get; } = Parse("M5 3h4a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2z M7 11v4a2 2 0 0 0 2 2h4 M15 13h4a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2z");
     public static Geometry File { get; } = Parse("M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z M14 2v5a1 1 0 0 0 1 1h5");
     public static Geometry Logo { get; } = Parse("M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4");
@@ -179,6 +180,7 @@ public static class LucideIcons
         [nameof(Data)] = Data,
         [nameof(Table)] = Table,
         [nameof(Flow)] = Flow,
+        [nameof(Music)] = Music,
         [nameof(File)] = File,
         [nameof(Logo)] = Logo,
         [nameof(Search)] = Search,
