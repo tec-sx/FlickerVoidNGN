@@ -97,7 +97,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         _catalog = catalog;
         _trackType = trackType;
         _files = files;
-        Cue = new DataObjectViewModel(title, cue, cueType, _edited, files, ["tracks", "notifies", "tempo", "beatsPerBar", "phraseBars"]);
+        Cue = new DataObjectViewModel(title, cue, cueType, _edited, files, ["tracks", "notifies", "sections", "continuePoints", "tempo", "beatsPerBar", "phraseBars"]);
         Tracks = [];
         foreach (MusicTrack track in cue.Tracks)
         {
@@ -110,6 +110,19 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
             Notifiers.Add(new NotifierViewModel(notify, _edited));
         }
 
+        Sections = [];
+        foreach (MusicSection section in cue.Sections)
+        {
+            Sections.Add(new SectionViewModel(section, OnSectionsChanged));
+        }
+
+        ContinuePoints = [];
+        foreach (MusicContinuePoint point in cue.ContinuePoints)
+        {
+            ContinuePoints.Add(new ContinuePointViewModel(point, _edited));
+        }
+
+        StackEntries = [];
         Rows = [];
         MixStates = [];
         Buses = [];
@@ -138,6 +151,31 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     public ObservableCollection<MusicTrackViewModel> Tracks { get; }
 
     public ObservableCollection<NotifierViewModel> Notifiers { get; }
+
+    public ObservableCollection<SectionViewModel> Sections { get; }
+
+    public ObservableCollection<ContinuePointViewModel> ContinuePoints { get; }
+
+    /// <summary>The cues the preview keeps on the stack, the one heard first.</summary>
+    public ObservableCollection<StackEntryViewModel> StackEntries { get; }
+
+    /// <summary>The sections laid one after the other from the start of the cue.</summary>
+    public IReadOnlyList<SectionBand> SectionBands
+    {
+        get
+        {
+            List<SectionBand> bands = [];
+            double start = 0;
+            for (int index = 0; index < _cue.Sections.Count; index++)
+            {
+                MusicSection section = _cue.Sections[index];
+                bands.Add(new SectionBand(section.Name, start, section.Bars, index));
+                start += section.Bars;
+            }
+
+            return bands;
+        }
+    }
 
     /// <summary>The rehearsal's rows: the music areas of the open scene that ask for this cue's tracks, and scripts that do.</summary>
     public ObservableCollection<RehearsalRow> Rows { get; }
@@ -343,6 +381,96 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         Notifiers.Add(new NotifierViewModel(notify, _edited));
         SideTab = 1;
         _edited();
+    }
+
+    [RelayCommand]
+    private void AddSection()
+    {
+        MusicSection section = new() { Name = $"Section {Sections.Count + 1}", Bars = 4 };
+        _cue.Sections.Add(section);
+        Sections.Add(new SectionViewModel(section, OnSectionsChanged));
+        SideTab = 1;
+        OnSectionsChanged();
+    }
+
+    public void RemoveSection(SectionViewModel section)
+    {
+        _cue.Sections.Remove(section.Section);
+        Sections.Remove(section);
+        OnSectionsChanged();
+    }
+
+    private void OnSectionsChanged()
+    {
+        OnPropertyChanged(nameof(SectionBands));
+        _edited();
+    }
+
+    [RelayCommand]
+    private void AddContinuePoint()
+    {
+        MusicContinuePoint point = new() { Name = $"Point {ContinuePoints.Count + 1}", Bar = (float)Math.Floor(Playhead) + 1 };
+        _cue.ContinuePoints.Add(point);
+        ContinuePoints.Add(new ContinuePointViewModel(point, _edited));
+        SideTab = 1;
+        _edited();
+    }
+
+    public void RemoveContinuePoint(ContinuePointViewModel point)
+    {
+        _cue.ContinuePoints.Remove(point.Point);
+        ContinuePoints.Remove(point);
+        _edited();
+    }
+
+    /// <summary>Pushes a cue of Content over the one playing, as the game does for the hub's song; plays the cue first when nothing plays.</summary>
+    [RelayCommand]
+    private void PushCue(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return;
+        }
+
+        if (!IsPlaying)
+        {
+            Play();
+        }
+
+        _preview?.Music.Push(path);
+    }
+
+    /// <summary>Takes the cue on top off the stack; the one below continues from its continue point.</summary>
+    [RelayCommand]
+    private void PopCue() => _preview?.Music.Pop(_cue.Bus);
+
+    private void FollowStack()
+    {
+        if (_preview is null)
+        {
+            return;
+        }
+
+        IReadOnlyList<MusicStackEntry> stack = _preview.Music.GetStack(_cue.Bus);
+        bool same = stack.Count == StackEntries.Count && stack.Select(entry => entry.Cue).SequenceEqual(StackEntries.Select(entry => entry.Name));
+        if (!same)
+        {
+            StackEntries.Clear();
+            foreach (MusicStackEntry entry in stack)
+            {
+                StackEntries.Add(new StackEntryViewModel(entry.Cue));
+            }
+        }
+
+        for (int index = 0; index < stack.Count; index++)
+        {
+            MusicStackEntry entry = stack[index];
+            StackEntryViewModel row = StackEntries[index];
+            row.IsTop = index == 0;
+            row.State = entry.IsHeld
+                ? $"held at bar {entry.HeldBars + 1:0.#} · {entry.Layers} layers"
+                : $"on top · bar {entry.Bars + 1:0.#}";
+        }
     }
 
     public void RemoveNotifier(NotifierViewModel notifier)
@@ -838,10 +966,16 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         double fall = MeterFall * elapsed.TotalSeconds;
         if (IsPlaying)
         {
-            MusicPosition position = _preview.Music.GetPosition(_cue.Bus);
-            if (!IsHours && _preview.Music.GetCurrent(_cue.Bus) is not null && position.Bars >= 0)
+            FollowStack();
+            if (!IsHours && _preview.Music.GetCurrent(_cue.Bus) is not null)
             {
-                Playhead = position.Bars;
+                MusicStackEntry? own = _preview.Music.GetStack(_cue.Bus).Cast<MusicStackEntry?>().FirstOrDefault(entry => entry!.Value.Cue == _path);
+                MusicPosition position = _preview.Music.GetPosition(_cue.Bus);
+                double bars = own?.Bars ?? position.Bars;
+                if (bars >= 0)
+                {
+                    Playhead = bars;
+                }
             }
 
             if (Playhead >= TotalBars)

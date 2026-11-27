@@ -196,6 +196,66 @@ public sealed class MusicEditorViewModelTests
         Build(new MusicCue()).IsHours.Should().BeFalse();
     }
 
+    [Fact]
+    public void KeepsSectionsAndContinuePointsInTheCue()
+    {
+        MusicCue cue = new();
+        MusicEditorViewModel editor = Build(cue);
+
+        editor.AddSectionCommand.Execute(null);
+        editor.AddSectionCommand.Execute(null);
+        editor.Sections[1].Bars = 8;
+        editor.SeekTo(8);
+        editor.AddContinuePointCommand.Execute(null);
+
+        cue.Sections.Select(section => section.Bars).Should().Equal(4, 8);
+        cue.Sections.Select(section => section.Name).Should().Equal("Section 1", "Section 2");
+        cue.ContinuePoints.Should().ContainSingle().Which.Bar.Should().Be(9);
+        editor.SectionBands.Select(band => band.Start).Should().Equal(0, 4);
+        editor.RemoveSection(editor.Sections[0]);
+        cue.Sections.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void ShowsTheCueStackWhileAnotherCueIsPushedOverIt()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(folder, "Music"));
+        try
+        {
+            File.WriteAllBytes(Path.Combine(folder, "Loop.wav"), Wav(48000 * 2));
+            File.WriteAllText(Path.Combine(folder, "Music", "Hub.fvmusic"), """{ "type": "music", "tempo": 120, "tracks": [ { "name": "Song", "loop": "Loop.wav" } ] }""");
+            ContentManager content = new(folder);
+            MusicCue cue = new() { Tempo = 120, Tracks = [new MusicTrack { Name = "Bass", Loop = "Loop.wav" }] };
+            using MusicPreview preview = new(content);
+            MusicEditorViewModel editor = Build(cue, new MusicEditorServices { Preview = () => preview });
+            editor.PlayCommand.Execute(null);
+            Pump(editor, 60);
+
+            editor.PushCueCommand.Execute("Music/Hub.fvmusic");
+            Pump(editor, 250);
+
+            editor.StackEntries.Select(entry => entry.Name).Should().Equal("Music/Hub.fvmusic", "Music/Street.fvmusic");
+            editor.StackEntries[1].State.Should().StartWith("held at bar");
+            editor.PopCueCommand.Execute(null);
+            Pump(editor, 400);
+            editor.StackEntries.Should().ContainSingle();
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    private static void Pump(MusicEditorViewModel editor, int ticks)
+    {
+        for (int tick = 0; tick < ticks; tick++)
+        {
+            editor.Tick(TimeSpan.FromMilliseconds(10));
+            Thread.Sleep(6);
+        }
+    }
+
     private static byte[] Wav(int frames)
     {
         using MemoryStream stream = new();
