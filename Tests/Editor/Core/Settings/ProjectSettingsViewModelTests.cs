@@ -16,7 +16,7 @@ public sealed class ProjectSettingsViewModelTests : IDisposable
         IEnumerable<string> labels = settings.Graphics.Select(setting => setting.Label);
 
         labels.Should().Equal(
-            "Local lights", "Probes", "Ray tracing", "Live probes", "Upscaling", "Viewport upscaling", "Ray reconstruction", "Depth fades");
+            "Local lights", "Probes", "Ray tracing", "Live probes", "Upscaling", "Viewport upscaling", "Ray reconstruction", "Depth fades", "VSync");
         settings.Graphics[2].Should().BeOfType<SwitchSettingViewModel>();
         settings.Graphics[4].Should().BeOfType<ChoiceSettingViewModel>().Which.Choices.Should().Equal("Off", "Quality", "Dlaa");
         settings.Graphics[2].Help.Should().EndWith("(r.RayTracing, true by default)");
