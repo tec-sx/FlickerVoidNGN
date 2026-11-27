@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Text.Json.Nodes;
 
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Runtime.Solids;
 using FlickerVoid.Engine.Vehicles;
 
@@ -37,7 +38,7 @@ public static class VehicleExport
         material.WithBaseColor(grey);
         SceneBuilder scene = new();
         NodeBuilder root = new(name);
-        foreach ((string id, VehiclePart part) in vehicle.GetParts())
+        foreach ((string id, SolidPart part) in vehicle.GetParts())
         {
             NodeBuilder node = root.CreateNode(id);
             node.LocalMatrix = part.Place.ToMatrix();

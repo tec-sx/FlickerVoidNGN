@@ -30,8 +30,8 @@ public static class VehiclesGameExtensions
         ArrayRegistry.Add<RigidBody>();
         game.Schemas.AddFile("vehicle", VehicleFile.Extension, static () => VehiclesJsonContext.Default.VehicleFile);
         game.Spawner.Register("vehicle", VehiclesJsonContext.Default.Vehicle);
-        ILogger logger = game.LoggerFactory.CreateLogger(typeof(VehicleFiles));
-        VehicleFiles files = new(logger);
+        ILogger logger = game.LoggerFactory.CreateLogger(typeof(VehicleFile));
+        CreationFiles<VehicleFile> files = new(logger, VehiclesJsonContext.Default.VehicleFile);
         VehicleLooks looks = new(files);
         game.Services.AddService(looks);
         if (game.Services.GetService<MeshSources>() is { } meshes)

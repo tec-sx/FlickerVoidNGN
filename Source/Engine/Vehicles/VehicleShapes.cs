@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Solids;
 
@@ -13,20 +14,20 @@ internal static class VehicleShapes
 {
     private const int WheelSides = 16;
 
-    public static VehiclePart CreateBody(VehicleType type)
+    public static SolidPart CreateBody(VehicleType type)
     {
         Sizes sizes = GetSizes(type);
         SolidMesh mesh = SolidMesh.Box(sizes.Body);
         Transform place = new() { Position = new Vector3(0, sizes.WheelRadius, 0) };
-        return new VehiclePart { Place = place, Mesh = mesh };
+        return new SolidPart { Place = place, Mesh = mesh };
     }
 
     /// <summary>Two axles of wheels, one centred or two to an axle, front first and left before right.</summary>
-    public static List<VehiclePart> CreateWheels(VehicleType type, int perAxle)
+    public static List<SolidPart> CreateWheels(VehicleType type, int perAxle)
     {
         Sizes sizes = GetSizes(type);
         SolidMesh mesh = CreateWheel(sizes);
-        List<VehiclePart> wheels = [];
+        List<SolidPart> wheels = [];
         float[] axles = [sizes.FrontAxle, sizes.RearAxle];
         foreach (float z in axles)
         {
@@ -59,10 +60,10 @@ internal static class VehicleShapes
         return cylinder.Transform(centre * across);
     }
 
-    private static VehiclePart CreateWheelPart(SolidMesh mesh, float x, float y, float z)
+    private static SolidPart CreateWheelPart(SolidMesh mesh, float x, float y, float z)
     {
         Transform place = new() { Position = new Vector3(x, y, z) };
-        return new VehiclePart { Place = place, Mesh = mesh };
+        return new SolidPart { Place = place, Mesh = mesh };
     }
 
     private static Sizes GetSizes(VehicleType type)

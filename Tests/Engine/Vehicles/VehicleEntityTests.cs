@@ -3,8 +3,14 @@ using System.Numerics;
 using Arch.Core;
 
 using FlickerVoid.Engine.Creations;
+using FlickerVoid.Engine.Gameplay.Tags;
+using FlickerVoid.Engine.Interaction;
+using FlickerVoid.Engine.Interaction.Interactables;
+using FlickerVoid.Engine.Interaction.Interactors;
+using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Physics;
 using FlickerVoid.Engine.Physics.Colliders;
+using FlickerVoid.Engine.Platform.Input;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Loop;
@@ -195,6 +201,31 @@ public sealed class VehicleEntityTests : IDisposable
         HullCollider hull = moving.Collider.Should().BeOfType<HullCollider>().Subject;
         hull.Points.Should().Equal(car.Doors[0].Mesh.Points);
         world.Has<StaticBody>(door).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AnInteractorBesideADoorOpensItWithTheUseInput()
+    {
+        VehicleFile car = VehicleFileTestsBuilder.WithDoor();
+        _builder.WithVehicle(Van, car).Build();
+        _builder.Game.AddInteraction();
+        Entity van = _builder.Place(Van);
+        World world = _builder.Game.World;
+        _builder.Game.Lifecycle.Play(world);
+        Entity door = _builder.Parts.Find(van, "door.1");
+        Vector3 middle = InteractionSystem.GetUsePoint(world, door);
+        Transform beside = new() { Position = middle + new Vector3(1, 0, 0) };
+        Entity fox = world.Create(beside, new Interactor { Reach = 1.5f });
+        Tag use = new("Input.Use");
+
+        _builder.Game.Events.Send(new FocusCommand(fox, door));
+        _builder.Game.Events.Send(new InteractionInput(fox, use, InputPhase.Pressed));
+        _builder.Game.Tick(TimeSpan.FromSeconds(0.1));
+        _builder.Game.Events.Send(new InteractionInput(fox, use, InputPhase.Released));
+        _builder.Game.Tick(TimeSpan.FromSeconds(0.1));
+
+        middle.Should().Be(new Vector3(0, 0.5f, 0), "the door's box stands on its pivot");
+        world.Get<Toggle>(door).Open.Should().BeTrue();
     }
 
     [Fact]

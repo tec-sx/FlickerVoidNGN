@@ -4,6 +4,7 @@ using Arch.Core;
 using Arch.System;
 
 using FlickerVoid.Engine.Creations;
+using FlickerVoid.Engine.Interaction.Interactables;
 using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Physics;
 using FlickerVoid.Engine.Physics.Colliders;
@@ -24,13 +25,13 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
     private static readonly QueryDescription Vehicles = new QueryDescription().WithAll<Vehicle>();
 
     private readonly CreationParts _parts;
-    private readonly VehicleFiles _files;
+    private readonly CreationFiles<VehicleFile> _files;
     private readonly IContentManager? _content;
     private readonly VehicleLooks _looks;
     private readonly List<(Entity Root, string File)> _changed = [];
     private readonly HashSet<Entity> _driven = [];
 
-    public VehicleSpawnSystem(World world, CreationParts parts, VehicleFiles files, VehicleLooks looks, IContentManager? content)
+    public VehicleSpawnSystem(World world, CreationParts parts, CreationFiles<VehicleFile> files, VehicleLooks looks, IContentManager? content)
         : base(world)
     {
         _parts = parts;
@@ -79,7 +80,7 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
         }
 
         List<PartData> parts = [];
-        foreach ((string id, VehiclePart part) in file.GetParts())
+        foreach ((string id, SolidPart part) in file.GetParts())
         {
             string mesh = VehicleMeshSource.GetName(path, id, _looks.ShowGreyboxes);
             MeshRenderer renderer = new() { Mesh = mesh };
@@ -104,6 +105,8 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
             {
                 Toggle toggle = new() { Action = action };
                 data.With(toggle);
+                UsePoint middle = new() { Offset = part.GetMiddle() };
+                data.With(middle);
             }
 
             parts.Add(data);
@@ -113,7 +116,7 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
     }
 
     /// <summary>A standing part's collision is its own triangles, so walls, floors and openings are exact.</summary>
-    private static StaticBody GetStandingBody(VehiclePart part)
+    private static StaticBody GetStandingBody(SolidPart part)
     {
         SolidTriangles triangles = part.Mesh.Triangulate();
         Vector3[] positions = [.. triangles.Vertices.Select(vertex => vertex.Position)];
@@ -123,7 +126,7 @@ internal sealed class VehicleSpawnSystem : BaseSystem<World, GameTime>
     }
 
     /// <summary>A part that moves is a kinematic hull of its points that paths go around, which follows it as its joint swings it.</summary>
-    private static RigidBody GetMovingBody(VehiclePart part)
+    private static RigidBody GetMovingBody(SolidPart part)
     {
         HullCollider collider = new() { Points = [.. part.Mesh.Points] };
         return new RigidBody { Collider = collider, Kinematic = true, Obstacle = true };

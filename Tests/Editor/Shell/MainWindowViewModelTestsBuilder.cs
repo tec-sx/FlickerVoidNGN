@@ -15,6 +15,8 @@ using FlickerVoid.Engine.Rendering.Materials;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Runtime.Scenes;
+using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Buildings.Serialization;
 using FlickerVoid.Engine.Vehicles;
 using FlickerVoid.Engine.Vehicles.Serialization;
 
@@ -38,6 +40,7 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
     public const string Cellar = "Cellar.fvflow";
     public const string Street = "Street.fvscene";
     public const string Van = "Vans/Van.fvvehicle";
+    public const string House = "Houses/House.fvbuilding";
     public const string Program = "/game/Game.dll";
     public const int Width = 640;
     public const int Height = 480;
@@ -197,6 +200,17 @@ internal sealed class MainWindowViewModelTestsBuilder : IDisposable
     {
         byte[] contents = Encoding.UTF8.GetBytes("""{ "edited": true }""");
         _content.Edit(Paper, contents);
+    }
+
+    /// <summary>Writes a new building's file and lists it in the asset browser.</summary>
+    public void WriteHouse()
+    {
+        string folder = Path.Combine(_contentFolder, "Houses");
+        Directory.CreateDirectory(folder);
+        BuildingFile house = BuildingFile.Create();
+        string json = JsonSerializer.Serialize(house, BuildingsJsonContext.Default.BuildingFile);
+        WriteFile(House, json);
+        ViewModel.Assets.Refresh();
     }
 
     /// <summary>Opens the file as the asset browser would, as a scene unless another type is given.</summary>

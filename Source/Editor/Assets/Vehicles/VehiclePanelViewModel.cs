@@ -1,8 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-using FlickerVoid.Editor.Core.Meshes.Doors;
-using FlickerVoid.Engine.Runtime.Solids;
+using FlickerVoid.Editor.Assets.Creators;
 using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Assets.Vehicles;
@@ -12,7 +11,7 @@ namespace FlickerVoid.Editor.Assets.Vehicles;
 /// written to the file through the document; and its look from Blender: Open in Blender, the switch between look and greyboxes, and what
 /// the look covers.
 /// </summary>
-public sealed partial class VehiclePanelViewModel : ObservableObject
+public sealed partial class VehiclePanelViewModel : CreatorPanelViewModel
 {
     private readonly VehicleDocument _document;
     private bool _showing;
@@ -20,12 +19,15 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
     private readonly IVehicleLookTools? _looks;
 
     public VehiclePanelViewModel(VehicleDocument document, IVehicleLookTools? looks = null)
+        : base(document)
     {
         _document = document;
         _looks = looks;
         Show();
         RefreshLook();
     }
+
+    public override string Kind => "Vehicle";
 
     /// <summary>Whether the panel can open the vehicle in Blender and switch its look, which it can in the editor's window.</summary>
     public bool HasLookTools => _looks is not null;
@@ -147,46 +149,6 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
     [ObservableProperty]
     public partial float SuspensionDamping { get; set; }
 
-    /// <summary>The ids of the vehicle's parts: its body, then its wheels from the front.</summary>
-    [ObservableProperty]
-    public partial IReadOnlyList<string> Parts { get; private set; } = [];
-
-    /// <summary>The solid of the part with the id as the file holds it, or null when the vehicle has no such part.</summary>
-    public SolidMesh? FindMesh(string id)
-    {
-        foreach ((string partId, VehiclePart part) in _document.Vehicle.GetParts())
-        {
-            if (partId == id)
-            {
-                return part.Mesh;
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>Whether the part with the id has its mirror switch on; false for an id the vehicle lacks.</summary>
-    public bool FindMirror(string id)
-    {
-        foreach ((string partId, VehiclePart part) in _document.Vehicle.GetParts())
-        {
-            if (partId == id)
-            {
-                return part.Mirror;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>Hangs a door in the part's face on the edge; the new door's id, or null.</summary>
-    public string? HangDoor(string partId, int face, SolidEdge hinge, DoorOptions options) => _document.HangDoor(partId, face, hinge, options);
-
-    public void SetMirror(string id, bool mirror) => _document.SetMirror(id, mirror);
-
-    /// <summary>Gives the part a new solid, held in the file as one undo step.</summary>
-    public void SetMesh(string id, SolidMesh mesh) => _document.SetMesh(id, mesh);
-
     partial void OnTypeChanged(VehicleType value)
     {
         if (!_showing && value != _document.Vehicle.Type)
@@ -265,8 +227,7 @@ public sealed partial class VehiclePanelViewModel : ObservableObject
         Type = vehicle.Type;
         WheelCounts = VehicleFile.GetWheelCounts(vehicle.Type);
         WheelCount = vehicle.Wheels.Count;
-        IReadOnlyList<(string Id, VehiclePart Part)> parts = vehicle.GetParts();
-        Parts = [.. parts.Select(static part => part.Id)];
+        ShowParts();
         VehicleDrive drive = vehicle.GetDrive();
         Mass = drive.Mass;
         EngineTorque = drive.EngineTorque;

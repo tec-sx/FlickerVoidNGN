@@ -1,7 +1,12 @@
 using System.Numerics;
 
+using Arch.Core;
+
 using FlickerVoid.Engine.Cameras.Cutaways;
 using FlickerVoid.Engine.Rendering.Extraction;
+using FlickerVoid.Engine.Rendering.Lighting;
+using FlickerVoid.Engine.Runtime.Components;
+using FlickerVoid.Engine.Runtime.Entities;
 
 namespace FlickerVoid.Engine.Cameras.Tests.Cutaways;
 
@@ -51,6 +56,22 @@ public sealed class CutawaySystemTests : IDisposable
         ShadowOnly("Ceiling").Should().BeFalse();
         ShadowOnly("Upper Wall").Should().BeFalse();
         ShadowOnly("Roof").Should().BeTrue();
+    }
+
+    [Fact]
+    public void HidesWhatIsNestedByEntityAboveAStoreyNestedByEntityAsACreationsPartsAre()
+    {
+        World world = _builder.World;
+        Vector3 place = new(40, 0, 0);
+        Entity building = world.Create(new Transform { Position = place });
+        Entity storey = world.Create(new Transform { Position = place }, new IndoorVolume { Size = new Vector3(4, 3, 4) }, new NestedUnder(building));
+        Entity roof = world.Create(new Transform { Position = place + new Vector3(0, 3, 0) }, new NestedUnder(building));
+
+        _builder.WalkTo(place);
+
+        _cutaways.Cutaway.Should().Be(storey);
+        world.Has<ShadowOnly>(roof).Should().BeTrue();
+        world.Has<ShadowOnly>(storey).Should().BeFalse();
     }
 
     [Fact]

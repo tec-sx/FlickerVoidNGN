@@ -9,6 +9,7 @@ using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Engine.Runtime.Geometry;
+using FlickerVoid.Engine.Buildings;
 using FlickerVoid.Engine.Vehicles;
 
 namespace FlickerVoid.Editor.Viewports;
@@ -55,6 +56,10 @@ public sealed partial class ViewportViewModel
         if (world.TryGet(picked, out Vehicle vehicle) && !string.IsNullOrEmpty(vehicle.File))
         {
             CreationRequested?.Invoke(picked, vehicle.File);
+        }
+        else if (world.TryGet(picked, out Building building) && !string.IsNullOrEmpty(building.File))
+        {
+            CreationRequested?.Invoke(picked, building.File);
         }
     }
 

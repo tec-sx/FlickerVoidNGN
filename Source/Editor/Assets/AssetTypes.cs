@@ -4,6 +4,9 @@ using System.Text.Json;
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Runtime.Data;
+using FlickerVoid.Editor.Core.Buildings;
+using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Buildings.Serialization;
 using FlickerVoid.Engine.Vehicles;
 using FlickerVoid.Engine.Vehicles.Serialization;
 
@@ -31,6 +34,13 @@ public static class AssetTypes
     public static AssetType Vehicle { get; } = new("Vehicle", "Vehicle", "#D97BA6", VehicleFile.Extension)
     {
         New = new AssetNew("Vehicle", "New Vehicle", "vehicle", WriteVehicle),
+        IsCreation = true,
+    };
+
+    /// <summary>A building creation: New makes a ground floor with an entrance, under a roof.</summary>
+    public static AssetType Building { get; } = new("Building", "Building", "#C9A36B", BuildingFile.Extension)
+    {
+        New = new AssetNew("Building", "New Building", "building", WriteBuilding),
         IsCreation = true,
     };
 
@@ -79,13 +89,13 @@ public static class AssetTypes
     public static AssetType Code { get; } = new("Code", "Code", "#6FC2B0", ".cs");
 
     /// <summary>Every type a file can have, in the order the browser's filter and New menu list them.</summary>
-    public static IReadOnlyList<AssetType> Files { get; } = [Other, Scene, Vehicle, Model, Material, Texture, Mood, Environment, Lens, Canvas, Shader, Data, Table, Flow, Code];
+    public static IReadOnlyList<AssetType> Files { get; } = [Other, Scene, Vehicle, Building, Model, Material, Texture, Mood, Environment, Lens, Canvas, Shader, Data, Table, Flow, Code];
 
     /// <summary>The content drawer's filter chips (rule R11, categories before long lists): everything, then five kinds of work.</summary>
     public static IReadOnlyList<AssetFilter> Filters { get; } =
     [
         new("All", []),
-        new("Scenes", [Scene, Vehicle], Scene.Color),
+        new("Scenes", [Scene, Vehicle, Building], Scene.Color),
         new("Art", [Model, Material, Texture, Canvas, Shader], Model.Color),
         new("Light", [Mood, Environment, Lens], Mood.Color),
         new("Data", [Data, Table, Flow], Flow.Color),
@@ -104,6 +114,21 @@ public static class AssetTypes
         }
 
         return Other;
+    }
+
+    private static string WriteBuilding(string schemaPath)
+    {
+        BuildingFile building = BuildingFile.Create();
+        BuildingTools.AddEntrance(building);
+        building.Schema = schemaPath;
+        using MemoryStream stream = new();
+        using (Utf8JsonWriter writer = new(stream, WriterOptions))
+        {
+            JsonSerializer.Serialize(writer, building, BuildingsJsonContext.Default.BuildingFile);
+        }
+
+        byte[] written = stream.ToArray();
+        return Encoding.UTF8.GetString(written) + "\n";
     }
 
     private static string WriteVehicle(string schemaPath)

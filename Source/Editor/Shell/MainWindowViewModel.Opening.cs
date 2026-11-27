@@ -107,7 +107,8 @@ public sealed partial class MainWindowViewModel
             [AssetTypes.Flow] = asset => OpenFlow(asset.Path),
             [AssetTypes.Environment] = asset => OpenEnvironment(asset.Path),
             [AssetTypes.Code] = OpenCode,
-            [AssetTypes.Vehicle] = asset => OpenVehicle(asset.Path),
+            [AssetTypes.Vehicle] = asset => OpenCreation(asset.Path),
+            [AssetTypes.Building] = asset => OpenCreation(asset.Path),
         };
     }
 

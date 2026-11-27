@@ -1,3 +1,4 @@
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
 
@@ -7,7 +8,7 @@ namespace FlickerVoid.Engine.Vehicles;
 /// Makes the meshes of vehicles' parts from their files: <c>Vans/Van.fvvehicle#wheel.1L</c> is that wheel's look when the vehicle
 /// has one with an object for it, else its solid, and <c>Vans/Van.fvvehicle#wheel.1L#greybox</c> is always its solid.
 /// </summary>
-internal sealed class VehicleMeshSource(VehicleFiles files, VehicleLooks looks) : IMeshSource
+internal sealed class VehicleMeshSource(CreationFiles<VehicleFile> files, VehicleLooks looks) : IMeshSource
 {
     private const char Separator = '#';
     private const string Greybox = "greybox";
@@ -45,7 +46,7 @@ internal sealed class VehicleMeshSource(VehicleFiles files, VehicleLooks looks) 
             return null;
         }
 
-        foreach ((string partId, VehiclePart part) in file.GetParts())
+        foreach ((string partId, SolidPart part) in file.GetParts())
         {
             if (partId != id)
             {

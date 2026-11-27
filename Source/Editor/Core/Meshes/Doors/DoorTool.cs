@@ -22,14 +22,14 @@ public static class DoorTool
     /// vehicle's (a door can't hold another), the options are out of range or a through cut can't be made. A door already hinged on
     /// the same edge is replaced instead of added to.
     /// </summary>
-    public static string? Hang(VehicleFile vehicle, string partId, int face, SolidEdge hinge, DoorOptions options)
+    public static string? Hang(ICreationFile vehicle, string partId, int face, SolidEdge hinge, DoorOptions options)
     {
         if (options.Thickness <= 0 || options.Angle < 1 || options.Angle > MaxAngle)
         {
             return null;
         }
 
-        VehiclePart? part = FindPart(vehicle, partId);
+        SolidPart? part = FindPart(vehicle, partId);
         if (part is null || part.Joint is not null || face < 0 || face >= part.Mesh.Faces.Count)
         {
             return null;
@@ -48,7 +48,7 @@ public static class DoorTool
         }
 
         Vector3 normal = GetNormal(solid, face);
-        VehiclePart door = new() { Place = part.Place, Mesh = MakeSlab(solid, face, normal, options.Thickness) };
+        SolidPart door = new() { Place = part.Place, Mesh = MakeSlab(solid, face, normal, options.Thickness) };
         door.Joint = MakeJoint(solid, face, hinge, normal, part.Place.ToMatrix(), options);
         door.Toggle = new Tag("Interaction.Action.Toggle");
         part.Mesh = cut.Solid;
@@ -59,14 +59,14 @@ public static class DoorTool
     /// Changes how far a door opens, keeping its hinge, and turns it to swing the other way when <paramref name="reverse"/>; false
     /// for an id that is not a door of the vehicle or an angle out of range.
     /// </summary>
-    public static bool Refit(VehicleFile vehicle, string doorId, float angle, bool reverse)
+    public static bool Refit(ICreationFile vehicle, string doorId, float angle, bool reverse)
     {
         if (angle < 1 || angle > MaxAngle)
         {
             return false;
         }
 
-        VehiclePart? door = FindPart(vehicle, doorId);
+        SolidPart? door = FindPart(vehicle, doorId);
         if (door?.Joint is not { } joint)
         {
             return false;
@@ -82,9 +82,9 @@ public static class DoorTool
         return true;
     }
 
-    private static VehiclePart? FindPart(VehicleFile vehicle, string id)
+    private static SolidPart? FindPart(ICreationFile vehicle, string id)
     {
-        foreach ((string partId, VehiclePart part) in vehicle.GetParts())
+        foreach ((string partId, SolidPart part) in vehicle.GetParts())
         {
             if (partId == id)
             {
@@ -95,7 +95,7 @@ public static class DoorTool
         return null;
     }
 
-    private static string Place(VehicleFile vehicle, VehiclePart door)
+    private static string Place(ICreationFile vehicle, SolidPart door)
     {
         for (int index = 0; index < vehicle.Doors.Count; index++)
         {

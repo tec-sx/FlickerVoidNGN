@@ -24,7 +24,7 @@ public sealed partial class MainWindowViewModel
     /// <summary>The context panel's Data tab, shown while a data asset or table is open.</summary>
     public const int DataTab = 1;
 
-    /// <summary>The context panel's Vehicle tab, shown while a vehicle is made.</summary>
+    /// <summary>The context panel's creator tab, shown while a vehicle or a building is made.</summary>
     public const int CreatorTab = 2;
 
     /// <summary>The outliner's Scene tab, hidden in the creator.</summary>

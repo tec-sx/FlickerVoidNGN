@@ -20,6 +20,7 @@ using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Runtime.Components;
 using FlickerVoid.Engine.Runtime.Geometry;
+using FlickerVoid.Engine.Buildings;
 using FlickerVoid.Engine.Vehicles;
 
 using EntityData = FlickerVoid.Engine.Runtime.Scenes.EntityData;
@@ -387,14 +388,14 @@ public sealed partial class ViewportViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Adds an entity for a file where it is dropped, a vehicle for a vehicle file and else a mesh entity drawing a model: on the mesh
+    /// Adds an entity for a file where it is dropped, a vehicle or a building for its file and else a mesh entity drawing a model: on the mesh
     /// under the mouse, else on the ground, else where the mouse's ray crosses the plane of the camera's pivot; then selects it.
     /// </summary>
     public void DropAsset(string path, Vector2 pixel, int width, int height)
     {
         if (Scene.ScenePath is null)
         {
-            Status = "Open a scene before adding models or vehicles: double-click one in the content browser.";
+            Status = "Open a scene before adding models, vehicles or buildings: double-click one in the content browser.";
             return;
         }
 
@@ -418,6 +419,10 @@ public sealed partial class ViewportViewModel : ObservableObject
         if (path.EndsWith(VehicleFile.Extension, StringComparison.OrdinalIgnoreCase))
         {
             preset = EntityPreset.ForVehicle(path);
+        }
+        else if (path.EndsWith(BuildingFile.Extension, StringComparison.OrdinalIgnoreCase))
+        {
+            preset = EntityPreset.ForBuilding(path);
         }
 
         EntityData data = preset.Create(world, Scene.Entities, position);
