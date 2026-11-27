@@ -6,7 +6,7 @@ using FlickerVoid.Editor.Core.Music;
 
 namespace FlickerVoid.Editor.Music;
 
-/// <summary>The dock under the lanes with the mixer and the selected clip.</summary>
+/// <summary>The dock under the lanes with the mixer, the selected clip and what each layer is doing now.</summary>
 public partial class MusicDockView : UserControl
 {
     public MusicDockView()

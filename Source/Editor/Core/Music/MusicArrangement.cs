@@ -68,12 +68,12 @@ public static class MusicArrangement
     public static IReadOnlyList<ArrangementClip> Plan(MusicCue cue, MusicTrack track, TrackLengths lengths, IReadOnlyList<RehearsalSpan> spans, double totalBars)
     {
         List<RehearsalSpan> wanted = [];
-        bool hours = cue.Tempo <= 0 && !track.ByRequest;
+        bool hours = cue.Tempo <= 0 && !track.IsRequested;
         if (hours)
         {
             wanted.AddRange(GetHours(track.When).Select(span => new RehearsalSpan(span.On, Math.Min(span.Off, totalBars))).Where(span => span.On < span.Off));
         }
-        else if (track.ByRequest)
+        else if (track.IsRequested)
         {
             wanted.AddRange(spans.OrderBy(span => span.On));
         }
@@ -104,7 +104,7 @@ public static class MusicArrangement
         double busyUntil = 0;
         foreach (RehearsalSpan span in wanted)
         {
-            bool fresh = !track.ByRequest;
+            bool fresh = !track.IsRequested;
             double asked = Math.Max(span.On, busyUntil);
             double start = fresh ? span.On : MusicGrid.NextLine(asked, startUnit);
             if (start >= totalBars)

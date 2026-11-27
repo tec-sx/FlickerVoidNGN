@@ -22,6 +22,8 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     public const double DefaultTotalBars = 24;
 
     private const double MeterFall = 1.6;
+    private const double MinBarWidth = 10;
+    private const double MaxBarWidth = 160;
 
     private readonly MusicCue _cue;
     private readonly string _path;
@@ -93,6 +95,10 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _search = string.Empty;
 
+    /// <summary>How fast the day passes while an arrangement without a tempo plays.</summary>
+    [ObservableProperty]
+    private DayPace _dayPace;
+
     public MusicEditorViewModel(string path, string title, MusicCue cue, JsonTypeInfo cueType, JsonTypeInfo trackType, Action edited, ClipCatalog catalog, MusicEditorServices? services = null, FindContentFiles? files = null)
     {
         _path = path;
@@ -111,7 +117,8 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         _catalog = catalog;
         _trackType = trackType;
         _files = files;
-        Cue = new DataObjectViewModel(title, cue, cueType, _edited, files, ["tracks", "notifies", "sections", "continuePoints", "tempo", "beatsPerBar", "phraseBars"]);
+        _dayPace = DayPaces[0];
+        Cue = new DataObjectViewModel("Arrangement", cue, cueType, _edited, files, ["tracks", "notifies", "sections", "continuePoints", "tempo", "beatsPerBar", "phraseBars"]) { Icon = "Music" };
         Tracks = [];
         foreach (MusicTrack track in cue.Tracks)
         {
@@ -200,9 +207,9 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
 
     private string DescribeWait(MusicTrackViewModel track)
     {
-        if (track.Track.ByRequest)
+        if (track.Track.IsRequested)
         {
-            List<string> areas = Rows.Where(row => row.IsArea && row.Layers.Any(layer => string.Equals(layer, track.Track.Name, StringComparison.OrdinalIgnoreCase))).Select(row => row.Label.Replace("Rehearsal · ", string.Empty)).ToList();
+            List<string> areas = Rows.Where(row => row.IsArea && row.Layers.Any(track.Track.IsAskedBy)).Select(row => row.Label.Replace("Rehearsal · ", string.Empty)).ToList();
             return areas.Count > 0 ? $"in {string.Join(", ", areas)}" : "asked by script";
         }
 
@@ -248,6 +255,12 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     public ObservableCollection<SoundItem> Cues { get; }
 
     public IReadOnlyList<MusicQuantize> SnapOptions { get; } = Enum.GetValues<MusicQuantize>();
+
+    /// <summary>The paces the day can pass at while an arrangement without a tempo plays; the last holds the hour.</summary>
+    public IReadOnlyList<DayPace> DayPaces { get; } = [new DayPace("10 s an hour", 0.1), new DayPace("2 s an hour", 0.5), new DayPace("Held", 0)];
+
+    /// <summary>What the ruler counts, beside the arrangement's name over the lanes' headers.</summary>
+    public string RulerText => IsHours ? "arrangement · hours of the day" : "arrangement · bars";
 
     public double BarSeconds => MusicArrangement.GetBarSeconds(_cue);
 
@@ -345,7 +358,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
 
     public bool HasMixStates => MixStates.Count > 0;
 
-    public string StateHint => "A state is a set of bus values the game blends to. Turn one on to hear it; edit the mix to change what it does.";
+    public string StateHint => "Each layer goes to the bus under its fader. Layer faders belong to the arrangement, bus faders to the project. A mix state is a set of bus values the game blends to: turn one on to hear it.";
 
     partial void OnPlayheadChanged(double value)
     {
@@ -356,9 +369,35 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
 
     partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(LayersText));
 
-    partial void OnSelectedChanged(MusicTrackViewModel? value)
+    /// <summary>Where the selected layer is, under its name in the panel's header: the arrangement and the layer's place in it.</summary>
+    public string SelectedPlace
     {
-        if (SelectedClip is { } clip && clip.Track != value)
+        get
+        {
+            if (Selected is not { } selected)
+            {
+                return string.Empty;
+            }
+
+            int place = Tracks.IndexOf(selected) + 1;
+            return $"{Title} / layer {place}";
+        }
+    }
+
+    partial void OnSelectedChanged(MusicTrackViewModel? oldValue, MusicTrackViewModel? newValue)
+    {
+        if (oldValue is not null)
+        {
+            oldValue.IsSelected = false;
+        }
+
+        if (newValue is not null)
+        {
+            newValue.IsSelected = true;
+        }
+
+        OnPropertyChanged(nameof(SelectedPlace));
+        if (SelectedClip is { } clip && clip.Track != newValue)
         {
             SelectedClip = null;
         }
@@ -370,7 +409,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
 
     private MusicTrackViewModel MakeTrack(MusicTrack track)
     {
-        MusicTrackViewModel model = new(track, _trackType, _edited, _files, () => _cue.Tempo);
+        MusicTrackViewModel model = new(track, _trackType, _edited, _files, () => _cue.Tempo, () => _cue.Bus);
         model.MixChanged += PushTrackMix;
         return model;
     }
@@ -378,7 +417,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void AddTrack()
     {
-        MusicTrack track = new() { Name = $"Track {Tracks.Count + 1}" };
+        MusicTrack track = new() { Name = $"Layer {Tracks.Count + 1}" };
         _cue.Tracks.Add(track);
         MusicTrackViewModel model = MakeTrack(track);
         Tracks.Add(model);
@@ -401,6 +440,53 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         Selected = Tracks.Count > 0 ? Tracks[Math.Min(index, Tracks.Count - 1)] : null;
         _edited();
         RefreshRehearsal();
+    }
+
+    /// <summary>Removes what is picked: the cue, else the clip, whose file is taken off its layer, else the layer.</summary>
+    [RelayCommand]
+    private void DeleteSelection()
+    {
+        if (SelectedCue is { } cue)
+        {
+            RemoveNotifier(cue);
+            return;
+        }
+
+        if (SelectedClip is { } clip)
+        {
+            ClearClip(clip);
+            return;
+        }
+
+        RemoveSelected();
+    }
+
+    private void ClearClip(ClipSelection clip)
+    {
+        MusicTrack track = clip.Track.Track;
+        switch (clip.Clip.Kind)
+        {
+            case ArrangementKind.FillIn:
+                track.FillIn = string.Empty;
+                break;
+            case ArrangementKind.FillOut:
+                track.FillOut = string.Empty;
+                break;
+            default:
+                track.Loop = string.Empty;
+                break;
+        }
+
+        SelectedClip = null;
+        _edited();
+    }
+
+    /// <summary>Picks a layer by its lane or its header; the cue picked before is let go.</summary>
+    public void SelectLayer(MusicTrackViewModel layer)
+    {
+        SelectedCue = null;
+        SelectedClip = null;
+        Selected = layer;
     }
 
     [RelayCommand]
@@ -426,6 +512,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         Tracks.Move(index, target);
         _cue.Tracks.RemoveAt(index);
         _cue.Tracks.Insert(target, selected.Track);
+        OnPropertyChanged(nameof(SelectedPlace));
         _edited();
     }
 
@@ -608,8 +695,10 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     private void Layout()
     {
         List<RehearsalSpan> spans = Rows.Select(row => row.Span).ToList();
-        foreach (MusicTrackViewModel track in Tracks)
+        for (int index = 0; index < Tracks.Count; index++)
         {
+            MusicTrackViewModel track = Tracks[index];
+            track.Index = index;
             track.Refresh(_cue, _catalog, SpansFor(track, spans), TotalBars);
         }
 
@@ -617,6 +706,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasTracks));
         OnPropertyChanged(nameof(Tempo));
         OnPropertyChanged(nameof(IsHours));
+        OnPropertyChanged(nameof(RulerText));
         OnPropertyChanged(nameof(BeatsPerBar));
         OnPropertyChanged(nameof(PhraseBars));
         OnPropertyChanged(nameof(PositionText));
@@ -630,7 +720,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         List<RehearsalSpan> spans = [];
         foreach (RehearsalRow row in Rows)
         {
-            if (row.Layers.Any(layer => string.Equals(layer, track.Track.Name, StringComparison.OrdinalIgnoreCase)))
+            if (row.Layers.Any(track.Track.IsAskedBy))
             {
                 spans.Add(row.Span);
             }
@@ -644,24 +734,25 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     {
         Dictionary<string, RehearsalSpan> kept = Rows.ToDictionary(row => row.Label, row => row.Span);
         Rows.Clear();
-        HashSet<string> wanted = new(Tracks.Where(track => track.ByRequest).Select(track => track.Track.Name), StringComparer.OrdinalIgnoreCase);
-        HashSet<string> covered = new(StringComparer.OrdinalIgnoreCase);
+        List<MusicTrack> wanted = Tracks.Where(track => track.ByRequest).Select(track => track.Track).ToList();
+        HashSet<MusicTrack> covered = [];
         int index = 0;
         foreach (RehearsalSource source in _services.Areas())
         {
-            string[] layers = source.Layers.Where(wanted.Contains).ToArray();
+            string[] layers = source.Layers.Where(layer => wanted.Any(track => track.IsAskedBy(layer))).ToArray();
             if (layers.Length == 0)
             {
                 continue;
             }
 
-            covered.UnionWith(layers);
+            covered.UnionWith(wanted.Where(track => layers.Any(track.IsAskedBy)));
             AddRow(new RehearsalRow(source.Name, layers, true, DefaultSpan(index++)), kept);
         }
 
-        foreach (string layer in wanted.Where(layer => !covered.Contains(layer)))
+        foreach (MusicTrack track in wanted.Where(track => !covered.Contains(track)))
         {
-            AddRow(new RehearsalRow(layer, [layer], false, DefaultSpan(index++)), kept);
+            string asked = track.Triggers.Count > 0 ? track.Triggers[0].Name : track.Name;
+            AddRow(new RehearsalRow(asked, [asked], false, DefaultSpan(index++)), kept);
         }
 
         OnPropertyChanged(nameof(HasRows));
@@ -869,14 +960,18 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void ZoomIn() => BarWidth = Math.Min(160, BarWidth * 1.25);
+    private void ZoomIn() => BarWidth = Math.Min(MaxBarWidth, BarWidth * 1.25);
 
     [RelayCommand]
-    private void ZoomOut() => BarWidth = Math.Max(10, BarWidth / 1.25);
+    private void ZoomOut() => BarWidth = Math.Max(MinBarWidth, BarWidth / 1.25);
+
+    /// <summary>Zooms so that every bar of the lanes fits into a width in pixels.</summary>
+    public void FitTo(double width) => BarWidth = Math.Clamp(width / TotalBars, MinBarWidth, MaxBarWidth);
 
     /// <summary>Selects a clip of a track: the clip dock shows it, and its track is the selected one.</summary>
     public void SelectClip(MusicTrackViewModel track, ArrangementClip clip)
     {
+        SelectedCue = null;
         Selected = track;
         SelectedClip = new ClipSelection(track, clip);
         DockTab = 1;
@@ -1086,7 +1181,11 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         {
             FollowStack();
             RefreshLive();
-            if (!IsHours && _preview.Music.GetCurrent(_cue.Bus) is not null)
+            if (IsHours)
+            {
+                RunDay(elapsed);
+            }
+            else if (_preview.Music.GetCurrent(_cue.Bus) is not null)
             {
                 MusicStackEntry? own = _preview.Music.GetStack(_cue.Bus).Cast<MusicStackEntry?>().FirstOrDefault(entry => entry!.Value.Cue == _path);
                 MusicPosition position = _preview.Music.GetPosition(_cue.Bus);
@@ -1126,6 +1225,21 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         }
 
         OnPropertyChanged(nameof(LayersText));
+    }
+
+    /// <summary>Lets the day of an arrangement without a tempo pass at the chosen pace, so the hours its layers keep come and go.</summary>
+    private void RunDay(TimeSpan elapsed)
+    {
+        if (DayPace.HoursPerSecond <= 0)
+        {
+            return;
+        }
+
+        Playhead = Math.Min(TotalBars, Playhead + (elapsed.TotalSeconds * DayPace.HoursPerSecond));
+        if (Playhead < TotalBars)
+        {
+            _preview!.SetHour(Playhead);
+        }
     }
 
     private void FollowRows()

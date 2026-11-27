@@ -8,7 +8,7 @@ using FlickerVoid.Editor.Core.Music;
 
 namespace FlickerVoid.Editor.Music;
 
-/// <summary>The music editor's side column: the Track and Cue tabs over the lists of sounds and cues.</summary>
+/// <summary>The music editor's side column: the Layer and Arrangement tabs over the lists of sounds and arrangements.</summary>
 public partial class MusicSideView : UserControl
 {
     private PointerPressedEventArgs? _pressed;
@@ -20,9 +20,9 @@ public partial class MusicSideView : UserControl
 
     private MusicEditorViewModel? Editor => DataContext as MusicEditorViewModel;
 
-    private void HandleTrackTab(object? sender, RoutedEventArgs args) => Set(editor => editor.SideTab = 0);
+    private void HandleLayerTab(object? sender, RoutedEventArgs args) => Set(editor => editor.SideTab = 0);
 
-    private void HandleCueTab(object? sender, RoutedEventArgs args) => Set(editor => editor.SideTab = 1);
+    private void HandleArrangementTab(object? sender, RoutedEventArgs args) => Set(editor => editor.SideTab = 1);
 
     private void HandleSoundsTab(object? sender, RoutedEventArgs args) => Set(editor => editor.ListTab = 0);
 

@@ -496,6 +496,55 @@ public sealed class MusicSystemTests : IDisposable
     }
 
     [Fact]
+    public void SendsATracksNotifyOnlyWhileTheTrackSounds()
+    {
+        string cue = _builder.WithCue("Street", Bass + """, { "name": "Drums", "loop": "Drums.wav", "byRequest": true }""", "\"tempo\": 480, \"phraseBars\": 2, \"notifies\": [ { \"name\": \"Snare\", \"bar\": 2.5, \"repeat\": true, \"track\": \"Drums\" } ]");
+        List<MusicNotifyEvent> notified = [];
+        _builder.Game.Events.Handle((in MusicNotifyEvent notify) => notified.Add(notify));
+        Start(cue);
+        _builder.PlayUntilBar(3.5);
+        notified.Should().BeEmpty();
+
+        _builder.Music.RequestLayer("Drums");
+        _builder.PlayUntilBar(7);
+        _builder.PlayFor(1000);
+
+        notified.Should().Equal(new MusicNotifyEvent(cue, "Snare", 4, "Drums"), new MusicNotifyEvent(cue, "Snare", 6, "Drums"));
+    }
+
+    [Fact]
+    public void PlaysANotifysSoundOnceOnItsBar()
+    {
+        string sting = _builder.WithClip("Sting", 0.5f);
+        string cue = _builder.WithCue("Street", Bass, "\"tempo\": 480, \"notifies\": [ { \"name\": \"Hit\", \"bar\": 3, \"sound\": \"Sting.wav\" } ]");
+        long first = Start(cue);
+
+        _builder.PlayUntilBar(6);
+
+        sting.Should().Be("Sting.wav");
+        _builder.HeardAtBar(first, 2.99).Should().BeApproximately(0.1f, Close);
+        _builder.HeardAtBar(first, 3.01).Should().BeApproximately(0.6f, Close);
+        _builder.HeardAtBar(first, 3.99).Should().BeApproximately(0.6f, Close);
+        _builder.HeardAtBar(first, 4.01).Should().BeApproximately(0.1f, Close);
+        _builder.HeardAtBar(first, 5.5).Should().BeApproximately(0.1f, Close);
+    }
+
+    [Fact]
+    public void PlaysATrackOnItsOwnBus()
+    {
+        string cue = _builder.WithCue("Street", """{ "name": "Bass", "loop": "Bass.wav", "bus": "Ambience" }""");
+        Start(cue);
+        _builder.PlayUntilBar(1.5);
+        _builder.Audio.Audio.Mixer.TakeBusPeak(AudioBus.Ambience);
+        _builder.Audio.Audio.Mixer.TakeBusPeak(AudioBus.Music);
+
+        _builder.PlayUntilBar(2.5);
+
+        _builder.Audio.Audio.Mixer.TakeBusPeak(AudioBus.Ambience).Should().BeGreaterThan(0.05f);
+        _builder.Audio.Audio.Mixer.TakeBusPeak(AudioBus.Music).Should().Be(0);
+    }
+
+    [Fact]
     public void SendsASectionEventAsTheMusicEntersEachSectionOfTheSong()
     {
         string cue = _builder.WithCue("Song", Bass, "\"tempo\": 480, \"sections\": [ { \"name\": \"Intro\", \"bars\": 1 }, { \"name\": \"Verse\", \"bars\": 2 }, { \"name\": \"Chorus\", \"bars\": 2 } ]");

@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
+using FlickerVoid.Engine.Runtime.Components;
+
 namespace FlickerVoid.Engine.Audio.Music;
 
 /// <summary>
@@ -15,6 +17,16 @@ public sealed class MusicNotify
     [Range(1, 4096)]
     public float Bar { get; set; } = 1;
 
+    /// <summary>The name of the track it belongs to; it is sent only while that track sounds; empty for a point of the whole cue.</summary>
+    public string Track { get; set; } = string.Empty;
+
     /// <summary>Whether it sits at its bar of every phrase instead of once.</summary>
     public bool Repeat { get; set; }
+
+    /// <summary>A sound file played once from its bar, a single shot on the grid, on its track's bus; empty for none.</summary>
+    [ContentFile(".wav", ".ogg")]
+    public string Sound { get; set; } = string.Empty;
+
+    /// <summary>The gain of its sound.</summary>
+    public float Gain { get; set; } = 1;
 }

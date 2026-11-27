@@ -11,15 +11,18 @@ using FlickerVoid.Editor.Core.Music;
 namespace FlickerVoid.Editor.Music;
 
 /// <summary>
-/// The lanes of a music cue: the bar ruler with the playhead (click or drag it to jump), a row of the rehearsal for each music
-/// area (drag its span to walk the fox in and out), the notifiers row, and a lane per track with its clips drawn as waveforms:
-/// fills are hatched, waits dashed, scatter marks dots. A loop clip's right edge drags its length, its top corners drag the fades,
-/// and sounds dropped on a lane become its clip.
+/// The lanes of an arrangement: the bar ruler with the playhead (click or drag it to jump), a row of the rehearsal for each music
+/// area (drag its span to walk the fox in and out), the cues row (double-click to place one, drag to move it), and a lane per
+/// layer with its clips drawn as waveforms: fills are hatched, waits dashed, scatter marks dots. A loop clip's right edge drags
+/// its length, its top corners drag the fades, sounds dropped on a lane become its clip, and Delete removes what is picked.
 /// </summary>
 public sealed class MusicLanes : Control
 {
     public static readonly StyledProperty<MusicEditorViewModel?> EditorProperty =
         AvaloniaProperty.Register<MusicLanes, MusicEditorViewModel?>(nameof(Editor));
+
+    /// <summary>The room left after the last bar.</summary>
+    public const double EndGap = 40;
 
     private const double EdgeGrab = 6;
     private const double Handle = 12;
@@ -60,22 +63,11 @@ public sealed class MusicLanes : Control
 
     private double TracksTop => NotifierTop + MusicLayout.NotifierHeight;
 
-    public double ContentWidth => ((Editor?.TotalBars ?? 0) * (Editor?.BarWidth ?? MusicLayout.DefaultBarWidth)) + 40;
+    public double ContentWidth => ((Editor?.TotalBars ?? 0) * (Editor?.BarWidth ?? MusicLayout.DefaultBarWidth)) + EndGap;
 
     public double ContentHeight => TracksTop + (((Editor?.Tracks.Count ?? 0) + 1) * MusicLayout.TrackHeight);
 
     protected override Size MeasureOverride(Size availableSize) => new(ContentWidth, Math.Max(ContentHeight, availableSize.Height is double.PositiveInfinity ? 0 : availableSize.Height));
-
-    private Color Tint(int index)
-    {
-        string key = $"EditorTrack{(index % 6) + 1}";
-        if (this.TryFindResource(key, ActualThemeVariant, out object? value) && value is Color color)
-        {
-            return color;
-        }
-
-        return Colors.Gray;
-    }
 
     private IBrush Brush(string key) => DecibelScale.Brush(this, key, Brushes.Gray);
 
@@ -106,7 +98,7 @@ public sealed class MusicLanes : Control
         context.DrawLine(linePen, new Point(0, top), new Point(width, top));
         for (int index = 0; index < editor.Tracks.Count; index++)
         {
-            DrawTrack(context, editor, editor.Tracks[index], Tint(index), top, bar);
+            DrawTrack(context, editor, editor.Tracks[index], LayerTint.Find(index), top, bar);
             top += MusicLayout.TrackHeight;
             context.DrawLine(linePen, new Point(0, top), new Point(width, top));
         }
@@ -164,7 +156,7 @@ public sealed class MusicLanes : Control
         {
             double x = band.Start * editor.BarWidth;
             double width = band.Length * editor.BarWidth;
-            Color tint = Tint(band.Index);
+            Color tint = LayerTint.Find(band.Index);
             context.FillRectangle(new SolidColorBrush(tint), new Rect(x + 1, 0, Math.Max(0, width - 2), 4));
             if (editor.BarWidth >= 18)
             {
@@ -189,19 +181,35 @@ public sealed class MusicLanes : Control
         }
     }
 
+    /// <summary>The bars, from 0, a cue stands on: its own, or that bar of every phrase when it repeats.</summary>
+    private static IEnumerable<double> CueBars(MusicEditorViewModel editor, NotifierViewModel cue)
+    {
+        double first = cue.Notify.Bar - 1;
+        yield return first;
+        if (!cue.Notify.Repeat)
+        {
+            yield break;
+        }
+
+        int phrase = Math.Max(1, (int)editor.PhraseBars);
+        for (double at = first + phrase; at < editor.TotalBars; at += phrase)
+        {
+            yield return at;
+        }
+    }
+
     private void DrawNotifiers(DrawingContext context, MusicEditorViewModel editor, Pen linePen)
     {
         double top = NotifierTop;
         double middle = top + (MusicLayout.NotifierHeight / 2);
         IBrush accent = Brush("EditorAccentBrush");
         IBrush faint = Brush("EditorHintBrush");
-        int phrase = Math.Max(1, (int)editor.PhraseBars);
+        Pen picked = new(Brush("EditorTextBrush"), 1.5);
         foreach (NotifierViewModel notifier in editor.Notifiers)
         {
-            double offset = notifier.Notify.Bar - 1;
-            for (double at = offset; at < editor.TotalBars; at += phrase)
+            bool first = true;
+            foreach (double at in CueBars(editor, notifier))
             {
-                bool first = at < phrase;
                 double x = at * editor.BarWidth;
                 StreamGeometry diamond = new();
                 using (StreamGeometryContext shape = diamond.Open())
@@ -213,11 +221,14 @@ public sealed class MusicLanes : Control
                     shape.EndFigure(true);
                 }
 
-                context.DrawGeometry(first ? accent : faint, null, diamond);
+                Pen? outline = first && notifier == editor.SelectedCue ? picked : null;
+                context.DrawGeometry(first ? accent : faint, outline, diamond);
                 if (first)
                 {
                     context.DrawText(Label(notifier.Name, Brush("EditorTextBrush"), 10), new Point(x + 8, top + 4));
                 }
+
+                first = false;
             }
         }
 
@@ -490,17 +501,15 @@ public sealed class MusicLanes : Control
 
     private void PressNotifierRow(MusicEditorViewModel editor, Point point, int clicks)
     {
-        int phrase = Math.Max(1, (int)editor.PhraseBars);
         foreach (NotifierViewModel notifier in editor.Notifiers)
         {
-            double offset = notifier.Notify.Bar - 1;
-            for (double at = offset; at < editor.TotalBars; at += phrase)
+            foreach (double at in CueBars(editor, notifier))
             {
                 if (Math.Abs((at * editor.BarWidth) - point.X) <= 7)
                 {
                     _notifier = notifier;
                     _drag = Drag.Notifier;
-                    editor.SideTab = 1;
+                    editor.SelectCue(notifier);
                     return;
                 }
             }
@@ -508,7 +517,11 @@ public sealed class MusicLanes : Control
 
         if (clicks == 2)
         {
-            editor.AddNotifierAt(BarAt(point.X) % (double)phrase);
+            editor.AddNotifierAt(BarAt(point.X));
+        }
+        else
+        {
+            editor.SelectCue(null);
         }
     }
 
@@ -565,8 +578,7 @@ public sealed class MusicLanes : Control
             }
         }
 
-        editor.Selected = track;
-        editor.SelectedClip = null;
+        editor.SelectLayer(track);
     }
 
     private void Begin(Drag drag, MusicTrackViewModel track, ArrangementClip clip)
@@ -604,7 +616,9 @@ public sealed class MusicLanes : Control
                 MoveSpan(editor, bars);
                 break;
             case Drag.Notifier:
-                editor.MoveNotifier(_notifier!, bars % Math.Max(1, (double)editor.PhraseBars));
+                double phrase = Math.Max(1, (double)editor.PhraseBars);
+                double at = _notifier!.Notify.Repeat ? bars % phrase : bars;
+                editor.MoveNotifier(_notifier, at);
                 break;
             case Drag.LoopSize:
                 editor.SetLoopBars(_track!, (int)Math.Max(1, Math.Round(bars - FirstLoopStart())));
@@ -699,9 +713,9 @@ public sealed class MusicLanes : Control
     protected override void OnKeyDown(KeyEventArgs args)
     {
         base.OnKeyDown(args);
-        if (args.Key == Key.Delete && _notifier is not null && Editor is { } editor && editor.Notifiers.Contains(_notifier))
+        if (args.Key == Key.Delete && Editor is { } editor)
         {
-            editor.RemoveNotifier(_notifier);
+            editor.DeleteSelectionCommand.Execute(null);
             _notifier = null;
             args.Handled = true;
         }

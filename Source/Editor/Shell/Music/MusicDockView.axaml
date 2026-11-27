@@ -6,8 +6,9 @@
              xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Music.MusicDockView"
              x:DataType="coremusic:MusicEditorViewModel">
-  <!-- The dock under the lanes: the Mixer (a strip for each track of the cue and each bus, and the project's mix states) and the
-       Clip (the selected clip's file, found tempo, length and what stretches it to the cue). -->
+  <!-- The dock under the lanes: the Mixer (a strip for each layer of the arrangement, with the bus it goes to, a strip for each
+       bus, and the project's mix states), the Clip (the selected clip's file, found tempo, length and what stretches it to the
+       arrangement) and Live (what each layer is doing now). -->
   <DockPanel>
     <Border DockPanel.Dock="Top" Classes="dockTabs">
       <DockPanel>
@@ -17,10 +18,10 @@
             <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Mixer}" /><TextBlock Text="Mixer" /></StackPanel>
           </ToggleButton>
           <ToggleButton Classes="stripTab" IsChecked="{Binding DockTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=1, Mode=OneWay}" Command="{Binding ShowClipCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Waveform}" /><TextBlock Text="Clip" /></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Clip}" /><TextBlock Text="Clip" /></StackPanel>
           </ToggleButton>
           <ToggleButton Classes="stripTab" IsChecked="{Binding DockTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=2, Mode=OneWay}" Command="{Binding ShowLiveCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Music}" /><TextBlock Text="Live" /></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Activity}" /><TextBlock Text="Live" /></StackPanel>
           </ToggleButton>
           <TextBlock Text="{Binding Status}" Classes="hint small" VerticalAlignment="Center" Margin="12,0" />
         </StackPanel>
@@ -34,15 +35,18 @@
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="coremusic:MusicTrackViewModel">
-                <Border Width="78" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,0,1,0" Padding="4,4">
+                <Border Width="78" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,0,1,0">
                   <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" />
-                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding GainText}" Classes="hint" HorizontalAlignment="Center" />
-                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" Margin="0,2">
+                    <Border DockPanel.Dock="Top" Height="3" Background="{Binding Index, Converter={x:Static music:LayerTint.Brush}}" />
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" Margin="4,3,4,0" />
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" Margin="0,2,0,4">
                       <ToggleButton Classes="icon" Content="M" IsChecked="{Binding Muted, Mode=TwoWay}" Width="22" Height="20" Padding="0" FontSize="10.5" />
                       <ToggleButton Classes="icon" Content="S" IsChecked="{Binding Soloed, Mode=TwoWay}" Width="22" Height="20" Padding="0" FontSize="10.5" />
                     </StackPanel>
-                    <Grid ColumnDefinitions="*,10,10">
+                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding GainText}" Classes="hint" HorizontalAlignment="Center" />
+                    <ComboBox DockPanel.Dock="Bottom" Classes="route" ItemsSource="{Binding BusChoices}" SelectedItem="{Binding BusChoice}"
+                              HorizontalAlignment="Center" Margin="0,2" ToolTip.Tip="The bus this layer goes to" />
+                    <Grid ColumnDefinitions="*,10,10" Margin="4,0">
                       <music:Fader Grid.Column="0" Decibels="{Binding GainDb, Mode=TwoWay}" Maximum="6" />
                       <music:LevelMeter Grid.Column="1" Vertical="True" Level="{Binding Level}" Margin="0,8" />
                     </Grid>
@@ -56,15 +60,16 @@
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="coremusic:BusStripViewModel">
-                <Border Width="78" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,0,1,0" Padding="4,4">
+                <Border Width="78" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,0,1,0">
                   <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding VolumeText}" Classes="hint" HorizontalAlignment="Center" />
-                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" Margin="0,2">
+                    <Border DockPanel.Dock="Top" Height="3" Background="{DynamicResource EditorHintBrush}" />
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="4,3,4,0" />
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" Margin="0,2,0,4">
                       <ToggleButton Classes="icon" Content="M" IsChecked="{Binding Muted, Mode=TwoWay}" Width="22" Height="20" Padding="0" FontSize="10.5" />
                       <ToggleButton Classes="icon" Content="S" IsChecked="{Binding Soloed, Mode=TwoWay}" Width="22" Height="20" Padding="0" FontSize="10.5" />
                     </StackPanel>
-                    <Grid ColumnDefinitions="*,10,10">
+                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding VolumeText}" Classes="hint" HorizontalAlignment="Center" />
+                    <Grid ColumnDefinitions="*,10,10" Margin="4,0">
                       <music:Fader Grid.Column="0" Decibels="{Binding Decibels, Mode=TwoWay}" Maximum="0" />
                       <music:LevelMeter Grid.Column="1" Vertical="True" Level="{Binding Level}" Margin="0,8" />
                     </Grid>
@@ -80,7 +85,7 @@
           <TextBlock DockPanel.Dock="Bottom" Classes="hint small" TextWrapping="Wrap" Text="{Binding StateHint}" Margin="0,6,0,0" />
           <DockPanel DockPanel.Dock="Top">
             <Button DockPanel.Dock="Right" Classes="quiet" Command="{Binding EditMixCommand}"><TextBlock Text="Edit mix" /></Button>
-            <TextBlock Text="MIX STATES" Classes="caps" VerticalAlignment="Center" />
+            <TextBlock Text="Mix states" Classes="muted small" FontWeight="SemiBold" VerticalAlignment="Center" />
           </DockPanel>
           <ScrollViewer>
             <ItemsControl ItemsSource="{Binding MixStates}">
@@ -107,13 +112,13 @@
           <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedFound}" />
           <TextBlock Grid.Row="1" Text="Length" Classes="hint" />
           <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedLength}" />
-          <TextBlock Grid.Row="2" Text="Cue tempo" Classes="hint" />
+          <TextBlock Grid.Row="2" Text="Arrangement" Classes="hint" />
           <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Tempo, StringFormat='{}{0} BPM'}" />
           <TextBlock Grid.Row="3" Text="Stretched to" Classes="hint" />
           <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedClip.Track.Track.Tempo, StringFormat='{}{0} BPM (0: off)'}" />
         </Grid>
         <StackPanel Orientation="Horizontal" Spacing="6">
-          <Button Classes="quiet" Command="{Binding FitToCueCommand}"><TextBlock Text="Fit to the cue" /></Button>
+          <Button Classes="quiet" Command="{Binding FitToCueCommand}"><TextBlock Text="Fit to the arrangement" /></Button>
           <Button Classes="quiet" Command="{Binding ClearStretchCommand}"><TextBlock Text="Don't stretch" /></Button>
         </StackPanel>
       </StackPanel>

@@ -3,131 +3,190 @@
              xmlns:music="using:FlickerVoid.Editor.Music"
              xmlns:coremusic="using:FlickerVoid.Editor.Core.Music"
              xmlns:data="using:FlickerVoid.Editor.Data"
-             xmlns:dataCore="using:FlickerVoid.Editor.Core.Data"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
              x:Class="FlickerVoid.Editor.Music.MusicSideView"
              x:DataType="coremusic:MusicEditorViewModel">
-  <!-- The music editor's side column, in place of the context panel and the outliner while its tab is shown: the Track and Cue tabs
-       over the lists of Sounds and Cues to drag in. -->
+  <!-- The music editor's side column, in place of the context panel and the outliner while its tab is shown: the Layer and
+       Arrangement tabs, each a column of panel cards, over the lists of sounds and arrangements to drag in. -->
   <Border Classes="well">
     <Grid RowDefinitions="*,1,260">
       <DockPanel Grid.Row="0">
         <Border DockPanel.Dock="Top" Classes="dockTabs">
-          <StackPanel Orientation="Horizontal">
-            <ToggleButton Classes="stripTab" IsChecked="{Binding SideTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=0, Mode=OneWay}" Click="HandleTrackTab">
-              <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Waveform}" /><TextBlock Text="Track" /></StackPanel>
-            </ToggleButton>
-            <ToggleButton Classes="stripTab" IsChecked="{Binding SideTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=1, Mode=OneWay}" Click="HandleCueTab">
-              <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Music}" /><TextBlock Text="Cue" /></StackPanel>
-            </ToggleButton>
-          </StackPanel>
-        </Border>
-        <ScrollViewer IsVisible="{Binding SideTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=0}">
-          <StackPanel Margin="8,6" Spacing="4">
-            <Border Classes="entityHeader" IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
-              <DockPanel>
-                <Border DockPanel.Dock="Left" Classes="iconTile"><PathIcon Data="{x:Static shell:LucideIcons.Waveform}" /></Border>
-                <StackPanel VerticalAlignment="Center" Margin="8,0,0,0">
-                  <TextBlock Text="{Binding Selected.Title}" Classes="title" />
-                  <TextBlock Text="{Binding Selected.PlaysText}" Classes="hint small" />
-                </StackPanel>
-              </DockPanel>
-            </Border>
-            <TextBlock Classes="hint" Text="Select a track in the lanes to edit it here." IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNull}}" />
-            <ItemsControl ItemsSource="{Binding Selected.Forms}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="dataCore:DataObjectViewModel">
-                  <StackPanel Margin="0,0,0,4">
-                    <TextBlock Text="{Binding Title}" Classes="caps" Margin="0,8,0,3" />
-                    <data:DataView DataContext="{Binding}" />
-                  </StackPanel>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Button Classes="quiet delete" Command="{Binding RemoveSelectedCommand}" HorizontalAlignment="Left" Margin="0,8,0,0">
-              <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Delete}" /><TextBlock Text="Remove track" /></StackPanel>
+          <DockPanel>
+            <!-- What can be done with the picked layer as a whole. -->
+            <Button x:Name="LayerMenu" DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="Move or remove the layer" Margin="0,0,4,0"
+                    IsEnabled="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <PathIcon Data="{x:Static shell:LucideIcons.More}" />
+              <Button.Flyout>
+                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                  <MenuItem Header="Move layer up" Command="{Binding MoveUpCommand}">
+                    <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Up}" /></MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem Header="Move layer down" Command="{Binding MoveDownCommand}">
+                    <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Expand}" /></MenuItem.Icon>
+                  </MenuItem>
+                  <Separator />
+                  <MenuItem Header="Remove layer" Command="{Binding RemoveSelectedCommand}">
+                    <MenuItem.Icon><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></MenuItem.Icon>
+                  </MenuItem>
+                </MenuFlyout>
+              </Button.Flyout>
             </Button>
-          </StackPanel>
-        </ScrollViewer>
-        <ScrollViewer IsVisible="{Binding SideTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=1}">
-          <StackPanel Margin="8,6" Spacing="4">
-            <Border Classes="entityHeader">
-              <DockPanel>
-                <Border DockPanel.Dock="Left" Classes="iconTile"><PathIcon Data="{x:Static shell:LucideIcons.Music}" /></Border>
-                <StackPanel VerticalAlignment="Center" Margin="8,0,0,0">
-                  <TextBlock Text="{Binding Title}" Classes="title" />
-                  <TextBlock Text="{Binding Path}" Classes="hint small" TextTrimming="CharacterEllipsis" />
+            <StackPanel Orientation="Horizontal">
+              <ToggleButton Classes="stripTab" IsChecked="{Binding SideTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=0, Mode=OneWay}" Click="HandleLayerTab">
+                <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Layers}" /><TextBlock Text="Layer" /></StackPanel>
+              </ToggleButton>
+              <ToggleButton Classes="stripTab" IsChecked="{Binding SideTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=1, Mode=OneWay}" Click="HandleArrangementTab">
+                <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Music}" /><TextBlock Text="Arrangement" /></StackPanel>
+              </ToggleButton>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <!-- The selected layer: its icon (a click picks another), its name over where it is, the bus it goes to, then its cards. -->
+        <DockPanel IsVisible="{Binding SideTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=0}">
+          <Border DockPanel.Dock="Top" Classes="entityHeader" IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+              <Button Classes="iconTile" ToolTip.Tip="The layer's icon; click to pick another.">
+                <PathIcon Data="{Binding Selected.Icon, Converter={x:Static shell:LucideIcons.ByName}, FallbackValue={x:Null}}" />
+                <Button.Flyout>
+                  <Flyout Placement="BottomEdgeAlignedLeft">
+                    <ListBox Classes="iconChoices" ItemsSource="{Binding Selected.IconChoices}" SelectedItem="{Binding Selected.Icon}">
+                      <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel MaxWidth="168" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                      <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                          <PathIcon Data="{Binding Converter={x:Static shell:LucideIcons.ByName}}" ToolTip.Tip="{Binding}" />
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                  </Flyout>
+                </Button.Flyout>
+              </Button>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Selected.Title}" Classes="title" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding SelectedPlace}" Classes="faint small" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <Border Grid.Column="2" Classes="chip" VerticalAlignment="Center">
+                <TextBlock Classes="hint small" Text="{Binding Selected.BusText}" VerticalAlignment="Center" />
+              </Border>
+            </Grid>
+          </Border>
+          <TextBlock DockPanel.Dock="Top" Classes="hint" Margin="12,10" TextWrapping="Wrap" Text="Select a layer in the lanes to edit it here."
+                     IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNull}}" />
+          <ScrollViewer>
+            <StackPanel IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <ItemsControl ItemsSource="{Binding Selected.Forms}" />
+              <controls:PanelCard Header="Routing" Icon="{x:Static shell:LucideIcons.Route}">
+                <StackPanel>
+                  <controls:PanelRow Label="Bus" ToolTip.Tip="The mix bus the layer goes to: the arrangement's own, or another, such as Effects for a hit over the music.">
+                    <ComboBox x:Name="BusBox" HorizontalAlignment="Stretch" ItemsSource="{Binding Selected.BusChoices}" SelectedItem="{Binding Selected.BusChoice}" />
+                  </controls:PanelRow>
+                  <TextBlock Classes="hint small" TextWrapping="Wrap" Margin="0,4,0,0" Text="Gain is set on the layer's header and in the mixer." />
                 </StackPanel>
-              </DockPanel>
-            </Border>
-            <TextBlock Text="CUE" Classes="caps" Margin="0,8,0,3" />
-            <data:DataView DataContext="{Binding Cue}" />
-            <DockPanel Margin="0,10,0,3">
-              <Button DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="Add a notifier at the playhead" Command="{Binding AddNotifierCommand}"><PathIcon Data="{x:Static shell:LucideIcons.Add}" /></Button>
-              <TextBlock Text="NOTIFIERS" Classes="caps" VerticalAlignment="Center" />
-            </DockPanel>
-            <TextBlock Classes="hint small" TextWrapping="Wrap" Text="A notifier is a named point on the phrase. Every time the music passes it the game gets a MusicNotifyEvent with its name, to flash a light on the snare or open a door on the drop. Double-click the Notifiers row to add one." />
-            <ItemsControl ItemsSource="{Binding Notifiers}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="coremusic:NotifierViewModel">
-                  <Grid ColumnDefinitions="*,6,56,4,Auto" Margin="0,2">
-                    <TextBox Grid.Column="0" Text="{Binding Name}" />
-                    <TextBox Grid.Column="2" Text="{Binding Bar}" ToolTip.Tip="The bar of the phrase" />
-                    <Button Grid.Column="4" Classes="icon delete" Click="HandleRemoveNotifier"><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></Button>
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <DockPanel Margin="0,10,0,3">
-              <Button DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="Add a section after the last" Command="{Binding AddSectionCommand}"><PathIcon Data="{x:Static shell:LucideIcons.Add}" /></Button>
-              <TextBlock Text="SECTIONS" Classes="caps" VerticalAlignment="Center" />
-            </DockPanel>
-            <TextBlock Classes="hint small" TextWrapping="Wrap" Text="The parts of a song, one after the other from bar 1. The game gets a MusicSectionEvent as the music enters each." />
-            <ItemsControl ItemsSource="{Binding Sections}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="coremusic:SectionViewModel">
-                  <Grid ColumnDefinitions="*,6,56,4,Auto" Margin="0,2">
-                    <TextBox Grid.Column="0" Text="{Binding Name}" />
-                    <TextBox Grid.Column="2" Text="{Binding Bars}" ToolTip.Tip="Length in bars" />
-                    <Button Grid.Column="4" Classes="icon delete" Click="HandleRemoveSection"><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></Button>
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <DockPanel Margin="0,10,0,3">
-              <Button DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="Add a continue point at the playhead" Command="{Binding AddContinuePointCommand}"><PathIcon Data="{x:Static shell:LucideIcons.Add}" /></Button>
-              <TextBlock Text="CONTINUE POINTS" Classes="caps" VerticalAlignment="Center" />
-            </DockPanel>
-            <TextBlock Classes="hint small" TextWrapping="Wrap" Text="When another cue is taken off this one, it continues at the first point at or after where it stopped, else the first." />
-            <ItemsControl ItemsSource="{Binding ContinuePoints}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="coremusic:ContinuePointViewModel">
-                  <Grid ColumnDefinitions="*,6,56,4,Auto" Margin="0,2">
-                    <TextBox Grid.Column="0" Text="{Binding Name}" />
-                    <TextBox Grid.Column="2" Text="{Binding Bar}" ToolTip.Tip="The bar it picks up from" />
-                    <Button Grid.Column="4" Classes="icon delete" Click="HandleRemoveContinuePoint"><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></Button>
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <DockPanel Margin="0,10,0,3">
-              <Button DockPanel.Dock="Right" Classes="quiet" Command="{Binding PopCueCommand}"><TextBlock Text="Pop" /></Button>
-              <TextBlock Text="CUE STACK" Classes="caps" VerticalAlignment="Center" />
-            </DockPanel>
-            <TextBlock Classes="hint small" TextWrapping="Wrap" Text="What the game keeps while it plays. Push a cue over this one from the Cues list; each cue below remembers its bar and layers." />
-            <ItemsControl ItemsSource="{Binding StackEntries}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="coremusic:StackEntryViewModel">
-                  <DockPanel Margin="0,2">
-                    <TextBlock DockPanel.Dock="Right" Text="{Binding State}" Classes="hint small" VerticalAlignment="Center" />
-                    <PathIcon Classes="small" DockPanel.Dock="Left" Margin="0,0,7,0" Data="{x:Static shell:LucideIcons.Music}" />
-                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
-                  </DockPanel>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-        </ScrollViewer>
+              </controls:PanelCard>
+              <Button x:Name="RemoveLayer" Classes="delete" Command="{Binding RemoveSelectedCommand}" HorizontalAlignment="Right" Margin="10,6"
+                      ToolTip.Tip="Take the layer out of the arrangement (Delete in the lanes).">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Delete}" />
+                  <TextBlock Text="Remove layer" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+        <!-- The arrangement: its own values, its cues, its sections and where it continues, and what the preview keeps playing. -->
+        <DockPanel IsVisible="{Binding SideTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=1}">
+          <Border DockPanel.Dock="Top" Classes="entityHeader">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+              <Border Classes="iconTile"><PathIcon Data="{x:Static shell:LucideIcons.Music}" /></Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Title}" Classes="title" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Path}" Classes="faint small" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </Grid>
+          </Border>
+          <ScrollViewer>
+            <StackPanel>
+              <data:DataView DataContext="{Binding Cue}" />
+              <controls:PanelCard Header="Cues" Icon="{x:Static shell:LucideIcons.Cue}" Note="{Binding Notifiers.Count}">
+                <controls:PanelCard.Actions>
+                  <Button Classes="icon small" ToolTip.Tip="Add a cue at the playhead" Command="{Binding AddNotifierCommand}"><PathIcon Data="{x:Static shell:LucideIcons.Add}" /></Button>
+                </controls:PanelCard.Actions>
+                <StackPanel>
+                  <ItemsControl ItemsSource="{Binding Notifiers}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="coremusic:NotifierViewModel">
+                        <Grid ColumnDefinitions="*,4,56,2,Auto" Margin="0,1">
+                          <TextBox Grid.Column="0" Text="{Binding Name}" ToolTip.Tip="The name the game hears" />
+                          <TextBox Grid.Column="2" Text="{Binding Bar}" ToolTip.Tip="The bar it stands on" />
+                          <Button Grid.Column="4" Classes="icon small delete" Click="HandleRemoveNotifier" ToolTip.Tip="Remove the cue"><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></Button>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Classes="hint small" TextWrapping="Wrap" Margin="0,4,0,0" Text="A cue is a named point on the grid. The game gets a MusicNotifyEvent with its name as the music passes it, to flash a light on the snare or open a door on the drop. Double-click the Cues row over the lanes to place one." />
+                </StackPanel>
+              </controls:PanelCard>
+              <controls:PanelCard Header="Sections" Icon="{x:Static shell:LucideIcons.Sections}" Note="{Binding Sections.Count}">
+                <controls:PanelCard.Actions>
+                  <Button Classes="icon small" ToolTip.Tip="Add a section after the last" Command="{Binding AddSectionCommand}"><PathIcon Data="{x:Static shell:LucideIcons.Add}" /></Button>
+                </controls:PanelCard.Actions>
+                <StackPanel>
+                  <ItemsControl ItemsSource="{Binding Sections}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="coremusic:SectionViewModel">
+                        <Grid ColumnDefinitions="*,4,56,2,Auto" Margin="0,1">
+                          <TextBox Grid.Column="0" Text="{Binding Name}" />
+                          <TextBox Grid.Column="2" Text="{Binding Bars}" ToolTip.Tip="Length in bars" />
+                          <Button Grid.Column="4" Classes="icon small delete" Click="HandleRemoveSection" ToolTip.Tip="Remove the section"><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></Button>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Classes="hint small" TextWrapping="Wrap" Margin="0,4,0,0" Text="The parts of a song, one after the other from bar 1. The game gets a MusicSectionEvent as the music enters each." />
+                </StackPanel>
+              </controls:PanelCard>
+              <controls:PanelCard Header="Continue points" Icon="{x:Static shell:LucideIcons.Flag}" Note="{Binding ContinuePoints.Count}">
+                <controls:PanelCard.Actions>
+                  <Button Classes="icon small" ToolTip.Tip="Add a continue point at the playhead" Command="{Binding AddContinuePointCommand}"><PathIcon Data="{x:Static shell:LucideIcons.Add}" /></Button>
+                </controls:PanelCard.Actions>
+                <StackPanel>
+                  <ItemsControl ItemsSource="{Binding ContinuePoints}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="coremusic:ContinuePointViewModel">
+                        <Grid ColumnDefinitions="*,4,56,2,Auto" Margin="0,1">
+                          <TextBox Grid.Column="0" Text="{Binding Name}" />
+                          <TextBox Grid.Column="2" Text="{Binding Bar}" ToolTip.Tip="The bar it picks up from" />
+                          <Button Grid.Column="4" Classes="icon small delete" Click="HandleRemoveContinuePoint" ToolTip.Tip="Remove the continue point"><PathIcon Data="{x:Static shell:LucideIcons.Delete}" /></Button>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Classes="hint small" TextWrapping="Wrap" Margin="0,4,0,0" Text="When another arrangement is taken off this one, it continues at the first point at or after where it stopped, else the first." />
+                </StackPanel>
+              </controls:PanelCard>
+              <controls:PanelCard Header="Playing now" Icon="{x:Static shell:LucideIcons.Layers}" Note="{Binding StackEntries.Count}">
+                <controls:PanelCard.Actions>
+                  <Button Classes="icon small" ToolTip.Tip="Take the arrangement on top off; the one under it continues." Command="{Binding PopCueCommand}"><PathIcon Data="{x:Static shell:LucideIcons.GoingOut}" /></Button>
+                </controls:PanelCard.Actions>
+                <StackPanel>
+                  <ItemsControl ItemsSource="{Binding StackEntries}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="coremusic:StackEntryViewModel">
+                        <DockPanel Margin="0,2">
+                          <TextBlock DockPanel.Dock="Right" Text="{Binding State}" Classes="hint small" VerticalAlignment="Center" />
+                          <PathIcon Classes="small" DockPanel.Dock="Left" Margin="0,0,7,0" Data="{x:Static shell:LucideIcons.Music}" />
+                          <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Classes="hint small" TextWrapping="Wrap" Margin="0,4,0,0" Text="What the game keeps while it plays. Push an arrangement over this one from the Arrangements list; each one below remembers its bar and layers." />
+                </StackPanel>
+              </controls:PanelCard>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
       </DockPanel>
       <Border Grid.Row="1" Background="{DynamicResource EditorLineBrush}" />
       <DockPanel Grid.Row="2">
@@ -136,22 +195,22 @@
             <Button DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="Import sound files into Content" Click="HandleImport"><PathIcon Data="{x:Static shell:LucideIcons.Import}" /></Button>
             <StackPanel Orientation="Horizontal">
               <ToggleButton Classes="stripTab" IsChecked="{Binding ListTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=0, Mode=OneWay}" Click="HandleSoundsTab">
-                <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Waveform}" /><TextBlock Text="Sounds" /></StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Clip}" /><TextBlock Text="Sounds" /></StackPanel>
               </ToggleButton>
               <ToggleButton Classes="stripTab" IsChecked="{Binding ListTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=1, Mode=OneWay}" Click="HandleCuesTab">
-                <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Music}" /><TextBlock Text="Cues" /></StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Arrangements}" /><TextBlock Text="Arrangements" /></StackPanel>
               </ToggleButton>
             </StackPanel>
           </DockPanel>
         </Border>
-        <TextBox DockPanel.Dock="Top" Classes="search row" Watermark="Search sounds" Text="{Binding Search}" Margin="6,4" />
-        <TextBlock DockPanel.Dock="Bottom" Classes="hint small" TextWrapping="Wrap" Margin="10,4" Text="Drag a sound onto a lane, or drop sound files from the disk to import them. A loop at another tempo is stretched to the cue without changing its pitch." />
+        <controls:SearchBox DockPanel.Dock="Top" Classes="row" PlaceholderText="Search sounds" Text="{Binding Search}" />
+        <TextBlock DockPanel.Dock="Bottom" Classes="hint small" TextWrapping="Wrap" Margin="10,4" Text="Drag a sound onto a lane, or drop sound files from the disk to import them. A loop at another tempo is stretched to the arrangement without changing its pitch." />
         <ListBox ItemsSource="{Binding Sounds}" IsVisible="{Binding ListTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=0}" DoubleTapped="HandleSoundDoubleTapped">
           <ListBox.ItemTemplate>
             <DataTemplate DataType="coremusic:SoundItem">
               <DockPanel Background="Transparent" PointerPressed="HandleItemPressed" PointerMoved="HandleItemMoved" ToolTip.Tip="{Binding Path}">
                 <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" Classes="hint small" VerticalAlignment="Center" />
-                <PathIcon Classes="small" DockPanel.Dock="Left" Margin="0,0,7,0" Data="{x:Static shell:LucideIcons.Waveform}" />
+                <PathIcon Classes="small" DockPanel.Dock="Left" Margin="0,0,7,0" Data="{x:Static shell:LucideIcons.Clip}" />
                 <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
               </DockPanel>
             </DataTemplate>
@@ -164,7 +223,7 @@
                 <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Music}" />
                 <TextBlock Text="{Binding Name}" />
                 <TextBlock Text="{Binding Path}" Classes="hint small" VerticalAlignment="Center" />
-                <Button Classes="quiet" Click="HandlePushCue" ToolTip.Tip="Push over the playing cue"><TextBlock Text="Push over" /></Button>
+                <Button Classes="quiet" Click="HandlePushCue" ToolTip.Tip="Push over the playing arrangement"><TextBlock Text="Push over" /></Button>
               </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>

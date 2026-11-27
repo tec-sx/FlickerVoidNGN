@@ -352,6 +352,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         top.Held = false;
         top.LastBeat = -1;
         top.LastBar = double.NaN;
+        top.ShotsUntil = 0;
     }
 
     public void StopNow(AudioBus bus = AudioBus.Music)
@@ -478,6 +479,75 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
             }
 
             SendNotifies(top);
+            PlayShots(top);
+        }
+    }
+
+    private static AudioBus BusOf(CueState cue, MusicTrack track) => track.Bus ?? cue.Cue.Bus;
+
+    /// <summary>Starts the sounds of the notifies whose bars come within the next frames, each on its frame of the grid.</summary>
+    private void PlayShots(CueState cue)
+    {
+        double barFrames = BarFrames(cue.Cue);
+        long soonest = Math.Max(Mixer.Position + LookaheadFrames, cue.ActiveFrom);
+        long from = Math.Max(cue.ShotsUntil, soonest);
+        long until = Mixer.Position + (LookaheadFrames * 3);
+        if (barFrames <= 0 || until <= from)
+        {
+            return;
+        }
+
+        cue.ShotsUntil = until;
+        int phrase = cue.Cue.PhraseBars;
+        foreach (MusicNotify notify in cue.Cue.Notifies)
+        {
+            if (notify.Sound.Length == 0)
+            {
+                continue;
+            }
+
+            double offset = (notify.Bar - 1) * barFrames;
+            if (!notify.Repeat || phrase <= 0)
+            {
+                PlayShot(cue, notify, cue.Start + (long)Math.Round(offset), from, until);
+                continue;
+            }
+
+            double phraseFrames = phrase * barFrames;
+            long first = (long)Math.Floor((from - cue.Start - offset) / phraseFrames);
+            long final = (long)Math.Floor((until - cue.Start - offset) / phraseFrames);
+            for (long round = Math.Max(0, first); round <= final; round++)
+            {
+                PlayShot(cue, notify, cue.Start + (long)Math.Round(offset + (round * phraseFrames)), from, until);
+            }
+        }
+    }
+
+    private void PlayShot(CueState cue, MusicNotify notify, long at, long from, long until)
+    {
+        if (at < from || at >= until)
+        {
+            return;
+        }
+
+        float gain = cue.Cue.Gain * notify.Gain;
+        AudioBus bus = cue.Cue.Bus;
+        if (notify.Track.Length > 0)
+        {
+            TrackState? track = cue.Tracks.FirstOrDefault(track => string.Equals(track.Track.Name, notify.Track, StringComparison.OrdinalIgnoreCase));
+            if (track is null || !track.On)
+            {
+                return;
+            }
+
+            gain = TrackGain(cue, track) * notify.Gain;
+            bus = BusOf(cue, track.Track);
+        }
+
+        SoundClip? clip = _audio.LoadClip(notify.Sound);
+        if (clip is not null)
+        {
+            PlayOnce(clip, bus, gain, at);
         }
     }
 
@@ -679,21 +749,20 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
 
     private bool IsAsked(MusicTrack track)
     {
-        if (track.Triggers.Count > 0)
+        if (!track.IsRequested)
         {
-            foreach (string asked in _asked)
-            {
-                Tag tag = new(asked);
-                if (track.Triggers.Any(trigger => tag.MatchesTag(trigger)))
-                {
-                    return true;
-                }
-            }
-
-            return track.ByRequest && _asked.Contains(track.Name);
+            return true;
         }
 
-        return !track.ByRequest || _asked.Contains(track.Name);
+        foreach (string asked in _asked)
+        {
+            if (track.IsAskedBy(asked))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private bool IsWanted(TrackState track, ConditionContext context)
@@ -727,7 +796,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
             start = NextLine(cue, earliest, settings.Start);
             if (track.FillIn is { } fill)
             {
-                track.FillVoice = PlayOnce(fill, cue.Cue.Bus, gain, start);
+                track.FillVoice = PlayOnce(fill, BusOf(cue, settings), gain, start);
                 track.FillStart = start;
                 start += GridLength(cue.Cue, fill);
             }
@@ -751,7 +820,8 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         float fadeIn = settings.FadeIn * AudioFormat.SampleRate;
         track.LoopVoice = _audio.TakeVoiceId();
         track.LoopStart = start;
-        MixerCommand play = MixerCommand.PlayOnGrid(track.LoopVoice, source, cue.Cue.Bus, gain, start, (long)fadeIn);
+        AudioBus bus = BusOf(cue, settings);
+        MixerCommand play = MixerCommand.PlayOnGrid(track.LoopVoice, source, bus, gain, start, (long)fadeIn);
         Mixer.Send(in play);
     }
 
@@ -780,7 +850,8 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         if (track.FillOut is { } fill)
         {
             float gain = TrackGain(cue, track);
-            PlayOnce(fill, cue.Cue.Bus, gain, at);
+            AudioBus bus = BusOf(cue, track.Track);
+            PlayOnce(fill, bus, gain, at);
         }
 
         track.BusyUntil = at;
@@ -892,7 +963,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         _game.Events.Send(new MusicBeatEvent(cue.Name, (int)bar + 1, (int)inBar + 1));
     }
 
-    /// <summary>Sends the notifies of the cue the music passed since the last frame; one whose bar repeats with the phrase sends once for each phrase.</summary>
+    /// <summary>Sends the notifies of the cue the music passed since the last frame; one whose bar repeats with the phrase sends once for each phrase, and one of a track only while that track sounds.</summary>
     private void SendNotifies(CueState cue)
     {
         double barFrames = BarFrames(cue.Cue);
@@ -937,11 +1008,18 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
 
     private void SendNotify(CueState cue, MusicNotify notify, double at, double last, double bar)
     {
-        if (at > last && at <= bar)
+        if (at <= last || at > bar)
         {
-            int whole = (int)Math.Floor(at) + 1;
-            _game.Events.Send(new MusicNotifyEvent(cue.Name, notify.Name, whole));
+            return;
         }
+
+        if (notify.Track.Length > 0 && !cue.Tracks.Any(track => track.On && string.Equals(track.Track.Name, notify.Track, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        int whole = (int)Math.Floor(at) + 1;
+        _game.Events.Send(new MusicNotifyEvent(cue.Name, notify.Name, whole, notify.Track));
     }
 
     private void SendSections(CueState cue, double last, double bar)
@@ -1079,6 +1157,9 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
 
         /// <summary>The bar (from 0, with fractions) the notifies were last sent up to; NaN before the first frame.</summary>
         public double LastBar { get; set; } = double.NaN;
+
+        /// <summary>The mixer frame the notifies' sounds were last started up to.</summary>
+        public long ShotsUntil { get; set; }
     }
 
     private sealed class TrackState
