@@ -236,10 +236,10 @@ public sealed partial class MainWindowViewModel
     private void EnterCreator(CreatorMode creator, string file, CreatorPanelViewModel panel)
     {
         creator.Doors = new CreationDoors(() => CreatorPanel?.Creation);
+        CreatorPanel = panel;
         Viewport.EnterCreator(creator, file);
         creator.PartSelected += () => OnPropertyChanged(nameof(CreatorPart));
         creator.MeshModeChanged += ShowGreyboxesInTheMesh;
-        CreatorPanel = panel;
         ShowContext(CreatorTab);
         OutlinerTab = PartsTab;
         Viewport.Status = $"Making {file}. Escape, or a double-click beside it, goes back to the level.";
