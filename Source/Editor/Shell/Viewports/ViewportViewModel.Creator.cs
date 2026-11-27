@@ -173,7 +173,6 @@ public sealed partial class ViewportViewModel
             case ViewportKey.M:
                 MeshTools.Mirror = !MeshTools.Mirror;
                 break;
-            case ViewportKey.L:
             case ViewportKey.R when ctrl:
                 MeshTools.LoopCut();
                 break;

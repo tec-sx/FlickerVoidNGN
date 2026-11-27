@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NVorbis" />
+    <PackageReference Include="Silk.NET.SDL" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Flow/FlickerVoid.Engine.Flow.csproj" />
+    <ProjectReference Include="../Rendering/FlickerVoid.Engine.Rendering.csproj" />
+  </ItemGroup>
+</Project>

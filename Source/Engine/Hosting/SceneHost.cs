@@ -1,5 +1,7 @@
 using Arch.Core;
 
+using FlickerVoid.Engine.Audio.Devices;
+using FlickerVoid.Engine.Audio.Sounds;
 using FlickerVoid.Engine.Flow;
 using FlickerVoid.Engine.Flow.Graphs;
 using FlickerVoid.Engine.Graphics.Devices;
@@ -26,7 +28,7 @@ namespace FlickerVoid.Engine.Hosting;
 /// Runs a game in a window: a Vulkan device, a game with rendering, its built content (reloaded when it changes) and its settings
 /// (<see cref="SettingsFile.FileName"/>, read as it starts, so the renderer follows the <see cref="RenderingSettings"/>: DLSS
 /// Quality where the GPU has it unless they say otherwise), the options' scene and lighting mood, and a <see cref="SceneRenderSystem"/> that draws after every
-/// other frame system.
+/// other frame system. When the game added audio, its mixer plays through the default output device.
 /// </summary>
 public sealed partial class SceneHost : IDisposable
 {
@@ -34,6 +36,7 @@ public sealed partial class SceneHost : IDisposable
 
     private readonly HostOptions _options;
     private readonly ILogger<SceneHost> _logger;
+    private SdlAudioDevice? _audioDevice;
     private bool _disposed;
 
     /// <summary>Creates the device, game and window; add modules and frame systems, then <see cref="Run"/>.</summary>
@@ -133,6 +136,7 @@ public sealed partial class SceneHost : IDisposable
         }
 
         LoadSettings();
+        OpenAudioDevice();
         createOverlay ??= static (_, _) => null;
         Renderer = new SceneRenderSystem(Window, Device, Game.World, CreateRenderer, _options.FrameLimit, createOverlay) { MoodSource = () => Moods.Current };
         return Renderer;
@@ -155,6 +159,7 @@ public sealed partial class SceneHost : IDisposable
 
         _disposed = true;
         Renderer?.Dispose();
+        _audioDevice?.Dispose();
         Scenes.Dispose();
         Data.Dispose();
         Window.Dispose();
@@ -172,6 +177,22 @@ public sealed partial class SceneHost : IDisposable
         }
     }
 
+    /// <summary>Plays the game's sound, when it added audio, through the default output device; a machine without one stays silent.</summary>
+    private void OpenAudioDevice()
+    {
+        AudioSystem? audio = Game.Services.GetService<AudioSystem>();
+        if (audio is null)
+        {
+            return;
+        }
+
+        _audioDevice = SdlAudioDevice.TryOpen(audio.Mixer, out string problem);
+        if (_audioDevice is null)
+        {
+            LogNoAudioDevice(problem);
+        }
+    }
+
     private SceneRenderer CreateRenderer(PixelFormat format)
     {
         SceneRenderer renderer = new(Device, Content, format) { Mood = Moods.Current, Sky = true };
@@ -185,6 +206,9 @@ public sealed partial class SceneHost : IDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "{Path}: {Problem}")]
     private partial void LogSettingsProblem(string path, string problem);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "No audio device could be opened, so the game is silent: {Problem}")]
+    private partial void LogNoAudioDevice(string problem);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "{Scene} has no camera, so the window stays empty.")]
     private partial void LogNoCamera(string scene);
