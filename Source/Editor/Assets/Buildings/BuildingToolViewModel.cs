@@ -20,6 +20,8 @@ namespace FlickerVoid.Editor.Assets.Buildings;
 /// </summary>
 public sealed partial class BuildingToolViewModel : ObservableObject
 {
+    private const float NewLeafWindow = 0.5f;
+
     private static readonly string[] Levels = ["Cellar", "Ground"];
 
     private readonly BuildingEditor _editor;
@@ -27,6 +29,8 @@ public sealed partial class BuildingToolViewModel : ObservableObject
     private readonly Func<(Vector3 Position, Quaternion Rotation)?> _view;
     private readonly Action<BuildingShot> _lookThrough;
     private int _trigger;
+    private bool _refreshing;
+    private bool _again;
 
     /// <param name="view">Where the viewport's camera stands in the building's space, for Set from view.</param>
     /// <param name="lookThrough">Shows the viewport through the shot.</param>
@@ -79,6 +83,12 @@ public sealed partial class BuildingToolViewModel : ObservableObject
             return;
         }
 
+        if (pick.Kind == PlanPickKind.Handle)
+        {
+            // A handle goes with its door.
+            pick = pick with { Kind = PlanPickKind.Opening };
+        }
+
         _editor.Apply();
         Change($"Remove {pick.Kind}", building => RemovePick(building, pick));
         _editor.Pick(null);
@@ -90,9 +100,33 @@ public sealed partial class BuildingToolViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsPending));
         OnPropertyChanged(nameof(PendingName));
+        if (_refreshing)
+        {
+            _again = true;
+            return;
+        }
+
+        _refreshing = true;
+        try
+        {
+            do
+            {
+                _again = false;
+                Build();
+            }
+            while (_again);
+        }
+        finally
+        {
+            _refreshing = false;
+        }
+    }
+
+    private void Build()
+    {
         if (_file() is not { } file)
         {
-            Sections.Clear();
+            Merge([]);
             return;
         }
 
@@ -116,7 +150,7 @@ public sealed partial class BuildingToolViewModel : ObservableObject
             case PlanPickKind.Pillar when storey is not null && storey.Pillars.Find(pillar => pillar.Id == pick.Id) is { } pillar:
                 AddPillar(sections, pillar);
                 break;
-            case PlanPickKind.Opening when storey is not null && storey.Openings.Find(opening => opening.Id == pick.Id) is { } opening:
+            case PlanPickKind.Opening or PlanPickKind.Handle when storey is not null && storey.Openings.Find(opening => opening.Id == pick.Id) is { } opening:
                 AddOpening(sections, file, storey, opening);
                 break;
             case PlanPickKind.Stairs when file.Stairs.Find(stairs => stairs.Id == pick.Id) is { } stairs:
@@ -144,28 +178,34 @@ public sealed partial class BuildingToolViewModel : ObservableObject
         Merge(sections);
     }
 
+    // Sections that stay take the new values in place; the others are swapped one by one and retired, never all at once, so a
+    // box that still holds the keyboard as it goes cannot edit the building or build the tab again under the list's feet.
     private void Merge(List<ToolSection> sections)
     {
-        bool same = sections.Count == Sections.Count;
-        for (int index = 0; same && index < sections.Count; index++)
+        for (int index = 0; index < sections.Count; index++)
         {
-            same = Sections[index].Matches(sections[index]);
-        }
-
-        if (same)
-        {
-            for (int index = 0; index < sections.Count; index++)
+            if (index >= Sections.Count)
             {
-                Sections[index].Take(sections[index]);
+                Sections.Add(sections[index]);
+                continue;
             }
 
-            return;
+            ToolSection shown = Sections[index];
+            if (shown.Matches(sections[index]))
+            {
+                shown.Take(sections[index]);
+                continue;
+            }
+
+            shown.Retire();
+            Sections[index] = sections[index];
         }
 
-        Sections.Clear();
-        foreach (ToolSection section in sections)
+        while (Sections.Count > sections.Count)
         {
-            Sections.Add(section);
+            int last = Sections.Count - 1;
+            Sections[last].Retire();
+            Sections.RemoveAt(last);
         }
     }
 
@@ -233,6 +273,9 @@ public sealed partial class BuildingToolViewModel : ObservableObject
             case PlanPickKind.Opening:
                 string? name = file.FindStorey(pick.Level)?.Openings.Find(opening => opening.Id == pick.Id)?.Name;
                 return $"{name}, {storey}";
+            case PlanPickKind.Handle:
+                string? door = file.FindStorey(pick.Level)?.Openings.Find(opening => opening.Id == pick.Id)?.Name;
+                return $"Handle of {door}, {storey}";
             case PlanPickKind.Shot:
                 string? shot = file.Shots.Find(found => found.Id == pick.Id)?.Name;
                 return $"{shot}, {storey}";
@@ -512,29 +555,70 @@ public sealed partial class BuildingToolViewModel : ObservableObject
 
         if (opening.Kind == OpeningKind.Door)
         {
-            ToolRow hinge = new ChoiceRow("Hinge", ["Left", "Right"], opening.HingeLeft ? 0 : 1, index => Change(name, building => Opening(building, level, id).HingeLeft = index == 0));
-            ToolRow opens = new ChoiceRow("Opens", ["Out", "In"], opening.Outward ? 0 : 1, index => Change(name, building => Opening(building, level, id).Outward = index == 0));
-            ToolRow angle = new NumberRow("Angle", opening.Angle, "°", value => Change(name, building => Opening(building, level, id).Angle = Math.Clamp(value, 1, 179)), 1, 179, 1);
-            ToolRow locked = new ToggleRow("Locked", opening.Locked, on => Change(name, building => Opening(building, level, id).Locked = on));
-            ToolRow key = new TextRow("Key tag", opening.Key.IsValid ? opening.Key.ToString() : string.Empty, value => Change(name, building => Opening(building, level, id).Key = ToTag(value)));
-            ToolRow consume = new ToggleRow("Key is used up", opening.ConsumeKey, on => Change(name, building => Opening(building, level, id).ConsumeKey = on));
-            ToolRow pickable = new ToggleRow("Can be picked", opening.Pickable, on => Change(name, building => Opening(building, level, id).Pickable = on));
-            ToolRow difficulty = new NumberRow("Difficulty", opening.Difficulty, "", value => Change(name, building => Opening(building, level, id).Difficulty = Math.Clamp(value, 0, 1)), 0, 1, 0.05);
-            sections.Add(new ToolSection("Leaf", "Door", [hinge, opens, angle, locked, key, consume, pickable, difficulty], isExpanded: false));
+            AddLeaf(sections, opening, level);
         }
 
-        ToolRow frame = new NumberRow("Frame width", opening.Frame, "m", value => Change(name, building => Opening(building, level, id).Frame = Math.Max(value, 0)), 0, 1, 0.01);
-        List<ToolRow> frameRows = [frame];
-        if (opening.Kind == OpeningKind.Window)
-        {
-            frameRows.Add(new ToggleRow("Glass", opening.Glass, on => Change(name, building => Opening(building, level, id).Glass = on)));
-        }
-
-        sections.Add(new ToolSection("Frame and window", "Window", frameRows, isExpanded: false));
+        AddFrame(sections, opening, level);
         ToolRow margin = new NumberRow("Margin", opening.Margin, "m", value => Change(name, building => Opening(building, level, id).Margin = Math.Max(value, 0)), 0, 0.5, 0.01);
         ToolRow fits = new ListRow("Fits its wall", OpeningShape.Fits(file, storey, opening) ? "yes" : "no: move it or make it smaller", OpeningShape.Fits(file, storey, opening) ? "Check" : "Warning", isWarning: !OpeningShape.Fits(file, storey, opening));
         ToolRow removeOpening = new ActionsRow("", [new ToolAction("Remove opening", "Delete", Remove)]);
         sections.Add(new ToolSection("Cut", "Cut", [margin, fits, removeOpening], isExpanded: false));
+    }
+
+    /// <summary>A door's leaves, how they swing and their lock, and the handle a hand takes, which the viewport's orange dot moves.</summary>
+    private void AddLeaf(List<ToolSection> sections, PlanOpening opening, int level)
+    {
+        int id = opening.Id;
+        string name = opening.Name;
+        List<ToolRow> rows = [new ChoiceRow("Leaves", ["Single", "Double"], opening.Double ? 1 : 0, index => Change(name, building => Opening(building, level, id).Double = index == 1))];
+        if (!opening.Double)
+        {
+            rows.Add(new ChoiceRow("Hinge", ["Left", "Right"], opening.HingeLeft ? 0 : 1, index => Change(name, building => Opening(building, level, id).HingeLeft = index == 0)));
+        }
+
+        rows.Add(new ChoiceRow("Opens", ["Out", "In"], opening.Outward ? 0 : 1, index => Change(name, building => Opening(building, level, id).Outward = index == 0)));
+        rows.Add(new NumberRow("Angle", opening.Angle, "°", value => Change(name, building => Opening(building, level, id).Angle = Math.Clamp(value, 1, 179)), 1, 179, 1));
+        rows.Add(new ToggleRow("Locked", opening.Locked, on => Change(name, building => Opening(building, level, id).Locked = on)));
+        rows.Add(new TextRow("Key tag", opening.Key.IsValid ? opening.Key.ToString() : string.Empty, value => Change(name, building => Opening(building, level, id).Key = ToTag(value))));
+        rows.Add(new ToggleRow("Key is used up", opening.ConsumeKey, on => Change(name, building => Opening(building, level, id).ConsumeKey = on)));
+        rows.Add(new ToggleRow("Can be picked", opening.Pickable, on => Change(name, building => Opening(building, level, id).Pickable = on)));
+        rows.Add(new NumberRow("Difficulty", opening.Difficulty, "", value => Change(name, building => Opening(building, level, id).Difficulty = Math.Clamp(value, 0, 1)), 0, 1, 0.05));
+        sections.Add(new ToolSection("Leaf", "Door", rows, isExpanded: false));
+
+        float leaf = opening.Double ? opening.Width / 2 : opening.Width;
+        ToolRow height = new NumberRow("Height", opening.HandleHeight, "m", value => Change($"{name} · handle", building => Opening(building, level, id).HandleHeight = Math.Max(value, 0)), 0, opening.Height, 0.05);
+        ToolRow inset = new NumberRow("Inset", opening.HandleInset, "m", value => Change($"{name} · handle", building => Opening(building, level, id).HandleInset = Math.Max(value, 0)), 0, leaf, 0.01);
+        bool handlePicked = _editor.Picked is { Kind: PlanPickKind.Handle };
+        sections.Add(new ToolSection("Handle", "Hand", [height, inset], isExpanded: handlePicked));
+    }
+
+    /// <summary>The frame round an opening, the window in a door's leaf, and whether a window has a pane to see through.</summary>
+    private void AddFrame(List<ToolSection> sections, PlanOpening opening, int level)
+    {
+        int id = opening.Id;
+        string name = opening.Name;
+        List<ToolRow> rows = [new NumberRow("Frame width", opening.Frame, "m", value => Change(name, building => Opening(building, level, id).Frame = Math.Max(value, 0)), 0, 1, 0.01)];
+        ToolRow glass = new ToggleRow("Glass", opening.Glass, on => Change(name, building => Opening(building, level, id).Glass = on));
+        if (opening.Kind == OpeningKind.Window)
+        {
+            rows.Add(glass);
+        }
+
+        if (opening.Kind == OpeningKind.Door)
+        {
+            float leaf = opening.Double ? opening.Width / 2 : opening.Width;
+            bool has = opening.WindowWidth > 0;
+            rows.Add(new ToggleRow("Window", has, on => Change($"{name} · window", building => Opening(building, level, id).WindowWidth = on ? Math.Min(NewLeafWindow, leaf * 0.6f) : 0)));
+            if (has)
+            {
+                rows.Add(new NumberRow("Width", opening.WindowWidth, "m", value => Change($"{name} · window", building => Opening(building, level, id).WindowWidth = Math.Max(value, 0.05f)), 0.05, leaf, 0.05));
+                rows.Add(new NumberRow("Height", opening.WindowHeight, "m", value => Change($"{name} · window", building => Opening(building, level, id).WindowHeight = Math.Max(value, 0.05f)), 0.05, opening.Height, 0.05));
+                rows.Add(new NumberRow("From the floor", opening.WindowFrom, "m", value => Change($"{name} · window", building => Opening(building, level, id).WindowFrom = Math.Max(value, 0)), 0, opening.Height, 0.05));
+                rows.Add(glass);
+            }
+        }
+
+        sections.Add(new ToolSection("Frame and window", "Window", rows, isExpanded: false));
     }
 
     private void SetKind(int level, int id, OpeningKind kind)
@@ -814,7 +898,11 @@ public sealed partial class BuildingToolViewModel : ObservableObject
         switch (tool)
         {
             case BuildingTool.Wall:
-                sections.Add(new ToolSection("New walls", "Wall", [new ToggleRow("Outside", _editor.WallOutside, on => _editor.WallOutside = on), new ToggleRow("Snap to grid", _editor.SnapOn, on => _editor.SnapOn = on)]));
+                sections.Add(new ToolSection("New walls", "Wall", [new ToggleRow("Outside", _editor.WallOutside, on => _editor.WallOutside = on)]));
+                ToolRow toWalls = new ToggleRow("Walls and corners", _editor.SnapToWalls, on => _editor.SnapToWalls = on);
+                ToolRow toMiddles = new ToggleRow("Middles of walls", _editor.SnapToMiddles, on => _editor.SnapToMiddles = on);
+                ToolRow toGrid = new ToggleRow("Grid", _editor.SnapOn, on => _editor.SnapOn = on);
+                sections.Add(new ToolSection("Snaps to", "Snap", [toWalls, toMiddles, toGrid]));
                 break;
             case BuildingTool.Pillar:
                 ToolRow size = new NumberRow("Size", _editor.PillarSize, "m", value => _editor.PillarSize = Math.Max(value, 0.05f), 0.05, 4, 0.05);

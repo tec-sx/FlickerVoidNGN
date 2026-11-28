@@ -23,9 +23,11 @@ public sealed partial class NumberRow : ToolRow
 
     public string Unit { get; }
 
-    public double Minimum { get; }
+    [ObservableProperty]
+    public partial double Minimum { get; private set; }
 
-    public double Maximum { get; }
+    [ObservableProperty]
+    public partial double Maximum { get; private set; }
 
     public double Step { get; }
 
@@ -37,13 +39,15 @@ public sealed partial class NumberRow : ToolRow
         NumberRow row = (NumberRow)other;
         _set = row._set;
         _taking = true;
+        Minimum = row.Minimum;
+        Maximum = row.Maximum;
         Value = row.Value;
         _taking = false;
     }
 
     partial void OnValueChanged(double value)
     {
-        if (!_taking)
+        if (!_taking && !IsRetired)
         {
             _set((float)value);
         }

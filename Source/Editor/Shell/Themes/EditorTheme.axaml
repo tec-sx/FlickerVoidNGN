@@ -1594,6 +1594,32 @@
   <Style Selector="Border.planTag.drag TextBlock.title">
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
+  <Style Selector="Border.planTag.cut">
+    <Setter Property="BorderBrush" Value="{StaticResource EditorDeleteBrush}" />
+  </Style>
+  <Style Selector="Border.planTag.cut TextBlock.title">
+    <Setter Property="Foreground" Value="{StaticResource EditorDeleteBrush}" />
+  </Style>
+  <!-- A warning over the viewport: the overlay's dark panel with a hairline in the warning colour, taken away by a click. -->
+  <Style Selector="Button.toast">
+    <Setter Property="Background" Value="{StaticResource EditorOverlayBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorDeleteBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource EditorFloatCornerRadius}" />
+    <Setter Property="Padding" Value="10,6,12,6" />
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+  </Style>
+  <Style Selector="Button.toast /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BoxShadow" Value="{StaticResource EditorFloatShadow}" />
+  </Style>
+  <Style Selector="Button.toast:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorOverlayBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorDeleteBrush}" />
+  </Style>
+  <Style Selector="Button.toast PathIcon">
+    <Setter Property="Foreground" Value="{StaticResource EditorDeleteBrush}" />
+  </Style>
   <Style Selector="ListBox.storeys ListBoxItem">
     <Setter Property="MinHeight" Value="22" />
     <Setter Property="Padding" Value="8,2" />

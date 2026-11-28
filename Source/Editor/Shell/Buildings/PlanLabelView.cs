@@ -20,5 +20,8 @@ public sealed record PlanLabelView(double X, double Y, string Title, string Deta
 
     public bool IsDrag => Kind == PlanLabelKind.Drag;
 
+    /// <summary>Whether it names a cut about to be made, shown in the cut's red.</summary>
+    public bool IsCut => Kind == PlanLabelKind.Cut;
+
     public bool HasDetail => Detail.Length > 0;
 }

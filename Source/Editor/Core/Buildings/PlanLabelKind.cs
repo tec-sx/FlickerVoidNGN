@@ -8,4 +8,7 @@ public enum PlanLabelKind
     Drag,
     Shot,
     Trigger,
+
+    /// <summary>The tag of what is cut out, in the cut's red.</summary>
+    Cut,
 }

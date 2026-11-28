@@ -21,7 +21,10 @@ public sealed class BuildingElevator
     /// <summary>The platform's width and depth.</summary>
     public float Size { get; set; } = 1.6f;
 
-    /// <summary>The way the platform is stepped onto, in degrees turned from -Z toward +X; the call buttons stand on that side.</summary>
+    /// <summary>
+    /// The way the platform is stepped onto, in degrees turned from -Z toward +X; the shaft, its platform and its railing turn with
+    /// it, and the call buttons stand on that side.
+    /// </summary>
     public float Heading { get; set; }
 
     /// <summary>The lowest storey it stops at.</summary>

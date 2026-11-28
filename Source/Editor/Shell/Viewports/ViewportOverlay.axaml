@@ -5,6 +5,7 @@
              xmlns:inspector="using:FlickerVoid.Editor.Inspector"
              xmlns:shots="using:FlickerVoid.Editor.Shots"
              xmlns:buildings="using:FlickerVoid.Editor.Buildings"
+             xmlns:toasts="using:FlickerVoid.Editor.Core.Toasts"
              xmlns:buildingModels="using:FlickerVoid.Editor.Assets.Buildings"
              x:Class="FlickerVoid.Editor.Viewports.ViewportOverlay"
              x:DataType="viewports:ViewportViewModel">
@@ -157,7 +158,7 @@
                 <TextBlock Classes="muted small" Text="{Binding Detail}" HorizontalAlignment="Center" />
               </StackPanel>
             </Border>
-            <Border Classes="planTag" Classes.drag="{Binding IsDrag}" IsVisible="{Binding IsTag}" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Border Classes="planTag" Classes.drag="{Binding IsDrag}" Classes.cut="{Binding IsCut}" IsVisible="{Binding IsTag}" HorizontalAlignment="Center" VerticalAlignment="Center">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <TextBlock Classes="title small" Text="{Binding Title}" />
                 <TextBlock Classes="muted small" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" />
@@ -254,6 +255,22 @@
       </Border>
     </Grid>
     <!-- The tool rail down the left edge, under the mode bar: one component, filled with the tools of what is being edited. -->
+    <!-- Warnings, under the bars at the top: why something asked for wasn't done and what to do; a click or a few seconds takes one away. -->
+    <ItemsControl ItemsSource="{Binding Toasts.Items}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="60,52,60,0">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="toasts:ToastViewModel">
+          <Button Classes="toast" Command="{Binding DismissCommand}" HorizontalAlignment="Center" ToolTip.Tip="Click to dismiss">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Warning}" VerticalAlignment="Top" Margin="0,2,0,0" />
+              <TextBlock Text="{Binding Message}" TextWrapping="Wrap" MaxWidth="460" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
     <viewports:ToolRailView Margin="12,50,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" DataContext="{Binding ToolRail}" />
     <!-- A tool with a pending result waits here: Apply (Enter) keeps it, Cancel (Escape) puts the mesh back. -->
     <Border Classes="viewportBar" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"

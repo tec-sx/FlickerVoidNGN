@@ -107,19 +107,27 @@ public static class BuildingMaker
         return (from, to);
     }
 
+    /// <summary>The elevator's place in the building on a level's floor: the middle of its shaft, turned so its -Z is the side it is stepped onto.</summary>
+    public static Transform GetElevatorPlace(BuildingFile file, BuildingElevator elevator, int level)
+    {
+        Quaternion turn = Quaternion.CreateFromAxisAngle(Vector3.UnitY, -float.DegreesToRadians(elevator.Heading));
+        return new Transform { Position = new Vector3(elevator.X, file.GetFloorHeight(level), elevator.Z), Rotation = turn };
+    }
+
     private static void MakeElevator(BuildingFile file, BuildingElevator elevator, Dictionary<int, List<SolidMesh>> holes)
     {
         (int from, int to) = GetElevatorSpan(file, elevator);
         elevator.From = from;
         elevator.To = to;
-        Transform rest = new() { Position = new Vector3(elevator.X, file.GetFloorHeight(from), elevator.Z) };
+        Transform rest = GetElevatorPlace(file, elevator, from);
         SolidMesh slab = SolidMesh.Box(new Vector3(elevator.Size, PlatformThickness, elevator.Size));
         elevator.Platform = new SolidPart { Place = rest, Mesh = slab };
         float half = (elevator.Size / 2) + ShaftClearance;
-        Vector2 middle = new(elevator.X, elevator.Z);
         List<SolidMesh> rails = [];
-        float turn = float.DegreesToRadians(elevator.Heading);
-        Vector2 front = new(MathF.Sin(turn), -MathF.Cos(turn));
+
+        // The shaft's square and its railing are laid out in the elevator's own space and turned with it.
+        Transform turned = new() { Position = new Vector3(elevator.X, 0, elevator.Z), Rotation = rest.Rotation };
+        Matrix4x4 toBuilding = turned.ToMatrix();
         for (int level = from + 1; level <= to; level++)
         {
             if (file.FindStorey(level) is null)
@@ -129,16 +137,17 @@ public static class BuildingMaker
 
             float bottom = file.GetBase(level) - HoleReach;
             float top = file.GetFloorHeight(level) + HoleReach;
-            Add(holes, level, StairsLayout.Box(middle - new Vector2(half), middle + new Vector2(half), bottom, top));
+            SolidMesh hole = StairsLayout.Box(new Vector2(-half), new Vector2(half), bottom, top);
+            Add(holes, level, hole.Transform(toBuilding));
             if (!elevator.Railing)
             {
                 continue;
             }
 
-            List<(Vector2, Vector2)> runs = GetShaftRails(middle, half, front);
+            List<(Vector2, Vector2)> runs = GetShaftRails(half);
             if (StairsLayout.CreateRails(runs, file.GetFloorHeight(level)) is { } railing)
             {
-                rails.Add(railing);
+                rails.Add(railing.Transform(toBuilding));
             }
         }
 
@@ -149,17 +158,17 @@ public static class BuildingMaker
         }
     }
 
-    // A square round the shaft, but for the side it is stepped onto.
-    private static List<(Vector2 From, Vector2 To)> GetShaftRails(Vector2 middle, float half, Vector2 front)
+    // A square round the shaft in the elevator's own space, but for the side it is stepped onto (-Z).
+    private static List<(Vector2 From, Vector2 To)> GetShaftRails(float half)
     {
-        Vector2[] corners = [middle + new Vector2(-half, -half), middle + new Vector2(half, -half), middle + new Vector2(half, half), middle + new Vector2(-half, half)];
+        Vector2[] corners = [new(-half, -half), new(half, -half), new(half, half), new(-half, half)];
         List<(Vector2, Vector2)> runs = [];
         for (int index = 0; index < corners.Length; index++)
         {
             Vector2 from = corners[index];
             Vector2 to = corners[(index + 1) % corners.Length];
-            Vector2 side = Vector2.Normalize(((from + to) / 2) - middle);
-            if (Vector2.Dot(side, front) > 0.7f)
+            Vector2 side = Vector2.Normalize((from + to) / 2);
+            if (side.Y < -0.7f)
             {
                 continue;
             }
@@ -269,7 +278,7 @@ public static class BuildingMaker
 
         foreach (PlanOpening opening in storey.Openings)
         {
-            MakeOpening(file, storey, opening, parts, old, wallPlace);
+            MakeOpening(file, storey, opening, parts, old, wallPlace, subtract);
         }
 
         storey.Parts = parts;
@@ -302,7 +311,21 @@ public static class BuildingMaker
         return straight > -0.99f;
     }
 
-        private static void MakeOpening(BuildingFile file, BuildingStorey storey, PlanOpening opening, Dictionary<string, SolidPart> parts, Dictionary<string, SolidPart> old, in Transform wallPlace)
+    /// <summary>The id, within its storey, of a door's leaf: <c>door.4</c>, and <c>door.4.b</c> for the second leaf of a double door.</summary>
+    public static string GetLeafId(PlanOpening opening, int leaf)
+    {
+        if (leaf == 0)
+        {
+            return $"door.{opening.Id}";
+        }
+
+        return $"door.{opening.Id}.b";
+    }
+
+    /// <summary>What ends the id of a pane of glass in a door's leaf: <c>door.4.glass</c>.</summary>
+    public const string GlassSuffix = ".glass";
+
+    private static void MakeOpening(BuildingFile file, BuildingStorey storey, PlanOpening opening, Dictionary<string, SolidPart> parts, Dictionary<string, SolidPart> old, in Transform wallPlace, Func<SolidMesh, SolidMesh, SolidMesh?>? subtract)
     {
         if (opening.Kind == OpeningKind.Floor || !OpeningShape.Fits(file, storey, opening) || !OpeningShape.TryGetFrame(file, storey, opening, out OpeningFrame frame))
         {
@@ -311,17 +334,28 @@ public static class BuildingMaker
 
         if (opening.Kind == OpeningKind.Door)
         {
-            DoorLeaf leaf = OpeningShape.MakeLeaf(frame, opening);
-            string id = $"door.{opening.Id}";
-            if (storey.IsFree(id) && old.TryGetValue(id, out SolidPart? kept))
+            List<DoorLeaf> leaves = OpeningShape.MakeLeaves(frame, opening, subtract);
+            for (int index = 0; index < leaves.Count; index++)
             {
-                parts[id] = kept;
-            }
-            else
-            {
+                DoorLeaf leaf = leaves[index];
+                string id = GetLeafId(opening, index);
                 Transform place = new() { Position = leaf.Pivot };
                 PartJoint joint = new() { Kind = JointKind.Hinge, Pivot = leaf.Pivot, Axis = leaf.Axis, Min = 0, Max = Math.Clamp(opening.Angle, 1, 179), Speed = DoorSpeed };
-                parts[id] = new SolidPart { Place = place, Mesh = leaf.Mesh, Joint = joint, Toggle = DoorAction };
+                if (storey.IsFree(id) && old.TryGetValue(id, out SolidPart? kept))
+                {
+                    parts[id] = kept;
+                }
+                else
+                {
+                    // The first leaf is the door that is opened; a second one follows it.
+                    Tag? toggle = index == 0 ? DoorAction : null;
+                    parts[id] = new SolidPart { Place = place, Mesh = leaf.Mesh, Joint = joint, Toggle = toggle };
+                }
+
+                if (leaf.Glass is { } pane)
+                {
+                    parts[id + GlassSuffix] = new SolidPart { Place = place, Mesh = pane, Joint = joint };
+                }
             }
         }
 

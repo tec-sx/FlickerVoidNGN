@@ -40,4 +40,13 @@ public sealed partial class ToolSection(string title, string icon, IReadOnlyList
             Rows[index].Take(other.Rows[index]);
         }
     }
+
+    /// <summary>Retires the section's rows as it leaves the tab.</summary>
+    public void Retire()
+    {
+        foreach (ToolRow row in Rows)
+        {
+            row.Retire();
+        }
+    }
 }

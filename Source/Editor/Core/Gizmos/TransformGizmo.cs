@@ -26,7 +26,7 @@ public sealed class TransformGizmo
     private const float GrabPixels = 8;
     private const float CentrePixels = 10;
     private const int RingSamples = 48;
-    private const float LineWidth = 3;
+    private const float LineWidth = OverlayLines.Handle;
     private const float ArrowShaft = 0.8f;
     private const float ConeRadius = 6;
     private const float ScaleShaft = 0.9f;

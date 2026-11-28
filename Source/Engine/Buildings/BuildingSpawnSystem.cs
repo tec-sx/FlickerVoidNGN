@@ -26,7 +26,8 @@ namespace FlickerVoid.Engine.Buildings;
 
 /// <summary>
 /// Spawns the parts of each placed building as its entity attaches: each storey's inside and rooms as indoor volumes, the parts its
-/// plan made with their exact collision, door leaves on their hinges with their locks, the roof, stairs and railings, the elevators'
+/// plan made with their exact collision, door leaves on their hinges with their locks (a second leaf and the panes of glass in them
+/// following the first), windows' glass drawn see-through, the roof, stairs and railings, the elevators'
 /// platforms and call buttons, and the camera shots with their trigger areas; and brings them in line with the file when the
 /// content reports it changed. A frame system for its lifetime: it stops listening when the game is disposed.
 /// </summary>
@@ -113,7 +114,7 @@ internal sealed class BuildingSpawnSystem : BaseSystem<World, GameTime>
 
         for (int index = 0; index < file.Doors.Count; index++)
         {
-            parts.Add(DescribeDoor(path, $"door.{index + 1}", file.Doors[index], null));
+            parts.Add(DescribeDoor(path, $"door.{index + 1}", file.Doors[index], null, null));
         }
 
         return parts;
@@ -164,10 +165,13 @@ internal sealed class BuildingSpawnSystem : BaseSystem<World, GameTime>
         foreach ((string local, SolidPart part) in storey.Parts)
         {
             string id = BuildingFile.GetPartId(storey, local);
-            PlanOpening? opening = FindDoor(storey, local);
             if (part.Joint is not null)
             {
-                parts.Add(DescribeDoor(path, id, part, opening));
+                parts.Add(DescribeLeaf(path, file, storey, local, id, part));
+            }
+            else if (local.StartsWith(GlassPrefix, StringComparison.Ordinal))
+            {
+                parts.Add(Stand(path, id, part, BuildingFile.GlassMaterial));
             }
             else
             {
@@ -176,22 +180,74 @@ internal sealed class BuildingSpawnSystem : BaseSystem<World, GameTime>
         }
     }
 
-    /// <summary>The door opening whose leaf has the local id, <c>door.4</c>.</summary>
-    private static PlanOpening? FindDoor(BuildingStorey storey, string local)
+    private const string DoorPrefix = "door.";
+
+    private const string GlassPrefix = "glass.";
+
+    private const string SecondLeaf = ".b";
+
+    /// <summary>
+    /// A jointed part of a storey: a door's first leaf, opened by its toggle, reached at its handle and locked as its opening says;
+    /// its second leaf, which follows the first; or the pane of glass in either, seen through and following the door too.
+    /// </summary>
+    private static PartData DescribeLeaf(string path, BuildingFile file, BuildingStorey storey, string local, string id, SolidPart part)
     {
-        const string Prefix = "door.";
-        if (!local.StartsWith(Prefix, StringComparison.Ordinal) || !int.TryParse(local.AsSpan(Prefix.Length), out int id))
+        string name = local;
+        bool glass = name.EndsWith(BuildingMaker.GlassSuffix, StringComparison.Ordinal);
+        if (glass)
         {
-            return null;
+            name = name[..^BuildingMaker.GlassSuffix.Length];
         }
 
-        return storey.Openings.Find(opening => opening.Id == id);
+        bool second = name.EndsWith(SecondLeaf, StringComparison.Ordinal);
+        if (second)
+        {
+            name = name[..^SecondLeaf.Length];
+        }
+
+        PlanOpening? opening = null;
+        if (name.StartsWith(DoorPrefix, StringComparison.Ordinal) && int.TryParse(name.AsSpan(DoorPrefix.Length), out int number))
+        {
+            opening = storey.Openings.Find(found => found.Id == number);
+        }
+
+        if (opening is null || part.Joint is not { } joint)
+        {
+            return DescribeDoor(path, id, part, opening, null);
+        }
+
+        Vector3? handle = null;
+        if (OpeningShape.TryGetFrame(file, storey, opening, out OpeningFrame frame))
+        {
+            List<DoorLeaf> leaves = OpeningShape.MakeLeaves(frame, opening, null);
+            int leaf = second ? 1 : 0;
+            if (leaf < leaves.Count)
+            {
+                handle = leaves[leaf].Handle;
+            }
+        }
+
+        string leader = BuildingFile.GetPartId(storey, BuildingMaker.GetLeafId(opening, 0));
+        if (glass)
+        {
+            PartFollower pane = new() { Leader = leader };
+            return Draw(path, id, part, BuildingFile.GlassMaterial).With(joint).With(pane);
+        }
+
+        if (second)
+        {
+            PartFollower follower = new() { Leader = leader };
+            UsePoint reach = new() { Offset = handle ?? part.GetMiddle() };
+            return Move(path, id, part, obstacle: true).With(joint).With(follower).With(reach);
+        }
+
+        return DescribeDoor(path, id, part, opening, handle);
     }
 
     /// <summary>A part that stands still: drawn as its solid, and solid as its own triangles, so floors, walls and openings are exact.</summary>
-    private static PartData Stand(string path, string id, SolidPart part)
+    private static PartData Stand(string path, string id, SolidPart part, string? material = null)
     {
-        PartData data = Draw(path, id, part);
+        PartData data = Draw(path, id, part, material);
         SolidTriangles triangles = part.Mesh.Triangulate();
         Vector3[] positions = [.. triangles.Vertices.Select(vertex => vertex.Position)];
         int[] indices = [.. triangles.Indices.Select(index => (int)index)];
@@ -212,15 +268,20 @@ internal sealed class BuildingSpawnSystem : BaseSystem<World, GameTime>
         return data.With(body);
     }
 
-    private static PartData Draw(string path, string id, SolidPart part)
+    private static PartData Draw(string path, string id, SolidPart part, string? material = null)
     {
         string mesh = BuildingMeshSource.GetName(path, id);
         MeshRenderer renderer = new() { Mesh = mesh };
+        if (material is not null)
+        {
+            renderer.Materials = [material];
+        }
+
         return new PartData(id, part.Place).With(renderer);
     }
 
-    /// <summary>A door on its joint, opened by its toggle and reached at its middle; locked as its opening says.</summary>
-    private static PartData DescribeDoor(string path, string id, SolidPart door, PlanOpening? opening)
+    /// <summary>A door on its joint, opened by its toggle and reached at its handle, or its middle without one; locked as its opening says.</summary>
+    private static PartData DescribeDoor(string path, string id, SolidPart door, PlanOpening? opening, Vector3? handle)
     {
         if (door.Joint is not { } joint)
         {
@@ -231,7 +292,7 @@ internal sealed class BuildingSpawnSystem : BaseSystem<World, GameTime>
         if (door.Toggle is { } action)
         {
             Toggle toggle = new() { Action = action };
-            UsePoint middle = new() { Offset = door.GetMiddle() };
+            UsePoint middle = new() { Offset = handle ?? door.GetMiddle() };
             data.With(toggle).With(middle);
         }
 

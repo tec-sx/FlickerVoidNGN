@@ -31,7 +31,7 @@ public sealed partial class ToggleRow : ToolRow
 
     partial void OnIsOnChanged(bool value)
     {
-        if (!_taking)
+        if (!_taking && !IsRetired)
         {
             _set(value);
         }

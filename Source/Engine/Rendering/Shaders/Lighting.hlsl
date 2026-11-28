@@ -24,6 +24,8 @@ struct LightingConstants
     uint Fog;
     // The renderer's time in seconds (RenderContext.Time), which rain ripples move by.
     float Time;
+    // Not zero draws the flat look in place of the lit scene (SceneRenderer.FlatLook).
+    uint Flat;
 };
 
 [[vk::push_constant]] ConstantBuffer<LightingConstants> Pass : register(b0, space0);
@@ -326,6 +328,83 @@ void Wet(FrameData frame, float3 worldPosition, inout float3 normal, inout float
     normal = normalize(level + float3(tilt.x, 0, tilt.y));
 }
 
+// The flat look's tones: a face lit only by the way it faces, warm and dark as the editor's theme, and the thin lines between faces.
+static const float3 FlatTop = float3(0.118, 0.094, 0.074);
+static const float3 FlatSideX = float3(0.060, 0.047, 0.037);
+static const float3 FlatSideZ = float3(0.084, 0.066, 0.052);
+static const float3 FlatUnder = float3(0.030, 0.024, 0.019);
+static const float3 FlatLine = float3(0.36, 0.30, 0.24);
+// A solid drawn without a material is this grey (SolidModel.Color); a part's own colour shades its tone from it.
+static const float FlatGrey = 0.6;
+
+// Whether the surface at a neighbouring pixel is another face than the one at the centre: it faces another way, it lies off the
+// centre's plane, or it is another object's. `apart` says the two do not touch (one stands in front of the other).
+bool FlatDiffers(FrameData frame, int2 texel, int2 offset, float depth, float3 worldPosition, float3 normal, float objectDepth, out bool apart, out float otherDepth)
+{
+    int2 other = clamp(texel + offset, int2(0, 0), int2(frame.TargetSize) - 1);
+    otherDepth = Textures[frame.Depth].Load(int3(other, 0)).r;
+    apart = true;
+    if (otherDepth >= 1)
+    {
+        return true;
+    }
+
+    float3 otherPosition = WorldAtPixel(frame, float2(other) + 0.5, otherDepth);
+    float3 otherNormal = DecodeNormal(Textures[frame.GBufferNormal].Load(int3(other, 0)).xy);
+    float3 step = otherPosition - worldPosition;
+    float off = abs(dot(step, normal));
+    float otherOff = abs(dot(step, otherNormal));
+    float reach = length(step);
+    apart = min(off, otherOff) > 0.4 * reach + 0.002;
+    if (apart || dot(normal, otherNormal) < 0.96)
+    {
+        return true;
+    }
+
+    float otherObject = Textures[frame.GBufferObjectDepth].Load(int3(other, 0)).r;
+    return abs(otherObject - objectDepth) > 1e-5;
+}
+
+// The flat look of a pixel: its face's tone, shaded by the part's own colour, or a line where it borders another face. A border
+// between faces that touch is drawn on one side only and a silhouette on the nearer face, so lines stay a pixel thin.
+float3 FlatLook(FrameData frame, int2 texel, float depth, float3 worldPosition, float3 normal, float3 albedo)
+{
+    float3 side = lerp(FlatSideZ, FlatSideX, saturate(abs(normal.x) / max(abs(normal.x) + abs(normal.z), 1e-4)));
+    float3 tone = lerp(side, FlatTop, saturate(normal.y));
+    tone = lerp(tone, FlatUnder, saturate(-normal.y));
+    float shade = dot(albedo, float3(0.2126, 0.7152, 0.0722)) / FlatGrey;
+    tone *= clamp(shade, 0.5, 1.3);
+
+    float objectDepth = Textures[frame.GBufferObjectDepth].Load(int3(texel, 0)).r;
+    static const int2 Offsets[4] = { int2(1, 0), int2(0, 1), int2(-1, 0), int2(0, -1) };
+    bool onLine = false;
+    for (int index = 0; index < 4; index++)
+    {
+        bool apart;
+        float otherDepth;
+        if (!FlatDiffers(frame, texel, Offsets[index], depth, worldPosition, normal, objectDepth, apart, otherDepth))
+        {
+            continue;
+        }
+
+        if (apart)
+        {
+            onLine = onLine || depth < otherDepth;
+        }
+        else
+        {
+            onLine = onLine || index < 2;
+        }
+    }
+
+    if (onLine)
+    {
+        return lerp(tone, FlatLine, 0.75);
+    }
+
+    return tone;
+}
+
 [numthreads(8, 8, 1)]
 void ComputeMain(uint3 id : SV_DispatchThreadID)
 {
@@ -351,6 +430,13 @@ void ComputeMain(uint3 id : SV_DispatchThreadID)
     float3 normal = DecodeNormal(folded);
     float4 materialBytes = Textures[frame.GBufferMaterial].Load(texel);
     SurfaceMaterial surface = DecodeMaterial(materialBytes);
+    if (Pass.Flat != 0)
+    {
+        float3 flat = FlatLook(frame, texel, depth, worldPosition, normal, albedo.rgb);
+        output[id.xy] = float4(flat, albedo.a + surface.Thickness * albedo.a);
+        return;
+    }
+
     Material material = LoadMaterial(surface.Material);
     Wet(frame, worldPosition, normal, albedo.rgb, material);
     float3 toCamera = ToCamera(frame, worldPosition);

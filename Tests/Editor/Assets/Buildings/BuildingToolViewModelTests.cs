@@ -114,7 +114,7 @@ public sealed class BuildingToolViewModelTests : IDisposable
         door.Locked.Should().BeTrue();
         door.Key.Name.Should().Be("Key.Inn");
         tool.IsPending.Should().BeFalse("a change in the tab is its own undo step when nothing waits");
-        tool.Sections.Select(static section => section.Title).Should().Equal("Opening", "Place", "Size", "Leaf", "Frame and window", "Cut");
+        tool.Sections.Select(static section => section.Title).Should().Equal("Opening", "Place", "Size", "Leaf", "Handle", "Frame and window", "Cut");
     }
 
     [Fact]
@@ -147,4 +147,111 @@ public sealed class BuildingToolViewModelTests : IDisposable
         _builder.Load().Shots.Single().Position.Should().Be(new Vector3(1, 8, -9));
         _builder.LookedThrough.Should().ContainSingle(static shot => shot.Name == "Hall shot");
     }
+
+    [Fact]
+    public void ARowThatWritesBackAsItsSectionGoesNeitherEditsTheBuildingNorDoublesTheSections()
+    {
+        BuildingToolViewModel tool = _builder.Build();
+        _builder.Editor.Tool = BuildingTool.Opening;
+        _builder.Editor.Pick(new PlanPick(PlanPickKind.Opening, 0, FrontDoor));
+        ToolSection place = tool.Sections.Single(static section => section.Title == "Place");
+        NumberRow along = (NumberRow)place.Rows[0];
+        float before = _builder.Document.Building.Storeys[0].Openings.Single().Along;
+
+        // A number box that held the keyboard commits its rounded text as it leaves the tab.
+        tool.Sections.CollectionChanged += (_, _) =>
+        {
+            if (!tool.Sections.Contains(place))
+            {
+                along.Value = before + 0.5;
+            }
+        };
+        _builder.Editor.Pick(null);
+
+        _builder.Document.Building.Storeys[0].Openings.Single().Along.Should().Be(before);
+        tool.IsPending.Should().BeFalse();
+        tool.Sections.Select(static section => section.Title).Should().Equal("New opening", "Storey: Ground");
+    }
+
+    [Fact]
+    public void ANumberTakenInPlaceTakesItsLimitsToo()
+    {
+        NumberRow shown = new("Along the wall", 1, "m", static _ => { }, 0, 4);
+        NumberRow next = new("Along the wall", 6, "m", static _ => { }, 0, 9);
+
+        shown.Take(next);
+
+        shown.Maximum.Should().Be(9);
+        shown.Value.Should().Be(6);
+    }
+
+    [Fact]
+    public void ADoorShowsItsLeavesItsHandleAndTheWindowInItsLeaf()
+    {
+        BuildingToolViewModel tool = _builder.Build();
+
+        _builder.Editor.Pick(new PlanPick(PlanPickKind.Opening, 0, FrontDoor));
+
+        tool.Sections.Select(static section => section.Title).Should().Equal("Opening", "Place", "Size", "Leaf", "Handle", "Frame and window", "Cut");
+        Section(tool, "Leaf").Rows.Select(static row => row.Label).Should().StartWith(["Leaves", "Hinge", "Opens", "Angle"]);
+        Section(tool, "Handle").Rows.Select(static row => row.Label).Should().Equal("Height", "Inset");
+        Section(tool, "Frame and window").Rows.Select(static row => row.Label).Should().Equal("Frame width", "Window");
+    }
+
+    [Fact]
+    public void ADoubleDoorHasNoHingeSideAndTheSwitchMakesTwoLeaves()
+    {
+        BuildingToolViewModel tool = _builder.Build();
+        _builder.Editor.Pick(new PlanPick(PlanPickKind.Opening, 0, FrontDoor));
+        ChoiceRow leaves = (ChoiceRow)Section(tool, "Leaf").Rows[0];
+
+        leaves.Options[1].ChooseCommand.Execute(null);
+
+        _builder.Document.Building.Storeys[0].Openings.Single().Double.Should().BeTrue();
+        Section(tool, "Leaf").Rows.Select(static row => row.Label).Should().StartWith(["Leaves", "Opens", "Angle"]);
+    }
+
+    [Fact]
+    public void TheWindowSwitchCutsAWindowInTheLeafAndShowsItsSizeAndGlass()
+    {
+        BuildingToolViewModel tool = _builder.Build();
+        _builder.Editor.Pick(new PlanPick(PlanPickKind.Opening, 0, FrontDoor));
+        ToggleRow window = (ToggleRow)Section(tool, "Frame and window").Rows[1];
+
+        window.IsOn = true;
+
+        PlanOpening door = _builder.Document.Building.Storeys[0].Openings.Single();
+        door.WindowWidth.Should().BeGreaterThan(0);
+        Section(tool, "Frame and window").Rows.Select(static row => row.Label).Should().Equal("Frame width", "Window", "Width", "Height", "From the floor", "Glass");
+        ((ToggleRow)Section(tool, "Frame and window").Rows[5]).IsOn.Should().BeTrue("a window is a pane to see through until it is switched off");
+    }
+
+    [Fact]
+    public void APickedHandleShowsItsDoorWithTheHandleOpen()
+    {
+        BuildingToolViewModel tool = _builder.Build();
+
+        _builder.Editor.Pick(new PlanPick(PlanPickKind.Handle, 0, FrontDoor));
+        NumberRow height = (NumberRow)Section(tool, "Handle").Rows[0];
+        height.Value = 1.25;
+
+        tool.Subtitle.Should().Be("Handle of Front door, Ground");
+        Section(tool, "Handle").IsExpanded.Should().BeTrue();
+        _builder.Document.Building.Storeys[0].Openings.Single().HandleHeight.Should().BeApproximately(1.25f, 1e-4f);
+    }
+
+    [Fact]
+    public void TheWallToolChoosesWhatItsEndsSnapTo()
+    {
+        BuildingToolViewModel tool = _builder.Build();
+
+        _builder.Editor.Tool = BuildingTool.Wall;
+        ToolSection snaps = Section(tool, "Snaps to");
+        ((ToggleRow)snaps.Rows[1]).IsOn = false;
+
+        snaps.Rows.Select(static row => row.Label).Should().Equal("Walls and corners", "Middles of walls", "Grid");
+        _builder.Editor.SnapToMiddles.Should().BeFalse();
+    }
+
+    private static ToolSection Section(BuildingToolViewModel tool, string title) => tool.Sections.First(section => section.Title == title);
 }

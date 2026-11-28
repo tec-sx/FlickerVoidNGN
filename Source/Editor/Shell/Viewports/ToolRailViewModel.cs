@@ -86,11 +86,12 @@ public sealed partial class ToolRailViewModel : ObservableObject
     /// (push wall, move corner, split, arc, wall, room, pillar), what crosses it (opening D, stairs S, elevator T, roof O) and the
     /// camera (Y).
     /// </summary>
-    private static void AddBuildingTools(List<ToolGroup> groups, BuildingPlanViewModel building)
+    private void AddBuildingTools(List<ToolGroup> groups, BuildingPlanViewModel building)
     {
         BuildingTool tool = building.Editor.Tool;
         List<ToolItem> first = [.. groups[0].Items];
-        first[0] = Item(building, "Select", "Q", nameof(LucideIcons.Select), BuildingTool.Select, tool);
+        bool selects = tool == BuildingTool.Select && building.Editor.GizmoMode == GizmoMode.Select;
+        first[0] = new ToolItem("Select", "Q", nameof(LucideIcons.Select), () => Select(building), selects);
         groups[0] = new ToolGroup(first, false);
         groups.Add(new ToolGroup(
         [
@@ -110,6 +111,13 @@ public sealed partial class ToolRailViewModel : ObservableObject
             Item(building, "Roof", "O", nameof(LucideIcons.Roof), BuildingTool.Roof, tool),
         ], true));
         groups.Add(new ToolGroup([Item(building, "Camera", "Y", nameof(LucideIcons.Camera), BuildingTool.Camera, tool)], true));
+    }
+
+    private void Select(BuildingPlanViewModel building)
+    {
+        building.Choose(BuildingTool.Select);
+        _viewport.GizmoMode = GizmoMode.Select;
+        Refresh();
     }
 
     private static ToolItem Item(BuildingPlanViewModel building, string name, string? key, string icon, BuildingTool tool, BuildingTool chosen)

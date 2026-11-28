@@ -49,7 +49,7 @@ public sealed partial class ViewportViewModel
         }
         else
         {
-            Status = "Nothing was cut: the other greyboxes don't reach into the one selected last.";
+            Warn("Nothing was cut: the other greyboxes don't reach into the one selected last.");
         }
     }
 

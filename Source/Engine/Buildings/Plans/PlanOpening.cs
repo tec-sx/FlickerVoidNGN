@@ -61,8 +61,28 @@ public sealed class PlanOpening
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public float Frame { get; set; }
 
-    /// <summary>Whether a window has a pane of glass.</summary>
+    /// <summary>Whether a door has two leaves that meet in the middle, each on the hinge of its own side.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Double { get; set; }
+
+    /// <summary>How wide the window in a door's leaf is (in each leaf of a double door); 0 has none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public float WindowWidth { get; set; }
+
+    /// <summary>How high the window in a door's leaf is.</summary>
+    public float WindowHeight { get; set; } = 0.5f;
+
+    /// <summary>How high the lower edge of the window in a door's leaf is above the door's foot.</summary>
+    public float WindowFrom { get; set; } = 1.2f;
+
+    /// <summary>Whether a window, or the window in a door's leaf, has a pane of glass to see through; without one it is an open hole.</summary>
     public bool Glass { get; set; } = true;
+
+    /// <summary>How high a door's handle is above its foot: where a hand takes it.</summary>
+    public float HandleHeight { get; set; } = 1;
+
+    /// <summary>How far in from the leaf's free edge the handle is.</summary>
+    public float HandleInset { get; set; } = 0.1f;
 
     /// <summary>How much larger than the leaf the cut is on every side.</summary>
     public float Margin { get; set; } = 0.02f;

@@ -5,6 +5,7 @@ using Arch.Core;
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Assets.Buildings;
+using FlickerVoid.Editor.Core.Gizmos;
 using FlickerVoid.Editor.Assets.Foliage;
 using FlickerVoid.Editor.Assets.Vehicles;
 using FlickerVoid.Editor.Core.Creators;
@@ -573,6 +574,89 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         bool[] hidden = [IsHidden("stairs.1"), IsHidden("stairs.1.railing"), IsHidden("elevator.1.railing")];
         hidden.Should().Equal(false, true, true);
     }
+
+    [Fact]
+    public void TheRoofIsShownOnlyWhilePickedWithTheWholeBuildingUnderIt()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        BuildingPanelViewModel panel = (BuildingPanelViewModel)ViewModel.CreatorPanel!;
+        panel.AddStoreyAboveCommand.Execute(null);
+        Viewport.Building!.ShowLevel(0);
+        panel.ShowsAbove = true;
+
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+        bool hiddenWithAllShown = IsHidden("roof");
+        panel.ShowsAbove = false;
+        ViewModel.CreatorNode = ViewModel.CreatorNodes.Single(static node => node.Name == "Roof");
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+        bool[] picked = [IsHidden("roof"), IsHidden("storey.1.walls")];
+        ViewModel.CreatorNode = ViewModel.CreatorNodes.Single(static node => node.Name == "Front door");
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        hiddenWithAllShown.Should().BeTrue("the roof hides the storeys, so only picking it shows it");
+        picked.Should().Equal(false, false);
+        IsHidden("roof").Should().BeTrue();
+    }
+
+    [Fact]
+    public void TheStairsToolOpensTheStoreyToItsFloor()
+    {
+        _builder.WriteHouse(climbs: true);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        Viewport.Building!.ShowLevel(0);
+
+        Viewport.KeyPressed(ViewportKey.S, ViewportButtons.None);
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+        bool[] open = [IsHidden("storey.0.walls"), IsHidden("storey.0.door.9"), IsHidden("storey.0.floor"), IsHidden("stairs.1")];
+        Viewport.KeyPressed(ViewportKey.Q, ViewportButtons.None);
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        open.Should().Equal(true, true, false, false);
+        IsHidden("storey.0.walls").Should().BeFalse("the walls stand again with another tool");
+    }
+
+    [Fact]
+    public void OnlyOneOfTheBuildingsRailToolsIsLit()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+
+        string[] atFirst = LitTools();
+        Viewport.KeyPressed(ViewportKey.E, ViewportButtons.None);
+        string[] turning = LitTools();
+        FlickerVoid.Editor.Core.Buildings.BuildingTool withGizmo = Viewport.Building!.Editor.Tool;
+        Viewport.KeyPressed(ViewportKey.D, ViewportButtons.None);
+        string[] opening = LitTools();
+        Viewport.KeyPressed(ViewportKey.W, ViewportButtons.None);
+        string[] moving = LitTools();
+        Viewport.KeyPressed(ViewportKey.Q, ViewportButtons.None);
+
+        atFirst.Should().Equal("Select");
+        turning.Should().Equal("Rotate");
+        withGizmo.Should().Be(FlickerVoid.Editor.Core.Buildings.BuildingTool.Select);
+        Viewport.Building.Editor.GizmoMode.Should().Be(GizmoMode.Select, "Q puts the gizmo away");
+        opening.Should().Equal("Opening");
+        moving.Should().Equal("Move");
+        LitTools().Should().Equal("Select");
+    }
+
+    [Fact]
+    public void StairsOnTheTopStoreyAreRefusedWithAToast()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        Viewport.KeyPressed(ViewportKey.S, ViewportButtons.None);
+        Vector2 middle = Viewport.Camera.Project(new Vector3(0, 0.2f, 0), 800, 600);
+
+        Viewport.PointerMoved(middle, 800, 600);
+        Viewport.PointerPressed(middle, 800, 600);
+        Viewport.PointerReleased();
+
+        Viewport.Toasts.Items.Should().ContainSingle().Which.Message.Should().Contain("storey above");
+    }
+
+    private string[] LitTools() => [.. Viewport.ToolRail.Groups.SelectMany(static group => group.Items).Where(static item => item.IsActive).Select(static item => item.Name)];
 
     [Fact]
     public void APushedWallMovesTheBoundsItIsPickedBy()

@@ -29,7 +29,7 @@ public sealed class MeshToolsViewModelTests
     public void WithoutACreatorTheBarIsHiddenAndOnlyTheDoorTestSpeaks()
     {
         List<string> messages = [];
-        MeshToolsViewModel tools = new(() => null, messages.Add);
+        MeshToolsViewModel tools = new(() => null, _ => { }, messages.Add);
 
         tools.Extrude();
         tools.Test();
@@ -43,7 +43,7 @@ public sealed class MeshToolsViewModelTests
     [Fact]
     public void TheTransformToolsKeepTheirTypedValuesAndStartNeutral()
     {
-        MeshToolsViewModel tools = new(() => null, _ => { });
+        MeshToolsViewModel tools = new(() => null, _ => { }, _ => { });
 
         tools.TransformToolIndex = 2;
 

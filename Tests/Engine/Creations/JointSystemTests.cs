@@ -181,4 +181,31 @@ public sealed class JointSystemTests : IDisposable
         Vector3.Distance(transform.Position, position).Should().BeLessThan(Precision);
         MathF.Abs(Quaternion.Dot(transform.Rotation, rotation)).Should().BeApproximately(1, Precision);
     }
+
+    [Fact]
+    public void APartThatFollowsAnotherOpensAndShutsWithIt()
+    {
+        PartJoint hinge = JointSystemTestsBuilder.Hinge(new Vector3(1, 0, 0), 0, 90, 0);
+        PartJoint mirrored = JointSystemTestsBuilder.Hinge(new Vector3(3, 0, 0), -80, 0, 0);
+        _builder.PlaceDoor(hinge, open: false, mirrored);
+
+        _builder.Toggled(open: true);
+        _builder.Tick(0.1f);
+        float opened = _builder.PositionOfFollower();
+        _builder.Toggled(open: false);
+        _builder.Tick(0.1f);
+
+        opened.Should().Be(-80, "the follower goes to its own open position");
+        _builder.PositionOfFollower().Should().Be(0);
+    }
+
+    [Fact]
+    public void AFollowerOfAnOpenDoorStartsOpen()
+    {
+        PartJoint hinge = JointSystemTestsBuilder.Hinge(new Vector3(1, 0, 0), 0, 90, 0);
+
+        _builder.PlaceDoor(hinge, open: true, hinge);
+
+        _builder.PositionOfFollower().Should().Be(90);
+    }
 }

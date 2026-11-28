@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using FlickerVoid.Editor.Buildings;
 using FlickerVoid.Editor.Core.Buildings;
 using FlickerVoid.Editor.Core.Cameras;
+using FlickerVoid.Editor.Core.Gizmos;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Components;
@@ -23,20 +24,50 @@ public sealed partial class ViewportViewModel
     /// <summary>Whether a building's plan tools are in hand: a building is made and no mesh is entered.</summary>
     public bool IsBuildingPlan => Building is not null && !MeshTools.IsMeshMode;
 
+    /// <summary>Whether the view is drawn flat with thin lines: while a building's plan is in hand and not walked.</summary>
+    public bool IsFlatLook => Building is { IsWalking: false } && !MeshTools.IsMeshMode;
+
     partial void OnBuildingChanged(BuildingPlanViewModel? oldValue, BuildingPlanViewModel? newValue)
     {
         if (oldValue is not null)
         {
-            oldValue.Editor.Changed -= ToolRail.Refresh;
+            oldValue.Editor.Changed -= HandleBuildingEdited;
+            oldValue.Editor.Warned -= Warn;
             oldValue.PropertyChanged -= HandleBuildingChanged;
         }
 
         if (newValue is not null)
         {
-            newValue.Editor.Changed += ToolRail.Refresh;
+            newValue.Editor.Changed += HandleBuildingEdited;
+            newValue.Editor.Warned += Warn;
             newValue.PropertyChanged += HandleBuildingChanged;
         }
 
+        FollowBuildingGizmo();
+        ToolRail.Refresh();
+    }
+
+    /// <summary>The plan's own gizmo takes the mode chosen on the rail or by its key, which puts the plan's tool away.</summary>
+    private void SetBuildingGizmo(GizmoMode mode)
+    {
+        if (IsBuildingPlan && Building is { } building && building.Editor.GizmoMode != mode)
+        {
+            building.Editor.GizmoMode = mode;
+        }
+    }
+
+    /// <summary>The rail shows the plan's gizmo mode: a plan tool taken in hand puts move, rotate and scale away, so one tool is lit.</summary>
+    private void FollowBuildingGizmo()
+    {
+        if (IsBuildingPlan && Building is { } building && GizmoMode != building.Editor.GizmoMode)
+        {
+            GizmoMode = building.Editor.GizmoMode;
+        }
+    }
+
+    private void HandleBuildingEdited()
+    {
+        FollowBuildingGizmo();
         ToolRail.Refresh();
     }
 
@@ -48,8 +79,12 @@ public sealed partial class ViewportViewModel
         }
     }
 
-    /// <summary>Runs the building creator's frame: the walk, the storeys shown and the labels.</summary>
-    public void UpdateBuilding(float seconds, int width, int height, double scaling) => Building?.Update(seconds, width, height, scaling);
+    /// <summary>Runs the frame's own work: the toasts' time, and the building creator's walk, storeys shown and labels.</summary>
+    public void UpdateBuilding(float seconds, int width, int height, double scaling)
+    {
+        Toasts.Update(seconds);
+        Building?.Update(seconds, width, height, scaling);
+    }
 
     /// <summary>The world the viewport draws: the one Walk plays while walking, else the scene's.</summary>
     public World GetDrawnWorld() => Building?.WalkWorld ?? Scene.Game.World;
@@ -121,6 +156,7 @@ public sealed partial class ViewportViewModel
                 return true;
             case ViewportKey.Q:
                 building.Choose(BuildingTool.Select);
+                GizmoMode = GizmoMode.Select;
                 return true;
             case ViewportKey.D:
                 building.Choose(BuildingTool.Opening);

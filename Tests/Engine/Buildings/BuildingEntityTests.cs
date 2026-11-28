@@ -82,7 +82,7 @@ public sealed class BuildingEntityTests : IDisposable
     }
 
     [Fact]
-    public void ADoorSwingsOnItsHingeWhenUsedAndIsReachedAtItsMiddle()
+    public void ADoorSwingsOnItsHingeWhenUsedAndIsReachedAtItsHandle()
     {
         BuildingFile building = BuildingFileTestsBuilder.WithStoreys(1, cellar: false);
         _builder.Write(building);
@@ -98,8 +98,9 @@ public sealed class BuildingEntityTests : IDisposable
         _builder.World.Has<ActiveInteractable>(door).Should().BeTrue("a part with a toggle is offered to interactors");
         _builder.World.Get<Toggle>(door).Open.Should().BeTrue();
         _builder.PlaceOf(door).Rotation.Should().NotBe(shut);
-        reach.Z.Should().BeApproximately(-2.85f, 0.2f, "a shut door is reached at the leaf's middle, in the front wall");
-        reach.X.Should().BeApproximately(0, 0.01f);
+        reach.Z.Should().BeApproximately(-2.85f, 0.2f, "a shut door is reached in the front wall");
+        MathF.Abs(reach.X).Should().BeApproximately(0.45f, 0.01f, "at its handle, a hand in from the leaf's free edge");
+        reach.Y.Should().BeApproximately(1.2f, 0.01f, "a metre above the floor");
     }
 
     [Fact]
@@ -239,5 +240,52 @@ public sealed class BuildingEntityTests : IDisposable
 
         inside.Should().Be(hall);
         _builder.Director.Live.Should().Be(street);
+    }
+
+    [Fact]
+    public void ADoubleDoorsSecondLeafOpensWithTheFirstAndUsingItUsesTheDoor()
+    {
+        BuildingFile building = BuildingFile.Create();
+        BuildingFileTestsBuilder.FrontDoor(building).Double = true;
+        BuildingMaker.Make(building, null);
+        _builder.Write(building);
+        Entity inn = _builder.Place();
+        Entity first = _builder.Parts.Find(inn, "storey.0.door.9");
+        Entity second = _builder.Parts.Find(inn, "storey.0.door.9.b");
+        Quaternion shut = _builder.PlaceOf(second).Rotation;
+
+        _builder.Game.Events.Send(new InteractionActionEvent(Entity.Null, second, Toggle));
+        _builder.Run(1);
+
+        _builder.World.Has<Toggle>(second).Should().BeFalse("only the first leaf is the door");
+        _builder.World.Has<ActiveInteractable>(second).Should().BeTrue("the second leaf offers the door's action");
+        _builder.World.Get<Toggle>(first).Open.Should().BeTrue();
+        _builder.PlaceOf(second).Rotation.Should().NotBe(shut);
+        float firstTurn = _builder.World.Get<JointPose>(first).Position;
+        _builder.World.Get<JointPose>(second).Position.Should().Be(firstTurn);
+        Vector3 reachFirst = InteractionSystem.GetUsePoint(_builder.World, first);
+        Vector3 reachSecond = InteractionSystem.GetUsePoint(_builder.World, second);
+        reachFirst.Should().NotBe(reachSecond, "each leaf is reached at its own handle");
+    }
+
+    [Fact]
+    public void AWindowsGlassAndTheGlassInALeafAreDrawnSeeThroughAndTheLeafsGoesWithIt()
+    {
+        BuildingFile building = BuildingFile.Create();
+        BuildingStorey ground = building.Storeys[0];
+        PlanOpening front = BuildingFileTestsBuilder.FrontDoor(building);
+        front.WindowWidth = 0.4f;
+        ground.Openings.Add(new PlanOpening { Id = 30, Name = "Window", Kind = OpeningKind.Window, Wall = ground.Walls[2].Id, Along = 3, Lift = 0.9f, Height = 1.2f });
+        BuildingMaker.Make(building, static (solid, _) => solid);
+        _builder.Write(building);
+
+        Entity inn = _builder.Place();
+
+        Entity pane = _builder.Parts.Find(inn, "storey.0.glass.30");
+        Entity leafPane = _builder.Parts.Find(inn, "storey.0.door.9.glass");
+        _builder.World.Get<MeshRenderer>(pane).Materials.Should().Equal(BuildingFile.GlassMaterial);
+        _builder.World.Get<MeshRenderer>(leafPane).Materials.Should().Equal(BuildingFile.GlassMaterial);
+        _builder.World.Get<PartFollower>(leafPane).Leader.Should().Be("storey.0.door.9");
+        _builder.World.Has<RigidBody>(leafPane).Should().BeFalse("the leaf is what blocks the way");
     }
 }

@@ -31,7 +31,7 @@ public sealed partial class TextRow : ToolRow
 
     partial void OnTextChanged(string value)
     {
-        if (!_taking)
+        if (!_taking && !IsRetired)
         {
             _set(value);
         }

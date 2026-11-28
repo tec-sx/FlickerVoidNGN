@@ -2367,6 +2367,28 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void TheFlatLookDrawsEachFaceInOneToneWhateverTheLightWithAThinLineRoundIt()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithTargetSize(16);
+        _builder.WithRenderer(static renderer => renderer.FlatLook = true);
+        _builder.WithLight(sunDirection: -Vector3.UnitZ, ambient: 1);
+        uint[] lit = _builder.Render();
+
+        uint[] unlit = _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0).Render();
+
+        const int Size = 16;
+        uint middle = unlit[(8 * Size) + 8];
+        (byte tone, _, _) = SceneRendererTestsBuilder.Channels(middle);
+        unlit.Should().Equal(lit, "the flat look takes no light");
+        tone.Should().BeGreaterThan(0, "the face has a tone of its own without any light");
+        unlit[(7 * Size) + 7].Should().Be(middle, "a face is one tone all over");
+        int brighter = unlit.Count(pixel => SceneRendererTestsBuilder.Channels(pixel).Red > tone);
+        brighter.Should().BeInRange(8, 64, "the face's outline is a thin lighter line");
+    }
+
+    [Fact]
     public void ShowsTheAlbedoInItsDebugView()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));

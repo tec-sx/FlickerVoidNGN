@@ -19,8 +19,8 @@ public static class MeshOverlay
     public static readonly Vector4 HoverColor = new(1, 0.9f, 0.5f, 1);
     public static readonly Vector4 HoverFill = new(1, 0.9f, 0.5f, 0.25f);
 
-    private const float EdgeWidth = 1;
-    private const float SelectedWidth = 2.5f;
+    private const float EdgeWidth = OverlayLines.Thin;
+    private const float SelectedWidth = OverlayLines.Bold;
     private const float PointHalf = 3;
     private const float SelectedPointHalf = 4;
 

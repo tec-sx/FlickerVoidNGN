@@ -83,6 +83,9 @@ public sealed class RenderContext
     /// <summary>What the frame shows: the lit frame, or one of the G-buffer's targets or the depth in its place.</summary>
     public DebugView DebugView { get; internal set; }
 
+    /// <summary>Whether the lighting pass draws the flat look in place of the lit scene (<see cref="SceneRenderer.FlatLook"/>).</summary>
+    public bool FlatLook { get; internal set; }
+
     /// <summary>Whether the frame traces rays: the renderer's <see cref="SceneRenderer.RayTracing"/> is on and the device has ray queries.</summary>
     public bool RayTracing { get; internal set; }
 

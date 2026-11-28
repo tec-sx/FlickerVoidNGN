@@ -152,7 +152,7 @@ public static class BuildingRegions
         (int from, int to) = BuildingMaker.GetElevatorSpan(file, elevator);
         float bottom = file.GetFloorHeight(from);
         float height = file.GetFloorHeight(to) - bottom + Headroom;
-        Transform place = new() { Position = new Vector3(elevator.X, bottom, elevator.Z) };
+        Transform place = BuildingMaker.GetElevatorPlace(file, elevator, from);
         Vector3 size = new(elevator.Size, height, elevator.Size);
         return new BuildingRegion(place, size, new Vector3(0, height / 2, 0));
     }

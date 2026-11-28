@@ -29,6 +29,8 @@ namespace FlickerVoid.Editor.Buildings;
 public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposable
 {
     private const float ShotLead = 14;
+    private const string RailingSuffix = ".railing";
+    private const string FloorSuffix = ".floor";
 
     private readonly EditorScene _scene;
     private readonly EditorCamera _camera;
@@ -385,6 +387,9 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
         }
 
         int level = Editor.Level;
+        bool roofPicked = Editor.Picked is { Kind: PlanPickKind.Roof } || Editor.Tool == BuildingTool.Roof;
+        bool open = Editor.ShowsOpenStorey;
+        string levelId = BuildingFile.GetStoreyId(level);
         List<Entity> hide = [];
         List<Entity> show = [];
         foreach (Entity entity in parts.FindAll(_creator.Root))
@@ -394,7 +399,7 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
                 continue;
             }
 
-            bool hidden = !ShowsAbove && IsAbove(file, part.Id, level);
+            bool hidden = IsHiddenPart(file, part.Id, level, levelId, roofPicked, open);
             bool shown = !_scene.IsHidden(entity);
             if (hidden && shown)
             {
@@ -417,7 +422,35 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
         }
     }
 
-    private const string RailingSuffix = ".railing";
+    /// <summary>
+    /// Whether the part is hidden in the plan: the roof unless it is picked (in Parts or with its tool), when the whole building stands
+    /// under it; what stands above the level unless the storeys above are shown; and, while stairs or an elevator are placed, all of
+    /// the level but its floor, as the tool draws its walls as lines on the floor and what is cut above.
+    /// </summary>
+    private bool IsHiddenPart(BuildingFile file, string id, int level, string levelId, bool roofPicked, bool open)
+    {
+        if (id == BuildingFile.RoofId)
+        {
+            return !roofPicked;
+        }
+
+        if (roofPicked)
+        {
+            return false;
+        }
+
+        if (open)
+        {
+            if (id.StartsWith(levelId + ".", StringComparison.Ordinal) && id != levelId + FloorSuffix)
+            {
+                return true;
+            }
+
+            return IsAbove(file, id, level);
+        }
+
+        return !ShowsAbove && IsAbove(file, id, level);
+    }
 
     /// <summary>Whether the part with the id stands above the level: on a storey over it, the roof, or stairs, a railing, a call button or a shot there.</summary>
     private static bool IsAbove(BuildingFile file, string id, int level)

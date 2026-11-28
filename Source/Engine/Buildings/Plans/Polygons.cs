@@ -328,4 +328,37 @@ public static class Polygons
         float along = Cross(second - first, secondDirection) / denominator;
         return first + (firstDirection * along);
     }
+
+    /// <summary>The part of a convex or upright polygon between two values of X, cut along both lines.</summary>
+    public static List<Vector2> ClipAcross(IReadOnlyList<Vector2> polygon, float low, float high)
+    {
+        List<Vector2> above = ClipSide(polygon, low, 1);
+        return ClipSide(above, high, -1);
+    }
+
+    // Keeps the points whose X lies on the kept side of the line (at or past it going the way of the sign), with the crossings.
+    private static List<Vector2> ClipSide(IReadOnlyList<Vector2> polygon, float line, float sign)
+    {
+        const float Tiny = 1e-6f;
+        List<Vector2> kept = [];
+        for (int index = 0; index < polygon.Count; index++)
+        {
+            Vector2 current = polygon[index];
+            Vector2 next = polygon[(index + 1) % polygon.Count];
+            float here = (current.X - line) * sign;
+            float there = (next.X - line) * sign;
+            if (here >= -Tiny)
+            {
+                kept.Add(current);
+            }
+
+            if ((here > Tiny && there < -Tiny) || (here < -Tiny && there > Tiny))
+            {
+                float share = here / (here - there);
+                kept.Add(Vector2.Lerp(current, next, share));
+            }
+        }
+
+        return kept;
+    }
 }

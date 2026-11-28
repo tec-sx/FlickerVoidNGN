@@ -24,6 +24,9 @@ public sealed class BuildingFile : ICreationFile, IJsonOnDeserialized
 
     public const string RoofId = "roof";
 
+    /// <summary>The material panes of glass are drawn with, see-through: the engine's window glass.</summary>
+    public const string GlassMaterial = "Engine/Rendering/Materials/Window.fvmat";
+
     /// <summary>The most storeys a building takes above the ground, the ground floor among them.</summary>
     public const int MaxStoreys = 12;
 

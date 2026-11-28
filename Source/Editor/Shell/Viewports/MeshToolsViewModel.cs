@@ -16,6 +16,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 {
     private readonly Func<CreatorMode?> _creator;
     private readonly Action<string> _report;
+    private readonly Action<string> _warn;
     private readonly MeshTransformBar _transform = new();
     private Vector2 _pointer;
     private (int Width, int Height) _size = (1, 1);
@@ -23,10 +24,11 @@ public sealed partial class MeshToolsViewModel : ObservableObject
     private bool _dragSettled;
     private bool _dragWrites;
 
-    public MeshToolsViewModel(Func<CreatorMode?> creator, Action<string> report)
+    public MeshToolsViewModel(Func<CreatorMode?> creator, Action<string> report, Action<string> warn)
     {
         _creator = creator;
         _report = report;
+        _warn = warn;
         Door = new DoorToolViewModel(creator);
     }
 
@@ -62,7 +64,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
         if (!creator.BeginDoor())
         {
-            _report($"The door tool {ManifoldMissing}");
+            _warn($"The door tool {ManifoldMissing}");
             return;
         }
 
@@ -270,7 +272,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
         if (tool == MeshDragTool.Hollow && !SolidBoolean.IsAvailable)
         {
-            _report($"Hollow {ManifoldMissing}");
+            _warn($"Hollow {ManifoldMissing}");
             return;
         }
 
@@ -278,7 +280,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
         if (!creator.BeginMeshDrag(tool, options))
         {
             string what = tool == MeshDragTool.Bevel ? "edges" : "faces";
-            _report($"Select {what} first.");
+            _warn($"Select {what} first.");
             return;
         }
 
@@ -347,7 +349,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
         if (!creator.ApplyDoor())
         {
-            _report("Click a wall to place the door first.");
+            _warn("Click a wall to place the door first.");
         }
     }
 
@@ -466,7 +468,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
         if (!creator.EnterMesh())
         {
-            _report("Click a part of the creation first (the body, say), then Edit mesh or Tab.");
+            _warn("Click a part of the creation first (the body, say), then Edit mesh or Tab.");
         }
     }
 
@@ -513,7 +515,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
     {
         if (_creator() is not { SelectedPart: { } id } creator || !creator.SwingDoor(id))
         {
-            _report("Select a door part to test.");
+            _warn("Select a door part to test.");
         }
     }
 
@@ -535,7 +537,7 @@ public sealed partial class MeshToolsViewModel : ObservableObject
 
         if (!tool(creator))
         {
-            _report(failure);
+            _warn(failure);
         }
 
         NotifyTransform();

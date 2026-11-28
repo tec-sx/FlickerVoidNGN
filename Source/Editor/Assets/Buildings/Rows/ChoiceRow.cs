@@ -36,6 +36,11 @@ public sealed class ChoiceRow : ToolRow
 
     private void Choose(int index)
     {
+        if (IsRetired)
+        {
+            return;
+        }
+
         for (int option = 0; option < Options.Count; option++)
         {
             Options[option].IsChosen = option == index;

@@ -106,6 +106,13 @@ internal sealed class ViewportRenderer : IDisposable
         set => _grid.Visible = value;
     }
 
+    /// <summary>Whether the scene is drawn flat, each face in one tone with a thin line round it, as a plan is.</summary>
+    public bool FlatLook
+    {
+        get => _scene.FlatLook;
+        set => _scene.FlatLook = value;
+    }
+
     /// <summary>Recreates the textures at the new size; returns false when they already have that size.</summary>
     public bool Resize(int width, int height)
     {

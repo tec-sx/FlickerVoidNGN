@@ -155,4 +155,106 @@ public sealed class PlanGeometryTests
         BuildingPlanTestsBuilder.IsClosed(prism).Should().BeTrue();
         prism.Faces.Should().OnlyContain(face => face.Count <= 4);
     }
+
+    [Fact]
+    public void ADoubleDoorHasTwoLeavesHingedAtItsSidesThatMeetInTheMiddleAndSwingTheSameWay()
+    {
+        BuildingFile building = BuildingFile.Create();
+        BuildingStorey ground = building.Storeys[0];
+        PlanOpening door = BuildingFileTestsBuilder.FrontDoor(building);
+        door.Double = true;
+        OpeningShape.TryGetFrame(building, ground, door, out OpeningFrame frame).Should().BeTrue();
+
+        List<DoorLeaf> leaves = OpeningShape.MakeLeaves(frame, door, null);
+
+        leaves.Should().HaveCount(2);
+        float half = door.Width / 2;
+        leaves.Select(static leaf => leaf.Pivot.X).Should().BeEquivalentTo([half, -half], options => options.Using<float>(context => context.Subject.Should().BeApproximately(context.Expectation, 1e-4f)).WhenTypeIs<float>());
+        foreach (DoorLeaf leaf in leaves)
+        {
+            Vector3 meets = leaf.Pivot + leaf.Free;
+            Matrix4x4 open = Matrix4x4.CreateFromAxisAngle(leaf.Axis, float.DegreesToRadians(90));
+            Vector3 swung = Vector3.Transform(leaf.Middle, open) + leaf.Pivot;
+            meets.X.Should().BeApproximately(0, 1e-4f, "the leaves meet in the middle of the opening");
+            swung.Z.Should().BeLessThan(leaf.Pivot.Z - 0.15f, "both leaves swing out of the front");
+            BuildingPlanTestsBuilder.IsClosed(leaf.Mesh).Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public void AWindowInALeafIsCutOutOfItAndGlazedWhenItHasGlass()
+    {
+        BuildingFile building = BuildingFile.Create();
+        BuildingStorey ground = building.Storeys[0];
+        PlanOpening door = BuildingFileTestsBuilder.FrontDoor(building);
+        door.WindowWidth = 0.5f;
+        door.WindowHeight = 0.6f;
+        door.WindowFrom = 1.2f;
+        OpeningShape.TryGetFrame(building, ground, door, out OpeningFrame frame).Should().BeTrue();
+        List<SolidMesh> cutters = [];
+        Func<SolidMesh, SolidMesh, SolidMesh?> subtract = (solid, cutter) =>
+        {
+            cutters.Add(cutter);
+            return solid;
+        };
+
+        DoorLeaf glazed = OpeningShape.MakeLeaves(frame, door, subtract)[0];
+        door.Glass = false;
+        DoorLeaf open = OpeningShape.MakeLeaves(frame, door, subtract)[0];
+        DoorLeaf whole = OpeningShape.MakeLeaves(frame, door, null)[0];
+
+        cutters.Should().HaveCount(2, "each leaf made has its window cut out");
+        float floor = building.GetFloorHeight(0);
+        cutters[0].Points.Min(static point => point.Y).Should().BeApproximately(floor + 1.2f, 1e-4f);
+        cutters[0].Points.Max(static point => point.Y).Should().BeApproximately(floor + 1.8f, 1e-4f);
+        (cutters[0].Points.Max(static point => point.X) - cutters[0].Points.Min(static point => point.X)).Should().BeApproximately(0.5f, 1e-4f);
+        glazed.Glass.Should().NotBeNull();
+        BuildingPlanTestsBuilder.IsClosed(glazed.Glass!).Should().BeTrue();
+        open.Glass.Should().BeNull("a window without glass is an open hole");
+        whole.Glass.Should().BeNull("without a way to cut it the leaf stays whole");
+    }
+
+    [Fact]
+    public void ADoorsHandleStandsInFromItsFreeEdgeAtItsHeight()
+    {
+        BuildingFile building = BuildingFile.Create();
+        BuildingStorey ground = building.Storeys[0];
+        PlanOpening door = BuildingFileTestsBuilder.FrontDoor(building);
+        door.HandleHeight = 1.05f;
+        door.HandleInset = 0.12f;
+        OpeningShape.TryGetFrame(building, ground, door, out OpeningFrame frame).Should().BeTrue();
+
+        DoorLeaf leaf = OpeningShape.MakeLeaf(frame, door);
+
+        Vector3 handle = leaf.Pivot + leaf.Handle;
+        Vector3 free = leaf.Pivot + leaf.Free;
+        handle.Y.Should().BeApproximately(building.GetFloorHeight(0) + 1.05f, 1e-4f);
+        MathF.Abs(handle.X - free.X).Should().BeApproximately(0.12f, 1e-4f);
+        MathF.Abs(handle.X - leaf.Pivot.X).Should().BeApproximately(door.Width - 0.12f, 1e-4f);
+    }
+
+    [Fact]
+    public void AnElevatorTurnedOpensTheFloorAboveTurnedWithIt()
+    {
+        BuildingFile building = BuildingFileTestsBuilder.WithStoreys(2, cellar: false);
+        building.Elevators.Add(new BuildingElevator { Id = 1, X = 1, Z = 0.5f, From = 0, To = 1, Heading = 45, Size = 1.6f });
+        List<SolidMesh> holes = [];
+        Func<SolidMesh, SolidMesh, SolidMesh?> subtract = (solid, cutter) =>
+        {
+            holes.Add(cutter);
+            return solid;
+        };
+
+        BuildingMaker.Make(building, subtract);
+
+        BuildingElevator elevator = building.Elevators[0];
+        SolidMesh hole = holes.Single(static cutter => cutter.Points.Count == 8 && cutter.Points.Max(static point => point.Y) - cutter.Points.Min(static point => point.Y) < 1);
+        float reach = hole.Points.Max(static point => point.X) - hole.Points.Min(static point => point.X);
+        reach.Should().BeApproximately(1.64f * MathF.Sqrt(2), 1e-3f, "a square turned by 45 degrees is as wide as its diagonal");
+        elevator.Platform!.Place.Rotation.Should().NotBe(Quaternion.Identity);
+        BuildingRegions.GetElevator(building, 1)!.Value.Place.Rotation.Should().Be(elevator.Platform.Place.Rotation);
+        Vector3 front = Vector3.Transform(-Vector3.UnitZ, elevator.Platform.Place.Rotation);
+        Vector3 button = building.GetCallButton(elevator, 0) - new Vector3(1, 0, 0.5f);
+        Vector3.Dot(Vector3.Normalize(new Vector3(button.X, 0, button.Z)), front).Should().BeGreaterThan(0.5f, "the call button stands on the side the platform is stepped onto");
+    }
 }

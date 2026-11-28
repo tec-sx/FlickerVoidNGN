@@ -49,7 +49,7 @@ public sealed partial class VectorRow : ToolRow
 
     private void Send()
     {
-        if (!_taking)
+        if (!_taking && !IsRetired)
         {
             _set(new Vector3((float)X, (float)Y, (float)Z));
         }

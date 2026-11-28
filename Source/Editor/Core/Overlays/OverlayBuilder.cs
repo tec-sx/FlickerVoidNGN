@@ -13,6 +13,7 @@ public sealed class OverlayBuilder
 {
     private const int RoundSegments = 48;
     private const int ConeSegments = 12;
+    private const int MaxDashes = 400;
 
     private readonly List<OverlayVertex> _vertices = [];
     private readonly List<OverlayIcon> _icons = [];
@@ -45,7 +46,31 @@ public sealed class OverlayBuilder
         _vertices.Add(new OverlayVertex(c, color));
     }
 
-    /// <summary>A line of the given width in pixels, as a strip facing the camera.</summary>
+    /// <summary>A triangle filled with slanted stripes that keep their width on the screen.</summary>
+    public void AddHatch(Vector3 a, Vector3 b, Vector3 c, Vector4 color)
+    {
+        _vertices.Add(new OverlayVertex(a, OverlayVertex.Hatch, color));
+        _vertices.Add(new OverlayVertex(b, OverlayVertex.Hatch, color));
+        _vertices.Add(new OverlayVertex(c, OverlayVertex.Hatch, color));
+    }
+
+    /// <summary>A flat shape with its corners in order round it, bulging nowhere inward, filled plain or with stripes.</summary>
+    public void AddFill(ReadOnlySpan<Vector3> corners, Vector4 color, bool hatched = false)
+    {
+        for (int corner = 2; corner < corners.Length; corner++)
+        {
+            if (hatched)
+            {
+                AddHatch(corners[0], corners[corner - 1], corners[corner], color);
+            }
+            else
+            {
+                AddTriangle(corners[0], corners[corner - 1], corners[corner], color);
+            }
+        }
+    }
+
+    /// <summary>A line of the given width in pixels, as a strip facing the camera with soft edges.</summary>
     public void AddLine(Vector3 from, Vector3 to, Vector4 color, float widthPixels)
     {
         Vector3 along = to - from;
@@ -62,15 +87,95 @@ public sealed class OverlayBuilder
             return;
         }
 
+        // The strip reaches a pixel past the line on either side; the shader fades it there by each corner's distance across.
         Vector3 unitSide = Vector3.Normalize(side);
-        float fromHalf = _camera.WorldUnitsPerPixel(from, _viewportHeight) * widthPixels / 2;
-        float toHalf = _camera.WorldUnitsPerPixel(to, _viewportHeight) * widthPixels / 2;
-        Vector3 a = from - (unitSide * fromHalf);
-        Vector3 b = from + (unitSide * fromHalf);
-        Vector3 c = to + (unitSide * toHalf);
-        Vector3 d = to - (unitSide * toHalf);
-        AddTriangle(a, b, c, color);
-        AddTriangle(a, c, d, color);
+        float reach = (widthPixels / 2) + 1;
+        float fromHalf = _camera.WorldUnitsPerPixel(from, _viewportHeight) * reach;
+        float toHalf = _camera.WorldUnitsPerPixel(to, _viewportHeight) * reach;
+        OverlayVertex a = new(from - (unitSide * fromHalf), -reach, color);
+        OverlayVertex b = new(from + (unitSide * fromHalf), reach, color);
+        OverlayVertex c = new(to + (unitSide * toHalf), reach, color);
+        OverlayVertex d = new(to - (unitSide * toHalf), -reach, color);
+        _vertices.Add(a);
+        _vertices.Add(b);
+        _vertices.Add(c);
+        _vertices.Add(a);
+        _vertices.Add(c);
+        _vertices.Add(d);
+    }
+
+    /// <summary>A line of dashes, each as long on the screen as given and as far apart.</summary>
+    public void AddDashedLine(Vector3 from, Vector3 to, Vector4 color, float widthPixels, float dashPixels = 6, float gapPixels = 4)
+    {
+        Vector3 along = to - from;
+        float length = along.Length();
+        if (length < 1e-6f)
+        {
+            return;
+        }
+
+        Vector3 middle = (from + to) / 2;
+        float perPixel = _camera.WorldUnitsPerPixel(middle, _viewportHeight);
+        float dash = Math.Max(dashPixels * perPixel, 1e-4f);
+        float step = dash + Math.Max(gapPixels * perPixel, 0);
+        int dashes = (int)MathF.Ceiling(length / step);
+        if (dashes > MaxDashes)
+        {
+            AddLine(from, to, color with { W = color.W * dash / step }, widthPixels);
+            return;
+        }
+
+        Vector3 direction = along / length;
+        for (int index = 0; index < dashes; index++)
+        {
+            float start = index * step;
+            float end = Math.Min(start + dash, length);
+            AddLine(from + (direction * start), from + (direction * end), color, widthPixels);
+        }
+    }
+
+    /// <summary>A closed run of lines through the points, dashed or whole.</summary>
+    public void AddLoop(ReadOnlySpan<Vector3> points, Vector4 color, float widthPixels, bool dashed = false)
+    {
+        for (int index = 0; index < points.Length; index++)
+        {
+            Vector3 next = points[(index + 1) % points.Length];
+            if (dashed)
+            {
+                AddDashedLine(points[index], next, color, widthPixels);
+            }
+            else
+            {
+                AddLine(points[index], next, color, widthPixels);
+            }
+        }
+    }
+
+    /// <summary>A square facing the camera with its half size in pixels, filled, with a line round it: a handle to drag.</summary>
+    public void AddHandle(Vector3 centre, float halfPixels, Vector4 fill, Vector4 line)
+    {
+        float half = _camera.WorldUnitsPerPixel(centre, _viewportHeight) * halfPixels;
+        Vector3 right = _camera.Right * half;
+        Vector3 up = _camera.Up * half;
+        Span<Vector3> corners = [centre - right - up, centre + right - up, centre + right + up, centre - right + up];
+        AddFill(corners, fill);
+        AddLoop(corners, line, OverlayLines.Thin);
+    }
+
+    /// <summary>A filled dot facing the camera, with its radius in pixels.</summary>
+    public void AddDot(Vector3 centre, float radiusPixels, Vector4 color)
+    {
+        float radius = _camera.WorldUnitsPerPixel(centre, _viewportHeight) * radiusPixels;
+        Vector3 right = _camera.Right * radius;
+        Vector3 up = _camera.Up * radius;
+        Vector3 previous = centre + right;
+        for (int segment = 1; segment <= ConeSegments; segment++)
+        {
+            float angle = MathF.Tau * segment / ConeSegments;
+            Vector3 point = centre + (right * MathF.Cos(angle)) + (up * MathF.Sin(angle));
+            AddTriangle(centre, previous, point, color);
+            previous = point;
+        }
     }
 
     /// <summary>A circle round a centre in the plane across an axis, drawn as lines.</summary>

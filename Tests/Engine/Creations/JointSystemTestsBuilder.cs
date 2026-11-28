@@ -43,16 +43,29 @@ internal sealed class JointSystemTestsBuilder : IDisposable
     }
 
     /// <summary>Places a creation whose part <c>door</c> has a toggle that starts open or closed.</summary>
-    public JointSystemTestsBuilder PlaceDoor(PartJoint joint, bool open)
+    public JointSystemTestsBuilder PlaceDoor(PartJoint joint, bool open, PartJoint? follower = null)
     {
         Transform place = new() { Position = new Vector3(2, 0, 0) };
         Toggle toggle = new() { Open = open };
         PartData door = new PartData("door", place).With(joint).With(toggle);
-        _parts.Redescribe(door);
+        List<PartData> parts = [door];
+        if (follower is { } second)
+        {
+            PartFollower follows = new() { Leader = "door" };
+            parts.Add(new PartData("door.b", place).With(second).With(follows));
+        }
+
+        _parts.Redescribe([.. parts]);
         Root = _parts.Place(Vector3.Zero);
         Part = _parts.Parts.Find(Root, "door");
+        Follower = _parts.Parts.Find(Root, "door.b");
         return this;
     }
+
+    /// <summary>The part <c>door.b</c>, which follows the door, when the creation has one.</summary>
+    public Entity Follower { get; private set; }
+
+    public float PositionOfFollower() => World.Get<JointPose>(Follower).Position;
 
     public void Toggled(bool open) => Toggled(Part, open);
 

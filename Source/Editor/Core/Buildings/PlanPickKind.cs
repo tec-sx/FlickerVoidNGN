@@ -9,6 +9,9 @@ public enum PlanPickKind
     Room,
     Pillar,
     Opening,
+
+    /// <summary>A door's handle: where a hand takes it.</summary>
+    Handle,
     Stairs,
     Elevator,
     Shot,
