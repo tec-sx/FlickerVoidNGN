@@ -236,6 +236,30 @@ public sealed class MusicEditorViewModelTests
     }
 
     [Fact]
+    public void ListensThroughALongBufferAndSchedulesFarAheadSoABusyEditorDoesNotCrackle()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            ContentManager content = new(folder);
+
+            using MusicPreview preview = new(content);
+
+            preview.Music.Lookahead.Should().Be(MusicPreview.LookaheadFrames);
+            MusicPreview.LookaheadFrames.Should().BeGreaterThan(MusicPreview.BufferFrames);
+            if (preview.DeviceBufferFrames > 0)
+            {
+                preview.DeviceBufferFrames.Should().Be(MusicPreview.BufferFrames);
+            }
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
     public void PlaysTheCuePastItsFirstBarsThroughThePreviewAndStops()
     {
         string folder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));

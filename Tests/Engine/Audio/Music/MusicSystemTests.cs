@@ -311,6 +311,19 @@ public sealed class MusicSystemTests : IDisposable
     }
 
     [Fact]
+    public void StartsACueAsFarAheadAsItsLookaheadSays()
+    {
+        string cue = _builder.WithCue("Ambience", """{ "name": "Bed", "loop": "Bass.wav" }""", "\"tempo\": 0, \"bus\": \"Ambience\"");
+        _builder.Music.Lookahead = 9600;
+
+        _builder.Music.Play(cue);
+        _builder.PlayFor(20000);
+
+        _builder.HeardAt(9000).Should().Be(0);
+        _builder.HeardAt(12000).Should().BeGreaterThan(0);
+    }
+
+    [Fact]
     public void FadesTheTracksOfACueWithoutATempoInAtOnce()
     {
         string cue = _builder.WithCue("Ambience", """{ "name": "Bed", "loop": "Bass.wav", "fadeIn": 0.5 }""", "\"tempo\": 0, \"bus\": \"Ambience\"");

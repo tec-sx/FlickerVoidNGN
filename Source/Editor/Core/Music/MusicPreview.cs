@@ -1,3 +1,5 @@
+using System.Runtime;
+
 using FlickerVoid.Engine.Audio;
 using FlickerVoid.Engine.Audio.Devices;
 using FlickerVoid.Engine.Audio.Mixing;
@@ -18,6 +20,13 @@ namespace FlickerVoid.Editor.Core.Music;
 /// </summary>
 public sealed class MusicPreview : IDisposable
 {
+    /// <summary>The device's buffer, 85 ms: as long as an audio program's largest, so a busy editor does not starve it.</summary>
+    public const int BufferFrames = 4096;
+
+    /// <summary>How far ahead the music is scheduled, 250 ms: past the buffer and any stall of the editor's window.</summary>
+    public const int LookaheadFrames = 12000;
+
+    private readonly GCLatencyMode _latency = GCSettings.LatencyMode;
     private readonly Game _game = new(NullLoggerFactory.Instance);
     private readonly SdlAudioDevice? _device;
     private readonly NullAudioDevice? _silent;
@@ -33,10 +42,11 @@ public sealed class MusicPreview : IDisposable
         _audio.SteamAudio = null;
         _music = _game.Services.GetService<MusicSystem>()!;
         _music.IgnoreConditions = true;
-        _device = SdlAudioDevice.TryOpen(_audio.Mixer, out string problem);
+        _music.Lookahead = LookaheadFrames;
+        _device = SdlAudioDevice.TryOpen(_audio.Mixer, out string problem, null, BufferFrames);
         if (_device is null)
         {
-            _device = SdlAudioDevice.TryOpen(_audio.Mixer, out problem, "dummy");
+            _device = SdlAudioDevice.TryOpen(_audio.Mixer, out problem, "dummy", BufferFrames);
             Problem = "No sound device: the music plays to nowhere.";
         }
 
@@ -46,8 +56,13 @@ public sealed class MusicPreview : IDisposable
             Problem = $"No sound device ({problem}).";
         }
 
+        // The audio thread runs the mixer's managed code, which a blocking collection stops: fewer of those while this listens.
+        GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
         _game.Lifecycle.Play(_game.World);
     }
+
+    /// <summary>The frames the open device takes at a time; 0 without one.</summary>
+    public int DeviceBufferFrames => _device?.BufferFrames ?? 0;
 
     /// <summary>Why nothing can be heard, or empty when the output device is open.</summary>
     public string Problem { get; } = string.Empty;
@@ -76,5 +91,6 @@ public sealed class MusicPreview : IDisposable
     {
         _device?.Dispose();
         _game.Dispose();
+        GCSettings.LatencyMode = _latency;
     }
 }

@@ -26,7 +26,7 @@ namespace FlickerVoid.Engine.Audio.Music;
 /// </summary>
 public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPlayer
 {
-    /// <summary>How far ahead of the mixer anything is scheduled, so the command is there before its frame.</summary>
+    /// <summary>How far ahead of the mixer a game schedules anything, so the command is there before its frame.</summary>
     public const int LookaheadFrames = 1024;
 
     /// <summary>The frames a stopped loop fades over at least, so it ends without a click.</summary>
@@ -65,6 +65,12 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         game.SaveStates.AddGlobal<MusicSaveState>("music", Save, Restore);
     }
 
+    /// <summary>
+    /// The frames ahead of the mixer anything is scheduled: more than the longest the program may stall between two updates plus
+    /// the device's buffer, or a late command starts its sound cut short.
+    /// </summary>
+    public int Lookahead { get; set; } = LookaheadFrames;
+
     /// <summary>Whether the tracks' <c>when</c> conditions are taken as true, as an editor auditioning a cue wants them.</summary>
     public bool IgnoreConditions { get; set; }
 
@@ -87,7 +93,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         CueState state = CreateState(cue, definition);
         if (stack.Count == 0)
         {
-            state.Start = Mixer.Position + LookaheadFrames;
+            state.Start = Mixer.Position + Lookahead;
             state.ActiveFrom = state.Start;
             stack.Add(state);
         }
@@ -135,7 +141,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         }
 
         CueState state = CreateState(cue, definition);
-        long start = Mixer.Position + LookaheadFrames;
+        long start = Mixer.Position + Lookahead;
         if (stack.Count > 0)
         {
             CueState top = stack[^1];
@@ -214,7 +220,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
             return;
         }
 
-        long at = Mixer.Position + LookaheadFrames;
+        long at = Mixer.Position + Lookahead;
         List<CueState> stack = GetStackState(AudioBus.Music);
         if (stack.Count > 0)
         {
@@ -321,7 +327,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
     {
         StopNow(cue.Bus);
         CueState state = CreateState(name, cue);
-        long at = Mixer.Position + LookaheadFrames;
+        long at = Mixer.Position + Lookahead;
         double behind = Math.Max(0, bar - 1) * BarFrames(cue);
         state.Start = at - (long)Math.Round(behind);
         state.ActiveFrom = at;
@@ -343,7 +349,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
             return;
         }
 
-        long at = Mixer.Position + LookaheadFrames;
+        long at = Mixer.Position + Lookahead;
         Hold(top, at);
         double behind = Math.Max(0, bar - 1) * barFrames;
         top.Start = at - (long)Math.Round(behind);
@@ -489,9 +495,9 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
     private void PlayShots(CueState cue)
     {
         double barFrames = BarFrames(cue.Cue);
-        long soonest = Math.Max(Mixer.Position + LookaheadFrames, cue.ActiveFrom);
+        long soonest = Math.Max(Mixer.Position + Lookahead, cue.ActiveFrom);
         long from = Math.Max(cue.ShotsUntil, soonest);
-        long until = Mixer.Position + (LookaheadFrames * 3);
+        long until = Mixer.Position + (Lookahead * 3);
         if (barFrames <= 0 || until <= from)
         {
             return;
@@ -614,7 +620,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
 
     private long NextBar(CueState cue)
     {
-        long earliest = Math.Max(Mixer.Position + LookaheadFrames, cue.ActiveFrom);
+        long earliest = Math.Max(Mixer.Position + Lookahead, cue.ActiveFrom);
         return NextLine(cue, earliest, MusicQuantize.Bar);
     }
 
@@ -791,7 +797,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         long start = cue.ActiveFrom;
         if (!cue.Fresh)
         {
-            long soonest = Math.Max(Mixer.Position + LookaheadFrames, cue.ActiveFrom);
+            long soonest = Math.Max(Mixer.Position + Lookahead, cue.ActiveFrom);
             long earliest = Math.Max(soonest, track.BusyUntil);
             start = NextLine(cue, earliest, settings.Start);
             if (track.FillIn is { } fill)
@@ -835,7 +841,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
         }
 
         long position = Mixer.Position;
-        if (track.LoopStart > position + LookaheadFrames)
+        if (track.LoopStart > position + Lookahead)
         {
             MixerCommand cancel = MixerCommand.Stop(track.LoopVoice, 0);
             Mixer.Send(in cancel);
@@ -844,7 +850,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
             return;
         }
 
-        long earliest = Math.Max(position + LookaheadFrames, track.LoopStart);
+        long earliest = Math.Max(position + Lookahead, track.LoopStart);
         long at = NextLine(cue, earliest, track.Track.Stop);
         StopLoop(track, at);
         if (track.FillOut is { } fill)
@@ -1097,7 +1103,7 @@ public sealed partial class MusicSystem : BaseSystem<World, GameTime>, IMusicPla
             _requests[layer] = 1;
         }
 
-        long start = now + LookaheadFrames;
+        long start = now + Lookahead;
         foreach (SavedCue saved in state.Cues)
         {
             MusicCue? definition = FindCue(saved.Cue);
