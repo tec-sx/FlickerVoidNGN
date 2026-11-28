@@ -20,6 +20,12 @@ public sealed class MusicEditorServices
     /// <summary>Copies sound files from the disk into the project's Content and returns their content paths.</summary>
     public Func<IReadOnlyList<string>, IReadOnlyList<string>>? Import { get; init; }
 
+    /// <summary>The frames the preview's sound device takes at a time.</summary>
+    public Func<int> BufferFrames { get; init; } = () => MusicPreview.DefaultBufferFrames;
+
+    /// <summary>Keeps the buffer chosen and opens the preview's device with it.</summary>
+    public Action<int>? SetBufferFrames { get; init; }
+
     public Func<MixSet> Mix { get; init; } = MixSet.Default;
 
     /// <summary>Opens the project's mix file in the data editor, making it first when the project has none.</summary>

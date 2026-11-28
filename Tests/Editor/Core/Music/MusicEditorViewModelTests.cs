@@ -247,16 +247,34 @@ public sealed class MusicEditorViewModelTests
             using MusicPreview preview = new(content);
 
             preview.Music.Lookahead.Should().Be(MusicPreview.LookaheadFrames);
-            MusicPreview.LookaheadFrames.Should().BeGreaterThan(MusicPreview.BufferFrames);
+            MusicPreview.LookaheadFrames.Should().BeGreaterThan(MusicPreview.BufferOptions.Max());
             if (preview.DeviceBufferFrames > 0)
             {
-                preview.DeviceBufferFrames.Should().Be(MusicPreview.BufferFrames);
+                preview.DeviceBufferFrames.Should().Be(MusicPreview.DefaultBufferFrames);
+                preview.SetBuffer(4096);
+                preview.DeviceBufferFrames.Should().Be(4096);
             }
         }
         finally
         {
             Directory.Delete(folder, true);
         }
+    }
+
+    [Fact]
+    public void OffersTheBufferSizesAndTellsTheEditorWhichOneIsChosen()
+    {
+        int chosen = 2048;
+        MusicEditorServices services = new() { BufferFrames = () => chosen, SetBufferFrames = frames => chosen = frames };
+        MusicEditorViewModel editor = Build(new MusicCue(), services);
+
+        editor.BufferOptions.Should().Equal(512, 1024, 2048, 4096);
+        editor.BufferFrames.Should().Be(2048);
+
+        editor.BufferFrames = 4096;
+
+        chosen.Should().Be(4096);
+        editor.BufferText.Should().Be("85 ms");
     }
 
     [Fact]

@@ -209,7 +209,9 @@ public sealed partial class MainWindowViewModel
     {
         return new MusicEditorServices
         {
-            Preview = () => _musicPreview ??= new MusicPreview(_content),
+            Preview = () => _musicPreview ??= new MusicPreview(_content, GetAudioBuffer()),
+            BufferFrames = GetAudioBuffer,
+            SetBufferFrames = SetAudioBuffer,
             Areas = FindMusicAreas,
             Sounds = () => files.Find([".wav", ".ogg", ".fvsound"]),
             Cues = () => files.Find([MusicCue.Extension]),
@@ -218,6 +220,19 @@ public sealed partial class MainWindowViewModel
             OpenMix = OpenMix,
             Open = OpenData,
         };
+    }
+
+    private int GetAudioBuffer() => _layout?.AudioBufferFrames ?? _audioBuffer;
+
+    private void SetAudioBuffer(int frames)
+    {
+        _audioBuffer = frames;
+        if (_layout is not null)
+        {
+            _layout.AudioBufferFrames = frames;
+        }
+
+        _musicPreview?.SetBuffer(frames);
     }
 
     private IReadOnlyList<RehearsalSource> FindMusicAreas()

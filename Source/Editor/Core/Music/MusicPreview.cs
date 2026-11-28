@@ -20,20 +20,21 @@ namespace FlickerVoid.Editor.Core.Music;
 /// </summary>
 public sealed class MusicPreview : IDisposable
 {
-    /// <summary>The device's buffer, 85 ms: as long as an audio program's largest, so a busy editor does not starve it.</summary>
-    public const int BufferFrames = 4096;
+    /// <summary>The device's buffer unless another is chosen, 21 ms: twice a game's, and the editor's top bar offers longer ones.</summary>
+    public const int DefaultBufferFrames = 1024;
 
-    /// <summary>How far ahead the music is scheduled, 250 ms: past the buffer and any stall of the editor's window.</summary>
+    /// <summary>How far ahead the music is scheduled, 250 ms: past the longest buffer and any stall of the editor's window.</summary>
     public const int LookaheadFrames = 12000;
 
+    private readonly string? _driver;
     private readonly GCLatencyMode _latency = GCSettings.LatencyMode;
     private readonly Game _game = new(NullLoggerFactory.Instance);
-    private readonly SdlAudioDevice? _device;
+    private SdlAudioDevice? _device;
     private readonly NullAudioDevice? _silent;
     private readonly MusicSystem _music;
     private readonly AudioSystem _audio;
 
-    public MusicPreview(IContentManager content)
+    public MusicPreview(IContentManager content, int bufferFrames = DefaultBufferFrames)
     {
         _game.Services.AddService(content);
         DataAssets data = new(content, _game.Data);
@@ -43,10 +44,11 @@ public sealed class MusicPreview : IDisposable
         _music = _game.Services.GetService<MusicSystem>()!;
         _music.IgnoreConditions = true;
         _music.Lookahead = LookaheadFrames;
-        _device = SdlAudioDevice.TryOpen(_audio.Mixer, out string problem, null, BufferFrames);
+        _device = SdlAudioDevice.TryOpen(_audio.Mixer, out string problem, null, bufferFrames);
         if (_device is null)
         {
-            _device = SdlAudioDevice.TryOpen(_audio.Mixer, out problem, "dummy", BufferFrames);
+            _device = SdlAudioDevice.TryOpen(_audio.Mixer, out problem, "dummy", bufferFrames);
+            _driver = "dummy";
             Problem = "No sound device: the music plays to nowhere.";
         }
 
@@ -59,6 +61,21 @@ public sealed class MusicPreview : IDisposable
         // The audio thread runs the mixer's managed code, which a blocking collection stops: fewer of those while this listens.
         GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
         _game.Lifecycle.Play(_game.World);
+    }
+
+    /// <summary>The buffers the editor offers, in frames: shorter answers sooner, longer rides out a busier editor.</summary>
+    public static IReadOnlyList<int> BufferOptions { get; } = [512, 1024, 2048, 4096];
+
+    /// <summary>Opens the device again with another buffer; what plays goes on from where the mixer is.</summary>
+    public void SetBuffer(int frames)
+    {
+        if (_device is null || _device.BufferFrames == frames)
+        {
+            return;
+        }
+
+        _device.Dispose();
+        _device = SdlAudioDevice.TryOpen(_audio.Mixer, out _, _driver, frames);
     }
 
     /// <summary>The frames the open device takes at a time; 0 without one.</summary>

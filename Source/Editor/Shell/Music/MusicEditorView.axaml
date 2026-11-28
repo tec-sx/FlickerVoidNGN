@@ -19,6 +19,14 @@
               <TextBlock Classes="hint" Text="{Binding LayersText}" VerticalAlignment="Center" />
             </StackPanel>
           </Border>
+          <Border Classes="stripCell" Margin="0,0,6,0"
+                  ToolTip.Tip="How much sound the device takes at a time. Longer plays clean while the editor is busy; shorter answers Play and triggers sooner.">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <TextBlock Text="Buffer" Classes="hint" VerticalAlignment="Center" />
+              <ComboBox x:Name="BufferBox" ItemsSource="{Binding BufferOptions}" SelectedItem="{Binding BufferFrames}" MinWidth="72" />
+              <TextBlock Text="{Binding BufferText}" Classes="hint" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
           <Border Classes="vsep" />
           <Button Classes="icon" ToolTip.Tip="Zoom out" Command="{Binding ZoomOutCommand}"><PathIcon Data="{x:Static shell:LucideIcons.ZoomOut}" /></Button>
           <Button Classes="icon" ToolTip.Tip="Zoom in" Command="{Binding ZoomInCommand}"><PathIcon Data="{x:Static shell:LucideIcons.ZoomIn}" /></Button>

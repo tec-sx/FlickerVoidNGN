@@ -63,6 +63,18 @@ public sealed class EditorLayoutTests : IDisposable
     }
 
     [Fact]
+    public void KeepsTheAudioBufferChosenAndStartsAt1024Frames()
+    {
+        EditorLayout layout = _builder.Build();
+        layout.AudioBufferFrames.Should().Be(1024);
+
+        layout.AudioBufferFrames = 4096;
+
+        EditorLayout next = _builder.Build();
+        next.AudioBufferFrames.Should().Be(4096);
+    }
+
+    [Fact]
     public void NeverBringsAPanelBackTooSmallToGrab()
     {
         EditorLayout layout = _builder.Build();

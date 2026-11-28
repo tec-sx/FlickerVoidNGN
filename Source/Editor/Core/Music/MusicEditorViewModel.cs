@@ -257,6 +257,35 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     public IReadOnlyList<MusicQuantize> SnapOptions { get; } = Enum.GetValues<MusicQuantize>();
 
     /// <summary>The paces the day can pass at while an arrangement without a tempo plays; the last holds the hour.</summary>
+    public IReadOnlyList<int> BufferOptions => MusicPreview.BufferOptions;
+
+    /// <summary>The frames the sound device takes at a time while the editor plays.</summary>
+    public int BufferFrames
+    {
+        get => _services.BufferFrames();
+        set
+        {
+            if (value <= 0 || value == _services.BufferFrames())
+            {
+                return;
+            }
+
+            _services.SetBufferFrames?.Invoke(value);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(BufferText));
+        }
+    }
+
+    /// <summary>How late the buffer makes the sound, in milliseconds.</summary>
+    public string BufferText
+    {
+        get
+        {
+            double milliseconds = Math.Round(BufferFrames * 1000.0 / AudioFormat.SampleRate);
+            return $"{milliseconds:0} ms";
+        }
+    }
+
     public IReadOnlyList<DayPace> DayPaces { get; } = [new DayPace("10 s an hour", 0.1), new DayPace("2 s an hour", 0.5), new DayPace("Held", 0)];
 
     /// <summary>What the ruler counts, beside the arrangement's name over the lanes' headers.</summary>
