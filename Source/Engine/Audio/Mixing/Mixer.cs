@@ -24,6 +24,7 @@ public sealed class Mixer
     private readonly float[] _scratch = new float[AudioFormat.BlockFrames * AudioFormat.Channels];
     private readonly float[] _send = new float[AudioFormat.BlockFrames * AudioFormat.Channels];
     private readonly Reverb _reverb = new();
+    private readonly Limiter _limiter = new();
     private float _wet;
     private float _targetWet;
     private long _position;
@@ -70,6 +71,9 @@ public sealed class Mixer
         found.Peak = 0;
         return peak;
     }
+
+    /// <summary>The lowest gain the master's limiter turned the mix down to since this was last asked; 1 when it never had to.</summary>
+    public float TakeLimit() => _limiter.TakeLowest();
 
     /// <summary>Takes the id of a voice that ended (its source ran out, it was stopped, or no voice was free for it) since the last call.</summary>
     public bool TryTakeFinished(out int voice) => _finished.TryDequeue(out voice);
@@ -136,10 +140,7 @@ public sealed class Mixer
         Span<float> whole = _scratch.AsSpan(0, output.Length);
         output.Clear();
         MixBus(master, whole, output);
-        for (int index = 0; index < output.Length; index++)
-        {
-            output[index] = Math.Clamp(output[index], -1, 1);
-        }
+        _limiter.Process(output);
 
         Interlocked.Add(ref _position, frames);
     }

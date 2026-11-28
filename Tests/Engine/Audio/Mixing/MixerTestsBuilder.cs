@@ -37,6 +37,19 @@ internal sealed class MixerTestsBuilder
         return new SoundClip(samples, 1, AudioFormat.SampleRate);
     }
 
+    /// <summary>A mono sine at the mixer's rate, of a frequency in hertz and a peak.</summary>
+    public static SoundClip Sine(int frames, double hertz, float peak)
+    {
+        float[] samples = new float[frames];
+        for (int frame = 0; frame < frames; frame++)
+        {
+            double phase = 2 * Math.PI * hertz * frame / AudioFormat.SampleRate;
+            samples[frame] = peak * (float)Math.Sin(phase);
+        }
+
+        return new SoundClip(samples, 1, AudioFormat.SampleRate);
+    }
+
     /// <summary>A mono clip swinging between 1 and -1 every frame, the highest tone there is.</summary>
     public static SoundClip Alternating(int frames)
     {
