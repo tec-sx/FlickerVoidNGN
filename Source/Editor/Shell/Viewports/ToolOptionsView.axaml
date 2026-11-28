@@ -2,128 +2,173 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:viewports="using:FlickerVoid.Editor.Viewports"
              xmlns:inspector="using:FlickerVoid.Editor.Inspector"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
+             xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Viewports.ToolOptionsView"
              x:DataType="viewports:MeshToolsViewModel">
-  <!-- The options of the tool in hand, in the inspector's place: its numbers change the result at once, and Apply and Cancel wait at the bottom of the view. -->
+  <!-- The options of the tool in hand, in the inspector's place, as panel cards: its numbers change the result at once, and Apply
+       and Cancel wait at the bottom of the view. -->
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-  <StackPanel Margin="4,2,8,2" Spacing="4">
-    <TextBlock Text="{Binding ToolName}" FontWeight="SemiBold" Margin="0,2,0,2" />
-    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4" IsVisible="{Binding IsDragging}">
-      <TextBlock Text="Amount" VerticalAlignment="Center" IsVisible="{Binding ShowsAmount}" />
-      <inspector:DragNumberBox Grid.Column="1" Value="{Binding Amount}" Minimum="0" IsVisible="{Binding ShowsAmount}"
-                               ToolTip.Tip="How far the faces go, in metres; the mouse sets it until a number is typed" />
-      <TextBlock Grid.Row="1" Text="{Binding ThicknessName}" VerticalAlignment="Center" IsVisible="{Binding ShowsThickness}" />
-      <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding Thickness}" Minimum="0" IsVisible="{Binding ShowsThickness}"
-                               ToolTip.Tip="Inset thickness, bevel width or hollow wall, in metres" />
-      <TextBlock Grid.Row="2" Text="Segments" VerticalAlignment="Center" IsVisible="{Binding ShowsBevel}" />
-      <inspector:DragNumberBox Grid.Row="2" Grid.Column="1" Value="{Binding Rows}" Minimum="1" Maximum="8" Step="1" IsVisible="{Binding ShowsBevel}"
-                               ToolTip.Tip="How many strips the bevel is made of" />
-      <TextBlock Grid.Row="3" Text="Shape" VerticalAlignment="Center" IsVisible="{Binding ShowsBevel}" />
-      <ToggleButton Grid.Row="3" Grid.Column="1" Content="Round" IsChecked="{Binding Round}" IsVisible="{Binding ShowsBevel}" HorizontalAlignment="Left"
-                    ToolTip.Tip="A curve toward the old edge, or flat" />
-    </Grid>
-    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto" IsVisible="{Binding ShowsCutThrough}">
-      <TextBlock Text="Through" VerticalAlignment="Center" />
-      <ToggleButton Grid.Column="1" Content="All the way" IsChecked="{Binding Through}" HorizontalAlignment="Left" ToolTip.Tip="A through cut has no depth and is made at once" />
-    </Grid>
-    <!-- With no tool in hand: the numbers the gizmo's tool takes, and the settings of the tools that act at once. -->
-    <StackPanel Spacing="4" IsVisible="{Binding ShowsResting}">
-      <TextBlock Classes="muted" Text="Numbers" />
-      <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto" RowSpacing="4">
-        <TextBlock Text="Do" VerticalAlignment="Center" />
-        <ComboBox Grid.Column="1" SelectedIndex="{Binding TransformToolIndex}" HorizontalAlignment="Stretch"
-                  ToolTip.Tip="Move, rotate or scale the selection by exact numbers">
-          <ComboBoxItem>Move</ComboBoxItem>
-          <ComboBoxItem>Rotate</ComboBoxItem>
-          <ComboBoxItem>Scale</ComboBoxItem>
-        </ComboBox>
-        <TextBlock Grid.Row="1" Text="Values" VerticalAlignment="Center" />
-        <UniformGrid Grid.Row="1" Grid.Column="1" Columns="3">
-          <inspector:DragNumberBox Value="{Binding TransformX}" AxisBrush="{StaticResource EditorAxisXBrush}" ToolTip.Tip="X" />
-          <inspector:DragNumberBox Value="{Binding TransformY}" AxisBrush="{StaticResource EditorAxisYBrush}" ToolTip.Tip="Y" />
-          <inspector:DragNumberBox Value="{Binding TransformZ}" AxisBrush="{StaticResource EditorAxisZBrush}" ToolTip.Tip="Z" />
-        </UniformGrid>
-      </Grid>
-      <Button Content="Apply numbers" Command="{Binding ApplyTransformCommand}" HorizontalAlignment="Left" ToolTip.Tip="Do it to the selection" />
-      <TextBlock Classes="muted" Text="Loop cut (L)" Margin="0,6,0,0" />
-      <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto" RowSpacing="4">
-        <TextBlock Text="Cuts" VerticalAlignment="Center" />
-        <inspector:DragNumberBox Grid.Column="1" Value="{Binding Cuts}" Minimum="1" Maximum="8" Step="1" ToolTip.Tip="Loop cuts" />
-        <TextBlock Grid.Row="1" Text="Slide" VerticalAlignment="Center" />
-        <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding Slide}" Minimum="-1" Maximum="1" ToolTip.Tip="Loop slide, -1 to 1" />
-      </Grid>
-      <TextBlock Classes="muted" TextWrapping="Wrap" Margin="0,6,0,0"
-                 Text="Double-click an edge for its loop, Shift adds. Q W E R switch the gizmo; X, I, C and B start a tool, then Enter applies and Escape cancels." />
+    <StackPanel>
+      <!-- A tool that drags: how far, how thick, how round. -->
+      <controls:PanelCard Header="{Binding ToolName}" Icon="{x:Static shell:LucideIcons.Transform}" IsVisible="{Binding IsDragging}">
+        <StackPanel>
+          <controls:PanelRow Label="Amount" IsVisible="{Binding ShowsAmount}"
+                             ToolTip.Tip="How far the faces go, in metres; the mouse sets it until a number is typed">
+            <inspector:DragNumberBox Value="{Binding Amount}" Minimum="0" />
+          </controls:PanelRow>
+          <controls:PanelRow Label="{Binding ThicknessName}" IsVisible="{Binding ShowsThickness}"
+                             ToolTip.Tip="Inset thickness, bevel width or hollow wall, in metres">
+            <inspector:DragNumberBox Value="{Binding Thickness}" Minimum="0" />
+          </controls:PanelRow>
+          <controls:PanelRow Label="Segments" IsVisible="{Binding ShowsBevel}" ToolTip.Tip="How many strips the bevel is made of">
+            <inspector:DragNumberBox Value="{Binding Rows}" Minimum="1" Maximum="8" Step="1" />
+          </controls:PanelRow>
+          <controls:PanelRow Label="Round" IsVisible="{Binding ShowsBevel}" ToolTip.Tip="A curve toward the old edge, or flat">
+            <ToggleButton Theme="{StaticResource Switch}" IsChecked="{Binding Round}" />
+          </controls:PanelRow>
+          <controls:PanelRow Label="All the way" IsVisible="{Binding ShowsCutThrough}"
+                             ToolTip.Tip="A through cut has no depth and is made at once">
+            <ToggleButton Theme="{StaticResource Switch}" IsChecked="{Binding Through}" />
+          </controls:PanelRow>
+        </StackPanel>
+      </controls:PanelCard>
+      <!-- With no tool in hand: the numbers the gizmo's tool takes, and the settings of the tools that act at once. -->
+      <StackPanel IsVisible="{Binding ShowsResting}">
+        <controls:PanelCard Header="Numbers" Icon="{x:Static shell:LucideIcons.Move}">
+          <StackPanel>
+            <controls:PanelRow Label="Do" ToolTip.Tip="Move, rotate or scale the selection by exact numbers">
+              <ComboBox SelectedIndex="{Binding TransformToolIndex}" HorizontalAlignment="Stretch">
+                <ComboBoxItem>Move</ComboBoxItem>
+                <ComboBoxItem>Rotate</ComboBoxItem>
+                <ComboBoxItem>Scale</ComboBoxItem>
+              </ComboBox>
+            </controls:PanelRow>
+            <controls:PanelRow Label="Values">
+              <Grid ColumnDefinitions="*,*,*" ColumnSpacing="3">
+                <inspector:DragNumberBox Grid.Column="0" Value="{Binding TransformX}" Axis="X" AxisBrush="{StaticResource EditorAxisXBrush}" ToolTip.Tip="X" />
+                <inspector:DragNumberBox Grid.Column="1" Value="{Binding TransformY}" Axis="Y" AxisBrush="{StaticResource EditorAxisYBrush}" ToolTip.Tip="Y" />
+                <inspector:DragNumberBox Grid.Column="2" Value="{Binding TransformZ}" Axis="Z" AxisBrush="{StaticResource EditorAxisZBrush}" ToolTip.Tip="Z" />
+              </Grid>
+            </controls:PanelRow>
+            <Button Content="Apply numbers" Command="{Binding ApplyTransformCommand}" HorizontalAlignment="Left" Margin="0,4,0,0"
+                    ToolTip.Tip="Do it to the selection" />
+          </StackPanel>
+        </controls:PanelCard>
+        <controls:PanelCard Header="Loop cut" Icon="{x:Static shell:LucideIcons.LoopCut}" Note="L">
+          <StackPanel>
+            <controls:PanelRow Label="Cuts" ToolTip.Tip="Loop cuts">
+              <inspector:DragNumberBox Value="{Binding Cuts}" Minimum="1" Maximum="8" Step="1" />
+            </controls:PanelRow>
+            <controls:PanelRow Label="Slide" ToolTip.Tip="Loop slide, -1 to 1">
+              <inspector:DragNumberBox Value="{Binding Slide}" Minimum="-1" Maximum="1" />
+            </controls:PanelRow>
+            <TextBlock Classes="hint small" TextWrapping="Wrap" Margin="0,4,0,0"
+                       Text="Double-click an edge for its loop, Shift adds. Q W E R switch the gizmo; X, I, C and B start a tool, then Enter applies and Escape cancels." />
+          </StackPanel>
+        </controls:PanelCard>
+      </StackPanel>
+      <!-- The door tool: sizes and cut, hinge, frame, window and grab point; the viewport shows each change at once. -->
+      <StackPanel IsVisible="{Binding IsDoorTool}">
+        <StackPanel DataContext="{Binding Door}" x:DataType="viewports:DoorToolViewModel">
+          <controls:PanelCard Header="Door" Icon="{x:Static shell:LucideIcons.Door}">
+            <StackPanel>
+              <controls:PanelRow Label="Width" ToolTip.Tip="Door width, in metres">
+                <inspector:DragNumberBox Value="{Binding Width}" Minimum="0.2" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="Height" ToolTip.Tip="Door height, in metres">
+                <inspector:DragNumberBox Value="{Binding Height}" Minimum="0.3" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="Thickness" ToolTip.Tip="Door thickness, in metres">
+                <inspector:DragNumberBox Value="{Binding Thickness}" Minimum="0.01" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="Sill" ToolTip.Tip="Door foot above the lowest point of the wall">
+                <inspector:DragNumberBox Value="{Binding Sill}" Minimum="0" />
+              </controls:PanelRow>
+              <TextBlock Classes="hint small" TextWrapping="Wrap" Margin="0,4,0,0"
+                         Text="Click a wall to place the door. Drag the red squares to move the sides of the cut along the wall normal. Enter applies, Escape cancels." />
+              <Button Classes="quiet delete" HorizontalAlignment="Left" Margin="0,4,0,0" Command="{Binding RemoveCommand}"
+                      IsVisible="{Binding IsEditing}" ToolTip.Tip="Take the door out and close the wall">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Delete}" />
+                  <TextBlock Text="Remove door" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </controls:PanelCard>
+          <controls:PanelCard Header="Cut" Icon="{x:Static shell:LucideIcons.Cut}">
+            <StackPanel>
+              <controls:PanelRow Label="Margin" ToolTip.Tip="How much larger than the door the cut is on every side">
+                <inspector:DragNumberBox Value="{Binding Margin}" Minimum="0" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="Behind" ToolTip.Tip="How far the cut reaches into the wall; drag the red square behind the box">
+                <inspector:DragNumberBox Value="{Binding DepthIn}" Minimum="0.02" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="In front" ToolTip.Tip="How far the cut reaches out of the wall face; drag the red square in front">
+                <inspector:DragNumberBox Value="{Binding DepthOut}" Minimum="0.02" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="Whole wall" ToolTip.Tip="Cut through the wall whatever its thickness">
+                <ToggleButton Theme="{StaticResource Switch}" IsChecked="{Binding Through}" />
+              </controls:PanelRow>
+            </StackPanel>
+          </controls:PanelCard>
+          <controls:PanelCard Header="Hinge" Icon="{x:Static shell:LucideIcons.Rotate}">
+            <StackPanel>
+              <controls:PanelRow Label="On the left" ToolTip.Tip="Hinge on the left side as seen from the front">
+                <ToggleButton Theme="{StaticResource Switch}" IsChecked="{Binding HingeLeft}" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="On the right" ToolTip.Tip="Hinge on the right side as seen from the front">
+                <ToggleButton Theme="{StaticResource Switch}" IsChecked="{Binding HingeRight}" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="Opens outward" ToolTip.Tip="Swing out of the wall face, or into the wall">
+                <ToggleButton Theme="{StaticResource Switch}" IsChecked="{Binding Outward}" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="Angle" ToolTip.Tip="How far it swings open, in degrees">
+                <inspector:DragNumberBox Value="{Binding Angle}" Minimum="1" Maximum="170" Step="1" />
+              </controls:PanelRow>
+            </StackPanel>
+          </controls:PanelCard>
+          <controls:PanelCard Header="Frame" Icon="{x:Static shell:LucideIcons.Outline}">
+            <StackPanel>
+              <controls:PanelRow Label="Frame" ToolTip.Tip="A frame round the opening">
+                <ToggleButton Theme="{StaticResource Switch}" IsChecked="{Binding HasFrame}" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="Width" ToolTip.Tip="Frame width, in metres">
+                <inspector:DragNumberBox Value="{Binding FrameWidth}" Minimum="0.01" />
+              </controls:PanelRow>
+            </StackPanel>
+          </controls:PanelCard>
+          <controls:PanelCard Header="Window" Icon="{x:Static shell:LucideIcons.Grid}">
+            <StackPanel>
+              <controls:PanelRow Label="Window" ToolTip.Tip="A second box that cuts the door itself">
+                <ToggleButton Theme="{StaticResource Switch}" IsChecked="{Binding HasWindow}" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="Width" ToolTip.Tip="Window width, in metres">
+                <inspector:DragNumberBox Value="{Binding WindowWidth}" Minimum="0.05" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="Height" ToolTip.Tip="Window height, in metres">
+                <inspector:DragNumberBox Value="{Binding WindowHeight}" Minimum="0.05" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="From floor" ToolTip.Tip="Lower edge of the window above the door foot">
+                <inspector:DragNumberBox Value="{Binding WindowFrom}" Minimum="0" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="Pane of glass" ToolTip.Tip="A thin pane in the window">
+                <ToggleButton Theme="{StaticResource Switch}" IsChecked="{Binding Glass}" />
+              </controls:PanelRow>
+            </StackPanel>
+          </controls:PanelCard>
+          <controls:PanelCard Header="Grab point" Icon="{x:Static shell:LucideIcons.Interact}">
+            <StackPanel>
+              <controls:PanelRow Label="Height" ToolTip.Tip="Where a character hand goes, above the door foot (the small sphere)">
+                <inspector:DragNumberBox Value="{Binding GrabHeight}" Minimum="0" />
+              </controls:PanelRow>
+              <controls:PanelRow Label="From edge" ToolTip.Tip="How far in from the free edge">
+                <inspector:DragNumberBox Value="{Binding GrabInset}" Minimum="0" />
+              </controls:PanelRow>
+            </StackPanel>
+          </controls:PanelCard>
+        </StackPanel>
+      </StackPanel>
     </StackPanel>
-    <!-- The door tool: sizes and cut, hinge, frame, window and grab point; the viewport shows each change at once. -->
-    <StackPanel IsVisible="{Binding IsDoorTool}">
-    <StackPanel Spacing="4" DataContext="{Binding Door}" x:DataType="viewports:DoorToolViewModel">
-    <TextBlock Classes="muted" Text="Door" Margin="0,6,0,0" />
-    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
-      <TextBlock Grid.Row="0" Text="Width" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="0" Grid.Column="1" Value="{Binding Width}" Minimum="0.2" ToolTip.Tip="Door width, in metres" />
-      <TextBlock Grid.Row="1" Text="Height" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding Height}" Minimum="0.3" ToolTip.Tip="Door height, in metres" />
-      <TextBlock Grid.Row="2" Text="Thickness" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="2" Grid.Column="1" Value="{Binding Thickness}" Minimum="0.01" ToolTip.Tip="Door thickness, in metres" />
-      <TextBlock Grid.Row="3" Text="Sill" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="3" Grid.Column="1" Value="{Binding Sill}" Minimum="0" ToolTip.Tip="Door foot above the lowest point of the wall" />
-    </Grid>
-    <TextBlock Classes="muted" Text="Cut" Margin="0,6,0,0" />
-    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
-      <TextBlock Grid.Row="0" Text="Margin" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="0" Grid.Column="1" Value="{Binding Margin}" Minimum="0" ToolTip.Tip="How much larger than the door the cut is on every side" />
-      <TextBlock Grid.Row="1" Text="Behind" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding DepthIn}" Minimum="0.02" ToolTip.Tip="How far the cut reaches into the wall; drag the red square behind the box" />
-      <TextBlock Grid.Row="2" Text="In front" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="2" Grid.Column="1" Value="{Binding DepthOut}" Minimum="0.02" ToolTip.Tip="How far the cut reaches out of the wall face; drag the red square in front" />
-      <TextBlock Grid.Row="3" Text="Through" VerticalAlignment="Center" />
-      <ToggleButton Grid.Row="3" Grid.Column="1" Content="Whole wall" IsChecked="{Binding Through}" HorizontalAlignment="Left" ToolTip.Tip="Cut through the wall whatever its thickness" />
-    </Grid>
-    <TextBlock Classes="muted" Text="Hinge" Margin="0,6,0,0" />
-    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
-      <TextBlock Grid.Row="0" Text="Left" VerticalAlignment="Center" />
-      <ToggleButton Grid.Row="0" Grid.Column="1" Content="Hinge on the left" IsChecked="{Binding HingeLeft}" HorizontalAlignment="Left" ToolTip.Tip="Hinge on the left side as seen from the front" />
-      <TextBlock Grid.Row="1" Text="Right" VerticalAlignment="Center" />
-      <ToggleButton Grid.Row="1" Grid.Column="1" Content="Hinge on the right" IsChecked="{Binding HingeRight}" HorizontalAlignment="Left" ToolTip.Tip="Hinge on the right side as seen from the front" />
-      <TextBlock Grid.Row="2" Text="Opens" VerticalAlignment="Center" />
-      <ToggleButton Grid.Row="2" Grid.Column="1" Content="Outward" IsChecked="{Binding Outward}" HorizontalAlignment="Left" ToolTip.Tip="Swing out of the wall face, or into the wall" />
-      <TextBlock Grid.Row="3" Text="Angle" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="3" Grid.Column="1" Value="{Binding Angle}" Minimum="1" Maximum="170" Step="1" ToolTip.Tip="How far it swings open, in degrees" />
-    </Grid>
-    <TextBlock Classes="muted" Text="Frame" Margin="0,6,0,0" />
-    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto" RowSpacing="4">
-      <TextBlock Grid.Row="0" Text="Frame" VerticalAlignment="Center" />
-      <ToggleButton Grid.Row="0" Grid.Column="1" Content="Frame" IsChecked="{Binding HasFrame}" HorizontalAlignment="Left" ToolTip.Tip="A frame round the opening" />
-      <TextBlock Grid.Row="1" Text="Width" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding FrameWidth}" Minimum="0.01" ToolTip.Tip="Frame width, in metres" />
-    </Grid>
-    <TextBlock Classes="muted" Text="Window" Margin="0,6,0,0" />
-    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="4">
-      <TextBlock Grid.Row="0" Text="Window" VerticalAlignment="Center" />
-      <ToggleButton Grid.Row="0" Grid.Column="1" Content="Window" IsChecked="{Binding HasWindow}" HorizontalAlignment="Left" ToolTip.Tip="A second box that cuts the door itself" />
-      <TextBlock Grid.Row="1" Text="Width" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding WindowWidth}" Minimum="0.05" ToolTip.Tip="Window width, in metres" />
-      <TextBlock Grid.Row="2" Text="Height" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="2" Grid.Column="1" Value="{Binding WindowHeight}" Minimum="0.05" ToolTip.Tip="Window height, in metres" />
-      <TextBlock Grid.Row="3" Text="From floor" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="3" Grid.Column="1" Value="{Binding WindowFrom}" Minimum="0" ToolTip.Tip="Lower edge of the window above the door foot" />
-      <TextBlock Grid.Row="4" Text="Glass" VerticalAlignment="Center" />
-      <ToggleButton Grid.Row="4" Grid.Column="1" Content="Pane of glass" IsChecked="{Binding Glass}" HorizontalAlignment="Left" ToolTip.Tip="A thin pane in the window" />
-    </Grid>
-    <TextBlock Classes="muted" Text="Grab point" Margin="0,6,0,0" />
-    <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto" RowSpacing="4">
-      <TextBlock Grid.Row="0" Text="Height" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="0" Grid.Column="1" Value="{Binding GrabHeight}" Minimum="0" ToolTip.Tip="Where a character hand goes, above the door foot (the small sphere)" />
-      <TextBlock Grid.Row="1" Text="From edge" VerticalAlignment="Center" />
-      <inspector:DragNumberBox Grid.Row="1" Grid.Column="1" Value="{Binding GrabInset}" Minimum="0" ToolTip.Tip="How far in from the free edge" />
-    </Grid>
-      <Button Content="Remove door" Command="{Binding RemoveCommand}" IsVisible="{Binding IsEditing}" HorizontalAlignment="Left" Margin="0,6,0,0"
-              ToolTip.Tip="Take the door out and close the wall" />
-      <TextBlock Classes="muted" TextWrapping="Wrap" Margin="0,6,0,0"
-                 Text="Click a wall to place the door. Drag the red squares to move the sides of the cut along the wall normal. Enter applies, Escape cancels." />
-    </StackPanel>
-    </StackPanel>
-  </StackPanel>
   </ScrollViewer>
 </UserControl>

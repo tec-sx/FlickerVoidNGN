@@ -42,4 +42,25 @@ public interface IMusicPlayer
 
     /// <summary>Whether a track of the cue heard on a bus sounds or is coming in.</summary>
     bool IsLayerOn(string layer, AudioBus bus = AudioBus.Music);
+
+    /// <summary>
+    /// Jumps the cue heard on a bus to a bar (counted from 1, with fractions): its tracks stop and start again there at once, without
+    /// their fill-ins, so a place in the song can be heard without waiting for it.
+    /// </summary>
+    void Seek(double bar, AudioBus bus = AudioBus.Music);
+
+    /// <summary>Stops a bus's cues now, fading over a few milliseconds, instead of on the next bar.</summary>
+    void StopNow(AudioBus bus = AudioBus.Music);
+
+    /// <summary>Silences the tracks of this name without taking them out of the cue, as a mixer's mute does.</summary>
+    void SetTrackMuted(string layer, bool muted);
+
+    /// <summary>Hears only the tracks soloed, while any is.</summary>
+    void SetTrackSoloed(string layer, bool soloed);
+
+    /// <summary>Scales the tracks of this name, from 0 up, on top of their cue's own gain.</summary>
+    void SetTrackGain(string layer, float gain);
+
+    /// <summary>The loudest sample, 0 to 1, a track of the cue heard on a bus put out since this was last asked.</summary>
+    float TakeLayerLevel(string layer, AudioBus bus = AudioBus.Music);
 }

@@ -55,6 +55,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string? _sceneMood;
 
     private readonly HashSet<string> _openFlows = new(ContentManager.PathComparer);
+    private MusicPreview? _musicPreview;
     private readonly HashSet<string> _openMusic = new(ContentManager.PathComparer);
     private readonly Dictionary<string, Core.Environments.EnvironmentEditorViewModel> _openEnvironments = new(ContentManager.PathComparer);
     private Dictionary<AssetType, Action<AssetEntry>>? _openers;

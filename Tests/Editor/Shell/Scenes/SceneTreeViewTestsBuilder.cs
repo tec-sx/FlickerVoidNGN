@@ -1,7 +1,6 @@
 using Arch.Core;
 
 using Avalonia.Controls;
-using Avalonia.Headless;
 using Avalonia.Threading;
 
 using FlickerVoid.Editor.Core.Scenes;
@@ -23,8 +22,6 @@ internal sealed class SceneTreeViewTestsBuilder : IDisposable
         ] }
         """;
 
-    private static readonly Lazy<HeadlessUnitTestSession> Session = new(() => HeadlessUnitTestSession.StartNew(typeof(App)));
-
     private readonly EditorSceneTestsBuilder _scene = new();
     private Window? _window;
 
@@ -39,7 +36,7 @@ internal sealed class SceneTreeViewTestsBuilder : IDisposable
     /// <summary>Runs <paramref name="test"/> on the headless UI thread with the street open in both trees.</summary>
     public async Task Run(Action test)
     {
-        await Session.Value.Dispatch(
+        await HeadlessEditor.Session.Dispatch(
             () =>
             {
                 Show();

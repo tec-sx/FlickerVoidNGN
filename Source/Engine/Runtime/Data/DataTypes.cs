@@ -23,12 +23,16 @@ public sealed class DataTypes
     private readonly Dictionary<string, Type> _assets = [];
     private readonly Dictionary<string, Type> _rows = [];
     private readonly Dictionary<Type, List<JsonDerivedType>> _derived = [];
+    private readonly Dictionary<string, string> _extensions = new(StringComparer.OrdinalIgnoreCase);
     private JsonSerializerOptions? _options;
 
     /// <summary>The options that read every registered type; registering after the first read throws.</summary>
     public JsonSerializerOptions Options => _options ??= CreateOptions();
 
     public IReadOnlyDictionary<string, Type> AssetTypes => _assets;
+
+    /// <summary>The file extensions of asset types with a file type of their own (such as <c>.fvmusic</c>), each with its type's name.</summary>
+    public IReadOnlyDictionary<string, string> AssetExtensions => _extensions;
 
     public IReadOnlyDictionary<string, Type> RowTypes => _rows;
 
@@ -45,6 +49,24 @@ public sealed class DataTypes
     {
         ThrowIfInUse();
         _assets.Add(name, typeof(T));
+    }
+
+    /// <summary>
+    /// Lets files with <paramref name="extension"/> (such as <c>.fvmusic</c>) hold a <typeparamref name="T"/>, as well as <c>.fvdata</c>
+    /// files naming <paramref name="name"/>; a file with the extension needs no <c>type</c>.
+    /// </summary>
+    public void Register<T>(string name, string extension)
+        where T : class
+    {
+        Register<T>(name);
+        _extensions.Add(extension, name);
+    }
+
+    /// <summary>Whether the path is a data asset file: a <c>.fvdata</c> file or one with a registered type's own extension.</summary>
+    public bool IsAssetFile(string path)
+    {
+        string extension = Path.GetExtension(path);
+        return extension.Equals(".fvdata", StringComparison.OrdinalIgnoreCase) || _extensions.ContainsKey(extension);
     }
 
     /// <summary>Lets <c>.fvtable</c> files hold rows of <typeparamref name="TRow"/>, named <paramref name="name"/> in their <c>type</c>.</summary>
@@ -77,7 +99,17 @@ public sealed class DataTypes
     /// <summary>The data asset a <c>.fvdata</c> file holds, as the type its <c>type</c> names; <paramref name="path"/> names the file in errors.</summary>
     public object ReadAsset(string path, JsonObject file)
     {
-        Type type = GetType(path, file, _assets);
+        Type type;
+        string extension = Path.GetExtension(path);
+        if (file[TypeProperty] is null && _extensions.TryGetValue(extension, out string? named))
+        {
+            type = _assets[named];
+        }
+        else
+        {
+            type = GetType(path, file, _assets);
+        }
+
         JsonObject body = new();
         foreach ((string name, JsonNode? value) in file)
         {

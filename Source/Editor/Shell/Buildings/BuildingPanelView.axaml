@@ -1,19 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
              xmlns:buildings="using:FlickerVoid.Editor.Assets.Buildings"
              x:Class="FlickerVoid.Editor.Buildings.BuildingPanelView"
              x:DataType="buildings:BuildingPanelViewModel">
   <!-- The building as a whole: its storeys, top first, the one being edited picked, added, duplicated and taken away; its parts are in the outliner's Parts tab. -->
   <ScrollViewer>
     <StackPanel>
-      <ToggleButton Classes="section" IsChecked="True">
-        <DockPanel>
-          <PathIcon DockPanel.Dock="Left" Classes="muted" Data="{x:Static shell:LucideIcons.Layers}" Margin="20,0,7,0" />
-          <TextBlock Text="Storeys" VerticalAlignment="Center" />
-        </DockPanel>
-      </ToggleButton>
-      <Border Classes="sectionBody">
+      <controls:PanelCard Header="Storeys" Icon="{x:Static shell:LucideIcons.Layers}">
         <StackPanel Spacing="4">
           <ListBox ItemsSource="{Binding Storeys}" SelectedItem="{Binding Storey}">
             <ListBox.ItemTemplate>
@@ -49,9 +44,9 @@
             </Button>
           </UniformGrid>
           <TextBlock Classes="faint small" TextWrapping="Wrap" Margin="0,4,0,0"
-                     Text="Pick a storey to edit it here or in the viewport's storey switcher; the ones above it are hidden while you work on it. With nothing picked, the Tool tab shows the storey's height, walls, floor, light and corner pillars." />
+                     Text="Pick a storey to edit it here or in the viewport's storey switcher; the others are hidden while you work on it. With nothing picked, the Tool tab shows the storey's height, walls, floor, light and corner pillars." />
         </StackPanel>
-      </Border>
+      </controls:PanelCard>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

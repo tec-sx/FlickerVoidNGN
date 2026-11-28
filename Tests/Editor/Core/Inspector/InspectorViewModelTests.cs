@@ -4,6 +4,7 @@ using Arch.Core;
 
 
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Tags;
 using FlickerVoid.Engine.Cameras.Directing;
 using FlickerVoid.Engine.Cameras.Shots;
 using FlickerVoid.Engine.Cameras.Triggers;
@@ -428,17 +429,26 @@ public sealed class InspectorViewModelTests : IDisposable
     }
 
     [Fact]
-    public void EditsAListOfTagsAsNames()
+    public void EditsAListOfTagsAsChipsPickedFromTheProjectsTags()
     {
         Entity spot = _builder.Select("Spot", new Transform(), new TriggerArea { RequiredTags = [new Tag("Player")] });
 
-        CollectionFieldViewModel tags = _builder.Field<CollectionFieldViewModel>("Trigger Area", "Required Tags");
-        tags.AddCommand.Execute(null);
-        _builder.ViewModel.Refresh();
-        tags.Items[1].Should().BeOfType<TextFieldViewModel>().Subject.Value = "Character.Fox";
+        TagsFieldViewModel tags = _builder.Field<TagsFieldViewModel>("Trigger Area", "Required Tags");
+        tags.Tags.Should().Equal("Player");
+        tags.IsSingle.Should().BeFalse();
 
-        tags.Items[0].Should().BeOfType<TextFieldViewModel>().Subject.Value.Should().Be("Player");
-        _builder.World.Get<TriggerArea>(spot).RequiredTags.Should().Equal(new Tag("Player"), new Tag("Character.Fox"));
+        TagCatalog catalog = new();
+        catalog.Add("Character.Fox");
+        TagPickerViewModel picker = tags.OpenPicker(catalog);
+        picker.ToggleCommand.Execute(picker.Rows.First(row => row.Path == "Character"));
+
+        _builder.World.Get<TriggerArea>(spot).RequiredTags.Should().Equal(new Tag("Player"), new Tag("Character"));
+        tags.Tags.Should().Equal("Player", "Character");
+
+        tags.RemoveCommand.Execute("Player");
+
+        _builder.World.Get<TriggerArea>(spot).RequiredTags.Should().Equal(new Tag("Character"));
+        catalog.Contains("Player").Should().BeTrue("a tag the value held joins the picker's tree");
     }
 
     private static TField Child<TField>(ObjectFieldViewModel owner, string label)

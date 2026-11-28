@@ -1,0 +1,103 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="FlickerVoid.Editor.Tags.TagPickerView"
+             xmlns:tagModels="using:FlickerVoid.Editor.Core.Tags"
+             xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
+             xmlns:tags="using:FlickerVoid.Editor.Tags"
+             x:DataType="tagModels:TagPickerViewModel">
+  <!-- The project's tags (as Unreal's tag picker): a checkbox per tag, a dash on a parent with something picked below it, a
+       search over the whole tree, add, rename and remove on a hovered row, and a footer to add a new tag. -->
+  <Border Classes="tagPicker">
+    <DockPanel>
+      <Border DockPanel.Dock="Top" Classes="tagPickerBar" Background="{StaticResource EditorDeepBrush}" BorderThickness="0,0,0,1">
+        <DockPanel>
+          <PathIcon DockPanel.Dock="Left" Classes="accent" Data="{x:Static shell:LucideIcons.Tag}" Margin="0,0,6,0" />
+          <TextBlock DockPanel.Dock="Right" Classes="faint small" Text="{Binding PickedText}" VerticalAlignment="Center" />
+          <TextBlock Text="Tags" FontWeight="SemiBold" VerticalAlignment="Center" />
+        </DockPanel>
+      </Border>
+      <controls:SearchBox DockPanel.Dock="Top" x:Name="SearchText" Text="{Binding Search}" PlaceholderText="Search tags" />
+      <TextBlock DockPanel.Dock="Bottom" Classes="hint" TextWrapping="Wrap" Margin="9,6"
+                 Text="Picking a parent asks for everything below it. Renaming a tag updates every file that uses it; removing one in use asks first." />
+      <Border DockPanel.Dock="Bottom" Classes="tagPickerBar" BorderThickness="0,1,0,1">
+        <DockPanel>
+          <PathIcon DockPanel.Dock="Left" Classes="accent" Data="{x:Static shell:LucideIcons.Add}" Margin="0,0,6,0" />
+          <TextBox x:Name="NewTagText" Text="{Binding NewTag}" PlaceholderText="New tag, like Music.Chase" KeyDown="HandleNewTagKey" />
+        </DockPanel>
+      </Border>
+      <TextBlock DockPanel.Dock="Bottom" Classes="hint" Foreground="{StaticResource EditorDeleteBrush}" TextWrapping="Wrap" Margin="9,4"
+                 Text="{Binding Problem}" IsVisible="{Binding Problem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+      <Border DockPanel.Dock="Bottom" Padding="9,6" Background="{StaticResource EditorAccentSoftBrush}"
+              IsVisible="{Binding Asking, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+        <StackPanel Spacing="6">
+          <TextBlock Text="{Binding Asking}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+            <Button Content="Keep it" Command="{Binding CancelRemoveCommand}" />
+            <Button x:Name="ConfirmRemove" Classes="delete" Command="{Binding ConfirmRemoveCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <PathIcon Data="{x:Static shell:LucideIcons.Delete}" />
+                <TextBlock Text="Remove everywhere" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+      <ScrollViewer MaxHeight="300" HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl x:Name="TagRows" ItemsSource="{Binding Rows}" Margin="0,2">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="tagModels:TagPickerRowViewModel">
+              <Border Classes="tagRow">
+                <DockPanel Margin="{Binding Indent, Converter={x:Static tags:TagPickerView.LeftIndent}}">
+                  <Button DockPanel.Dock="Left" Classes="icon tagAction" Width="12" Margin="0,0,6,0" ToolTip.Tip="Fold or open"
+                          IsHitTestVisible="{Binding HasChildren}" Opacity="{Binding HasChildren, Converter={x:Static tags:TagPickerView.Shown}}"
+                          Command="{Binding $parent[tags:TagPickerView].((tagModels:TagPickerViewModel)DataContext).FoldCommand}" CommandParameter="{Binding}">
+                    <Panel>
+                      <PathIcon Data="{x:Static shell:LucideIcons.Next}" IsVisible="{Binding IsFolded}" />
+                      <PathIcon Data="{x:Static shell:LucideIcons.Expand}" IsVisible="{Binding !IsFolded}" />
+                    </Panel>
+                  </Button>
+                  <Panel DockPanel.Dock="Right" IsVisible="{Binding !IsRenaming}">
+                  <StackPanel Classes="tagActions" Orientation="Horizontal" Spacing="4">
+                    <Button Classes="icon tagAction" ToolTip.Tip="Add a tag below it"
+                            Command="{Binding $parent[tags:TagPickerView].((tagModels:TagPickerViewModel)DataContext).AddBelowCommand}" CommandParameter="{Binding}"
+                            Click="HandleAddBelow">
+                      <PathIcon Data="{x:Static shell:LucideIcons.Add}" />
+                    </Button>
+                    <Button Classes="icon tagAction" ToolTip.Tip="Rename it, in every file that uses it"
+                            Command="{Binding $parent[tags:TagPickerView].((tagModels:TagPickerViewModel)DataContext).StartRenameCommand}" CommandParameter="{Binding}">
+                      <PathIcon Data="{x:Static shell:LucideIcons.Rename}" />
+                    </Button>
+                    <Button Classes="icon tagAction" ToolTip.Tip="Remove it and the tags below it"
+                            Command="{Binding $parent[tags:TagPickerView].((tagModels:TagPickerViewModel)DataContext).RemoveCommand}" CommandParameter="{Binding}">
+                      <PathIcon Data="{x:Static shell:LucideIcons.Delete}" />
+                    </Button>
+                  </StackPanel>
+                  </Panel>
+                  <Panel>
+                    <Button Classes="quiet" Padding="0" Background="Transparent" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            IsVisible="{Binding !IsRenaming}" ToolTip.Tip="{Binding Path}"
+                            Command="{Binding $parent[tags:TagPickerView].((tagModels:TagPickerViewModel)DataContext).ToggleCommand}" CommandParameter="{Binding}">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Classes="tagCheck" Classes.on="{Binding IsOn}" Classes.part="{Binding IsPart}" VerticalAlignment="Center">
+                          <Panel>
+                            <PathIcon Data="{x:Static shell:LucideIcons.Check}" IsVisible="{Binding IsOn}" />
+                            <Rectangle IsVisible="{Binding IsPart}" />
+                          </Panel>
+                        </Border>
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                        <TextBlock Classes="faint small" Text="{Binding Note}" VerticalAlignment="Center" Margin="4,0,0,0" IsVisible="{Binding HasNote}" />
+                      </StackPanel>
+                    </Button>
+                    <TextBox Classes="tagRename" Text="{Binding RenameText}" IsVisible="{Binding IsRenaming}" KeyDown="HandleRenameKey"
+                             AttachedToVisualTree="HandleRenameShown" />
+                  </Panel>
+                </DockPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </DockPanel>
+  </Border>
+</UserControl>

@@ -53,6 +53,7 @@ public sealed partial class MainWindowViewModel
     private readonly List<int> _contextTabs = [];
 
     private readonly EditorLayout? _layout;
+    private int _audioBuffer = EditorLayout.DefaultAudioBufferFrames;
 
     /// <summary>The context panel's tab in front, or <see cref="NoTab"/>.</summary>
     [ObservableProperty]

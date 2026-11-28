@@ -10,6 +10,17 @@
              x:Class="FlickerVoid.Editor.Viewports.ViewportOverlay"
              x:DataType="viewports:ViewportViewModel">
   <Panel>
+    <Panel.Styles>
+      <Style Selector="Border.areaChip">
+        <Setter Property="Background" Value="{DynamicResource EditorPanelBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource EditorAccentBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="Padding" Value="7,3" />
+      </Style>
+    </Panel.Styles>
+    <!-- Music areas: the name chip of each area of the scene, with the tracks it turns on. -->
+    <Canvas x:Name="AreaChips" IsHitTestVisible="False" ClipToBounds="True" />
     <!-- Top left, the tools in hand: select, move, turn and scale, the axes they follow, and the snap of the tool chosen. -->
     <!-- A building's plan or a part's mesh, the top view and the plan's snap (rule R4: frequent actions over the viewport). -->
     <Border Classes="viewportBar" Margin="12" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="{Binding Building, Converter={x:Static ObjectConverters.IsNotNull}}">

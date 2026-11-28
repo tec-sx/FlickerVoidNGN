@@ -19,6 +19,8 @@ public sealed class EditorLayout
     /// <summary>The least a remembered panel size can be, so a panel never comes back too small to grab.</summary>
     public const double MinimumSize = 120;
 
+    public const int DefaultAudioBufferFrames = 1024;
+
     private readonly string _file;
     private readonly EditorLayoutFile _layout;
 
@@ -79,6 +81,17 @@ public sealed class EditorLayout
         set
         {
             _layout.SideWidth = value;
+            Save();
+        }
+    }
+
+    /// <summary>The frames the music editor's sound device takes at a time; saved as it changes.</summary>
+    public int AudioBufferFrames
+    {
+        get => _layout.AudioBufferFrames;
+        set
+        {
+            _layout.AudioBufferFrames = value;
             Save();
         }
     }

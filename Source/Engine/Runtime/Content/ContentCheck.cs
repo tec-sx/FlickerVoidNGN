@@ -109,7 +109,11 @@ public sealed class ContentCheck
                 CheckStrings();
                 break;
             default:
-                if (_game.Schemas.Files.TryGetValue(extension, out Func<JsonTypeInfo>? typeInfo))
+                if (_game.Data.IsAssetFile(path))
+                {
+                    CheckAsset();
+                }
+                else if (_game.Schemas.Files.TryGetValue(extension, out Func<JsonTypeInfo>? typeInfo))
                 {
                     JsonTypeInfo fileType = typeInfo();
                     CheckValue(fileType);

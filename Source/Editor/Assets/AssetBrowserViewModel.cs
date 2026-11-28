@@ -37,11 +37,14 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     /// Browses the content; <paramref name="data"/> lists the data asset and table types it can create, and
     /// <paramref name="codeFolder"/> is the project's source folder, where flow node classes go.
     /// </summary>
+    private DataTypes? _data;
+
     public AssetBrowserViewModel(IContentManager content, DataTypes? data = null, string? codeFolder = null)
     {
         _content = content;
         _imports = new ImportSources(content);
         _hasCode = codeFolder is not null;
+        _data = data;
         ListDataTypes(data);
         _catalogs = AssetCatalog.ForContent(content);
         if (codeFolder is not null)
@@ -62,6 +65,7 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     [MemberNotNull(nameof(NewChoices))]
     public void ListDataTypes(DataTypes? data)
     {
+        _data = data;
         List<MenuChoice> choices = [new("Folder", CreateFolder, Icon: "NewFolder")];
         foreach (AssetType type in AssetTypes.Files)
         {
@@ -310,7 +314,13 @@ public sealed partial class AssetBrowserViewModel : ObservableObject
     {
         string name = DisplayNames.FromIdentifier(type);
         Func<string, string> write = AssetNew.Json($"\"type\": \"{type}\"");
-        CreateFile($"New {name}", DataAssets.AssetExtension, "data", write);
+        string extension = DataAssets.AssetExtension;
+        if (_data is not null && _data.AssetExtensions.TryGetValue(type, out string? own))
+        {
+            extension = own;
+        }
+
+        CreateFile($"New {name}", extension, "data", write);
     }
 
     /// <summary>Creates an empty data table of the row type registered under <paramref name="type"/>.</summary>

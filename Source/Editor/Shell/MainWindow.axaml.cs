@@ -301,14 +301,35 @@ public sealed partial class MainWindow : Window
 
         if (main.Documents.Find(path) is { Content: MusicEditorView open } document)
         {
+            if (open.DataContext is MusicEditorViewModel previous)
+            {
+                previous.Dispose();
+            }
+
             open.DataContext = editor;
+            if (document.Side is Control shownSide)
+            {
+                shownSide.DataContext = editor;
+            }
+
             main.Documents.Show(document);
             return;
         }
 
         MusicEditorView view = new() { DataContext = editor, History = main.GetMusicHistory(path) };
-        EditorDocument created = new(path, editor.Title, view, () => main.CloseMusic(path), icon: "Music");
+        MusicSideView side = new() { DataContext = editor };
+        EditorDocument created = new(path, editor.Title, view, () => CloseMusic(main, view, path), icon: "Music") { Side = side };
         main.Documents.Show(created);
+    }
+
+    private static void CloseMusic(MainWindowViewModel main, MusicEditorView view, string path)
+    {
+        if (view.DataContext is MusicEditorViewModel editor)
+        {
+            editor.Dispose();
+        }
+
+        main.CloseMusic(path);
     }
 
     /// <summary>Shows the environment in the Day dock under the viewport, undone through its file's history.</summary>

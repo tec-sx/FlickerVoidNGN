@@ -22,10 +22,9 @@ public static class FieldFactory
     private static FieldViewModel CreateEmpty(IEditableValue property, FindContentFiles? files)
     {
         Type type = property.Type;
-        if (type == typeof(Tag))
+        if (type == typeof(Tag) || type == typeof(List<Tag>) || type == typeof(Tag[]))
         {
-            TagProperty tag = new(property);
-            return new TextFieldViewModel(tag);
+            return new TagsFieldViewModel(property);
         }
 
         if (type == typeof(Vector3))

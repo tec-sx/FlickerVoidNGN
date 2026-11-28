@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="FlickerVoid.Editor.Tags.TagChipsView"
+             xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
+             xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:tags="using:FlickerVoid.Editor.Tags"
+             x:DataType="inspector:TagsFieldViewModel">
+  <!-- A value's tags as chips, each with an x, and "+ Tag", which opens the project's tags to pick from. -->
+  <ItemsControl x:Name="Chips" ItemsSource="{Binding Tags}">
+    <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <WrapPanel ItemSpacing="4" LineSpacing="4" Margin="0,2" />
+      </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="x:String">
+        <Border Classes="tagChip" ToolTip.Tip="{Binding}">
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <PathIcon Classes="tag" Data="{x:Static shell:LucideIcons.Tag}" />
+            <TextBlock Text="{Binding}" />
+            <Button Classes="icon tagRemove" ToolTip.Tip="Remove the tag"
+                    IsVisible="{Binding !$parent[tags:TagChipsView].((inspector:TagsFieldViewModel)DataContext).IsReadOnly}"
+                    Command="{Binding $parent[tags:TagChipsView].((inspector:TagsFieldViewModel)DataContext).RemoveCommand}"
+                    CommandParameter="{Binding}">
+              <PathIcon Data="{x:Static shell:LucideIcons.Close}" />
+            </Button>
+          </StackPanel>
+        </Border>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+    <ItemsControl.Template>
+      <ControlTemplate>
+        <WrapPanel ItemSpacing="4" LineSpacing="4" Margin="0,2">
+          <ItemsPresenter />
+          <Button x:Name="AddButton" Classes="tagAdd" ToolTip.Tip="Pick tags from the project's tags, or add one"
+                  IsVisible="{Binding CanAdd}">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="bare" Opening="HandlePickerOpening">
+                <tags:TagPickerView />
+              </Flyout>
+            </Button.Flyout>
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <PathIcon Data="{x:Static shell:LucideIcons.Add}" />
+              <TextBlock Text="Tag" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </WrapPanel>
+      </ControlTemplate>
+    </ItemsControl.Template>
+  </ItemsControl>
+</UserControl>

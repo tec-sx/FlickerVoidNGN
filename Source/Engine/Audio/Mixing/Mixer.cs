@@ -46,6 +46,31 @@ public sealed class Mixer
 
     public void Send(in MixerCommand command) => _commands.Enqueue(command);
 
+    /// <summary>The loudest sample a voice put out since this was last asked, 0 to 1; 0 for a voice that is not playing.</summary>
+    public float TakeVoicePeak(int voice)
+    {
+        foreach (Voice candidate in _voices)
+        {
+            if (candidate.Active && candidate.Id == voice)
+            {
+                float peak = candidate.Peak;
+                candidate.Peak = 0;
+                return peak;
+            }
+        }
+
+        return 0;
+    }
+
+    /// <summary>The loudest sample a bus put out, after its gain, since this was last asked.</summary>
+    public float TakeBusPeak(AudioBus bus)
+    {
+        Bus found = _buses[(int)bus];
+        float peak = found.Peak;
+        found.Peak = 0;
+        return peak;
+    }
+
     /// <summary>Takes the id of a voice that ended (its source ran out, it was stopped, or no voice was free for it) since the last call.</summary>
     public bool TryTakeFinished(out int voice) => _finished.TryDequeue(out voice);
 
@@ -127,11 +152,13 @@ public sealed class Mixer
         int frames = buffer.Length / AudioFormat.Channels;
         float step = frames == 0 ? 0 : (bus.TargetGain - bus.Gain) / frames;
         float gain = bus.Gain;
+        float peak = bus.Peak;
         for (int frame = 0; frame < frames; frame++)
         {
             gain += step;
             float left = buffer[frame * 2] * gain;
             float right = buffer[(frame * 2) + 1] * gain;
+            peak = MathF.Max(peak, MathF.Max(MathF.Abs(left), MathF.Abs(right)));
             into[frame * 2] += left;
             into[(frame * 2) + 1] += right;
             if (!send.IsEmpty)
@@ -142,6 +169,7 @@ public sealed class Mixer
         }
 
         bus.Gain = bus.TargetGain;
+        bus.Peak = peak;
     }
 
     private void MixVoice(Voice voice, int frames)
@@ -169,6 +197,7 @@ public sealed class Mixer
         float leftStep = (voice.TargetLeft - voice.Left) / wanted;
         float rightStep = (voice.TargetRight - voice.Right) / wanted;
         bool faded = false;
+        float peak = voice.Peak;
         long first = _position + offset;
         for (int frame = 0; frame < read; frame++)
         {
@@ -204,9 +233,14 @@ public sealed class Mixer
                 voice.FadeInDone++;
             }
 
-            into[frame * 2] += played[frame * 2] * voice.Left * fade;
-            into[(frame * 2) + 1] += played[(frame * 2) + 1] * voice.Right * fade;
+            float heardLeft = played[frame * 2] * voice.Left * fade;
+            float heardRight = played[(frame * 2) + 1] * voice.Right * fade;
+            peak = MathF.Max(peak, MathF.Max(MathF.Abs(heardLeft), MathF.Abs(heardRight)));
+            into[frame * 2] += heardLeft;
+            into[(frame * 2) + 1] += heardRight;
         }
+
+        voice.Peak = peak;
 
         voice.Left = voice.TargetLeft;
         voice.Right = voice.TargetRight;
@@ -276,6 +310,7 @@ public sealed class Mixer
         }
 
         free.Active = true;
+        free.Peak = 0;
         free.Id = command.Voice;
         free.Source = command.Source;
         free.Bus = command.Bus;
@@ -398,6 +433,7 @@ public sealed class Mixer
         public long FadeInDone;
         public long StopAt = -1;
         public long StopFade;
+        public float Peak;
     }
 
     private sealed class Bus
@@ -409,5 +445,6 @@ public sealed class Mixer
         public float TargetCutoff = MixerCommand.NoCutoff;
         public LowPass Filter;
         public bool Paused;
+        public float Peak;
     }
 }

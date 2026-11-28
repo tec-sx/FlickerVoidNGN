@@ -4,7 +4,9 @@ using Arch.Core;
 
 using FlickerVoid.Editor.Core.Overlays;
 using FlickerVoid.Editor.Core.Shots;
+using FlickerVoid.Engine.Audio.Music;
 using FlickerVoid.Engine.Cameras.Shots;
+using FlickerVoid.Engine.Cameras.Triggers;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Rendering.GlobalIllumination;
@@ -51,6 +53,7 @@ public sealed partial class ViewportViewModel
             return;
         }
 
+        DrawMusicAreas(overlay, world);
         Icons.Collect(world, Selection.Selected);
         foreach (IconInstance icon in Icons.Icons)
         {
@@ -184,6 +187,19 @@ public sealed partial class ViewportViewModel
         }
 
         return aim;
+    }
+
+    private static readonly QueryDescription MusicAreas = new QueryDescription().WithAll<MusicArea, TriggerArea, Transform>();
+
+    private static void DrawMusicAreas(OverlayBuilder overlay, World world)
+    {
+        Vector4 green = new(0.55f, 0.85f, 0.5f, 1);
+        world.Query(in MusicAreas, (ref TriggerArea area, ref Transform transform) =>
+        {
+            Matrix4x4 matrix = transform.ToMatrix();
+            Vector3 half = area.Size / 2;
+            overlay.AddBox(area.Offset - half, area.Offset + half, matrix, green, 1.5f);
+        });
     }
 
     /// <summary>A mesh's box, a point light's reach as three circles, a spot light's cone, or an irradiance volume's box.</summary>

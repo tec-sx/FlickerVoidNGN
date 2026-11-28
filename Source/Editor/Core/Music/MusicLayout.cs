@@ -7,7 +7,9 @@ public static class MusicLayout
 
     public const double RehearsalHeight = 22;
 
-    public const double TrackHeight = 72;
+    public const double NotifierHeight = 22;
+
+    public const double TrackHeight = 84;
 
     public const double HeaderWidth = 180;
 

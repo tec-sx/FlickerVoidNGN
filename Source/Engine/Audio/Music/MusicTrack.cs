@@ -1,6 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
+using FlickerVoid.Engine.Audio.Mixing;
 using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Components;
 
 namespace FlickerVoid.Engine.Audio.Music;
@@ -14,6 +17,9 @@ public sealed class MusicTrack
 {
     /// <summary>What music areas and scripts ask for it by.</summary>
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>The name of the icon the editor shows it with (a drum, a guitar, a dog); empty for the editor's own choice. The game does not read it.</summary>
+    public string Icon { get; set; } = string.Empty;
 
     [ContentFile(".wav", ".ogg")]
     public string Loop { get; set; } = string.Empty;
@@ -35,6 +41,12 @@ public sealed class MusicTrack
     public string FillOut { get; set; } = string.Empty;
 
     public float Gain { get; set; } = 1;
+
+    /// <summary>The bus it is mixed on; none for the cue's own.</summary>
+    public AudioBus? Bus { get; set; }
+
+    /// <summary>Tags that bring the track in while a music area or a script asks for one of them, or for a tag below it; a track with triggers sounds only then.</summary>
+    public List<Tag> Triggers { get; set; } = [];
 
     /// <summary>Whether the track sounds only while a music area or a script asks for it by name.</summary>
     public bool ByRequest { get; set; }
@@ -59,7 +71,7 @@ public sealed class MusicTrack
     public float FadeOut { get; set; }
 
     /// <summary>A <c>sound</c> data asset played around the listener at random while the track is wanted, in place of a loop.</summary>
-    [ContentFile(".fvdata")]
+    [ContentFile(".fvsound", ".fvdata")]
     public string Scatter { get; set; } = string.Empty;
 
     /// <summary>The shortest wait in seconds between two scattered sounds.</summary>
@@ -75,4 +87,20 @@ public sealed class MusicTrack
 
     /// <summary>The farthest a scattered sound is thrown from the listener, in metres.</summary>
     public float FarDistance { get; set; } = 15;
+
+    /// <summary>Whether the track plays only when asked: by its name, or by a tag at or below one of its triggers.</summary>
+    [JsonIgnore]
+    public bool IsRequested => ByRequest || Triggers.Count > 0;
+
+    /// <summary>Whether an ask for a layer, a track name or a tag, brings this track in.</summary>
+    public bool IsAskedBy(string layer)
+    {
+        if (ByRequest && string.Equals(layer, Name, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        Tag asked = new(layer);
+        return Triggers.Any(trigger => asked.MatchesTag(trigger));
+    }
 }

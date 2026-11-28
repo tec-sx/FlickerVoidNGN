@@ -1,111 +1,18 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:data="using:FlickerVoid.Editor.Core.Data"
-             xmlns:tables="using:FlickerVoid.Editor.Assets.Data"
-             xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
              xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Data.DataView"
-             x:DataType="x:Object">
-  <UserControl.DataTemplates>
-    <DataTemplate DataType="data:DataObjectViewModel">
-      <StackPanel>
-        <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" />
-        <ItemsControl ItemsSource="{Binding Objects}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate DataType="data:DataObjectViewModel">
-              <Expander Header="{Binding Title}" IsExpanded="True" HorizontalAlignment="Stretch" Margin="0,1">
-                <ContentControl Content="{Binding}" />
-              </Expander>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <ItemsControl ItemsSource="{Binding Lists}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate DataType="data:DataListViewModel">
-              <ContentControl Content="{Binding}" />
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-    </DataTemplate>
-    <DataTemplate DataType="data:DataListViewModel">
-      <StackPanel>
-        <DockPanel>
-          <Button DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="Add" IsEnabled="{Binding !!AddChoices.Count}">
-            <PathIcon Data="{x:Static shell:LucideIcons.Add}" />
-            <Button.Flyout>
-              <MenuFlyout Placement="BottomEdgeAlignedRight" ItemsSource="{Binding AddChoices}">
-                <MenuFlyout.ItemContainerTheme>
-                  <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="data:DataChoice">
-                    <Setter Property="Header" Value="{Binding Name}" />
-                    <Setter Property="Command" Value="{Binding Command}" />
-                  </ControlTheme>
-                </MenuFlyout.ItemContainerTheme>
-              </MenuFlyout>
-            </Button.Flyout>
-          </Button>
-          <TextBlock Text="{Binding Label}" Classes="caps" VerticalAlignment="Center" Margin="2,6,0,4" />
-        </DockPanel>
-        <ItemsControl ItemsSource="{Binding Items}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate DataType="data:DataListItemViewModel">
-              <Expander IsExpanded="True" HorizontalAlignment="Stretch" Margin="0,1">
-                <Expander.Header>
-                  <DockPanel>
-                    <Button DockPanel.Dock="Right" Classes="icon delete" ToolTip.Tip="Remove"
-                            Command="{Binding List.RemoveCommand}" CommandParameter="{Binding}">
-                      <PathIcon Data="{x:Static shell:LucideIcons.Delete}" />
-                    </Button>
-                    <TextBlock Text="{Binding Form.Title}" VerticalAlignment="Center" />
-                  </DockPanel>
-                </Expander.Header>
-                <ContentControl Content="{Binding Form}" />
-              </Expander>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-    </DataTemplate>
-    <DataTemplate DataType="tables:TableViewModel">
-      <StackPanel>
-        <Border Classes="searchRow">
-          <StackPanel Orientation="Horizontal" Spacing="2">
-            <Button Classes="quiet" Command="{Binding AddRowCommand}">
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Add}" />
-                <TextBlock Text="Row" />
-              </StackPanel>
-            </Button>
-            <Button Classes="icon" ToolTip.Tip="Import CSV" Click="HandleImportClick">
-              <PathIcon Data="{x:Static shell:LucideIcons.Import}" />
-            </Button>
-            <Button Classes="icon" ToolTip.Tip="Export CSV" Click="HandleExportClick">
-              <PathIcon Data="{x:Static shell:LucideIcons.Open}" />
-            </Button>
-          </StackPanel>
-        </Border>
-        <ItemsControl ItemsSource="{Binding Rows}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate DataType="tables:TableRowViewModel">
-              <Expander IsExpanded="False" HorizontalAlignment="Stretch" Margin="0,1">
-                <Expander.Header>
-                  <DockPanel>
-                    <Button DockPanel.Dock="Right" Classes="icon delete" ToolTip.Tip="Remove row"
-                            Command="{Binding Table.RemoveRowCommand}" CommandParameter="{Binding}">
-                      <PathIcon Data="{x:Static shell:LucideIcons.Delete}" />
-                    </Button>
-                    <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}" />
-                  </DockPanel>
-                </Expander.Header>
-                <ContentControl Content="{Binding Form}" />
-              </Expander>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-    </DataTemplate>
-  </UserControl.DataTemplates>
-  <ScrollViewer>
-    <ContentControl Content="{Binding}" Margin="8,4" />
-  </ScrollViewer>
+             x:DataType="data:DataObjectViewModel">
+  <!-- The form of an opened data asset or a selected node as panel cards, edge to edge as the inspector's components are: one for
+       its own values, then one for each object and each list of objects in it (their templates are the application's). -->
+  <StackPanel IsVisible="{Binding Converter={x:Static ObjectConverters.IsNotNull}}">
+    <controls:PanelCard Header="{Binding Title}" Icon="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}"
+                        IsVisible="{Binding !!Fields.Count}">
+      <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" />
+    </controls:PanelCard>
+    <ItemsControl ItemsSource="{Binding Objects}" />
+    <ItemsControl ItemsSource="{Binding Lists}" />
+  </StackPanel>
 </UserControl>
