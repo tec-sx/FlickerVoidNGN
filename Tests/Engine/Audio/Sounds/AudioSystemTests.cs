@@ -2,6 +2,7 @@ using System.Numerics;
 
 using Arch.Core;
 
+using FlickerVoid.Engine.Audio.Mixing;
 using FlickerVoid.Engine.Audio.Sounds;
 using FlickerVoid.Engine.Gameplay.Tags;
 using FlickerVoid.Engine.Runtime.Components;
@@ -206,7 +207,7 @@ public sealed class AudioSystemTests : IDisposable
 
         ref Transform transform = ref _builder.Game.World.Get<Transform>(listener);
         transform.Position = Vector3.Zero;
-        _builder.Run();
+        _builder.Run(1);
         (float inside, _) = _builder.Hear(48000);
 
         _builder.Audio.IsIndoors.Should().BeTrue();
@@ -254,14 +255,49 @@ public sealed class AudioSystemTests : IDisposable
         Tag hub = new("Pause.Hub");
 
         _builder.Game.Pause(hub);
-        _builder.Run();
+        _builder.Run(1);
         (float paused, _) = _builder.Hear();
         _builder.Game.Resume(hub);
-        _builder.Run();
+        _builder.Run(1);
         (float resumed, _) = _builder.Hear();
 
-        paused.Should().BeApproximately(0.25f, 0.001f);
+        paused.Should().BeApproximately(0.175f, 0.001f);
         resumed.Should().BeApproximately(0.75f, 0.001f);
+    }
+
+    [Fact]
+    public void LowersTheMusicWhileAMixStateTheGameTurnedOnHolds()
+    {
+        string music = _builder.WithSound("Song", "\"spatial\": false, \"loop\": true, \"bus\": \"Music\"", 0.5f);
+        _builder.Audio.Play(music);
+        _builder.Run();
+        (float before, _) = _builder.Hear();
+
+        _builder.Audio.SetMixState("Talking", true);
+        _builder.Run(1);
+        (float talking, _) = _builder.Hear();
+        _builder.Audio.SetMixState("Talking", false);
+        _builder.Run(1);
+        (float after, _) = _builder.Hear();
+
+        before.Should().BeApproximately(0.5f, 0.001f);
+        talking.Should().BeApproximately(0.25f, 0.001f);
+        after.Should().BeApproximately(0.5f, 0.001f);
+    }
+
+    [Fact]
+    public void FollowsTheMixStatesOfAMixThatIsSet()
+    {
+        string hum = _builder.WithSound("Hum", "\"spatial\": false, \"loop\": true, \"bus\": \"Effects\"", 0.5f);
+        _builder.Audio.Play(hum);
+        _builder.Audio.Mix = new MixSet { States = [new MixState { Name = "Muffled", Fade = 0, Ducks = [new MixDuck { Bus = AudioBus.Effects, Gain = 0.2f }] }] };
+
+        _builder.Audio.SetMixState("muffled", true);
+        _builder.Run();
+        (float heard, _) = _builder.Hear();
+
+        heard.Should().BeApproximately(0.1f, 0.001f);
+        _builder.Audio.GetMixWeight("Muffled").Should().Be(1);
     }
 
     [Fact]

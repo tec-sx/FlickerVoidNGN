@@ -1,5 +1,8 @@
 using FlickerVoid.Editor.Core.Music;
 using FlickerVoid.Engine.Audio.Music;
+using FlickerVoid.Engine.Gameplay.Conditions;
+using FlickerVoid.Engine.Gameplay.Facts;
+using FlickerVoid.Engine.Gameplay.Tags;
 
 namespace FlickerVoid.Editor.Core.Tests.Music;
 
@@ -123,5 +126,53 @@ public sealed class MusicArrangementTests
         float[] samples = new float[(int)(seconds * 48000)];
         Array.Fill(samples, 0.5f);
         return new FlickerVoid.Engine.Audio.Mixing.SoundClip(samples, 1, 48000);
+    }
+
+    private static ConditionSet Hours(ConditionMode mode, params (FactCompare Compare, int Hour)[] tests)
+    {
+        ConditionSet set = new() { Mode = mode };
+        foreach ((FactCompare compare, int hour) in tests)
+        {
+            set.Conditions.Add(new FactCondition { Fact = new Tag("Time.Hour"), Compare = compare, Value = hour });
+        }
+
+        return set;
+    }
+
+    [Fact]
+    public void ReadsTheHoursATrackSoundsFromItsTimeConditions()
+    {
+        MusicArrangement.GetHours(new ConditionSet()).Should().Equal(new RehearsalSpan(0, 24));
+        MusicArrangement.GetHours(Hours(ConditionMode.All, (FactCompare.GreaterOrEqual, 18))).Should().Equal(new RehearsalSpan(18, 24));
+        MusicArrangement.GetHours(Hours(ConditionMode.All, (FactCompare.GreaterOrEqual, 6), (FactCompare.Less, 19))).Should().Equal(new RehearsalSpan(6, 19));
+        MusicArrangement.GetHours(Hours(ConditionMode.Any, (FactCompare.GreaterOrEqual, 19), (FactCompare.Less, 6))).Should().Equal(new RehearsalSpan(0, 6), new RehearsalSpan(19, 24));
+    }
+
+    [Fact]
+    public void LaysABedOutAsOneClipOverItsHours()
+    {
+        MusicCue ambience = new() { Tempo = 0 };
+        MusicTrack bed = new() { Name = "Day", Loop = "Day.ogg", When = Hours(ConditionMode.All, (FactCompare.GreaterOrEqual, 6), (FactCompare.Less, 19)) };
+
+        IReadOnlyList<ArrangementClip> clips = MusicArrangement.Plan(ambience, bed, new TrackLengths(1, 0, 0), [], 24);
+
+        ShouldMatch(clips, new ArrangementClip(ArrangementKind.Loop, 6, 13, 0));
+    }
+
+    [Fact]
+    public void ScattersMarksOnlyThroughTheHoursOfAnAmbienceTrack()
+    {
+        MusicCue ambience = new() { Tempo = 0 };
+        MusicTrack dogs = new() { Name = "Dogs", Scatter = "Sounds/Bark.fvsound", When = Hours(ConditionMode.All, (FactCompare.GreaterOrEqual, 18)) };
+
+        IReadOnlyList<ArrangementClip> clips = MusicArrangement.Plan(ambience, dogs, new TrackLengths(0, 0, 0), [], 24);
+
+        clips.Should().NotBeEmpty().And.OnlyContain(clip => clip.Start >= 18 && clip.Start <= 24 && clip.Kind == ArrangementKind.Scatter);
+    }
+
+    [Fact]
+    public void CountsAnAmbienceBarAsAnHour()
+    {
+        MusicArrangement.GetBarSeconds(new MusicCue { Tempo = 0 }).Should().Be(3600);
     }
 }

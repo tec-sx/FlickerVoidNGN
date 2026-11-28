@@ -5,9 +5,11 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 
 using FlickerVoid.Editor.Assets;
+using FlickerVoid.Editor.Assets.Tags;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Projects;
 using FlickerVoid.Editor.Core.Scenes;
+using FlickerVoid.Editor.Core.Tags;
 using FlickerVoid.Editor.Core.Viewports;
 using FlickerVoid.Editor.Inspector;
 using FlickerVoid.Editor.Persistence.Layout;
@@ -114,6 +116,7 @@ public sealed partial class App : Application
         }
 
         ContentFileFinder files = new(_scene.Content);
+        LoadTags(unsaved, viewport);
         InspectorViewModel inspector = new(_scene, files.Find);
         ScenePlayer? player = null;
         if (game is not null)
@@ -139,6 +142,44 @@ public sealed partial class App : Application
         _poll = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, HandlePoll);
         _poll.Start();
         return new MainWindow { DataContext = main };
+    }
+
+    /// <summary>
+    /// Gives the tag pickers the project's tags; a rename or removal waits for unsaved work to be saved, as it rewrites files, and
+    /// the open scene opens again when it was rewritten.
+    /// </summary>
+    private void LoadTags(UnsavedContent unsaved, ViewportViewModel viewport)
+    {
+        EditorScene scene = _scene!;
+        ProjectTags tags = new(unsaved, () => scene.Game, () =>
+        {
+            if (unsaved.HasUnsaved || scene.IsUnsaved)
+            {
+                return "Save your work first (Ctrl Shift S): renaming or removing a tag rewrites the files that use it.";
+            }
+
+            return null;
+        });
+        tags.Rewritten += paths =>
+        {
+            if (scene.ScenePath is { } open && paths.Contains(open, StringComparer.OrdinalIgnoreCase))
+            {
+                scene.Open(open);
+            }
+
+            viewport.Status = $"Tags rewritten in {paths.Count} file(s).";
+        };
+        TagCatalog catalog = new();
+        try
+        {
+            tags.Load(catalog);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            viewport.Status = $"Can't read the project's tags: {exception.Message}";
+        }
+
+        TagCatalog.Current = catalog;
     }
 
     private void HandlePoll(object? sender, EventArgs e)

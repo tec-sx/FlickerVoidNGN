@@ -81,25 +81,27 @@
             <TextBlock Text="{Binding Heading}" Classes="title" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
           </DockPanel>
         </Border>
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="8,4" IsVisible="{Binding Parent, Converter={x:Static ObjectConverters.IsNotNull}}">
-          <TextBlock Text="Parent" Classes="fieldLabel" MinWidth="96" />
-          <ContentControl Grid.Column="1" Content="{Binding Parent}" />
-        </Grid>
         <ScrollViewer>
-          <Border Classes="sectionBody">
-            <ItemsControl ItemsSource="{Binding Parameters}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="materials:MaterialParameterViewModel">
-                  <Grid ColumnDefinitions="Auto,*" Margin="0,1">
-                    <CheckBox IsChecked="{Binding IsOverridden}" MinWidth="0" VerticalAlignment="Center"
-                              ToolTip.Tip="Ticked: the material's own value. Unticked: kept from its parent, or the default." />
-                    <ContentControl Grid.Column="1" Content="{Binding Field}" ContentTemplate="{StaticResource FieldRow}"
-                                    Classes.inherited="{Binding !IsOverridden}" ToolTip.Tip="{Binding Source}" />
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </Border>
+          <StackPanel>
+            <controls:PanelCard Header="Instance" Icon="{x:Static shell:LucideIcons.Nested}"
+                                IsVisible="{Binding Parent, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <controls:PanelRow Label="Parent" Content="{Binding Parent}" />
+            </controls:PanelCard>
+            <controls:PanelCard Header="Parameters" Icon="{x:Static shell:LucideIcons.Shader}" Note="{Binding Parameters.Count}">
+              <ItemsControl ItemsSource="{Binding Parameters}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="materials:MaterialParameterViewModel">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,1">
+                      <CheckBox IsChecked="{Binding IsOverridden}" MinWidth="0" VerticalAlignment="Center"
+                                ToolTip.Tip="Ticked: the material's own value. Unticked: kept from its parent, or the default." />
+                      <ContentControl Grid.Column="1" Content="{Binding Field}" ContentTemplate="{StaticResource FieldRow}"
+                                      Classes.inherited="{Binding !IsOverridden}" ToolTip.Tip="{Binding Source}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </controls:PanelCard>
+          </StackPanel>
         </ScrollViewer>
       </DockPanel>
     </Border>

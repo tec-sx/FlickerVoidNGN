@@ -10,10 +10,10 @@ public struct SceneMusic
     }
 
     /// <summary>A <c>music</c> data asset on the music bus.</summary>
-    [ContentFile(".fvdata")]
+    [ContentFile(".fvmusic", ".fvdata")]
     public string Music { get; set; } = string.Empty;
 
     /// <summary>A <c>music</c> data asset on the ambience bus.</summary>
-    [ContentFile(".fvdata")]
+    [ContentFile(".fvmusic", ".fvdata")]
     public string Ambience { get; set; } = string.Empty;
 }

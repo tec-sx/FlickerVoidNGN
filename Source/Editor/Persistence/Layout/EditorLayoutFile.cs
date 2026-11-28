@@ -17,4 +17,6 @@ public sealed class EditorLayoutFile
 
     /// <summary>The side column's width.</summary>
     public double SideWidth { get; set; } = EditorLayout.DefaultSideWidth;
+
+    public int AudioBufferFrames { get; set; } = EditorLayout.DefaultAudioBufferFrames;
 }

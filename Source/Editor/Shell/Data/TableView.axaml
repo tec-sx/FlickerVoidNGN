@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:tables="using:FlickerVoid.Editor.Assets.Data"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
+             xmlns:shell="using:FlickerVoid.Editor"
+             x:Class="FlickerVoid.Editor.Data.TableView"
+             x:DataType="tables:TableViewModel">
+  <!-- The rows of an opened table, each a folded panel card named in its header, under the row to add one and to exchange CSV. -->
+  <StackPanel>
+    <Border Classes="searchRow">
+      <StackPanel Orientation="Horizontal" Spacing="2">
+        <Button Classes="quiet" Command="{Binding AddRowCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Add}" />
+            <TextBlock Text="Row" />
+          </StackPanel>
+        </Button>
+        <Button Classes="icon" ToolTip.Tip="Import CSV" Click="HandleImportClick">
+          <PathIcon Data="{x:Static shell:LucideIcons.Import}" />
+        </Button>
+        <Button Classes="icon" ToolTip.Tip="Export CSV" Click="HandleExportClick">
+          <PathIcon Data="{x:Static shell:LucideIcons.Open}" />
+        </Button>
+      </StackPanel>
+    </Border>
+    <ItemsControl ItemsSource="{Binding Rows}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate DataType="tables:TableRowViewModel">
+          <controls:PanelCard IsExpanded="False">
+            <controls:PanelCard.Header>
+              <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}" MinWidth="140" ToolTip.Tip="The row's name" />
+            </controls:PanelCard.Header>
+            <controls:PanelCard.Actions>
+              <Button Classes="icon small delete" ToolTip.Tip="Remove row" Command="{Binding Table.RemoveRowCommand}" CommandParameter="{Binding}">
+                <PathIcon Data="{x:Static shell:LucideIcons.Delete}" />
+              </Button>
+            </controls:PanelCard.Actions>
+            <ContentControl Content="{Binding Form}" ContentTemplate="{StaticResource DataBody}" />
+          </controls:PanelCard>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

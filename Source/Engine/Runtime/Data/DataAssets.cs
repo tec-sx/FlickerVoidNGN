@@ -68,8 +68,13 @@ public sealed class DataAssets : IDisposable
         string root = _content.RootDirectory;
         if (Directory.Exists(root))
         {
-            foreach (string fullPath in Directory.EnumerateFiles(root, "*" + AssetExtension, SearchOption.AllDirectories))
+            foreach (string fullPath in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
             {
+                if (!_types.IsAssetFile(fullPath))
+                {
+                    continue;
+                }
+
                 string path = Path.GetRelativePath(root, fullPath).Replace('\\', '/');
                 if (!path.Split('/').Any(static part => part.StartsWith('.')))
                 {
@@ -198,7 +203,7 @@ public sealed class DataAssets : IDisposable
     private void HandleChanged(string fullPath)
     {
         _loaded.Remove(fullPath);
-        if (fullPath.EndsWith(AssetExtension, StringComparison.OrdinalIgnoreCase))
+        if (_types.IsAssetFile(fullPath))
         {
             _files = null;
         }

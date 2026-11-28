@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
              xmlns:textures="using:FlickerVoid.Editor.Assets.Textures"
              x:Class="FlickerVoid.Editor.Textures.TextureEditorView"
              x:DataType="textures:TextureEditorViewModel">
@@ -33,9 +34,9 @@
           </DockPanel>
         </Border>
         <ScrollViewer>
-          <Border Classes="sectionBody">
+          <controls:PanelCard Header="Import" Icon="{x:Static shell:LucideIcons.Import}">
             <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" />
-          </Border>
+          </controls:PanelCard>
         </ScrollViewer>
       </DockPanel>
     </Border>

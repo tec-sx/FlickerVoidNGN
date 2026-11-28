@@ -1,5 +1,6 @@
 using FlickerVoid.Editor.Core.Data;
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Tags;
 using FlickerVoid.Engine.Gameplay.Tags;
 
 namespace FlickerVoid.Editor.Core.Tests.Data;
@@ -24,9 +25,13 @@ public sealed class DataObjectViewModelTests
     public void EditsTheObjectInPlace()
     {
         DataObjectViewModel form = _builder.Build();
-        TextFieldViewModel id = (TextFieldViewModel)form.Fields.Single(static field => field.Label == "Id");
+        TagsFieldViewModel id = (TagsFieldViewModel)form.Fields.Single(static field => field.Label == "Id");
+        TagCatalog catalog = new();
+        catalog.Add("Crate.Cellar");
 
-        id.Value = "Crate.Cellar";
+        TagPickerViewModel picker = id.OpenPicker(catalog);
+        picker.Search = "Cellar";
+        picker.ToggleCommand.Execute(picker.Rows.Single(static row => row.Path == "Crate.Cellar"));
 
         _builder.Crate.Id.Should().Be(new Tag("Crate.Cellar"));
         _builder.Edits.Should().Be(1);

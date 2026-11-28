@@ -10,6 +10,9 @@ namespace FlickerVoid.Engine.Audio.Sounds;
 /// </summary>
 public sealed class SoundDefinition
 {
+    /// <summary>The extension of sound files; a <c>.fvdata</c> file of type <c>sound</c> reads the same.</summary>
+    public const string Extension = ".fvsound";
+
     /// <summary>The variations, <c>.wav</c> or <c>.ogg</c> files in the content folder.</summary>
     [ContentFile(".wav", ".ogg")]
     public List<string> Files { get; set; } = [];

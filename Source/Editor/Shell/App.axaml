@@ -2,26 +2,69 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="FlickerVoid.Editor.App"
              xmlns:inspector="using:FlickerVoid.Editor.Core.Inspector"
+             xmlns:data="using:FlickerVoid.Editor.Core.Data"
              xmlns:shellInspector="using:FlickerVoid.Editor.Inspector"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
+             xmlns:tags="using:FlickerVoid.Editor.Tags"
              RequestedThemeVariant="Dark">
-  <!-- One template per kind of field, picked by the field's type, for the inspector and the material editor alike:
-       components and materials need no editor code of their own. -->
+  <!-- One template per kind of field, picked by the field's type, for the inspector, the data forms and the material editor
+       alike: components, data assets and materials need no editor code of their own. -->
   <Application.Resources>
-    <!-- A field's row: its label beside it, or above it, indented, when it holds fields of its own (nested objects and lists). The
-         label column is 96 px or as wide as the longest label of its section, so no label is cut. -->
+    <!-- A field's row: a panel row, its label beside the value, or above it, indented, when it holds fields of its own (nested
+         objects and lists). -->
     <DataTemplate x:Key="FieldRow" DataType="inspector:FieldViewModel">
-      <Grid RowDefinitions="Auto,Auto" Margin="0,1">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" MinWidth="96" SharedSizeGroup="FieldLabel" />
-          <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <TextBlock Text="{Binding Label}" Classes="fieldLabel" ToolTip.Tip="{Binding Label}" />
-        <ContentControl Classes="fieldValue" Classes.nested="{Binding IsNested}" Content="{Binding}" />
-      </Grid>
+      <controls:PanelRow Label="{Binding Label}" IsNested="{Binding IsNested}" Content="{Binding}" />
+    </DataTemplate>
+    <!-- What the card of a data object holds: its values, then a card for each object and each list of objects in it. -->
+    <DataTemplate x:Key="DataBody" DataType="data:DataObjectViewModel">
+      <StackPanel>
+        <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldRow}" />
+        <ItemsControl ItemsSource="{Binding Objects}" />
+        <ItemsControl ItemsSource="{Binding Lists}" />
+      </StackPanel>
     </DataTemplate>
   </Application.Resources>
   <Application.DataTemplates>
+    <!-- A data object is a panel card, and so is a list of them: its items are cards in it, added by kind and removed one by one. -->
+    <DataTemplate DataType="data:DataObjectViewModel">
+      <controls:PanelCard Header="{Binding Title}" Icon="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}">
+        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource DataBody}" />
+      </controls:PanelCard>
+    </DataTemplate>
+    <DataTemplate DataType="data:DataListViewModel">
+      <controls:PanelCard Header="{Binding Label}" Icon="{x:Static shell:LucideIcons.List}" Note="{Binding Items.Count}">
+        <controls:PanelCard.Actions>
+          <Button Classes="icon small" ToolTip.Tip="Add" IsEnabled="{Binding !!AddChoices.Count}">
+            <PathIcon Data="{x:Static shell:LucideIcons.Add}" />
+            <Button.Flyout>
+              <MenuFlyout Placement="BottomEdgeAlignedRight" ItemsSource="{Binding AddChoices}">
+                <MenuFlyout.ItemContainerTheme>
+                  <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="data:DataChoice">
+                    <Setter Property="Header" Value="{Binding Name}" />
+                    <Setter Property="Command" Value="{Binding Command}" />
+                  </ControlTheme>
+                </MenuFlyout.ItemContainerTheme>
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+        </controls:PanelCard.Actions>
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="data:DataListItemViewModel">
+              <controls:PanelCard Header="{Binding Form.Title}">
+                <controls:PanelCard.Actions>
+                  <Button Classes="icon small delete" ToolTip.Tip="Remove" Command="{Binding List.RemoveCommand}" CommandParameter="{Binding}">
+                    <PathIcon Data="{x:Static shell:LucideIcons.Delete}" />
+                  </Button>
+                </controls:PanelCard.Actions>
+                <ContentControl Content="{Binding Form}" ContentTemplate="{StaticResource DataBody}" />
+              </controls:PanelCard>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </controls:PanelCard>
+    </DataTemplate>
     <!-- Ranged numbers first: a template matches subclasses too, and the first match wins. Numbers are dragged sideways or typed
          after a click; X, Y and Z carry the axes' colours, every other number a yellow bar. -->
     <DataTemplate DataType="inspector:RangedNumberFieldViewModel">
@@ -36,6 +79,9 @@
     </DataTemplate>
     <DataTemplate DataType="inspector:TextFieldViewModel">
       <TextBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding !IsReadOnly}" />
+    </DataTemplate>
+    <DataTemplate DataType="inspector:TagsFieldViewModel">
+      <tags:TagChipsView />
     </DataTemplate>
     <DataTemplate DataType="inspector:AssetFieldViewModel">
       <Panel IsEnabled="{Binding !IsReadOnly}">

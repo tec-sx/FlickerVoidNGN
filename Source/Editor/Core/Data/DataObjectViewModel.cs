@@ -56,6 +56,9 @@ public sealed class DataObjectViewModel
 
     public string Title { get; }
 
+    /// <summary>The name of the icon its card shows before the title; none for a plain card.</summary>
+    public string? Icon { get; init; }
+
     public object Target { get; }
 
     public IReadOnlyList<FieldViewModel> Fields { get; }

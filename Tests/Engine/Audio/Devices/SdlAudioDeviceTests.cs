@@ -31,4 +31,15 @@ public sealed class SdlAudioDeviceTests
         finished.Should().BeTrue();
         mixer.Position.Should().BeGreaterThanOrEqualTo(480);
     }
+
+    [Fact]
+    public void OpensWithTheBufferAskedFor()
+    {
+        Mixer mixer = new();
+
+        using SdlAudioDevice? device = SdlAudioDevice.TryOpen(mixer, out string problem, "dummy", 4096);
+        Assert.SkipWhen(device is null, $"SDL opened no audio device: {problem}");
+
+        device!.BufferFrames.Should().Be(4096);
+    }
 }

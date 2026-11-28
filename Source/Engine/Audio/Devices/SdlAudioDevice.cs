@@ -17,18 +17,23 @@ public sealed unsafe class SdlAudioDevice : IDisposable
     private GCHandle _mixer;
     private bool _disposed;
 
-    private SdlAudioDevice(Sdl sdl, uint device, GCHandle mixer)
+    private SdlAudioDevice(Sdl sdl, uint device, GCHandle mixer, int bufferFrames)
     {
         _sdl = sdl;
         _device = device;
         _mixer = mixer;
+        BufferFrames = bufferFrames;
     }
+
+    /// <summary>The frames the device asks the mixer for at a time: more rides out a busy program without a crackle, and is heard later.</summary>
+    public int BufferFrames { get; }
 
     /// <summary>
     /// Opens the default output device and starts playing the mixer; null, with the reason, where there is no device to open, as on a
     /// build server. <paramref name="driver"/> names SDL's audio driver in place of the system's, such as <c>dummy</c>, which plays to nowhere.
+    /// <paramref name="bufferFrames"/> is a power of two: a game keeps it short to answer fast, an editor long to play clean.
     /// </summary>
-    public static SdlAudioDevice? TryOpen(Mixer mixer, out string problem, string? driver = null)
+    public static SdlAudioDevice? TryOpen(Mixer mixer, out string problem, string? driver = null, int bufferFrames = AudioFormat.BlockFrames * 2)
     {
         problem = string.Empty;
         Sdl sdl;
@@ -59,7 +64,7 @@ public sealed unsafe class SdlAudioDevice : IDisposable
             Freq = AudioFormat.SampleRate,
             Format = FloatSamples,
             Channels = AudioFormat.Channels,
-            Samples = AudioFormat.BlockFrames * 2,
+            Samples = (ushort)bufferFrames,
             Callback = new PfnAudioCallback(&Fill),
             Userdata = (void*)GCHandle.ToIntPtr(handle),
         };
@@ -74,7 +79,7 @@ public sealed unsafe class SdlAudioDevice : IDisposable
         }
 
         sdl.PauseAudioDevice(device, 0);
-        return new SdlAudioDevice(sdl, device, handle);
+        return new SdlAudioDevice(sdl, device, handle, got.Samples);
     }
 
     public void Dispose()

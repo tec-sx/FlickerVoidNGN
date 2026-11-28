@@ -4,12 +4,13 @@
              xmlns:shellflows="using:FlickerVoid.Editor.Flows"
              xmlns:data="using:FlickerVoid.Editor.Data"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
              x:Class="FlickerVoid.Editor.Flows.FlowSideView"
              x:DataType="flows:FlowGraphViewModel">
   <!-- The flow's side column, in place of the context panel and the outliner while its tab is shown: the selected node's values over
        the list of every node. -->
   <Border Classes="well">
-  <Grid RowDefinitions="*,1,220">
+  <Grid RowDefinitions="*,1,Auto">
     <DockPanel>
       <Border DockPanel.Dock="Top" Classes="entityHeader" IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
         <DockPanel>
@@ -26,19 +27,12 @@
       <TextBlock Text="Select a node to edit it here." Classes="hint" Margin="12,10"
                  IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNull}}" />
       <ScrollViewer>
-        <Border Classes="sectionBody" IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
-          <data:DataView DataContext="{Binding SelectedForm}" />
-        </Border>
+        <data:DataView DataContext="{Binding SelectedForm}" />
       </ScrollViewer>
     </DockPanel>
     <Border Grid.Row="1" Background="{DynamicResource EditorLineBrush}" />
-    <DockPanel Grid.Row="2">
-      <Border DockPanel.Dock="Top" Classes="searchRow" Padding="10,0">
-        <DockPanel>
-          <TextBlock DockPanel.Dock="Right" Classes="hint small" VerticalAlignment="Center" Text="{Binding Nodes.Count}" />
-          <TextBlock Text="NODES" Classes="caps" VerticalAlignment="Center" />
-        </DockPanel>
-      </Border>
+    <!-- Every node of the flow: folded, the selected node's values get the whole column. -->
+    <controls:PanelCard Grid.Row="2" Header="Nodes" Icon="{x:Static shell:LucideIcons.List}" Note="{Binding Nodes.Count}" Padding="0" MaxHeight="244">
       <ListBox x:Name="NodeList" Classes="nodeList" ItemsSource="{Binding Nodes}" SelectedItem="{Binding Selected, Mode=OneWay}"
                SelectionChanged="HandleNodeListSelected">
         <ListBox.ItemTemplate>
@@ -52,7 +46,7 @@
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
-    </DockPanel>
+    </controls:PanelCard>
   </Grid>
 </Border>
 </UserControl>

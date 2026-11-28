@@ -35,7 +35,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
 
         browser.SelectedFilter = browser.Filters.Single(static filter => filter.Label == "Art");
 
-        browser.Filters.Select(static filter => filter.Label).Should().Equal("All", "Scenes", "Art", "Light", "Data", "Code");
+        browser.Filters.Select(static filter => filter.Label).Should().Equal("All", "Scenes", "Art", "Light", "Sound", "Data", "Code");
         browser.Assets.Select(static asset => asset.Path).Should().Equal("Room.glb", "Wall.fvmat");
         browser.Filters[0].IsAll.Should().BeTrue();
         browser.Filters[1].Color.Should().Be(AssetTypes.Scene.Color);
@@ -254,7 +254,7 @@ public sealed class AssetBrowserViewModelTests : IDisposable
         AssetBrowserViewModel browser = _builder.Build();
 
         browser.NewChoices.Select(static choice => $"{choice.Group}/{choice.Name}").Should()
-            .Equal("/Folder", "/Scene", "/Vehicle", "/Building", "/Prop", "/Tree", "Look/Material", "Look/Mood", "Look/Environment", "Look/Lens", "Look/Canvas", "Flow/Flow Graph");
+            .Equal("/Folder", "/Scene", "/Vehicle", "/Building", "/Prop", "/Tree", "Look/Material", "Look/Mood", "Look/Environment", "Look/Lens", "Look/Canvas", "Flow/Flow Graph", "/Mix");
     }
 
     [Fact]

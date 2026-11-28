@@ -108,6 +108,29 @@ public sealed partial class EditorThemeTests
         stray.Should().BeEmpty("rule R13: colours come from the theme");
     }
 
+    [Fact]
+    public void Views_build_their_sections_from_panel_cards()
+    {
+        var stray = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(ShellFolder(), "*.axaml", SearchOption.AllDirectories))
+        {
+            if (file.EndsWith("EditorTheme.axaml") || file.Contains(Path.Combine("Shell", "obj")) || file.Contains(Path.Combine("Shell", "bin")))
+            {
+                continue;
+            }
+
+            foreach (Match match in SectionPattern().Matches(File.ReadAllText(file)))
+            {
+                stray.Add($"{Path.GetFileName(file)} {match.Value}");
+            }
+        }
+
+        stray.Should().BeEmpty("rule R26: every section of a panel is a PanelCard, its fields PanelRows");
+    }
+
+    [GeneratedRegex(@"<Expander\b|Classes=""[^""]*\bsection(Body)?\b[^""]*""|\bfieldValue\b|SharedSizeGroup=""FieldLabel""")]
+    private static partial Regex SectionPattern();
+
     [GeneratedRegex(@"<SolidColorBrush x:Key=""(\w+)"" Color=""(#[0-9A-Fa-f]{6})""")]
     private static partial Regex BrushPattern();
 
