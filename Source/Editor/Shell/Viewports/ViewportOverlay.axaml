@@ -295,7 +295,7 @@
     </Border>
     <!-- The selected shot's timeline, left of the camera preview in the bottom right corner: the kit's ruler over one lane of keys. -->
     <Grid ColumnDefinitions="3*,*" VerticalAlignment="Bottom" IsVisible="{Binding Timeline.HasShot}">
-      <Border Classes="viewportBar" Margin="12,4,8,12">
+      <Border Classes="viewportBar" Margin="12,4,8,12" Height="58">
         <DockPanel>
           <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
             <Button Classes="icon" Command="{Binding AddShotKeyCommand}"

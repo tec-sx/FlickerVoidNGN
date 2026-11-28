@@ -1598,6 +1598,30 @@
     <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
     <Setter Property="BorderThickness" Value="1" />
   </Style>
+  <Style Selector="Border.transportField > StackPanel">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="6" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.transportField TextBlock">
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.transportField TextBlock.name">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="Border.transportField TextBox, Border.transportField ComboBox">
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Border.transportField TextBox /template/ Border#PART_BorderElement, Border.transportField ComboBox /template/ Border#Background">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
   <!-- The pill filter (rule R28): a wrapping row of 20 px pills, radius 10, on the raised colour with a line border, each with
        its count faint; the chosen one washed in the accent with an accent border and a cross; the add pill dashed. -->
   <Style Selector="lists|PillFilter">

@@ -91,6 +91,8 @@ public sealed class KitControlsTests
 
             tabs.Should().HaveCount(3);
             tabs[0].Bounds.Height.Should().Be(25, "a 26 px bar with its 1 px line under the tabs");
+            ContentPresenter chosen = KitControlsTestsBuilder.Part<ContentPresenter>(tabs[0], "PART_ContentPresenter");
+            chosen.BoxShadow.Should().Be(group.FindResource("EditorTabBottomBar"), "the chosen tab has an accent bar at its foot");
 
             _builder.Click(tabs[2]);
 

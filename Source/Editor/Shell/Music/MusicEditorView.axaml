@@ -37,34 +37,46 @@
       </timelines:Transport.Tools>
       <timelines:Transport.Fields>
         <StackPanel Orientation="Horizontal" Spacing="6">
-          <Border Classes="stripCell"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <TextBlock Text="Tempo" Classes="hint" VerticalAlignment="Center" />
-            <TextBox Text="{Binding Tempo}" Width="52" />
-            <TextBlock Text="BPM" Classes="hint" VerticalAlignment="Center" />
-          </StackPanel></Border>
-          <Border Classes="stripCell" IsVisible="{Binding IsHours}"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <TextBlock Text="Ruler" Classes="hint" VerticalAlignment="Center" />
-            <TextBlock Text="Hours of the day" VerticalAlignment="Center" />
-          </StackPanel></Border>
-          <Border Classes="stripCell" IsVisible="{Binding IsHours}"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+          <Border Classes="transportField">
+            <StackPanel>
+              <TextBlock Classes="name" Text="Tempo" />
+              <TextBox Text="{Binding Tempo}" Width="24" />
+              <TextBlock Text="BPM" />
+            </StackPanel>
+          </Border>
+          <Border Classes="transportField" IsVisible="{Binding IsHours}">
+            <StackPanel>
+              <TextBlock Classes="name" Text="Ruler" />
+              <TextBlock Text="Hours of the day" />
+            </StackPanel>
+          </Border>
+          <Border Classes="transportField" IsVisible="{Binding IsHours}"
                   ToolTip.Tip="How fast the day passes while this plays, so the layers that keep hours come and go. Held, the hour under the playhead stays.">
-            <TextBlock Text="Day runs" Classes="hint" VerticalAlignment="Center" />
-            <ComboBox x:Name="DayPaceBox" ItemsSource="{Binding DayPaces}" SelectedItem="{Binding DayPace}" MinWidth="104" />
-          </StackPanel></Border>
-          <Border Classes="stripCell" IsVisible="{Binding !IsHours}"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <TextBlock Text="Meter" Classes="hint" VerticalAlignment="Center" />
-            <TextBox Text="{Binding BeatsPerBar}" Width="36" />
-            <TextBlock Text="beats" Classes="hint" VerticalAlignment="Center" />
-          </StackPanel></Border>
-          <Border Classes="stripCell" IsVisible="{Binding !IsHours}"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <TextBlock Text="Phrase" Classes="hint" VerticalAlignment="Center" />
-            <TextBox Text="{Binding PhraseBars}" Width="40" />
-            <TextBlock Text="bars" Classes="hint" VerticalAlignment="Center" />
-          </StackPanel></Border>
-          <Border Classes="stripCell" IsVisible="{Binding !IsHours}"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <TextBlock Text="Snap" Classes="hint" VerticalAlignment="Center" />
-            <ComboBox ItemsSource="{Binding SnapOptions}" SelectedItem="{Binding Snap}" MinWidth="80" />
-          </StackPanel></Border>
+            <StackPanel>
+              <TextBlock Classes="name" Text="Day runs" />
+              <ComboBox x:Name="DayPaceBox" ItemsSource="{Binding DayPaces}" SelectedItem="{Binding DayPace}" />
+            </StackPanel>
+          </Border>
+          <Border Classes="transportField" IsVisible="{Binding !IsHours}">
+            <StackPanel>
+              <TextBlock Classes="name" Text="Meter" />
+              <TextBox Text="{Binding BeatsPerBar}" Width="12" />
+              <TextBlock Text="/ 4" />
+            </StackPanel>
+          </Border>
+          <Border Classes="transportField" IsVisible="{Binding !IsHours}">
+            <StackPanel>
+              <TextBlock Classes="name" Text="Phrase" />
+              <TextBox Text="{Binding PhraseBars}" Width="16" />
+              <TextBlock Text="bars" />
+            </StackPanel>
+          </Border>
+          <Border Classes="transportField" IsVisible="{Binding !IsHours}">
+            <StackPanel>
+              <TextBlock Classes="name" Text="Snap" />
+              <ComboBox ItemsSource="{Binding SnapOptions}" SelectedItem="{Binding Snap}" />
+            </StackPanel>
+          </Border>
         </StackPanel>
       </timelines:Transport.Fields>
     </timelines:Transport>
