@@ -10,8 +10,8 @@ namespace FlickerVoid.Editor.Controls.Timelines;
 /// The lanes of every timeline (rule R28): one row for each lane and the lanes under it, its grid from the scale, and the items
 /// within the shown span, each drawn by the painter of its kind; nothing off screen costs anything. As tall as its rows, so a
 /// scroller around it and the lane headers scrolls both together. A press picks an item (Ctrl adds it), a drag moves or resizes
-/// it, a press on empty lane scrubs; the arrows nudge, Delete removes, Home and End move the cursor; Ctrl with the wheel zooms,
-/// Shift with the wheel pans, and Alt turns snapping off.
+/// it, a press on empty lane scrubs; the arrows nudge, Delete removes, Home and End move the cursor; the wheel zooms the time
+/// (<see cref="TimelineInput.Read"/>), Shift with it pans, and Alt turns snapping off.
 /// </summary>
 public sealed class TimelineLanes : TimelineControl
 {
@@ -116,7 +116,7 @@ public sealed class TimelineLanes : TimelineControl
         base.OnPointerWheelChanged(e);
         if (Timeline is { } timeline)
         {
-            TimelineInput.Wheel(timeline, e, e.GetPosition(this).X, zoomNeedsControl: true);
+            TimelineInput.Wheel(timeline, e, e.GetPosition(this).X);
         }
     }
 

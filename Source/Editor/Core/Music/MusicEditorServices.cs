@@ -26,6 +26,12 @@ public sealed class MusicEditorServices
     /// <summary>Keeps the buffer chosen and opens the preview's device with it.</summary>
     public Action<int>? SetBufferFrames { get; init; }
 
+    /// <summary>The height of the dock under the lanes.</summary>
+    public Func<double> DockHeight { get; init; } = () => MusicEditorViewModel.DefaultDockHeight;
+
+    /// <summary>Keeps the dock's height as its grip drags it.</summary>
+    public Action<double>? SetDockHeight { get; init; }
+
     public Func<MixSet> Mix { get; init; } = MixSet.Default;
 
     /// <summary>Opens the project's mix file in the data editor, making it first when the project has none.</summary>

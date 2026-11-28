@@ -1,15 +1,24 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 using FlickerVoid.Editor.Controls;
+using FlickerVoid.Editor.Controls.Timelines;
 using FlickerVoid.Editor.Core.Music;
 using FlickerVoid.Editor.Core.Undo;
 
 namespace FlickerVoid.Editor.Music;
 
-/// <summary>The arrangement editor: the transport, the lanes with the layers' headers beside them, and the dock under them; it runs the preview's clock while shown.</summary>
+/// <summary>
+/// The arrangement editor: the transport, the lanes with the layers' headers beside them, and the dock under them; it runs the
+/// preview's clock while shown. The wheel answers as on every timeline (<see cref="TimelineInput.Read"/>): over the lanes it zooms the
+/// bars about the pointer, with Ctrl it makes the lanes taller or shorter about it, with Shift it pans; over the headers, and with
+/// Alt, it scrolls. The headers stay at the left as the lanes scroll sideways.
+/// </summary>
 public partial class MusicEditorView : UserControl
 {
     private readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromMilliseconds(16) };
@@ -21,6 +30,8 @@ public partial class MusicEditorView : UserControl
         UndoShortcuts.Attach(this, () => History);
         _clock.Tick += HandleTick;
         KeyDown += HandleKeyDown;
+        LanesContent.AddHandler(PointerWheelChangedEvent, HandleLanesWheel);
+        LanesScroll.ScrollChanged += HandleLanesScrolled;
     }
 
     /// <summary>The arrangement file's undo and redo steps, which Ctrl+Z and Ctrl+Y here step through.</summary>
@@ -80,6 +91,70 @@ public partial class MusicEditorView : UserControl
         editor.SelectLayer(layer);
         Lanes.Focus();
         return editor;
+    }
+
+    private void HandleLanesWheel(object? sender, PointerWheelEventArgs args)
+    {
+        if (DataContext is not MusicEditorViewModel editor)
+        {
+            return;
+        }
+
+        TimelineWheel wheel = TimelineInput.Read(args.KeyModifiers, args.Delta);
+        bool overLanes = args.Source is Visual source && (source == Lanes || Lanes.IsVisualAncestorOf(source));
+        switch (wheel)
+        {
+            case TimelineWheel.ZoomTime when overLanes:
+                ZoomBarsAt(editor, args);
+                args.Handled = true;
+                break;
+            case TimelineWheel.ScaleLanes:
+                ScaleLanesAt(editor, args);
+                args.Handled = true;
+                break;
+            case TimelineWheel.Pan:
+                double notches = TimelineInput.Notches(args.Delta);
+                double x = LanesScroll.Offset.X - (notches * TimelineInput.PanPerNotch);
+                LanesScroll.Offset = new Vector(x, LanesScroll.Offset.Y);
+                args.Handled = true;
+                break;
+        }
+    }
+
+    /// <summary>Zooms the bars so the one under the pointer stays under it.</summary>
+    private void ZoomBarsAt(MusicEditorViewModel editor, PointerWheelEventArgs args)
+    {
+        double x = args.GetPosition(Lanes).X;
+        double seen = args.GetPosition(LanesScroll).X;
+        double bars = x / editor.BarWidth;
+        editor.ZoomBars(args.Delta.Y);
+        LanesScroll.UpdateLayout();
+        double offset = Lanes.Bounds.X + (bars * editor.BarWidth) - seen;
+        LanesScroll.Offset = new Vector(offset, LanesScroll.Offset.Y);
+    }
+
+    /// <summary>Makes the lanes taller or shorter so the one under the pointer stays under it.</summary>
+    private void ScaleLanesAt(MusicEditorViewModel editor, PointerWheelEventArgs args)
+    {
+        double y = args.GetPosition(Lanes).Y;
+        double seen = args.GetPosition(LanesScroll).Y;
+        double top = Lanes.TracksTop;
+        double lanes = Math.Max(0, y - top) / editor.LaneHeight;
+        editor.ScaleLanes(args.Delta.Y);
+        if (y <= top)
+        {
+            return;
+        }
+
+        LanesScroll.UpdateLayout();
+        double offset = Lanes.Bounds.Y + top + (lanes * editor.LaneHeight) - seen;
+        LanesScroll.Offset = new Vector(LanesScroll.Offset.X, offset);
+    }
+
+    /// <summary>Holds the headers at the left while the lanes scroll sideways; they are drawn over the lanes they cover.</summary>
+    private void HandleLanesScrolled(object? sender, ScrollChangedEventArgs args)
+    {
+        Headers.RenderTransform = new TranslateTransform(LanesScroll.Offset.X, 0);
     }
 
     /// <summary>Zooms so that every bar shows beside the headers.</summary>

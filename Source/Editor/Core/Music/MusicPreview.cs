@@ -78,6 +78,9 @@ public sealed class MusicPreview : IDisposable
         _device = SdlAudioDevice.TryOpen(_audio.Mixer, out _, _driver, frames);
     }
 
+    /// <summary>How the device's audio thread kept up since this was last asked; nothing without a device.</summary>
+    public AudioTimingReport TakeTiming() => _device?.TakeTiming() ?? default;
+
     /// <summary>The frames the open device takes at a time; 0 without one.</summary>
     public int DeviceBufferFrames => _device?.BufferFrames ?? 0;
 

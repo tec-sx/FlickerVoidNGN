@@ -70,11 +70,11 @@ public sealed class TimelineControlsTests
     }
 
     [Fact]
-    public async Task ZoomsWithControlAndTheWheelAboutThePointer()
+    public async Task ZoomsWithTheWheelAboutThePointer()
     {
         await _builder.Run(() =>
         {
-            _builder.Wheel(_builder.Lanes, new Point(320, 40), 2, RawInputModifiers.Control);
+            _builder.Wheel(_builder.Lanes, new Point(320, 40), 2);
 
             _builder.Timeline.Range.Span.Should().BeLessThan(16);
             _builder.Timeline.Range.ToTime(320).Should().BeApproximately(8, Precision);
@@ -82,14 +82,44 @@ public sealed class TimelineControlsTests
     }
 
     [Fact]
-    public async Task LeavesTheWheelToTheScrollerWithoutControl()
+    public async Task PansWithShiftAndTheWheel()
     {
         await _builder.Run(() =>
         {
-            _builder.Wheel(_builder.Lanes, new Point(320, 40), 2);
+            _builder.Wheel(_builder.Lanes, new Point(320, 40), -1, RawInputModifiers.Shift);
 
             _builder.Timeline.Range.Span.Should().BeApproximately(16, Precision);
+            _builder.Timeline.Range.MinTime.Should().BeApproximately(TimelineInput.PanPerNotch / 40, Precision);
         });
+    }
+
+    [Theory]
+    [InlineData(RawInputModifiers.Control)]
+    [InlineData(RawInputModifiers.Alt)]
+    public async Task LeavesTheWheelWithControlOrAltToTheControlAround(RawInputModifiers modifiers)
+    {
+        await _builder.Run(() =>
+        {
+            _builder.Wheel(_builder.Lanes, new Point(320, 40), 2, modifiers);
+
+            _builder.Timeline.Range.Span.Should().BeApproximately(16, Precision);
+            _builder.Timeline.Range.MinTime.Should().Be(0);
+        });
+    }
+
+    [Theory]
+    [InlineData(KeyModifiers.None, 0, 1, TimelineWheel.ZoomTime)]
+    [InlineData(KeyModifiers.Control, 0, 1, TimelineWheel.ScaleLanes)]
+    [InlineData(KeyModifiers.Shift, 0, 1, TimelineWheel.Pan)]
+    [InlineData(KeyModifiers.Alt, 0, 1, TimelineWheel.Scroll)]
+    [InlineData(KeyModifiers.None, 1, 0.2, TimelineWheel.Pan)]
+    public void ReadsTheWheelAlikeOnEveryTimeline(KeyModifiers keys, double sideways, double down, TimelineWheel expected)
+    {
+        Vector delta = new(sideways, down);
+
+        TimelineWheel wheel = TimelineInput.Read(keys, delta);
+
+        wheel.Should().Be(expected);
     }
 
     [Fact]

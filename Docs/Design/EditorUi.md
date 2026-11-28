@@ -66,13 +66,13 @@ What every editor view builds from (rule R28); the measures are in `Design/Timel
 | `ITimeScale` | `Core/Timelines` | What a ruler counts: `BarScale` (bars and beats, phrases as sections), `HourScale` (the day, repeating), `SecondScale`. Gives the ticks, the snap step and the position's text. |
 | `TimelineViewModel` | `Core/Timelines` | A range, a scale, lanes of items, regions, the cursor and the playhead; `TimelineEdit` turns the pointer and keys into moves, resizes, creates and deletes, which an `ITimelineEditor` applies. |
 | `TimeRuler` | `Controls/Timelines` | 24 px: ticks, labels, sections bold, region tabs and the position chip; pressed or dragged it moves the cursor (snapped unless Alt), wheel zooms, Shift pans. |
-| `TimelineLanes` | `Controls/Timelines` | The lanes' rows with the scale's grid; each item drawn by the `ILaneItemPainter` registered for its kind (`ClipPainter`, `FillPainter`, `MarkerPainter`, `KeyPainter`). |
+| `TimelineLanes` | `Controls/Timelines` | The lanes' rows with the scale's grid; each item drawn by the `ILaneItemPainter` registered for its kind (`ClipPainter`, `FillPainter`, `MarkerPainter`, `KeyPainter`). The wheel zooms the time, Shift pans (`TimelineInput.Read`, the mapping every timeline shares: Ctrl scales lanes, Alt scrolls). |
 | `TimelineOverlay` | `Controls/Timelines` | Over the lanes, not hit: region bands (live, queued, idle), the draft and the position line. |
 | `LaneHeader` | `Controls/Timelines` | A lane's header: a 3 px edge in its tint, icon, title, note, buttons and its own rows; a sub lane indents 22 px. |
 | `Transport` | `Controls/Timelines` | The 34 px bar over an `ITransport`: play or pause, stop, loop, the position (15 px semibold), the clock time, then the editor's fields (`transportField`: 22 px, its name faint) and tools. |
 | `TriggerButton` | `Controls/Timelines` | A 24 px trigger for a cue or a shot: a 16 px key box, the icon, the name and a note; washed while idle, filled while live, dashed and glowing while queued. |
 | `BeatPulse` | `Controls/Timelines` | The one clock queued things pulse on. |
-| `ChannelStrip` | `Controls/Mix` | An 88 px mixer strip: the name under a 3 px tint, fader, two meters and the dB scale, the route, gain, mute and solo; a bus strip in bold. `Fader`, `LevelMeter`, `FaderScale` and `GainBar` are its parts. |
+| `ChannelStrip` | `Controls/Mix` | An 88 px mixer strip: the name under a 3 px tint, fader, two meters and the dB scale, the route, gain, mute and solo; a bus strip in bold; at 55% while its mixer marks it `IsSilent`. `Fader`, `LevelMeter`, `FaderScale` and `GainBar` are its parts. |
 | `ButtonGroup` | `Controls/Timelines` | Joined tabs on a 26 px bar, the chosen one raised with an accent bar at its foot; with `chips`, rounded filters. |
 | `ItemList` | `Controls/Lists` | A list with Ctrl and Shift clicks, Ctrl+A and a right-click that keeps the selection (`ListSelection<T>`), with tick and dash marks in menus (`SelectionMarks`). |
 | `PillFilter` | `Controls/Lists` | A wrapping row of 20 px pills with counts, one or several chosen, and an add pill. |

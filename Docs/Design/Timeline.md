@@ -29,6 +29,10 @@ The design of everything with time in the editor (rule R28 of `EditorUi.md`, own
 - Bands over the lanes: a live region 9% of its tint with an inner outline; a queued one dashed 2 px with a glow that pulses on the beat; an idle one at 55% of the base with a 38% tab.
 - Lane header: a 3 px edge in the lane's tint, icon, title semibold, note, buttons, and its own rows under them; a sub lane indents 22 px and hides its rows.
 
+## Wheel
+
+- Over the lanes and the ruler the wheel zooms the time about the pointer, Ctrl with it makes the lanes taller or shorter about the pointer (in whole pixels, the headers with them), Shift with it pans, and Alt with it, or the wheel over the lane headers, scrolls the lanes up and down (owner, 2026-11-28). `TimelineInput.Read` is the one mapping every timeline answers.
+
 ## Transport
 
 - A 34 px bar on the panel colour with a line under it: play (22 px, filled in the accent; pause while playing), stop (twice back to the start), loop, the position (15 px semibold) and the clock time faint, then the fields, then the tools at the far end.
@@ -41,7 +45,8 @@ The design of everything with time in the editor (rule R28 of `EditorUi.md`, own
 
 ## Mixer
 
-- A strip is 88 px: the name 22 px high under a 3 px bar in the layer's tint (a bus's name bold on the base colour), then the fader (18 px, a 18 by 9 px cap, -48 to +6 dB, 0 dB marked), two 8 px meters (green to 72%, yellow to 92%, red above) and the scale (+6, 0, -6, -12, -24 at 9 px), the route, the gain, and mute and solo (18 by 16 px). A silent strip shows at 55%.
+- A strip is 88 px: the name 22 px high under a 3 px bar in the layer's tint (a bus's name bold on the base colour), then the fader (18 px, a 18 by 9 px cap, -48 to +6 dB, 0 dB marked), two 8 px meters (green to 72%, yellow to 92%, red above) and the scale (+6, 0, -6, -12, -24 at 9 px), the route, the gain, and mute and solo (18 by 16 px). A silent strip shows at 55%: a layer that is not heard now (out, muted or soloed out) or a bus no heard layer reaches, never a quiet moment between beats (owner, 2026-11-28: strips must not flash in the rhythm). The fader and meters grow with the dock's height.
+- Meters rise to a peak at once and fall back evenly on their decibel scale, 48 dB a second (full scale to the floor in a second), so they fall smoothly between hits without dropping out (owner, 2026-11-28: a little weight, not slow).
 
 ## Tabs, lists and filters
 

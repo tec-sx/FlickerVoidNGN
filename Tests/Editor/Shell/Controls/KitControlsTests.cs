@@ -120,15 +120,18 @@ public sealed class KitControlsTests
     }
 
     [Fact]
-    public async Task FadesASilentStrip()
+    public async Task FadesAStripMarkedSilentButNotOneBetweenBeats()
     {
-        await _builder.Run(() => new ChannelStrip { Title = "Dialogue", Height = 230, Level = 0 }, strip =>
+        await _builder.Run(() => new ChannelStrip { Title = "Drums", Height = 230, Level = 0 }, strip =>
         {
-            strip.Opacity.Should().Be(0.55);
+            strip.Opacity.Should().Be(1, "a quiet moment of a layer that plays is not silence");
 
+            strip.IsSilent = true;
+            KitControlsTestsBuilder.Settle();
+            strip.Opacity.Should().Be(0.55);
             strip.Level = 0.5;
             KitControlsTestsBuilder.Settle();
-            strip.Opacity.Should().Be(1);
+            strip.Opacity.Should().Be(0.55, "the meter does not light a strip its mixer says is silent");
         });
     }
 

@@ -806,7 +806,7 @@
     </ControlTheme>
 
     <!-- A channel strip: 88 px, its name on a raised 22 px header under a 3 px bar of its colour, the fader, two meters and the
-         scale, the route, the gain and mute and solo; a bus's name bold on the base colour; a silent strip at 55%. -->
+         scale, the route, the gain and mute and solo; a bus's name bold on the base colour; a strip marked silent at 55%. -->
     <ControlTheme x:Key="{x:Type mix:ChannelStrip}" TargetType="mix:ChannelStrip">
       <Setter Property="Width" Value="{x:Static mix:ChannelStrip.StripWidth}" />
       <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />

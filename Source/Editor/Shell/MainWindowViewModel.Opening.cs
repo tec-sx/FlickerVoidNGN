@@ -212,6 +212,8 @@ public sealed partial class MainWindowViewModel
             Preview = () => _musicPreview ??= new MusicPreview(_content, GetAudioBuffer()),
             BufferFrames = GetAudioBuffer,
             SetBufferFrames = SetAudioBuffer,
+            DockHeight = GetMusicDockHeight,
+            SetDockHeight = SetMusicDockHeight,
             Areas = FindMusicAreas,
             Sounds = () => files.Find([".wav", ".ogg", ".fvsound"]),
             Cues = () => files.Find([MusicCue.Extension]),
@@ -223,6 +225,17 @@ public sealed partial class MainWindowViewModel
     }
 
     private int GetAudioBuffer() => _layout?.AudioBufferFrames ?? _audioBuffer;
+
+    private double GetMusicDockHeight() => _layout?.MusicDockHeight ?? _musicDockHeight;
+
+    private void SetMusicDockHeight(double height)
+    {
+        _musicDockHeight = height;
+        if (_layout is not null)
+        {
+            _layout.MusicDockHeight = height;
+        }
+    }
 
     private void SetAudioBuffer(int frames)
     {

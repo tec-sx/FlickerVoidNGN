@@ -10,7 +10,8 @@ namespace FlickerVoid.Editor.Controls.Mix;
 /// <summary>
 /// One channel of a mixer (rule R28): an 88 px strip with its name on a 22 px header under a 3 px bar of its colour, the fader,
 /// two meters and the scale, the route it goes to, its gain and mute and solo. A bus strip has its name bold on the base colour;
-/// a silent one fades to 55%. The music mixer's layers and buses are these; so will be any later mixer.
+/// one its mixer marks silent (a layer not heard now, a bus nothing reaches) fades to 55%, steadily, never with the meter's beat.
+/// The music mixer's layers and buses are these; so will be any later mixer.
 /// </summary>
 [PseudoClasses(BusClass, SilentClass)]
 public class ChannelStrip : TemplatedControl
@@ -42,12 +43,11 @@ public class ChannelStrip : TemplatedControl
 
     public static readonly StyledProperty<bool> IsBusProperty = AvaloniaProperty.Register<ChannelStrip, bool>(nameof(IsBus));
 
+    public static readonly StyledProperty<bool> IsSilentProperty = AvaloniaProperty.Register<ChannelStrip, bool>(nameof(IsSilent));
+
     private const string BusClass = ":bus";
 
     private const string SilentClass = ":silent";
-
-    /// <summary>The level under which a strip reads as silent.</summary>
-    private const double Silence = 0.0001;
 
     public ChannelStrip()
     {
@@ -122,10 +122,17 @@ public class ChannelStrip : TemplatedControl
         set => SetValue(IsBusProperty, value);
     }
 
+    /// <summary>Whether nothing is heard through the channel now: a layer that is out or muted, a bus no heard layer goes to.</summary>
+    public bool IsSilent
+    {
+        get => GetValue(IsSilentProperty);
+        set => SetValue(IsSilentProperty, value);
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == IsBusProperty || change.Property == LevelProperty)
+        if (change.Property == IsBusProperty || change.Property == IsSilentProperty)
         {
             UpdateClasses();
         }
@@ -134,6 +141,6 @@ public class ChannelStrip : TemplatedControl
     private void UpdateClasses()
     {
         PseudoClasses.Set(BusClass, IsBus);
-        PseudoClasses.Set(SilentClass, Level < Silence);
+        PseudoClasses.Set(SilentClass, IsSilent);
     }
 }

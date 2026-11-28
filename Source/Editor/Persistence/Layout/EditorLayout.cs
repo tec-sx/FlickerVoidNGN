@@ -16,6 +16,8 @@ public sealed class EditorLayout
 
     public const double DefaultSideWidth = 320;
 
+    public const double DefaultMusicDockHeight = 236;
+
     /// <summary>The least a remembered panel size can be, so a panel never comes back too small to grab.</summary>
     public const double MinimumSize = 120;
 
@@ -81,6 +83,17 @@ public sealed class EditorLayout
         set
         {
             _layout.SideWidth = value;
+            Save();
+        }
+    }
+
+    /// <summary>The height of the music editor's dock under its lanes, never under <see cref="MinimumSize"/>; saved as it changes.</summary>
+    public double MusicDockHeight
+    {
+        get => Math.Max(_layout.MusicDockHeight, MinimumSize);
+        set
+        {
+            _layout.MusicDockHeight = value;
             Save();
         }
     }

@@ -54,6 +54,7 @@ public sealed partial class MainWindowViewModel
 
     private readonly EditorLayout? _layout;
     private int _audioBuffer = EditorLayout.DefaultAudioBufferFrames;
+    private double _musicDockHeight = EditorLayout.DefaultMusicDockHeight;
 
     /// <summary>The context panel's tab in front, or <see cref="NoTab"/>.</summary>
     [ObservableProperty]

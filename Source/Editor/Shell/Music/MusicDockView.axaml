@@ -35,7 +35,7 @@
               <DataTemplate DataType="coremusic:MusicTrackViewModel">
                 <mix:ChannelStrip Title="{Binding Title}" Tint="{Binding Index, Converter={x:Static music:LayerTint.Brush}}"
                                   Decibels="{Binding GainDb, Mode=TwoWay}" Maximum="6" Level="{Binding Level}" GainText="{Binding GainText}"
-                                  IsMuted="{Binding Muted, Mode=TwoWay}" IsSoloed="{Binding Soloed, Mode=TwoWay}">
+                                  IsMuted="{Binding Muted, Mode=TwoWay}" IsSoloed="{Binding Soloed, Mode=TwoWay}" IsSilent="{Binding !IsSounding}">
                   <mix:ChannelStrip.Route>
                     <ComboBox Classes="route" ItemsSource="{Binding BusChoices}" SelectedItem="{Binding BusChoice}" ToolTip.Tip="The bus this layer goes to" />
                   </mix:ChannelStrip.Route>
@@ -50,7 +50,7 @@
               <DataTemplate DataType="coremusic:BusStripViewModel">
                 <mix:ChannelStrip IsBus="True" Title="{Binding Name}" Tint="{DynamicResource EditorHintBrush}"
                                   Decibels="{Binding Decibels, Mode=TwoWay}" Maximum="0" Level="{Binding Level}" GainText="{Binding VolumeText}"
-                                  IsMuted="{Binding Muted, Mode=TwoWay}" IsSoloed="{Binding Soloed, Mode=TwoWay}" />
+                                  IsMuted="{Binding Muted, Mode=TwoWay}" IsSoloed="{Binding Soloed, Mode=TwoWay}" IsSilent="{Binding !IsSounding}" />
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>

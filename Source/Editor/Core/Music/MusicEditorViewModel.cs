@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using FlickerVoid.Editor.Core.Data;
 using FlickerVoid.Editor.Core.Inspector;
 using FlickerVoid.Editor.Core.Timelines;
+using FlickerVoid.Engine.Audio.Devices;
 using FlickerVoid.Engine.Audio.Mixing;
 using FlickerVoid.Engine.Audio.Music;
 
@@ -22,7 +23,16 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
 {
     public const double DefaultTotalBars = 24;
 
-    private const double MeterFall = 1.6;
+    /// <summary>The dock's height under the lanes until its grip is dragged.</summary>
+    public const double DefaultDockHeight = 236;
+
+    public const double MinLaneHeight = 56;
+
+    public const double MaxLaneHeight = 240;
+
+    /// <summary>The lane height from which a layer's header has room for its chips; shorter, it keeps its name and gain.</summary>
+    public const double LaneDetailHeight = 76;
+
     private const double MinBarWidth = 10;
     private const double MaxBarWidth = 160;
 
@@ -34,6 +44,9 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     private readonly FindContentFiles? _files;
     private readonly MusicEditorServices _services;
     private MusicPreview? _preview;
+    private AudioReadout? _readout;
+    private int _readoutFrames;
+    private TimeSpan _paused;
     private double _startedAt;
 
     [ObservableProperty]
@@ -47,6 +60,14 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private double _barWidth = MusicLayout.DefaultBarWidth;
+
+    /// <summary>How tall a layer's lane and header are; Ctrl with the wheel changes it.</summary>
+    [ObservableProperty]
+    private double _laneHeight = MusicLayout.TrackHeight;
+
+    /// <summary>How tall the dock under the lanes is; its grip drags it, and the editor keeps it.</summary>
+    [ObservableProperty]
+    private double _dockHeight;
 
     [ObservableProperty]
     private bool _isPlaying;
@@ -119,6 +140,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         _trackType = trackType;
         _files = files;
         _dayPace = DayPaces[0];
+        _dockHeight = _services.DockHeight();
         Cue = new DataObjectViewModel("Arrangement", cue, cueType, _edited, files, ["tracks", "notifies", "sections", "continuePoints", "tempo", "beatsPerBar", "phraseBars"]) { Icon = "Music" };
         Tracks = [];
         foreach (MusicTrack track in cue.Tracks)
@@ -277,6 +299,12 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>How the sound keeps up, once a second: the mixer's share of the audio thread, late calls since Play, the limiter.</summary>
+    public string AudioText => _readout?.Text ?? string.Empty;
+
+    /// <summary>The readout in sentences, with the longest wait against the buffer and the runtime's pauses.</summary>
+    public string AudioTip => _readout?.Tip ?? string.Empty;
+
     /// <summary>How late the buffer makes the sound, in milliseconds.</summary>
     public string BufferText
     {
@@ -398,6 +426,13 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     }
 
     partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(LayersText));
+
+    /// <summary>Whether a layer's header has room for its chips at the lanes' height.</summary>
+    public bool ShowsLaneDetails => LaneHeight >= LaneDetailHeight;
+
+    partial void OnLaneHeightChanged(double value) => OnPropertyChanged(nameof(ShowsLaneDetails));
+
+    partial void OnDockHeightChanged(double value) => _services.SetDockHeight?.Invoke(value);
 
     /// <summary>The transport's loop: <see cref="LoopPlayback"/>.</summary>
     public bool IsLooping
@@ -1009,6 +1044,21 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     /// <summary>Zooms so that every bar of the lanes fits into a width in pixels.</summary>
     public void FitTo(double width) => BarWidth = Math.Clamp(width / TotalBars, MinBarWidth, MaxBarWidth);
 
+    /// <summary>Widens the bars by turns of the wheel (narrows them for turns back), as every timeline's wheel zooms its time.</summary>
+    public void ZoomBars(double notches)
+    {
+        double scale = Math.Pow(TimeRange.ZoomPerStep, notches);
+        BarWidth = Math.Clamp(BarWidth * scale, MinBarWidth, MaxBarWidth);
+    }
+
+    /// <summary>Makes the lanes taller by turns of the wheel with Ctrl (shorter for turns back), in whole pixels so the headers keep in line.</summary>
+    public void ScaleLanes(double notches)
+    {
+        double scale = Math.Pow(TimeRange.ZoomPerStep, notches);
+        double height = Math.Clamp(LaneHeight * scale, MinLaneHeight, MaxLaneHeight);
+        LaneHeight = Math.Round(height);
+    }
+
     /// <summary>Selects a clip of a track: the clip dock shows it, and its track is the selected one.</summary>
     public void SelectClip(MusicTrackViewModel track, ArrangementClip clip)
     {
@@ -1095,6 +1145,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         }
 
         IsPlaying = true;
+        _readout?.Reset();
         Restart();
     }
 
@@ -1217,7 +1268,6 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
         }
 
         _preview.Tick(elapsed);
-        double fall = MeterFall * elapsed.TotalSeconds;
         if (IsPlaying)
         {
             FollowStack();
@@ -1255,17 +1305,83 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
 
         foreach (MusicTrackViewModel track in Tracks)
         {
-            double raw = _preview.Music.TakeLayerLevel(track.Track.Name, _cue.Bus);
-            track.Level = Math.Max(raw, track.Level - fall);
+            double peak = _preview.Music.TakeLayerLevel(track.Track.Name, _cue.Bus);
+            track.Level = MeterBallistics.Follow(track.Level, peak, elapsed);
         }
 
         foreach (BusStripViewModel bus in Buses)
         {
-            double raw = _preview.Mixer.TakeBusPeak(bus.Bus);
-            bus.Level = Math.Max(raw, bus.Level - fall);
+            double peak = _preview.Mixer.TakeBusPeak(bus.Bus);
+            bus.Level = MeterBallistics.Follow(bus.Level, peak, elapsed);
         }
 
+        RefreshSounding();
         OnPropertyChanged(nameof(LayersText));
+        ReadAudio(elapsed);
+    }
+
+    /// <summary>
+    /// Marks the strips of the layers heard now and of the buses they reach, and the master while any bus is heard; the rest show
+    /// faint. It follows what plays, not the meters, so a strip keeps still between the beats.
+    /// </summary>
+    private void RefreshSounding()
+    {
+        bool anySolo = Tracks.Any(track => track.Soloed);
+        foreach (MusicTrackViewModel track in Tracks)
+        {
+            bool soloedOut = anySolo && !track.Soloed;
+            track.IsSounding = IsPlaying && !track.Muted && !soloedOut && IsLayerOn(track);
+        }
+
+        bool pushed = IsPlaying && StackEntries.Count > 0 && StackEntries[0].Name != _path;
+        bool anyBusSolo = Buses.Any(bus => bus.Soloed);
+        bool heard = false;
+        BusStripViewModel? master = null;
+        foreach (BusStripViewModel bus in Buses)
+        {
+            if (bus.Bus == AudioBus.Master)
+            {
+                master = bus;
+                continue;
+            }
+
+            bool soloedOut = anyBusSolo && !bus.Soloed;
+            bool fed = (pushed && bus.Bus == _cue.Bus) || Tracks.Any(track => track.IsSounding && track.Bus == bus.Bus);
+            bus.IsSounding = !bus.Muted && !soloedOut && fed;
+            heard |= bus.IsSounding;
+        }
+
+        if (master is not null)
+        {
+            master.IsSounding = !master.Muted && heard;
+        }
+    }
+
+    /// <summary>Gathers how the sound kept up into the readout, which changes once a second.</summary>
+    private void ReadAudio(TimeSpan elapsed)
+    {
+        int buffer = _preview!.DeviceBufferFrames;
+        if (buffer == 0)
+        {
+            return;
+        }
+
+        if (_readout is null || _readoutFrames != buffer)
+        {
+            _readout = new AudioReadout(buffer);
+            _readoutFrames = buffer;
+        }
+
+        TimeSpan paused = GC.GetTotalPauseDuration();
+        TimeSpan collections = paused - _paused;
+        _paused = paused;
+        AudioTimingReport timing = _preview.TakeTiming();
+        float limit = _preview.Mixer.TakeLimit();
+        if (_readout.Add(timing, collections, limit, elapsed))
+        {
+            OnPropertyChanged(nameof(AudioText));
+            OnPropertyChanged(nameof(AudioTip));
+        }
     }
 
     /// <summary>Lets the day of an arrangement without a tempo pass at the chosen pace, so the hours its layers keep come and go.</summary>

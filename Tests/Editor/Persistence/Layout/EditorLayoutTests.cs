@@ -43,6 +43,7 @@ public sealed class EditorLayoutTests : IDisposable
         layout.ContentHeight.Should().Be(318);
         layout.DayDockHeight.Should().Be(300);
         layout.SideWidth.Should().Be(320);
+        layout.MusicDockHeight.Should().Be(236);
     }
 
     [Fact]
@@ -54,12 +55,14 @@ public sealed class EditorLayoutTests : IDisposable
         layout.ContentHeight = 420;
         layout.DayDockHeight = 260;
         layout.SideWidth = 380;
+        layout.MusicDockHeight = 300;
 
         EditorLayout next = _builder.Build();
         next.ContentOpen.Should().BeTrue();
         next.ContentHeight.Should().Be(420);
         next.DayDockHeight.Should().Be(260);
         next.SideWidth.Should().Be(380);
+        next.MusicDockHeight.Should().Be(300);
     }
 
     [Fact]
@@ -81,9 +84,11 @@ public sealed class EditorLayoutTests : IDisposable
 
         layout.ContentHeight = 4;
         layout.SideWidth = 0;
+        layout.MusicDockHeight = 10;
 
         EditorLayout next = _builder.Build();
         next.ContentHeight.Should().Be(EditorLayout.MinimumSize);
         next.SideWidth.Should().Be(EditorLayout.MinimumSize);
+        next.MusicDockHeight.Should().Be(EditorLayout.MinimumSize);
     }
 }
