@@ -30,6 +30,9 @@ public sealed class SdlAudioDeviceTests
 
         finished.Should().BeTrue();
         mixer.Position.Should().BeGreaterThanOrEqualTo(480);
+        AudioTimingReport timing = device!.TakeTiming();
+        timing.Callbacks.Should().BeGreaterThan(0, "the device times every call of its audio thread");
+        timing.LongestRender.Should().BePositive();
     }
 
     [Fact]

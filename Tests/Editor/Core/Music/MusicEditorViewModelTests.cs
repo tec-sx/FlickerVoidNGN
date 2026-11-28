@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
 using FlickerVoid.Editor.Core.Music;
+using FlickerVoid.Editor.Core.Timelines;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Audio.Mixing;
 using FlickerVoid.Engine.Audio.Music;
@@ -311,6 +312,82 @@ public sealed class MusicEditorViewModelTests
     }
 
     [Fact]
+    public void MarksTheStripsOfWhatIsHeardAndKeepsThemStillBetweenBeats()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            File.WriteAllBytes(Path.Combine(folder, "Loop.wav"), Wav(48000 * 2));
+            ContentManager content = new(folder);
+            MusicCue cue = new() { Tempo = 120, Tracks = [new MusicTrack { Name = "Bass", Loop = "Loop.wav" }, new MusicTrack { Name = "Drums", Loop = "Loop.wav", ByRequest = true }] };
+            using MusicPreview preview = new(content);
+            MusicEditorViewModel editor = Build(cue, new MusicEditorServices { Preview = () => preview });
+            BusStripViewModel Strip(AudioBus bus) => editor.Buses.First(strip => strip.Bus == bus);
+
+            editor.PlayCommand.Execute(null);
+            Pump(editor, 60);
+
+            editor.Tracks[0].IsSounding.Should().BeTrue();
+            editor.Tracks[1].IsSounding.Should().BeFalse("it waits for an area to ask for it");
+            Strip(AudioBus.Music).IsSounding.Should().BeTrue();
+            Strip(AudioBus.Master).IsSounding.Should().BeTrue();
+            Strip(AudioBus.Dialogue).IsSounding.Should().BeFalse("no layer goes to it");
+            editor.Tracks[0].Level = 0;
+            editor.Tick(TimeSpan.FromMilliseconds(10));
+            editor.Tracks[0].IsSounding.Should().BeTrue("a quiet moment between beats is not silence");
+
+            editor.Tracks[0].Muted = true;
+            editor.Tick(TimeSpan.FromMilliseconds(10));
+            editor.Tracks[0].IsSounding.Should().BeFalse();
+            Strip(AudioBus.Music).IsSounding.Should().BeFalse();
+            Strip(AudioBus.Master).IsSounding.Should().BeFalse();
+            editor.Tracks[0].Muted = false;
+            editor.StopCommand.Execute(null);
+            editor.Tick(TimeSpan.FromMilliseconds(10));
+            editor.Tracks[0].IsSounding.Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
+    public void ZoomsTheBarsAndTheLanesByTurnsOfTheWheelWithinTheirLimits()
+    {
+        MusicEditorViewModel editor = Build(new MusicCue());
+
+        editor.ZoomBars(1);
+        editor.BarWidth.Should().BeApproximately(MusicLayout.DefaultBarWidth * TimeRange.ZoomPerStep, 1e-9);
+        editor.ZoomBars(-100);
+        editor.BarWidth.Should().Be(10);
+        editor.ScaleLanes(2);
+        editor.LaneHeight.Should().Be(111, "84 px by 1.15 twice, in whole pixels so the headers keep in line with the lanes");
+        editor.ShowsLaneDetails.Should().BeTrue();
+        editor.ScaleLanes(-100);
+
+        editor.LaneHeight.Should().Be(MusicEditorViewModel.MinLaneHeight);
+        editor.ShowsLaneDetails.Should().BeFalse("a short lane's header keeps only its name and gain");
+        editor.ScaleLanes(100);
+        editor.LaneHeight.Should().Be(MusicEditorViewModel.MaxLaneHeight);
+    }
+
+    [Fact]
+    public void KeepsTheDocksHeightThroughTheEditor()
+    {
+        double kept = 300;
+        MusicEditorServices services = new() { DockHeight = () => kept, SetDockHeight = height => kept = height };
+        MusicEditorViewModel editor = Build(new MusicCue(), services);
+
+        editor.DockHeight.Should().Be(300);
+        editor.DockHeight = 280;
+
+        kept.Should().Be(280);
+        Build(new MusicCue()).DockHeight.Should().Be(MusicEditorViewModel.DefaultDockHeight);
+    }
+
+    [Fact]
     public void ShowsAnAmbienceCueOnTheHoursOfTheDay()
     {
         MusicEditorViewModel editor = Build(new MusicCue { Tempo = 0, Tracks = [new MusicTrack { Name = "Bed", Loop = "Bed.ogg" }] });
@@ -428,6 +505,20 @@ public sealed class MusicEditorViewModelTests
         editor.LoopPlayback.Should().BeTrue();
         editor.ClearLoopRangeCommand.Execute(null);
         editor.HasLoopRange.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LoopsAndShowsThePositionThroughTheTransport()
+    {
+        MusicEditorViewModel editor = Build(new MusicCue());
+        ITransport transport = editor;
+
+        transport.IsLooping = false;
+        editor.LoopPlayback.Should().BeFalse();
+
+        editor.ToggleLoopCommand.Execute(null);
+        transport.IsLooping.Should().BeTrue();
+        transport.PositionText.Should().Be(editor.PositionText);
     }
 
     [Fact]

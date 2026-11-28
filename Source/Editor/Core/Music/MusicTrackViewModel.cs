@@ -60,6 +60,10 @@ public sealed partial class MusicTrackViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
+    /// <summary>Whether the layer is heard now: playing, on, not muted and not soloed out. Its strip is faint otherwise.</summary>
+    [ObservableProperty]
+    private bool _isSounding;
+
     public MusicTrackViewModel(MusicTrack track, JsonTypeInfo typeInfo, Action edited, FindContentFiles? files, Func<float>? cueTempo = null, Func<AudioBus>? cueBus = null)
     {
         Track = track;
@@ -116,10 +120,13 @@ public sealed partial class MusicTrackViewModel : ObservableObject
     /// <summary>The buses the layer can go to, by name.</summary>
     public IReadOnlyList<string> BusChoices { get; } = Buses.Select(bus => bus.ToString()).ToArray();
 
+    /// <summary>The bus the layer goes to: its own, or the arrangement's.</summary>
+    public AudioBus Bus => Track.Bus ?? _cueBus();
+
     /// <summary>The bus the layer goes to. The arrangement's own is not written to the layer, so it follows the arrangement.</summary>
     public string BusChoice
     {
-        get => (Track.Bus ?? _cueBus()).ToString();
+        get => Bus.ToString();
         set
         {
             if (!Enum.TryParse(value, out AudioBus named) || !Buses.Contains(named))

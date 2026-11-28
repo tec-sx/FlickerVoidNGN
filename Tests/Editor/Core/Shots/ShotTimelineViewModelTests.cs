@@ -2,6 +2,7 @@ using System.Numerics;
 
 using Arch.Core;
 
+using FlickerVoid.Editor.Core.Timelines;
 using FlickerVoid.Engine.Cameras.Shots;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Components;
@@ -161,5 +162,90 @@ public sealed class ShotTimelineViewModelTests : IDisposable
         rail[0].Should().Be(new Vector3(1, 0, 0));
         Vector3.Distance(rail[^1], new Vector3(21, 0, 0)).Should().BeLessThan(Precision);
         keys.Should().Equal(new Vector3(1, 0, 0), new Vector3(11, 0, 0), new Vector3(21, 0, 0));
+    }
+    [Fact]
+    public void ShowsTheKeysOnOneLaneOfItsTimeline()
+    {
+        Entity hall = _builder.AddShot("Hall");
+
+        _builder.Scene.Selection.Select(hall);
+
+        TimelineLane lane = _builder.Timeline.Timeline.Lanes.Should().ContainSingle().Subject;
+        lane.Items.Select(item => item.Start).Should().Equal(0, 2, 4);
+        lane.Items.Should().OnlyContain(item => item.Kind == TimelineKinds.Key);
+        _builder.Timeline.Timeline.Scale.Should().BeOfType<SecondScale>();
+    }
+
+    [Fact]
+    public void RetimesAKeyDraggedOnItsTimeline()
+    {
+        Entity hall = _builder.AddShot("Hall");
+        _builder.Scene.Selection.Select(hall);
+        TimelineItem key = _builder.Timeline.Timeline.Lanes[0].Items[1];
+
+        _builder.Timeline.Timeline.Editor!.Apply(new TimelineChange(TimelineChangeKind.MoveItem, key, null, 3, 0));
+
+        _builder.Timeline.Keys.Select(item => item.Time).Should().Equal(0, 3, 4);
+    }
+
+    [Fact]
+    public void SelectsTheKeyPickedOnItsTimeline()
+    {
+        Entity hall = _builder.AddShot("Hall");
+        _builder.Scene.Selection.Select(hall);
+        TimelineItem key = _builder.Timeline.Timeline.Lanes[0].Items[2];
+
+        _builder.Timeline.Timeline.Select(key);
+
+        _builder.Timeline.SelectedKey.Should().Be(2);
+    }
+
+    [Fact]
+    public void MarksTheSelectedKeyOnItsTimeline()
+    {
+        Entity hall = _builder.AddShot("Hall");
+        _builder.Scene.Selection.Select(hall);
+
+        _builder.Timeline.SelectKey(1);
+
+        _builder.Timeline.Timeline.SelectedItems.Select(item => item.Source).Should().Equal(1);
+    }
+
+    [Fact]
+    public void DeletesTheKeySelectedOnItsTimeline()
+    {
+        Entity hall = _builder.AddShot("Hall");
+        _builder.Scene.Selection.Select(hall);
+        _builder.Timeline.Timeline.Select(_builder.Timeline.Timeline.Lanes[0].Items[1]);
+
+        TimelineEdit.DeleteSelected(_builder.Timeline.Timeline);
+
+        _builder.Timeline.Keys.Select(item => item.Time).Should().Equal(0, 4);
+    }
+
+    [Fact]
+    public void ScrubsWithItsTimelinesCursor()
+    {
+        Entity hall = _builder.AddShot("Hall");
+        _builder.Scene.Selection.Select(hall);
+
+        _builder.Timeline.ScrubTime = 1.5f;
+        double cursor = _builder.Timeline.Timeline.Cursor;
+        _builder.Timeline.Timeline.MoveCursor(2.5);
+
+        cursor.Should().BeApproximately(1.5, Precision);
+        _builder.Timeline.ScrubTime.Should().BeApproximately(2.5f, Precision);
+    }
+
+    [Fact]
+    public void ShowsTheWholeShotOnItsTimeline()
+    {
+        Entity hall = _builder.AddShot("Hall");
+        _builder.Timeline.Timeline.Range.Resize(216);
+
+        _builder.Scene.Selection.Select(hall);
+
+        _builder.Timeline.Timeline.Range.ToX(0).Should().BeApproximately(8, Precision);
+        _builder.Timeline.Timeline.Range.ToX(4).Should().BeApproximately(208, Precision);
     }
 }

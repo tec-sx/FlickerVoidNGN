@@ -3,7 +3,7 @@
              xmlns:shell="using:FlickerVoid.Editor"
              xmlns:viewports="using:FlickerVoid.Editor.Viewports"
              xmlns:inspector="using:FlickerVoid.Editor.Inspector"
-             xmlns:shots="using:FlickerVoid.Editor.Shots"
+             xmlns:timelines="using:FlickerVoid.Editor.Controls.Timelines"
              xmlns:buildings="using:FlickerVoid.Editor.Buildings"
              xmlns:toasts="using:FlickerVoid.Editor.Core.Toasts"
              xmlns:buildingModels="using:FlickerVoid.Editor.Assets.Buildings"
@@ -293,9 +293,9 @@
         <Button Classes="viewportIcon text accent" Height="26" Padding="10,0" Content="Apply" Command="{Binding ApplyCommand}" ToolTip.Tip="Keep the result (Enter)" />
       </StackPanel>
     </Border>
-    <!-- The selected shot's timeline, left of the camera preview in the bottom right corner. -->
+    <!-- The selected shot's timeline, left of the camera preview in the bottom right corner: the kit's ruler over one lane of keys. -->
     <Grid ColumnDefinitions="3*,*" VerticalAlignment="Bottom" IsVisible="{Binding Timeline.HasShot}">
-      <Border Classes="viewportBar" Margin="12,4,8,12" Height="34">
+      <Border Classes="viewportBar" Margin="12,4,8,12" Height="58">
         <DockPanel>
           <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
             <Button Classes="icon" Command="{Binding AddShotKeyCommand}"
@@ -308,7 +308,13 @@
           </StackPanel>
           <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0" MinWidth="48" TextAlignment="Right"
                      Text="{Binding Timeline.ScrubTime, StringFormat={}{0:0.00} s}" />
-          <shots:ShotTimelineStrip Timeline="{Binding Timeline}" Height="28" />
+          <Panel>
+            <DockPanel>
+              <timelines:TimeRuler DockPanel.Dock="Top" Timeline="{Binding Timeline.Timeline}" />
+              <timelines:TimelineLanes Timeline="{Binding Timeline.Timeline}" />
+            </DockPanel>
+            <timelines:TimelineOverlay Timeline="{Binding Timeline.Timeline}" />
+          </Panel>
         </DockPanel>
       </Border>
     </Grid>

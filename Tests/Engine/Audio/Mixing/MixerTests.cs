@@ -91,7 +91,7 @@ public sealed class MixerTests
     [Fact]
     public void ScalesABusByItsGainAndEverythingByTheMasters()
     {
-        SoundClip clip = MixerTestsBuilder.Constant(10000);
+        SoundClip clip = MixerTestsBuilder.Constant(10000, 0.5f);
         _builder.Play(clip, AudioBus.Music);
         _builder.Play(clip, AudioBus.Effects);
         MixerCommand music = MixerCommand.SetBus(AudioBus.Music, 0.5f);
@@ -101,7 +101,7 @@ public sealed class MixerTests
 
         float[] heard = _builder.Device.Render(512);
 
-        heard[^1].Should().BeApproximately(0.75f, 0.0001f);
+        heard[^1].Should().BeApproximately(0.375f, 0.0001f);
     }
 
     [Fact]
@@ -184,15 +184,60 @@ public sealed class MixerTests
     }
 
     [Fact]
-    public void KeepsTheOutputWithinFullScale()
+    public void TurnsALoudMixDownInsteadOfClippingIt()
     {
-        SoundClip clip = MixerTestsBuilder.Constant(1000);
-        _builder.Play(clip);
-        _builder.Play(clip);
+        SoundClip tone = MixerTestsBuilder.Sine(4800, 100, 0.8f);
+        _builder.Play(tone);
+        _builder.Play(tone);
 
-        float[] heard = _builder.Device.Render(16);
+        float[] heard = _builder.Device.Render(4800);
 
-        heard.Should().OnlyContain(sample => sample == 1);
+        heard.Should().OnlyContain(sample => MathF.Abs(sample) <= Limiter.Ceiling);
+        float[] lastCycle = heard[^960..];
+        float loudest = lastCycle.Max(MathF.Abs);
+        loudest.Should().BeGreaterThan(0.9f, "the limiter holds the mix just under full scale");
+        List<double> gains = [];
+        for (int frame = 4320; frame < 4800; frame++)
+        {
+            double mixed = 1.6 * Math.Sin(2 * Math.PI * 100 * frame / AudioFormat.SampleRate);
+            if (Math.Abs(mixed) > 0.2)
+            {
+                gains.Add(heard[frame * 2] / mixed);
+            }
+        }
+
+        double spread = gains.Max() - gains.Min();
+        spread.Should().BeLessThan(0.05, "the tone is turned down whole, where clipping would flatten its peaks");
+        _builder.Mixer.TakeLimit().Should().BeApproximately(Limiter.Ceiling / 1.6f, 0.01f);
+    }
+
+    [Fact]
+    public void LeavesAMixUnderFullScaleUntouched()
+    {
+        SoundClip clip = MixerTestsBuilder.Constant(1000, 0.5f);
+        _builder.Play(clip);
+        _builder.Play(clip, left: 0.5f, right: 0.5f);
+
+        float[] heard = _builder.Device.Render(512);
+
+        heard.Should().OnlyContain(sample => sample == 0.75f);
+        _builder.Mixer.TakeLimit().Should().Be(1);
+    }
+
+    [Fact]
+    public void BringsTheGainBackAfterALoudPassage()
+    {
+        SoundClip loud = MixerTestsBuilder.Constant(480);
+        SoundClip quiet = MixerTestsBuilder.Constant(96000, 0.5f);
+        _builder.Play(loud);
+        _builder.Play(loud);
+        _builder.Play(quiet, startFrame: 480);
+
+        _builder.Device.Render(480);
+        _builder.Mixer.TakeLimit().Should().BeLessThan(0.6f);
+        float[] later = _builder.Device.Render(TimeSpan.FromSeconds(1.5));
+
+        later[^2].Should().Be(0.5f, "the release has brought the gain back to unity");
     }
 
     [Fact]

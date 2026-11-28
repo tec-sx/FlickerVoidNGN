@@ -14,19 +14,24 @@ public sealed unsafe class SdlAudioDevice : IDisposable
 
     private readonly Sdl _sdl;
     private readonly uint _device;
-    private GCHandle _mixer;
+    private readonly Feed _feed;
+    private GCHandle _handle;
     private bool _disposed;
 
-    private SdlAudioDevice(Sdl sdl, uint device, GCHandle mixer, int bufferFrames)
+    private SdlAudioDevice(Sdl sdl, uint device, GCHandle handle, Feed feed, int bufferFrames)
     {
         _sdl = sdl;
         _device = device;
-        _mixer = mixer;
+        _handle = handle;
+        _feed = feed;
         BufferFrames = bufferFrames;
     }
 
     /// <summary>The frames the device asks the mixer for at a time: more rides out a busy program without a crackle, and is heard later.</summary>
     public int BufferFrames { get; }
+
+    /// <summary>How the audio thread has kept up since this was last asked: late callbacks, the longest wait and the mixer's load.</summary>
+    public AudioTimingReport TakeTiming() => _feed.Timing.Take();
 
     /// <summary>
     /// Opens the default output device and starts playing the mixer; null, with the reason, where there is no device to open, as on a
@@ -58,7 +63,8 @@ public sealed unsafe class SdlAudioDevice : IDisposable
             return null;
         }
 
-        GCHandle handle = GCHandle.Alloc(mixer);
+        Feed feed = new(mixer, new AudioTiming(bufferFrames));
+        GCHandle handle = GCHandle.Alloc(feed);
         AudioSpec wanted = new()
         {
             Freq = AudioFormat.SampleRate,
@@ -78,8 +84,13 @@ public sealed unsafe class SdlAudioDevice : IDisposable
             return null;
         }
 
+        if (got.Samples != bufferFrames)
+        {
+            feed.Timing = new AudioTiming(got.Samples);
+        }
+
         sdl.PauseAudioDevice(device, 0);
-        return new SdlAudioDevice(sdl, device, handle, got.Samples);
+        return new SdlAudioDevice(sdl, device, handle, feed, got.Samples);
     }
 
     public void Dispose()
@@ -92,7 +103,7 @@ public sealed unsafe class SdlAudioDevice : IDisposable
         _disposed = true;
         _sdl.CloseAudioDevice(_device);
         _sdl.QuitSubSystem(Sdl.InitAudio);
-        _mixer.Free();
+        _handle.Free();
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
@@ -100,13 +111,23 @@ public sealed unsafe class SdlAudioDevice : IDisposable
     {
         Span<float> output = new(stream, length / sizeof(float));
         GCHandle handle = GCHandle.FromIntPtr((nint)userdata);
-        if (handle.Target is Mixer mixer)
-        {
-            mixer.Render(output);
-        }
-        else
+        if (handle.Target is not Feed feed)
         {
             output.Clear();
+            return;
         }
+
+        AudioTiming timing = feed.Timing;
+        long started = timing.Begin();
+        feed.Mixer.Render(output);
+        timing.End(started, output.Length / AudioFormat.Channels);
+    }
+
+    /// <summary>What SDL's audio thread is handed: the mixer it pulls and the timing it keeps.</summary>
+    private sealed class Feed(Mixer mixer, AudioTiming timing)
+    {
+        public Mixer Mixer { get; } = mixer;
+
+        public AudioTiming Timing { get; set; } = timing;
     }
 }

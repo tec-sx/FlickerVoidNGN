@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 
+using FlickerVoid.Editor.Controls.Mix;
 using FlickerVoid.Editor.Core.Music;
 
 namespace FlickerVoid.Editor.Music;
@@ -14,7 +15,8 @@ namespace FlickerVoid.Editor.Music;
 /// The lanes of an arrangement: the bar ruler with the playhead (click or drag it to jump), a row of the rehearsal for each music
 /// area (drag its span to walk the fox in and out), the cues row (double-click to place one, drag to move it), and a lane per
 /// layer with its clips drawn as waveforms: fills are hatched, waits dashed, scatter marks dots. A loop clip's right edge drags
-/// its length, its top corners drag the fades, sounds dropped on a lane become its clip, and Delete removes what is picked.
+/// its length, its top corners drag the fades, sounds dropped on a lane become its clip, and Delete removes what is picked. The
+/// lanes are as tall as the editor's <see cref="MusicEditorViewModel.LaneHeight"/>; the view around them turns the wheel into zoom.
 /// </summary>
 public sealed class MusicLanes : Control
 {
@@ -61,11 +63,14 @@ public sealed class MusicLanes : Control
 
     private double NotifierTop => RowsTop + ((Editor?.Rows.Count ?? 0) * MusicLayout.RehearsalHeight);
 
-    private double TracksTop => NotifierTop + MusicLayout.NotifierHeight;
+    /// <summary>The top of the layers' lanes, under the ruler, the rehearsal rows and the cues.</summary>
+    public double TracksTop => NotifierTop + MusicLayout.NotifierHeight;
+
+    private double LaneHeight => Editor?.LaneHeight ?? MusicLayout.TrackHeight;
 
     public double ContentWidth => ((Editor?.TotalBars ?? 0) * (Editor?.BarWidth ?? MusicLayout.DefaultBarWidth)) + EndGap;
 
-    public double ContentHeight => TracksTop + (((Editor?.Tracks.Count ?? 0) + 1) * MusicLayout.TrackHeight);
+    public double ContentHeight => TracksTop + (((Editor?.Tracks.Count ?? 0) + 1) * LaneHeight);
 
     protected override Size MeasureOverride(Size availableSize) => new(ContentWidth, Math.Max(ContentHeight, availableSize.Height is double.PositiveInfinity ? 0 : availableSize.Height));
 
@@ -99,7 +104,7 @@ public sealed class MusicLanes : Control
         for (int index = 0; index < editor.Tracks.Count; index++)
         {
             DrawTrack(context, editor, editor.Tracks[index], LayerTint.Find(index), top, bar);
-            top += MusicLayout.TrackHeight;
+            top += LaneHeight;
             context.DrawLine(linePen, new Point(0, top), new Point(width, top));
         }
 
@@ -248,12 +253,12 @@ public sealed class MusicLanes : Control
 
     private void DrawTrack(DrawingContext context, MusicEditorViewModel editor, MusicTrackViewModel track, Color tint, double top, double bar)
     {
-        double height = MusicLayout.TrackHeight - 8;
+        double height = LaneHeight - 8;
         double y = top + 4;
         bool selected = track == editor.Selected;
         if (selected)
         {
-            context.FillRectangle(Brush("EditorRowHoverBrush"), new Rect(0, top, Bounds.Width, MusicLayout.TrackHeight));
+            context.FillRectangle(Brush("EditorRowHoverBrush"), new Rect(0, top, Bounds.Width, LaneHeight));
         }
 
         double mute = track.Muted ? 0.35 : 1;
@@ -527,14 +532,14 @@ public sealed class MusicLanes : Control
 
     private void PressTracks(MusicEditorViewModel editor, Point point)
     {
-        int index = (int)((point.Y - TracksTop) / MusicLayout.TrackHeight);
+        int index = (int)((point.Y - TracksTop) / LaneHeight);
         if (index < 0 || index >= editor.Tracks.Count)
         {
             return;
         }
 
         MusicTrackViewModel track = editor.Tracks[index];
-        double y = TracksTop + (index * MusicLayout.TrackHeight) + 4;
+        double y = TracksTop + (index * LaneHeight) + 4;
         double bar = editor.BarWidth;
         foreach (ArrangementClip clip in track.Clips)
         {
@@ -688,7 +693,7 @@ public sealed class MusicLanes : Control
 
         if (point.Y >= TracksTop)
         {
-            int index = (int)((point.Y - TracksTop) / MusicLayout.TrackHeight);
+            int index = (int)((point.Y - TracksTop) / LaneHeight);
             if (index >= 0 && index < editor.Tracks.Count)
             {
                 foreach (ArrangementClip clip in editor.Tracks[index].Clips.Where(clip => clip.Kind == ArrangementKind.Loop))
@@ -736,7 +741,7 @@ public sealed class MusicLanes : Control
         }
 
         Point point = args.GetPosition(this);
-        int row = (int)Math.Floor((point.Y - TracksTop) / MusicLayout.TrackHeight);
+        int row = (int)Math.Floor((point.Y - TracksTop) / LaneHeight);
         string? path = SoundDrag.GetPath(args.DataTransfer);
         if (path is not null)
         {
@@ -785,7 +790,7 @@ public sealed class MusicLanes : Control
 
     private void HandleEditorChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName is nameof(MusicEditorViewModel.BarWidth) or nameof(MusicEditorViewModel.TotalBars))
+        if (args.PropertyName is nameof(MusicEditorViewModel.BarWidth) or nameof(MusicEditorViewModel.TotalBars) or nameof(MusicEditorViewModel.LaneHeight))
         {
             InvalidateMeasure();
         }

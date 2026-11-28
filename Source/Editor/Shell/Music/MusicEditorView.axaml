@@ -1,8 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:music="using:FlickerVoid.Editor.Music"
+             xmlns:mix="using:FlickerVoid.Editor.Controls.Mix"
+             xmlns:timelines="using:FlickerVoid.Editor.Controls.Timelines"
              xmlns:coremusic="using:FlickerVoid.Editor.Core.Music"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
              x:Class="FlickerVoid.Editor.Music.MusicEditorView"
              x:DataType="coremusic:MusicEditorViewModel">
   <!-- An arrangement as a DAW: the transport on top, the ruler, the rehearsal rows, the cues and a lane per layer beside their
@@ -10,13 +13,20 @@
        clip. The values of the selected layer and of the arrangement, and the lists of sounds and arrangements, are in the side
        column. -->
   <Grid RowDefinitions="Auto,*,Auto" Background="{DynamicResource EditorDeepBrush}">
-    <Border Grid.Row="0" Height="38" Background="{DynamicResource EditorFrameBrush}" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,0,0,1">
-      <DockPanel Margin="8,0">
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+    <timelines:Transport Grid.Row="0" Source="{Binding}">
+      <timelines:Transport.Tools>
+        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
           <Border Classes="chip" Margin="0,0,6,0">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <PathIcon Classes="small faint" Data="{x:Static shell:LucideIcons.Waveform}" />
               <TextBlock Classes="hint" Text="{Binding LayersText}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <Border x:Name="AudioReadout" Classes="chip" Margin="0,0,6,0" ToolTip.Tip="{Binding AudioTip}"
+                  IsVisible="{Binding AudioText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Classes="small faint" Data="{x:Static shell:LucideIcons.Activity}" />
+              <TextBlock Classes="hint" Text="{Binding AudioText}" VerticalAlignment="Center" />
             </StackPanel>
           </Border>
           <Border Classes="stripCell" Margin="0,0,6,0"
@@ -32,58 +42,59 @@
           <Button Classes="icon" ToolTip.Tip="Zoom in" Command="{Binding ZoomInCommand}"><PathIcon Data="{x:Static shell:LucideIcons.ZoomIn}" /></Button>
           <Button Classes="icon" ToolTip.Tip="Fit every bar into the window" Click="HandleFit"><PathIcon Data="{x:Static shell:LucideIcons.Fit}" /></Button>
         </StackPanel>
-        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-          <Button x:Name="PlayButton" Classes="icon" Classes.on="{Binding IsPlaying}" ToolTip.Tip="Play or pause (Space)" Command="{Binding PlayCommand}" Width="28" Height="28">
-            <Panel>
-              <PathIcon x:Name="PlayIcon" Classes="accent" Data="{x:Static shell:LucideIcons.Play}" IsVisible="{Binding !IsPlaying}" />
-              <PathIcon x:Name="PauseIcon" Data="{x:Static shell:LucideIcons.Pause}" IsVisible="{Binding IsPlaying}" />
-            </Panel>
-          </Button>
-          <Button Classes="icon" ToolTip.Tip="Stop; again, back to the start" Command="{Binding StopCommand}" Width="28" Height="28">
-            <PathIcon Data="{x:Static shell:LucideIcons.Stop}" />
-          </Button>
-          <ToggleButton Classes="icon" ToolTip.Tip="Go round at the end instead of stopping" IsChecked="{Binding LoopPlayback, Mode=TwoWay}" Width="28" Height="28">
-            <PathIcon Data="{x:Static shell:LucideIcons.Repeat}" />
-          </ToggleButton>
-          <TextBlock Text="{Binding PositionText}" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" MinWidth="72" />
-          <TextBlock Text="{Binding TimeText}" Classes="hint" VerticalAlignment="Center" MinWidth="40" />
-          <Border Classes="stripCell"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <TextBlock Text="Tempo" Classes="hint" VerticalAlignment="Center" />
-            <TextBox Text="{Binding Tempo}" Width="52" />
-            <TextBlock Text="BPM" Classes="hint" VerticalAlignment="Center" />
-          </StackPanel></Border>
-          <Border Classes="stripCell" IsVisible="{Binding IsHours}"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <TextBlock Text="Ruler" Classes="hint" VerticalAlignment="Center" />
-            <TextBlock Text="Hours of the day" VerticalAlignment="Center" />
-          </StackPanel></Border>
-          <Border Classes="stripCell" IsVisible="{Binding IsHours}"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+      </timelines:Transport.Tools>
+      <timelines:Transport.Fields>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Border Classes="transportField">
+            <StackPanel>
+              <TextBlock Classes="name" Text="Tempo" />
+              <TextBox Text="{Binding Tempo}" Width="24" />
+              <TextBlock Text="BPM" />
+            </StackPanel>
+          </Border>
+          <Border Classes="transportField" IsVisible="{Binding IsHours}">
+            <StackPanel>
+              <TextBlock Classes="name" Text="Ruler" />
+              <TextBlock Text="Hours of the day" />
+            </StackPanel>
+          </Border>
+          <Border Classes="transportField" IsVisible="{Binding IsHours}"
                   ToolTip.Tip="How fast the day passes while this plays, so the layers that keep hours come and go. Held, the hour under the playhead stays.">
-            <TextBlock Text="Day runs" Classes="hint" VerticalAlignment="Center" />
-            <ComboBox x:Name="DayPaceBox" ItemsSource="{Binding DayPaces}" SelectedItem="{Binding DayPace}" MinWidth="104" />
-          </StackPanel></Border>
-          <Border Classes="stripCell" IsVisible="{Binding !IsHours}"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <TextBlock Text="Meter" Classes="hint" VerticalAlignment="Center" />
-            <TextBox Text="{Binding BeatsPerBar}" Width="36" />
-            <TextBlock Text="beats" Classes="hint" VerticalAlignment="Center" />
-          </StackPanel></Border>
-          <Border Classes="stripCell" IsVisible="{Binding !IsHours}"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <TextBlock Text="Phrase" Classes="hint" VerticalAlignment="Center" />
-            <TextBox Text="{Binding PhraseBars}" Width="40" />
-            <TextBlock Text="bars" Classes="hint" VerticalAlignment="Center" />
-          </StackPanel></Border>
-          <Border Classes="stripCell" IsVisible="{Binding !IsHours}"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <TextBlock Text="Snap" Classes="hint" VerticalAlignment="Center" />
-            <ComboBox ItemsSource="{Binding SnapOptions}" SelectedItem="{Binding Snap}" MinWidth="80" />
-          </StackPanel></Border>
+            <StackPanel>
+              <TextBlock Classes="name" Text="Day runs" />
+              <ComboBox x:Name="DayPaceBox" ItemsSource="{Binding DayPaces}" SelectedItem="{Binding DayPace}" />
+            </StackPanel>
+          </Border>
+          <Border Classes="transportField" IsVisible="{Binding !IsHours}">
+            <StackPanel>
+              <TextBlock Classes="name" Text="Meter" />
+              <TextBox Text="{Binding BeatsPerBar}" Width="12" />
+              <TextBlock Text="/ 4" />
+            </StackPanel>
+          </Border>
+          <Border Classes="transportField" IsVisible="{Binding !IsHours}">
+            <StackPanel>
+              <TextBlock Classes="name" Text="Phrase" />
+              <TextBox Text="{Binding PhraseBars}" Width="16" />
+              <TextBlock Text="bars" />
+            </StackPanel>
+          </Border>
+          <Border Classes="transportField" IsVisible="{Binding !IsHours}">
+            <StackPanel>
+              <TextBlock Classes="name" Text="Snap" />
+              <ComboBox ItemsSource="{Binding SnapOptions}" SelectedItem="{Binding Snap}" />
+            </StackPanel>
+          </Border>
         </StackPanel>
-      </DockPanel>
-    </Border>
+      </timelines:Transport.Fields>
+    </timelines:Transport>
 
     <Grid Grid.Row="1">
+      <!-- The wheel zooms the bars over the lanes, Ctrl with it the lanes' height and Shift pans; over the headers it scrolls. -->
       <ScrollViewer x:Name="LanesScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-        <Grid ColumnDefinitions="220,*">
-          <!-- Over the lanes, so the last row's words may run on past the headers. -->
-          <StackPanel Grid.Column="0" Background="{DynamicResource EditorPanelBrush}" ZIndex="1">
+        <Grid x:Name="LanesContent" ColumnDefinitions="220,*">
+          <!-- Over the lanes, so the last row's words may run on past the headers, and held at the left as the lanes scroll. -->
+          <StackPanel x:Name="Headers" Grid.Column="0" Background="{DynamicResource EditorPanelBrush}" ZIndex="1">
             <Border Height="24" Padding="10,0" BorderThickness="0,0,1,1" BorderBrush="{DynamicResource EditorLineBrush}">
               <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                 <PathIcon Classes="small faint" Data="{x:Static shell:LucideIcons.Music}" />
@@ -113,7 +124,9 @@
             <ItemsControl x:Name="LayerHeaders" ItemsSource="{Binding Tracks}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="coremusic:MusicTrackViewModel">
-                  <Border Classes="laneHeader" Classes.selected="{Binding IsSelected}" Height="84" Tapped="HandleHeaderTapped" ContextRequested="HandleHeaderMenu">
+                  <Border Classes="laneHeader" Classes.selected="{Binding IsSelected}" ClipToBounds="True"
+                          Height="{Binding $parent[ItemsControl].((coremusic:MusicEditorViewModel)DataContext).LaneHeight}"
+                          Tapped="HandleHeaderTapped" ContextRequested="HandleHeaderMenu">
                     <Border.ContextFlyout>
                       <MenuFlyout>
                         <MenuItem Header="Move layer up" Click="HandleMoveLayerUp">
@@ -140,7 +153,8 @@
                                     Foreground="{Binding Index, Converter={x:Static music:LayerTint.Brush}}" />
                           <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                         </DockPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="4"
+                                    IsVisible="{Binding $parent[ItemsControl].((coremusic:MusicEditorViewModel)DataContext).ShowsLaneDetails}">
                           <Border Classes="chip" ToolTip.Tip="When the layer plays">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                               <PathIcon Classes="small faint" Data="{Binding PlaysIcon, Converter={x:Static shell:LucideIcons.ByName}}" />
@@ -156,8 +170,8 @@
                           </Border>
                         </StackPanel>
                         <Grid ColumnDefinitions="*,6,36" Height="18">
-                          <music:GainBar Grid.Column="0" Decibels="{Binding GainDb, Mode=TwoWay}" />
-                          <music:LevelMeter Grid.Column="2" Level="{Binding Level}" Height="18" />
+                          <mix:GainBar Grid.Column="0" Decibels="{Binding GainDb, Mode=TwoWay}" />
+                          <mix:LevelMeter Grid.Column="2" Level="{Binding Level}" Height="18" />
                         </Grid>
                       </StackPanel>
                     </DockPanel>
@@ -186,8 +200,12 @@
       <TextBlock Classes="hint small" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="236,0,0,10" Text="{Binding Problem}" Foreground="{DynamicResource EditorDeleteBrush}" />
     </Grid>
 
-    <Border Grid.Row="2" Height="236" IsVisible="{Binding DockOpen}" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource EditorPanelBrush}">
-      <music:MusicDockView DataContext="{Binding}" />
-    </Border>
+    <!-- The dock's top line is its grip, which drags its height. -->
+    <Panel Grid.Row="2" IsVisible="{Binding DockOpen}">
+      <Border x:Name="Dock" Height="{Binding DockHeight}" Background="{DynamicResource EditorPanelBrush}">
+        <music:MusicDockView DataContext="{Binding}" />
+      </Border>
+      <controls:HeightGrip x:Name="DockGrip" Value="{Binding DockHeight}" Minimum="160"><Border /></controls:HeightGrip>
+    </Panel>
   </Grid>
 </UserControl>

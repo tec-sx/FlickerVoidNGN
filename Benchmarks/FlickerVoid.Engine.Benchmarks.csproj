@@ -11,5 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Source/Engine/Rendering/FlickerVoid.Engine.Rendering.csproj" />
+    <ProjectReference Include="../Source/Engine/Audio/FlickerVoid.Engine.Audio.csproj" />
   </ItemGroup>
 </Project>

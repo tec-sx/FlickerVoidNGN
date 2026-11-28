@@ -18,5 +18,8 @@ public sealed class EditorLayoutFile
     /// <summary>The side column's width.</summary>
     public double SideWidth { get; set; } = EditorLayout.DefaultSideWidth;
 
+    /// <summary>The height of the music editor's dock under its lanes.</summary>
+    public double MusicDockHeight { get; set; } = EditorLayout.DefaultMusicDockHeight;
+
     public int AudioBufferFrames { get; set; } = EditorLayout.DefaultAudioBufferFrames;
 }

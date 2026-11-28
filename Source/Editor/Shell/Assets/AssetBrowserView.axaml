@@ -4,6 +4,7 @@
              xmlns:flows="using:FlickerVoid.Editor.Assets.Flows"
              xmlns:shell="using:FlickerVoid.Editor"
              xmlns:controls="using:FlickerVoid.Editor.Controls"
+             xmlns:timelines="using:FlickerVoid.Editor.Controls.Timelines"
              x:Class="FlickerVoid.Editor.Assets.AssetBrowserView"
              x:DataType="assets:AssetBrowserViewModel">
   <!-- The content drawer: a header with the breadcrumb, the search, the category chips and New, Import and Close; under it the
@@ -42,14 +43,9 @@
         </StackPanel>
         <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" VerticalAlignment="Center" Margin="8,0" MaxWidth="420"
                    Foreground="{StaticResource EditorDeleteBrush}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Status}" />
-        <ListBox Margin="10,0,0,0" ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Classes="filters" VerticalAlignment="Center"
+        <timelines:ButtonGroup Margin="10,0,0,0" ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}" Classes="chips" VerticalAlignment="Center"
                  ToolTip.Tip="Show one kind of file, from every folder below the selected one.">
-          <ListBox.ItemsPanel>
-            <ItemsPanelTemplate>
-              <StackPanel Orientation="Horizontal" />
-            </ItemsPanelTemplate>
-          </ListBox.ItemsPanel>
-          <ListBox.ItemTemplate>
+          <timelines:ButtonGroup.ItemTemplate>
             <DataTemplate DataType="assets:AssetFilter">
               <StackPanel Orientation="Horizontal" Spacing="5">
                 <Border Width="7" Height="7" CornerRadius="2" VerticalAlignment="Center" IsVisible="{Binding !IsAll}"
@@ -57,8 +53,8 @@
                 <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
               </StackPanel>
             </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+          </timelines:ButtonGroup.ItemTemplate>
+        </timelines:ButtonGroup>
       </DockPanel>
     </Border>
       <!-- Asks for a new flow node class's name and code folder; Enter creates it, Escape cancels. -->

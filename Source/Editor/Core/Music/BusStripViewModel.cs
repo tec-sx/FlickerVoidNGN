@@ -23,6 +23,10 @@ public sealed partial class BusStripViewModel(AudioBus bus, Action changed) : Ob
     [ObservableProperty]
     private double _level;
 
+    /// <summary>Whether a layer that is heard goes to it (any, for the master) and it is not muted or soloed out. Its strip is faint otherwise.</summary>
+    [ObservableProperty]
+    private bool _isSounding;
+
     /// <summary>The fader in decibels, from -60 (silent) to +6; the volume it makes is capped at 1, as the settings' are.</summary>
     public double Decibels
     {

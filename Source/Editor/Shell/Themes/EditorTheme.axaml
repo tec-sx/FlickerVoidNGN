@@ -8,6 +8,11 @@
         xmlns:menus="using:FlickerVoid.Editor.Core.Menus"
         xmlns:shell="using:FlickerVoid.Editor"
         xmlns:controls="using:FlickerVoid.Editor.Controls"
+        xmlns:timelines="using:FlickerVoid.Editor.Controls.Timelines"
+        xmlns:mix="using:FlickerVoid.Editor.Controls.Mix"
+        xmlns:lists="using:FlickerVoid.Editor.Controls.Lists"
+        xmlns:corelists="using:FlickerVoid.Editor.Core.Lists"
+        xmlns:coretimelines="using:FlickerVoid.Editor.Core.Timelines"
         xmlns:chrome="using:Avalonia.Controls.Chrome">
   <FluentTheme>
     <FluentTheme.Palettes>
@@ -83,13 +88,25 @@
     <SolidColorBrush x:Key="FlowMapNodeBrush" Color="#4A3D31" />
     <SolidColorBrush x:Key="FlowMapFrameFillBrush" Color="#14F5A639" />
 
-    <!-- Colours the code views draw with: the curve palette, code assets, the splash track and shadows. -->
+    <!-- Colours the code views draw with: layer and cue colours (with the ink for text on them), the curve palette, code assets, the splash track and shadows. -->
     <Color x:Key="EditorTrack1">#F5A639</Color>
-    <Color x:Key="EditorTrack2">#E0804A</Color>
-    <Color x:Key="EditorTrack3">#E0664A</Color>
-    <Color x:Key="EditorTrack4">#D9B23A</Color>
-    <Color x:Key="EditorTrack5">#4FB3A9</Color>
-    <Color x:Key="EditorTrack6">#D97BA6</Color>
+    <Color x:Key="EditorTrack2">#E27641</Color>
+    <Color x:Key="EditorTrack3">#F26A5D</Color>
+    <Color x:Key="EditorTrack4">#C9B957</Color>
+    <Color x:Key="EditorTrack5">#63B5B4</Color>
+    <Color x:Key="EditorTrack6">#DF84A8</Color>
+    <Color x:Key="EditorCue1">#56D1A3</Color>
+    <Color x:Key="EditorCue2">#D892E8</Color>
+    <Color x:Key="EditorCue3">#58B0FF</Color>
+    <Color x:Key="EditorCue4">#E7B643</Color>
+    <Color x:Key="EditorCue5">#8CC36D</Color>
+    <Color x:Key="EditorCue6">#E27641</Color>
+    <Color x:Key="EditorCue7">#F08698</Color>
+    <Color x:Key="EditorCue8">#63B5B4</Color>
+    <Color x:Key="EditorCueInk">#1A1208</Color>
+    <SolidColorBrush x:Key="EditorCueInkBrush" Color="#1A1208" />
+    <!-- The raised ground of a lane under a layer or outside the loop: 55% of the base over the input. -->
+    <SolidColorBrush x:Key="EditorRaisedLaneBrush" Color="#0F0A07" />
     <Color x:Key="EditorCurveBlue">#5ACCFF</Color>
     <Color x:Key="EditorCurvePink">#D97BA6</Color>
     <Color x:Key="EditorCodeColor">#B48EC9</Color>
@@ -582,6 +599,254 @@
       </Style>
       <Style Selector="^ /template/ ContentPresenter#PART_HeaderPresenter > TextBlock">
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      </Style>
+    </ControlTheme>
+    <!-- The timeline kit (rule R28, Docs/Design/Timeline.md). A lane header: a 3 px edge in the lane's colour, the icon in that
+         colour, the name, a note, the buttons at the row's end and the content under it; a lane under another is indented 22 px
+         on the raised ground in the hint colour; a selected one is washed in the accent. -->
+    <ControlTheme x:Key="{x:Type timelines:LaneHeader}" TargetType="timelines:LaneHeader">
+      <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      <Setter Property="Padding" Value="9,6,8,0" />
+      <Setter Property="ClipToBounds" Value="True" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="PART_Root" Background="{TemplateBinding Background}" BorderBrush="{StaticResource EditorLineBrush}" BorderThickness="0,0,1,1">
+            <DockPanel>
+              <Border x:Name="PART_Edge" DockPanel.Dock="Left" Width="{x:Static timelines:LaneHeader.Edge}" Background="{TemplateBinding Tint}" />
+              <DockPanel x:Name="PART_Body" Margin="{TemplateBinding Padding}">
+                <DockPanel x:Name="PART_Row" DockPanel.Dock="Top" Height="18">
+                  <ContentPresenter x:Name="PART_Buttons" DockPanel.Dock="Right" Content="{TemplateBinding Buttons}" VerticalAlignment="Center" />
+                  <PathIcon x:Name="PART_Icon" DockPanel.Dock="Left" Data="{TemplateBinding Icon}" Foreground="{TemplateBinding Tint}" Margin="0,0,6,0"
+                            IsVisible="{TemplateBinding Icon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  <TextBlock x:Name="PART_Title" DockPanel.Dock="Left" Text="{TemplateBinding Title}" FontWeight="SemiBold" VerticalAlignment="Center"
+                             TextTrimming="CharacterEllipsis" />
+                  <TextBlock x:Name="PART_Note" Classes="faint small" Text="{TemplateBinding Note}" VerticalAlignment="Center" Margin="6,0,0,0"
+                             TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+                <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                  Margin="0,5,0,0" />
+              </DockPanel>
+            </DockPanel>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:selected">
+        <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
+      </Style>
+      <Style Selector="^:compact /template/ DockPanel#PART_Body">
+        <Setter Property="Margin" Value="8,0" />
+      </Style>
+      <Style Selector="^:compact /template/ DockPanel#PART_Row">
+        <Setter Property="DockPanel.Dock" Value="Left" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
+      <Style Selector="^:compact /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^:sub">
+        <Setter Property="Background" Value="{StaticResource EditorRaisedLaneBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+        <Setter Property="FontSize" Value="11" />
+      </Style>
+      <Style Selector="^:sub /template/ DockPanel#PART_Body">
+        <Setter Property="Margin" Value="19,0,8,0" />
+      </Style>
+      <Style Selector="^:sub /template/ PathIcon#PART_Icon">
+        <Setter Property="Width" Value="11" />
+        <Setter Property="Height" Value="11" />
+        <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+      </Style>
+      <Style Selector="^:sub /template/ TextBlock#PART_Title">
+        <Setter Property="FontWeight" Value="Normal" />
+      </Style>
+      <Style Selector="^:sub /template/ TextBlock#PART_Note">
+        <Setter Property="HorizontalAlignment" Value="Right" />
+      </Style>
+    </ControlTheme>
+
+    <!-- The transport bar: play and pause on the accent, stop, loop, the position in 15 px and the clock faint, then the
+         editor's fields and its tools, on a 34 px bar of the panel colour. -->
+    <ControlTheme x:Key="TransportButton" TargetType="Button">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter x:Name="PART_ContentPresenter" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}"
+                            Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource EditorHoverBrush}" />
+      </Style>
+      <Style Selector="^.play /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource EditorAccentInkBrush}" />
+      </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="TransportToggle" TargetType="ToggleButton" BasedOn="{StaticResource TransportButton}">
+      <Style Selector="^:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource EditorAccentBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource EditorAccentInkBrush}" />
+      </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="{x:Type timelines:Transport}" TargetType="timelines:Transport">
+      <Setter Property="Height" Value="{x:Static timelines:Transport.BarHeight}" />
+      <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      <Setter Property="Template">
+        <ControlTemplate x:DataType="timelines:Transport">
+          <Border Background="{TemplateBinding Background}" BorderBrush="{StaticResource EditorLineBrush}" BorderThickness="0,0,0,1" Padding="8,0">
+            <DockPanel>
+              <ContentPresenter x:Name="PART_Tools" DockPanel.Dock="Right" Content="{TemplateBinding Tools}" VerticalAlignment="Center" />
+              <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button x:Name="PART_Play" Theme="{StaticResource TransportButton}" Classes="play" ToolTip.Tip="Play or pause (Space)">
+                  <Panel>
+                    <PathIcon Classes="filled" Data="{x:Static shell:LucideIcons.Play}"
+                              IsVisible="{Binding !Source.IsPlaying, RelativeSource={RelativeSource TemplatedParent}, FallbackValue=True}" />
+                    <PathIcon Classes="filled" Data="{x:Static shell:LucideIcons.Pause}"
+                              IsVisible="{Binding Source.IsPlaying, RelativeSource={RelativeSource TemplatedParent}, FallbackValue=False}" />
+                  </Panel>
+                </Button>
+                <Button x:Name="PART_Stop" Theme="{StaticResource TransportButton}" ToolTip.Tip="Stop; again, back to the start"
+                        IsVisible="{TemplateBinding ShowsStop}">
+                  <PathIcon Classes="filled" Data="{x:Static shell:LucideIcons.Stop}" />
+                </Button>
+                <ToggleButton x:Name="PART_Loop" Theme="{StaticResource TransportToggle}" ToolTip.Tip="Go round at the end instead of stopping"
+                              IsVisible="{TemplateBinding ShowsLoop}"
+                              IsChecked="{Binding Source.IsLooping, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                  <PathIcon Data="{x:Static shell:LucideIcons.Repeat}" />
+                </ToggleButton>
+                <TextBlock x:Name="PART_Position" Text="{Binding Source.PositionText, RelativeSource={RelativeSource TemplatedParent}}"
+                           FontSize="15" FontWeight="SemiBold" LetterSpacing="0.3" VerticalAlignment="Center" Margin="8,0,6,0" />
+                <TextBlock x:Name="PART_Time" Classes="faint" Text="{Binding Source.TimeText, RelativeSource={RelativeSource TemplatedParent}}"
+                           VerticalAlignment="Center" />
+                <Border Classes="vsep" IsVisible="{TemplateBinding Fields, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <ContentPresenter x:Name="PART_Fields" Content="{TemplateBinding Fields}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+
+    <!-- A trigger button: a cue, a shot. 24 px, radius 5, a 16 px key box, the icon, the name and a note; washed 14% in its
+         colour while idle, filled while live, dashed and glowing while queued (the button draws its own ground). -->
+    <ControlTheme x:Key="{x:Type timelines:TriggerButton}" TargetType="timelines:TriggerButton">
+      <Setter Property="Height" Value="{x:Static timelines:TriggerButton.ButtonHeight}" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="4,0,10,0" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <StackPanel x:Name="PART_Row" Orientation="Horizontal" Spacing="7" Margin="{TemplateBinding Padding}" Background="Transparent">
+            <Border x:Name="PART_Key" Width="{x:Static timelines:TriggerButton.KeyBox}" Height="{x:Static timelines:TriggerButton.KeyBox}" CornerRadius="3"
+                    Background="{TemplateBinding KeyBoxBrush}" VerticalAlignment="Center"
+                    IsVisible="{TemplateBinding Key, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+              <TextBlock Text="{TemplateBinding Key}" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource EditorCueInkBrush}"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <PathIcon x:Name="PART_Icon" Data="{TemplateBinding ShownIcon}" Width="11" Height="11" Foreground="{TemplateBinding Ink}" VerticalAlignment="Center"
+                      IsVisible="{TemplateBinding ShownIcon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Foreground="{TemplateBinding Ink}" VerticalAlignment="Center" />
+            <TextBlock x:Name="PART_Note" Text="{TemplateBinding Note}" FontWeight="Normal" Foreground="{StaticResource EditorMutedTextBrush}"
+                       VerticalAlignment="Center" IsVisible="{TemplateBinding Note, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          </StackPanel>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:live /template/ TextBlock#PART_Note">
+        <Setter Property="Foreground" Value="{StaticResource EditorCueInkBrush}" />
+        <Setter Property="Opacity" Value="0.75" />
+      </Style>
+      <Style Selector="^:queued">
+        <Setter Property="Padding" Value="3,0,9,0" />
+      </Style>
+    </ControlTheme>
+    <!-- The button group and the pill filter are lists drawn by the styles below. -->
+    <ControlTheme x:Key="{x:Type timelines:ButtonGroup}" TargetType="timelines:ButtonGroup" BasedOn="{StaticResource {x:Type ListBox}}" />
+    <ControlTheme x:Key="{x:Type lists:PillFilter}" TargetType="lists:PillFilter" BasedOn="{StaticResource {x:Type ListBox}}" />
+
+    <!-- Mute and solo on a lane header or a channel strip: 18 by 16, radius 3, on the input colour; on, filled in the warning
+         colour with dark ink. -->
+    <ControlTheme x:Key="MuteSoloToggle" TargetType="ToggleButton">
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter x:Name="PART_ContentPresenter" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                            Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:checked">
+        <Setter Property="Background" Value="{StaticResource EditorMeterWarnBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource EditorMeterWarnBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource EditorCueInkBrush}" />
+      </Style>
+    </ControlTheme>
+
+    <!-- A channel strip: 88 px, its name on a raised 22 px header under a 3 px bar of its colour, the fader, two meters and the
+         scale, the route, the gain and mute and solo; a bus's name bold on the base colour; a strip marked silent at 55%. -->
+    <ControlTheme x:Key="{x:Type mix:ChannelStrip}" TargetType="mix:ChannelStrip">
+      <Setter Property="Width" Value="{x:Static mix:ChannelStrip.StripWidth}" />
+      <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border BorderBrush="{StaticResource EditorLineBrush}" BorderThickness="0,0,1,0">
+            <DockPanel Margin="0,0,0,6">
+              <Border x:Name="PART_Name" DockPanel.Dock="Top" Height="22" Background="{StaticResource EditorControlBrush}"
+                      BorderBrush="{TemplateBinding Tint}" BorderThickness="0,3,0,0">
+                <TextBlock x:Name="PART_Title" Text="{TemplateBinding Title}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Margin="4,0" />
+              </Border>
+              <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" Margin="0,5,0,0">
+                <ToggleButton x:Name="PART_Mute" Theme="{StaticResource MuteSoloToggle}" Content="M" ToolTip.Tip="Mute"
+                              IsChecked="{Binding IsMuted, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
+                <ToggleButton x:Name="PART_Solo" Theme="{StaticResource MuteSoloToggle}" Content="S" ToolTip.Tip="Solo"
+                              IsVisible="{TemplateBinding ShowsSolo}"
+                              IsChecked="{Binding IsSoloed, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
+              </StackPanel>
+              <TextBlock x:Name="PART_Gain" DockPanel.Dock="Bottom" Text="{TemplateBinding GainText}" FontSize="11" HorizontalAlignment="Center" Margin="0,5,0,0" />
+              <ContentPresenter x:Name="PART_Route" DockPanel.Dock="Bottom" Content="{TemplateBinding Route}" HorizontalAlignment="Center" Margin="0,5,0,0" />
+              <Grid x:Name="PART_Fader" ColumnDefinitions="18,3,8,3,8,3,22" Width="68" HorizontalAlignment="Center" Margin="0,5,0,0">
+                <mix:Fader Grid.Column="0" Decibels="{Binding Decibels, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                           Maximum="{TemplateBinding Maximum}" />
+                <mix:LevelMeter Grid.Column="2" Vertical="True" Level="{TemplateBinding Level}" Margin="0,8" />
+                <mix:LevelMeter Grid.Column="4" Vertical="True" Level="{TemplateBinding Level}" Margin="0,8" />
+                <mix:FaderScale Grid.Column="6" />
+              </Grid>
+            </DockPanel>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:bus /template/ Border#PART_Name">
+        <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
+      </Style>
+      <Style Selector="^:bus /template/ TextBlock#PART_Title">
+        <Setter Property="FontWeight" Value="SemiBold" />
+      </Style>
+      <Style Selector="^:silent">
+        <Setter Property="Opacity" Value="0.55" />
       </Style>
     </ControlTheme>
     <!-- A row of a panel card: the label in a column 96 px wide or as wide as the card's longest label, the value beside it, or
@@ -1282,8 +1547,35 @@
     <Setter Property="Opacity" Value="1" />
   </Style>
 
-  <!-- Chips: a row of filters; the chosen one washed in the accent. -->
-  <Style Selector="ListBox.filters ListBoxItem">
+  <!-- The button group (rule R28): joined tabs on a 26 px bar, the chosen one raised with an accent bar at its foot; with
+       chips, rounded filters, the chosen one washed in the accent. -->
+  <Style Selector="timelines|ButtonGroup">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="timelines|ButtonGroup ListBoxItem">
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="MinHeight" Value="25" />
+    <Setter Property="Height" Value="25" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="timelines|ButtonGroup ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
+  </Style>
+  <Style Selector="timelines|ButtonGroup ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
+    <Setter Property="BoxShadow" Value="{StaticResource EditorTabBottomBar}" />
+  </Style>
+  <Style Selector="timelines|ButtonGroup.chips ListBoxItem">
     <Setter Property="Padding" Value="8,0" />
     <Setter Property="Margin" Value="0,0,3,0" />
     <Setter Property="MinHeight" Value="20" />
@@ -1291,13 +1583,97 @@
     <Setter Property="CornerRadius" Value="10" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BorderBrush" Value="Transparent" />
-    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
   </Style>
-  <Style Selector="ListBox.filters ListBoxItem:selected">
+  <Style Selector="timelines|ButtonGroup.chips ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentLineBrush}" />
+    <Setter Property="BoxShadow" Value="none" />
+  </Style>
+  <!-- A field on a transport bar: 22 px, radius 4, on the input colour, its name faint before its value. -->
+  <Style Selector="Border.transportField">
+    <Setter Property="Height" Value="22" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="Background" Value="{StaticResource EditorDeepBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Border.transportField > StackPanel">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="6" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.transportField TextBlock">
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.transportField TextBlock.name">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="Border.transportField TextBox, Border.transportField ComboBox">
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Border.transportField TextBox /template/ Border#PART_BorderElement, Border.transportField ComboBox /template/ Border#Background">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <!-- The pill filter (rule R28): a wrapping row of 20 px pills, radius 10, on the raised colour with a line border, each with
+       its count faint; the chosen one washed in the accent with an accent border and a cross; the add pill dashed. -->
+  <Style Selector="lists|PillFilter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4" /></ItemsPanelTemplate>
+    </Setter>
+    <Setter Property="ItemTemplate">
+      <DataTemplate x:DataType="corelists:FilterPill">
+        <Panel>
+          <Rectangle x:Name="PillDash" Stroke="{StaticResource EditorHintBrush}" StrokeThickness="1" StrokeDashArray="3,2" RadiusX="10" RadiusY="10"
+                     IsVisible="{Binding IsAdd}" Margin="-6,-1" />
+          <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+            <PathIcon Width="10" Height="10" Data="{x:Static shell:LucideIcons.Add}" IsVisible="{Binding IsAdd}" Foreground="{StaticResource EditorHintBrush}" />
+            <TextBlock Text="{Binding Name}" FontSize="11.5" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding CountText}" FontSize="10.5" Foreground="{StaticResource EditorHintBrush}" VerticalAlignment="Center"
+                       IsVisible="{Binding !IsAdd}" />
+            <PathIcon Width="10" Height="10" Data="{x:Static shell:LucideIcons.Close}" Foreground="{StaticResource EditorMutedTextBrush}"
+                      IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+          </StackPanel>
+        </Panel>
+      </DataTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="lists|PillFilter ListBoxItem">
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Height" Value="{x:Static lists:PillFilter.PillHeight}" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
+    <Setter Property="Background" Value="{StaticResource EditorControlBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="lists|PillFilter ListBoxItem.add">
+    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />
+  </Style>
+  <Style Selector="lists|PillFilter ListBoxItem:selected">
     <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
   </Style>
-  <Style Selector="ListBox.filters ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentLineBrush}" />
+  <Style Selector="lists|PillFilter ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource EditorAccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
     <Setter Property="BoxShadow" Value="none" />
   </Style>
 
@@ -1624,32 +2000,12 @@
     <Setter Property="Padding" Value="10,0" />
   </Style>
 
-  <!-- The Day dock: tabs with a 2 px amber bar under the chosen one, 20 px value rows, and the transport under the curves. -->
+  <!-- A dock's tab bar, 26 px, holding a button group; the Day dock's 20 px value rows. -->
   <Style Selector="Border.dockTabs">
     <Setter Property="Height" Value="26" />
     <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
     <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
     <Setter Property="BorderThickness" Value="0,0,0,1" />
-  </Style>
-  <Style Selector="ListBox.dockTabs">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Padding" Value="0" />
-  </Style>
-  <Style Selector="ListBox.dockTabs ListBoxItem">
-    <Setter Property="Padding" Value="10,0" />
-    <Setter Property="MinHeight" Value="25" />
-    <Setter Property="Height" Value="25" />
-    <Setter Property="CornerRadius" Value="0" />
-    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
-    <Setter Property="BorderThickness" Value="0,0,1,0" />
-    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
-  </Style>
-  <Style Selector="ListBox.dockTabs ListBoxItem:selected">
-    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
-  </Style>
-  <Style Selector="ListBox.dockTabs ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
-    <Setter Property="BoxShadow" Value="{StaticResource EditorTabBottomBar}" />
   </Style>
   <Style Selector="TextBlock.fieldLabel.undrawn">
     <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />

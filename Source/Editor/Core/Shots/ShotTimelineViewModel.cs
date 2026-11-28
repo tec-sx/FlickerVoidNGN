@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Numerics;
 
 using Arch.Core;
@@ -8,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Scenes;
+using FlickerVoid.Editor.Core.Timelines;
 using FlickerVoid.Engine.Cameras.Shots;
 using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Extraction;
@@ -18,10 +20,17 @@ namespace FlickerVoid.Editor.Core.Shots;
 /// <summary>
 /// The timeline of the selected shot, under the viewport: its keys along a time axis, retimed by dragging, a scrubbed time the
 /// camera preview shows, keys added from the editor's view and deleted, and the selected key, whose world transform the gizmo
-/// moves and turns. Every edit goes through <see cref="EditorScene"/>.
+/// moves and turns. Every edit goes through <see cref="EditorScene"/>. It owns a <see cref="TimelineViewModel"/> in seconds with one
+/// lane of keys for the shared timeline controls, and applies their edits.
 /// </summary>
-public sealed partial class ShotTimelineViewModel : ObservableObject
+public sealed partial class ShotTimelineViewModel : ObservableObject, ITimelineEditor
 {
+    /// <summary>The pixels left free at both ends of the timeline, so the first and last keys show whole.</summary>
+    public const double TimelineInset = 8;
+
+    /// <summary>The height of the lane of keys.</summary>
+    public const double LaneHeight = 28;
+
     /// <summary>How close, in pixels, a click must come to a key's handle to pick it.</summary>
     public const float KeyPickPixels = 10;
 
@@ -31,10 +40,20 @@ public sealed partial class ShotTimelineViewModel : ObservableObject
     private static readonly QueryDescription Named = new QueryDescription().WithAll<EntityName, Transform>();
 
     private readonly EditorScene _scene;
+    private readonly TimelineLane _lane = new() { Name = "Keys", Icon = "Zap", Tint = "EditorTrack6", Height = LaneHeight };
 
     public ShotTimelineViewModel(EditorScene scene)
     {
         _scene = scene;
+        Timeline = new TimelineViewModel(new SecondScale())
+        {
+            Editor = this,
+            FitInset = TimelineInset,
+            KeepsFit = true,
+        };
+        Timeline.Lanes.Add(_lane);
+        Timeline.SelectionChanged += HandleTimelineSelectionChanged;
+        Timeline.PropertyChanged += HandleTimelineChanged;
         scene.Selection.Changed += HandleSelectionChanged;
         scene.Edited += Refresh;
         scene.Opened += HandleSelectionChanged;
@@ -46,6 +65,9 @@ public sealed partial class ShotTimelineViewModel : ObservableObject
     public bool HasShot => Shot is not null;
 
     public ObservableCollection<ShotKeyItem> Keys { get; } = [];
+
+    /// <summary>The keys on a timeline in seconds, for the shared timeline controls.</summary>
+    public TimelineViewModel Timeline { get; }
 
     /// <summary>The time of the last key, or 1 for a timeline of no length, so the axis has room.</summary>
     public float Duration { get; private set; } = 1;
@@ -68,6 +90,38 @@ public sealed partial class ShotTimelineViewModel : ObservableObject
         {
             item.IsSelected = item.Index == key;
         }
+
+        foreach (TimelineItem item in _lane.Items)
+        {
+            item.IsSelected = Equals(item.Source, key);
+        }
+
+        Timeline.Invalidate();
+    }
+
+    /// <summary>Applies a drag or delete from the timeline: a moved key is retimed, a deleted one removed.</summary>
+    public void Apply(TimelineChange change)
+    {
+        if (change.Item?.Source is not int key)
+        {
+            return;
+        }
+
+        if (change.Kind == TimelineChangeKind.MoveItem)
+        {
+            MoveKeyTime(key, (float)change.Start);
+            SelectKey(key);
+        }
+        else if (change.Kind == TimelineChangeKind.DeleteItem)
+        {
+            SelectKey(key);
+            DeleteSelectedKey();
+        }
+    }
+
+    /// <summary>Each retime is its own scene edit already, so a finished drag needs nothing more.</summary>
+    public void Complete()
+    {
     }
 
     /// <summary>Retimes a key, kept between its neighbours' times and never before 0.</summary>
@@ -303,11 +357,14 @@ public sealed partial class ShotTimelineViewModel : ObservableObject
     /// <summary>Reads the selected shot's keys again, as after an edit.</summary>
     public void Refresh()
     {
+        float duration = Duration;
         Keys.Clear();
+        _lane.Items.Clear();
         Duration = 1;
         if (!TryGetShot(out _, out Shot shot))
         {
             OnPropertyChanged(nameof(Duration));
+            ShowTimeline(duration);
             return;
         }
 
@@ -328,9 +385,55 @@ public sealed partial class ShotTimelineViewModel : ObservableObject
             float fraction = key.Time / Duration;
             ShotKeyItem item = new(index, key.Time, fraction, key.Marker.Name) { IsSelected = index == SelectedKey };
             Keys.Add(item);
+            TimelineItem timelineItem = new()
+            {
+                Source = index,
+                Kind = TimelineKinds.Key,
+                Start = key.Time,
+                Label = key.Marker.Name,
+                IsSelected = index == SelectedKey,
+            };
+            _lane.Items.Add(timelineItem);
         }
 
         OnPropertyChanged(nameof(Duration));
+        ShowTimeline(duration);
+    }
+
+    partial void OnScrubTimeChanged(float value) => Timeline.Cursor = value;
+
+    /// <summary>Draws the timeline again, fitting the whole shot when its length changed.</summary>
+    private void ShowTimeline(float previousDuration)
+    {
+        if (previousDuration != Duration)
+        {
+            Timeline.Fit();
+        }
+
+        Timeline.Invalidate();
+    }
+
+    private void HandleTimelineSelectionChanged()
+    {
+        int? key = null;
+        foreach (TimelineItem item in Timeline.SelectedItems)
+        {
+            if (item.Source is int index)
+            {
+                key = index;
+                break;
+            }
+        }
+
+        SelectKey(key);
+    }
+
+    private void HandleTimelineChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TimelineViewModel.Cursor))
+        {
+            ScrubTime = (float)Timeline.Cursor;
+        }
     }
 
     private void HandleSelectionChanged()
@@ -345,6 +448,7 @@ public sealed partial class ShotTimelineViewModel : ObservableObject
         if (shot != Shot)
         {
             Shot = shot;
+            Duration = 0;
             SelectedKey = null;
             ScrubTime = 0;
             OnPropertyChanged(nameof(Shot));

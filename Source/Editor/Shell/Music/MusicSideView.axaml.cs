@@ -20,22 +20,6 @@ public partial class MusicSideView : UserControl
 
     private MusicEditorViewModel? Editor => DataContext as MusicEditorViewModel;
 
-    private void HandleLayerTab(object? sender, RoutedEventArgs args) => Set(editor => editor.SideTab = 0);
-
-    private void HandleArrangementTab(object? sender, RoutedEventArgs args) => Set(editor => editor.SideTab = 1);
-
-    private void HandleSoundsTab(object? sender, RoutedEventArgs args) => Set(editor => editor.ListTab = 0);
-
-    private void HandleCuesTab(object? sender, RoutedEventArgs args) => Set(editor => editor.ListTab = 1);
-
-    private void Set(Action<MusicEditorViewModel> change)
-    {
-        if (Editor is { } editor)
-        {
-            change(editor);
-        }
-    }
-
     private void HandleRemoveNotifier(object? sender, RoutedEventArgs args)
     {
         if (sender is Control { DataContext: NotifierViewModel notifier } && Editor is { } editor)

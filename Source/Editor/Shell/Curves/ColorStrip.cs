@@ -7,12 +7,13 @@ using Avalonia.Input;
 using Avalonia.Media;
 
 using FlickerVoid.Editor.Core.Curves;
+using FlickerVoid.Editor.Core.Timelines;
 using FlickerVoid.Engine.Runtime.Curves;
 
 namespace FlickerVoid.Editor.Curves;
 
 /// <summary>
-/// A color curve as a gradient across the times of a curve view's range, with a marker under each key: a press selects a
+/// A color curve as a gradient across a time range, with a marker under each key: a press selects a
 /// key and a drag moves it (Alt without snapping), a double-click adds one, Delete removes the selected one.
 /// </summary>
 public sealed class ColorStrip : Control
@@ -20,9 +21,9 @@ public sealed class ColorStrip : Control
     public static readonly StyledProperty<ColorTrack?> TrackProperty =
         AvaloniaProperty.Register<ColorStrip, ColorTrack?>(nameof(Track));
 
-    /// <summary>The times shown, shared with the curve view above so both scroll and zoom together.</summary>
-    public static readonly StyledProperty<CurveRange?> RangeProperty =
-        AvaloniaProperty.Register<ColorStrip, CurveRange?>(nameof(Range));
+    /// <summary>The times shown, shared with the ruler and the curve view so all scroll and zoom together.</summary>
+    public static readonly StyledProperty<TimeRange?> RangeProperty =
+        AvaloniaProperty.Register<ColorStrip, TimeRange?>(nameof(Range));
 
     private const double MarkerHeight = 8;
     private const double SampleStep = 2;
@@ -33,7 +34,7 @@ public sealed class ColorStrip : Control
     private static readonly IPen MarkerPen = new Pen(new SolidColorBrush(Color.Parse("#0B0705")), 1);
 
     private ColorTrack? _watchedTrack;
-    private CurveRange? _watchedRange;
+    private TimeRange? _watchedRange;
     private bool _dragging;
 
     static ColorStrip()
@@ -48,7 +49,7 @@ public sealed class ColorStrip : Control
         set => SetValue(TrackProperty, value);
     }
 
-    public CurveRange? Range
+    public TimeRange? Range
     {
         get => GetValue(RangeProperty);
         set => SetValue(RangeProperty, value);
@@ -178,10 +179,10 @@ public sealed class ColorStrip : Control
         return (byte)MathF.Round(srgb * 255);
     }
 
-    // The range's screen is the curve view's, so its times are mapped across this strip's own width.
-    private double ToTime(CurveRange range, double x) => range.MinTime + (x / Math.Max(Bounds.Width, 1) * (range.MaxTime - range.MinTime));
+    // The range's width is the curve view's, so its times are mapped across this strip's own width.
+    private double ToTime(TimeRange range, double x) => range.MinTime + (x / Math.Max(Bounds.Width, 1) * (range.MaxTime - range.MinTime));
 
-    private double ToX(CurveRange range, double time) => (time - range.MinTime) / (range.MaxTime - range.MinTime) * Bounds.Width;
+    private double ToX(TimeRange range, double time) => (time - range.MinTime) / (range.MaxTime - range.MinTime) * Bounds.Width;
 
     private static StreamGeometry CreateMarker(double x, double top)
     {
