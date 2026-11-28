@@ -31,7 +31,7 @@ Plan, decisions and roadmap: `Docs/Plan.md`.
 
 Each module's behaviour, API and decisions are in `Docs/Modules`; read the one you work on first, and keep it in step with the code in the same pull request.
 
-- `Design/EditorUi.md`: the 27 rules every editor UI follows (R1 to R27); read and follow them for any editor UI work, and check a UI pull request against them.
+- `Design/EditorUi.md`: the 28 rules every editor UI follows (R1 to R28); read and follow them for any editor UI work, and check a UI pull request against them.
 - `Editor.md`: the editor's projects, MVVM, viewport, outliner, inspector, undo, unsaved content, asset browser and the material, texture and flow editors.
 - `Rendering.md`: extraction, the pass pipeline, culling, the sky, outlines and outline requests, indoors, cutaways and doorways.
 - `Content.md`: the builder and its importers, textures, canvases, models and shaders, hot reload, schemas and the content check.
@@ -73,6 +73,7 @@ Each module's behaviour, API and decisions are in `Docs/Modules`; read the one y
 - Don't chain ternaries; use `if`/`else` or a `switch`.
 - Minimal comments: a one-sentence `<summary>` on a type; on a member only when its name or logic is unclear.
 - Warnings are errors.
+- Effort follows the step (owner, 2026-11-28): medium for clear, mechanical or well-specified steps (renames, conversions, wiring, docs, small fixes), high for design, shared controls and engine logic with edge cases, max only for the hardest (concurrency, audio timing, a failure that resists two tries); say the level when it changes.
 
 ## Build and test
 

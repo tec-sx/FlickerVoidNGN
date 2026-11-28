@@ -45,12 +45,34 @@ The picture comes first, hands stay on the picture, the look is warm and calm, c
 - **R25. One kit for editing tools** (owner, 2026-11-27). A tool is a name, an icon, a key, options and, when it builds something, a preview that waits for Apply. It goes in the tool rail down the viewport's left edge (lit while chosen or while its key is held), its options in the Tool tab in the inspector's place, and Apply (Enter) and Cancel (Escape) in the confirm bar at the bottom of the view; never a bar of numbers along the bottom. The level and every creator fill the same rail, and a creator draws on a dark background without sky.
 - **R26. One card for every section** (owner, 2026-11-27). A panel is built from panel cards, as the inspector shows a component: a 24 px header with a chevron, the design's icon, the title, the card's actions and its More menu, over rows whose labels share one column, 96 px or as wide as the card's longest label. Values follow the panel's width; as it narrows, labels give way first and read whole in their tooltip. No view builds a section of its own; a test fails on one.
 - **R27. Refusals are toasts** (owner, 2026-11-28). When a tool can't do what was asked (stairs with no storey above, an opening on no wall), a toast at the top of the viewport says why and what to do instead, in a sentence, and goes after a few seconds or on a click; at most three show. Nothing is refused silently, and a refusal never opens a dialog. A tool that works says so in its own tags, not in a toast.
+- **R28. One timeline kit for everything with time** (owner, 2026-11-28). A ruler, lanes, a transport, a fader or a meter is the kit's (`Shell/Controls/Timelines`, `Shell/Controls/Mix`, over `Core/Timelines`), whatever it counts (bars, hours, seconds); a view never draws its own. One ruler with the position chip, lanes whose items are drawn by registered painters, one overlay for bands and the position line, one transport bar, one channel strip; tabs and filters are a button group, long lists an item list, filters with counts a pill filter. A test fails on a ruler, transport, fader or meter defined outside the kit. The look is the mockups' (`Design/Timeline.md`), measure for measure.
 
 ## Before a new feature is built
 
 1. Write its flow as numbered steps, today and proposed.
 2. Draw it from the kit's components; if none fits, the new component joins the kit first.
-3. Check it against R1 to R27 and write down any exception with its reason; the owner approves the design.
+3. Check it against R1 to R28 and write down any exception with its reason; the owner approves the design.
 4. The pull request carries before and after screenshots.
 
 Rules the code enforces today are tests; the rest are checked in review. Rules not yet enforced (R3, R17, R18) become tests in the theme and kit steps of the redesign.
+
+## The kit's shared controls
+
+What every editor view builds from (rule R28); the measures are in `Design/Timeline.md`.
+
+| Control | Where | What it is |
+| --- | --- | --- |
+| `TimeRange` | `Core/Timelines` | The times a view shows across its width: pan, zoom about a point, frame, map between time and pixels. Shared by everything drawn over the same times. |
+| `ITimeScale` | `Core/Timelines` | What a ruler counts: `BarScale` (bars and beats, phrases as sections), `HourScale` (the day, repeating), `SecondScale`. Gives the ticks, the snap step and the position's text. |
+| `TimelineViewModel` | `Core/Timelines` | A range, a scale, lanes of items, regions, the cursor and the playhead; `TimelineEdit` turns the pointer and keys into moves, resizes, creates and deletes, which an `ITimelineEditor` applies. |
+| `TimeRuler` | `Controls/Timelines` | 24 px: ticks, labels, sections bold, region tabs and the position chip; pressed or dragged it moves the cursor (snapped unless Alt), wheel zooms, Shift pans. |
+| `TimelineLanes` | `Controls/Timelines` | The lanes' rows with the scale's grid; each item drawn by the `ILaneItemPainter` registered for its kind (`ClipPainter`, `FillPainter`, `MarkerPainter`, `KeyPainter`). |
+| `TimelineOverlay` | `Controls/Timelines` | Over the lanes, not hit: region bands (live, queued, idle), the draft and the position line. |
+| `LaneHeader` | `Controls/Timelines` | A lane's header: a 3 px edge in its tint, icon, title, note, buttons and its own rows; a sub lane indents 22 px. |
+| `Transport` | `Controls/Timelines` | The 34 px bar over an `ITransport`: play or pause, stop, loop, the position (15 px semibold), the clock time, then the editor's fields (`transportField`: 22 px, its name faint) and tools. |
+| `TriggerButton` | `Controls/Timelines` | A 24 px trigger for a cue or a shot: a 16 px key box, the icon, the name and a note; washed while idle, filled while live, dashed and glowing while queued. |
+| `BeatPulse` | `Controls/Timelines` | The one clock queued things pulse on. |
+| `ChannelStrip` | `Controls/Mix` | An 88 px mixer strip: the name under a 3 px tint, fader, two meters and the dB scale, the route, gain, mute and solo; a bus strip in bold. `Fader`, `LevelMeter`, `FaderScale` and `GainBar` are its parts. |
+| `ButtonGroup` | `Controls/Timelines` | Joined tabs on a 26 px bar, the chosen one raised with an accent bar at its foot; with `chips`, rounded filters. |
+| `ItemList` | `Controls/Lists` | A list with Ctrl and Shift clicks, Ctrl+A and a right-click that keeps the selection (`ListSelection<T>`), with tick and dash marks in menus (`SelectionMarks`). |
+| `PillFilter` | `Controls/Lists` | A wrapping row of 20 px pills with counts, one or several chosen, and an add pill. |
