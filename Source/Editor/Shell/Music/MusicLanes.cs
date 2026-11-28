@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 
+using FlickerVoid.Editor.Controls.Mix;
 using FlickerVoid.Editor.Core.Music;
 
 namespace FlickerVoid.Editor.Music;

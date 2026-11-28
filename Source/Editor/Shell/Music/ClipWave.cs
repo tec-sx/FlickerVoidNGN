@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 
+using FlickerVoid.Editor.Controls.Mix;
 using FlickerVoid.Editor.Core.Music;
 
 namespace FlickerVoid.Editor.Music;

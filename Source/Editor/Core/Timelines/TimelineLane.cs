@@ -28,6 +28,9 @@ public sealed class TimelineLane
 
     public bool IsSelected { get; set; }
 
+    /// <summary>Drawn on the raised ground of a lane under a layer or outside the loop (fills, shots); lanes under others always are.</summary>
+    public bool IsRaised { get; set; }
+
     /// <summary>Drawn on a darker ground, as a layer held out of the mix.</summary>
     public bool IsHeld { get; set; }
 

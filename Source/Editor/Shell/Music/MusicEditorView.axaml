@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:music="using:FlickerVoid.Editor.Music"
+             xmlns:mix="using:FlickerVoid.Editor.Controls.Mix"
              xmlns:coremusic="using:FlickerVoid.Editor.Core.Music"
              xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Music.MusicEditorView"
@@ -156,8 +157,8 @@
                           </Border>
                         </StackPanel>
                         <Grid ColumnDefinitions="*,6,36" Height="18">
-                          <music:GainBar Grid.Column="0" Decibels="{Binding GainDb, Mode=TwoWay}" />
-                          <music:LevelMeter Grid.Column="2" Level="{Binding Level}" Height="18" />
+                          <mix:GainBar Grid.Column="0" Decibels="{Binding GainDb, Mode=TwoWay}" />
+                          <mix:LevelMeter Grid.Column="2" Level="{Binding Level}" Height="18" />
                         </Grid>
                       </StackPanel>
                     </DockPanel>

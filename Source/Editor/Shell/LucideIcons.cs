@@ -193,6 +193,14 @@ public static class LucideIcons
 
     /// <summary>The Visual Studio logo, filled.</summary>
     public static Geometry VisualStudio { get; } = Parse("M 17.583 0.063 a 1.5 1.5 0 0 0 -1.032 0.392 a 1.5 1.5 0 0 0 -0.001 0 A 0.88 0.88 0 0 0 16.5 0.5 L 8.528 9.316 L 3.875 5.5 l -0.407 -0.35 a 1 1 0 0 0 -1.024 -0.154 a 1 1 0 0 0 -0.012 0.005 l -1.817 0.75 a 1 1 0 0 0 -0.077 0.036 a 1 1 0 0 0 -0.047 0.028 a 1 1 0 0 0 -0.038 0.022 a 1 1 0 0 0 -0.048 0.034 a 1 1 0 0 0 -0.03 0.024 a 1 1 0 0 0 -0.044 0.036 a 1 1 0 0 0 -0.036 0.033 a 1 1 0 0 0 -0.032 0.035 a 1 1 0 0 0 -0.033 0.038 a 1 1 0 0 0 -0.035 0.044 a 1 1 0 0 0 -0.024 0.034 a 1 1 0 0 0 -0.032 0.05 a 1 1 0 0 0 -0.02 0.035 a 1 1 0 0 0 -0.024 0.05 a 1 1 0 0 0 -0.02 0.045 a 1 1 0 0 0 -0.016 0.044 a 1 1 0 0 0 -0.016 0.047 a 1 1 0 0 0 -0.015 0.055 a 1 1 0 0 0 -0.01 0.04 a 1 1 0 0 0 -0.008 0.054 a 1 1 0 0 0 -0.006 0.05 A 1 1 0 0 0 0 6.668 v 10.666 a 1 1 0 0 0 0.615 0.917 l 1.817 0.764 a 1 1 0 0 0 1.035 -0.164 l 0.408 -0.35 l 4.653 -3.815 l 7.973 8.815 a 1.5 1.5 0 0 0 0.072 0.065 a 1.5 1.5 0 0 0 0.057 0.05 a 1.5 1.5 0 0 0 0.058 0.042 a 1.5 1.5 0 0 0 0.063 0.044 a 1.5 1.5 0 0 0 0.065 0.038 a 1.5 1.5 0 0 0 0.065 0.036 a 1.5 1.5 0 0 0 0.068 0.031 a 1.5 1.5 0 0 0 0.07 0.03 a 1.5 1.5 0 0 0 0.073 0.025 a 1.5 1.5 0 0 0 0.066 0.02 a 1.5 1.5 0 0 0 0.08 0.02 a 1.5 1.5 0 0 0 0.068 0.014 a 1.5 1.5 0 0 0 0.075 0.01 a 1.5 1.5 0 0 0 0.075 0.008 a 1.5 1.5 0 0 0 0.073 0.003 a 1.5 1.5 0 0 0 0.077 0 a 1.5 1.5 0 0 0 0.078 -0.005 a 1.5 1.5 0 0 0 0.067 -0.007 a 1.5 1.5 0 0 0 0.087 -0.015 a 1.5 1.5 0 0 0 0.06 -0.012 a 1.5 1.5 0 0 0 0.08 -0.022 a 1.5 1.5 0 0 0 0.068 -0.02 a 1.5 1.5 0 0 0 0.07 -0.028 a 1.5 1.5 0 0 0 0.09 -0.037 l 4.944 -2.377 a 1.5 1.5 0 0 0 0.476 -0.362 a 1.5 1.5 0 0 0 0.09 -0.112 a 1.5 1.5 0 0 0 0.004 -0.007 a 1.5 1.5 0 0 0 0.08 -0.125 a 1.5 1.5 0 0 0 0.062 -0.12 a 1.5 1.5 0 0 0 0.009 -0.017 a 1.5 1.5 0 0 0 0.04 -0.108 a 1.5 1.5 0 0 0 0.015 -0.037 a 1.5 1.5 0 0 0 0.03 -0.107 a 1.5 1.5 0 0 0 0.009 -0.037 a 1.5 1.5 0 0 0 0.017 -0.1 a 1.5 1.5 0 0 0 0.008 -0.05 a 1.5 1.5 0 0 0 0.006 -0.09 a 1.5 1.5 0 0 0 0.004 -0.08 V 3.942 a 1.5 1.5 0 0 0 0 -0.003 a 1.5 1.5 0 0 0 0 -0.032 a 1.5 1.5 0 0 0 -0.01 -0.15 a 1.5 1.5 0 0 0 -0.84 -1.17 L 18.206 0.21 a 1.5 1.5 0 0 0 -0.622 -0.146 z M 18 6.92 v 10.163 l -6.198 -5.08 z M 3 8.574 l 3.099 3.427 l -3.1 3.426 z");
+    public static Geometry Hourglass { get; } = Parse("M5 22h14 M5 2h14 M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22 M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2");
+    public static Geometry Zap { get; } = Parse("M15.914 4a1.5 1.5 0 0 0-2.474-1.561l-9 9A1.5 1.5 0 0 0 5.5 14h4.002a.5.5 0 0 1 .471.666L8.086 20a1.5 1.5 0 0 0 2.475 1.56l9-9A1.5 1.5 0 0 0 18.5 10h-3.997a.5.5 0 0 1-.472-.667z");
+    public static Geometry Group { get; } = Parse("M3 7V5c0-1.1.9-2 2-2h2 M17 3h2c1.1 0 2 .9 2 2v2 M21 17v2c0 1.1-.9 2-2 2h-2 M7 21H5c-1.1 0-2-.9-2-2v-2 M8 7h5a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1z M11 12h5a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1z");
+    public static Geometry FolderMinus { get; } = Parse("M9 13h6 M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z");
+    public static Geometry AudioLines { get; } = Parse("M2 10v3 M6 6v11 M10 3v18 M14 8v7 M18 5v13 M22 10v3");
+    public static Geometry Minus { get; } = Parse("M5 12h14");
+    public static Geometry CornerDownRight { get; } = Parse("M15 10l5 5-5 5 M4 4v7a4 4 0 0 0 4 4h12");
+    public static Geometry Dot { get; } = Parse("M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0z");
 
     private static readonly FrozenDictionary<string, Geometry> s_byName = new Dictionary<string, Geometry>
     {
@@ -371,6 +379,14 @@ public static class LucideIcons
         [nameof(Fit)] = Fit,
         [nameof(Clock)] = Clock,
         [nameof(Project)] = Project,
+        [nameof(Hourglass)] = Hourglass,
+        [nameof(Zap)] = Zap,
+        [nameof(Group)] = Group,
+        [nameof(FolderMinus)] = FolderMinus,
+        [nameof(AudioLines)] = AudioLines,
+        [nameof(Minus)] = Minus,
+        [nameof(CornerDownRight)] = CornerDownRight,
+        [nameof(Dot)] = Dot,
     }.ToFrozenDictionary();
 
     /// <summary>Icons by name, for view models that name theirs without seeing Avalonia (menu choices, scene items).</summary>
