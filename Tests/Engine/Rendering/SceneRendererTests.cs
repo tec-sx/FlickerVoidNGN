@@ -2367,6 +2367,81 @@ public sealed class SceneRendererTests : IDisposable
     }
 
     [Fact]
+    public void TheFlatLookDrawsEachFaceInOneToneWhateverTheLightWithAThinLineRoundIt()
+    {
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Quad);
+        _builder.WithTargetSize(16);
+        _builder.WithRenderer(static renderer => renderer.FlatLook = true);
+        _builder.WithLight(sunDirection: -Vector3.UnitZ, ambient: 1);
+        uint[] lit = _builder.Render();
+
+        uint[] unlit = _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0).Render();
+
+        const int Size = 16;
+        uint middle = unlit[(8 * Size) + 8];
+        (byte tone, _, _) = SceneRendererTestsBuilder.Channels(middle);
+        unlit.Should().Equal(lit, "the flat look takes no light");
+        tone.Should().BeGreaterThan(0, "the face has a tone of its own without any light");
+        unlit[(7 * Size) + 7].Should().Be(middle, "a face is one tone all over");
+        int brighter = unlit.Count(pixel => SceneRendererTestsBuilder.Channels(pixel).Red > tone);
+        brighter.Should().BeInRange(8, 64, "the face's outline is a thin lighter line");
+    }
+
+    [Fact]
+    public void TheFlatLookGivesFacesTurnedOtherWaysOtherTones()
+    {
+        const string Front = """{ "name": "Front", "components": { "transform": { "position": [-0.5, 0, 0], "scale": [0.4, 0.8, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""";
+        const string Turned = """{ "name": "Turned", "components": { "transform": { "position": [0.5, 0, 0], "rotation": [0, 0.5, 0, 0.8660254], "scale": [0.8, 0.8, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Front, Turned);
+        _builder.WithTargetSize(16);
+        _builder.WithRenderer(static renderer => renderer.FlatLook = true);
+
+        uint[] pixels = _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0).Render();
+
+        const int Size = 16;
+        (byte front, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * Size) + 4]);
+        (byte turned, _, _) = SceneRendererTestsBuilder.Channels(pixels[(8 * Size) + 12]);
+        front.Should().BeGreaterThan(0);
+        turned.Should().BeGreaterThan(0);
+        turned.Should().BeLessThan(front, "a face turned toward X is darker than one facing Z, so a box reads as a box");
+    }
+
+    [Fact]
+    public void TheFlatLookDrawsNoLinesAcrossALargeFaceThatRunsDeepAlongTheView()
+    {
+        const string Ground = """{ "name": "Ground", "components": { "transform": { "rotation": [-0.5, 0, 0, 0.8660254], "scale": [20, 20, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(Camera, Ground);
+        _builder.WithTargetSize(16);
+        _builder.WithRenderer(static renderer => renderer.FlatLook = true);
+
+        uint[] pixels = _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0).Render();
+
+        uint middle = pixels[(8 * 16) + 8];
+        SceneRendererTestsBuilder.Channels(middle).Red.Should().BeGreaterThan(0);
+        pixels.Should().AllBeEquivalentTo(middle, "a big face takes its depth pixel by pixel, which is no border between objects");
+    }
+
+    [Fact]
+    public void TheFlatLookDrawsNoLinesAcrossALargeFaceFarFromTheCamera()
+    {
+        const string FarCamera = """{ "name": "Camera", "components": { "transform": { "position": [0, 0, 60] }, "camera": { "orthographicHeight": 2, "farPlane": 200 } } }""";
+        const string Wall = """{ "name": "Wall", "components": { "transform": { "rotation": [-0.0436194, 0, 0, 0.9990482], "scale": [60, 60, 1] }, "meshRenderer": { "mesh": "Quad.glb" } } }""";
+        _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));
+        _builder.WithScene(FarCamera, Wall);
+        _builder.WithTargetSize(16);
+        _builder.WithRenderer(static renderer => renderer.FlatLook = true);
+
+        uint[] pixels = _builder.WithLight(sunDirection: Vector3.UnitZ, ambient: 0).Render();
+
+        uint middle = pixels[(8 * 16) + 8];
+        SceneRendererTestsBuilder.Channels(middle).Red.Should().BeGreaterThan(0);
+        pixels.Should().AllBeEquivalentTo(middle, "the depth an object keeps is coarse far away, which is no border either");
+    }
+
+    [Fact]
     public void ShowsTheAlbedoInItsDebugView()
     {
         _builder.WithModel("Quad.glb", static model => model.WithQuad(0.5f).WithBaseColor(Red));

@@ -1,28 +1,52 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
              xmlns:buildings="using:FlickerVoid.Editor.Assets.Buildings"
              x:Class="FlickerVoid.Editor.Buildings.BuildingPanelView"
              x:DataType="buildings:BuildingPanelViewModel">
-  <!-- The building's storeys and cellar, then what crosses them: stairs and an elevator; its parts are listed in the outliner. -->
-  <StackPanel Margin="4,2">
-    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
-      <TextBlock Text="Storeys" VerticalAlignment="Center" />
-      <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding StoreyCounts}" SelectedItem="{Binding Storeys}"
-                ToolTip.Tip="Storeys on the ground, the ground floor among them; they are added and taken off at the top, under the roof." />
-      <TextBlock Grid.Row="1" Text="Cellar" VerticalAlignment="Center" />
-      <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding HasCellar}"
-                    ToolTip.Tip="A storey under the ground floor." />
-    </Grid>
-    <TextBlock Classes="muted" Text="Between storeys" Margin="0,8,0,2" />
-    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
-      <TextBlock Text="Stairs" VerticalAlignment="Center" />
-      <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding StairsFrom}" SelectedItem="{Binding StairsStorey}"
-                ToolTip.Tip="The storey the flight climbs from, to the one above." />
-      <Button Grid.Column="2" Content="Add" Command="{Binding AddStairsCommand}"
-              ToolTip.Tip="Add a flight from this storey and open the floor above over it." />
-      <TextBlock Grid.Row="1" Text="Elevator" VerticalAlignment="Center" />
-      <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding HasElevator}"
-                    ToolTip.Tip="A platform that stops at every storey; its shaft is cut through the floors." />
-    </Grid>
-  </StackPanel>
+  <!-- The building as a whole: its storeys, top first, the one being edited picked, added, duplicated and taken away; its parts are in the outliner's Parts tab. -->
+  <ScrollViewer>
+    <StackPanel>
+      <controls:PanelCard Header="Storeys" Icon="{x:Static shell:LucideIcons.Layers}">
+        <StackPanel Spacing="4">
+          <ListBox ItemsSource="{Binding Storeys}" SelectedItem="{Binding Storey}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="buildings:BuildingStoreyItem">
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <UniformGrid Rows="1">
+            <Button Classes="toolAction" Command="{Binding AddStoreyAboveCommand}" Margin="0,0,4,0" ToolTip.Tip="Add a storey on top, its walls a copy of the top storey's.">
+              <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Add}" />
+                <TextBlock Text="Above" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="toolAction" Command="{Binding AddCellarCommand}" Margin="0,0,4,0" ToolTip.Tip="Give the building a cellar under the ground floor.">
+              <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Steps}" />
+                <TextBlock Text="Cellar" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="toolAction" Command="{Binding DuplicateStoreyCommand}" Margin="0,0,4,0" ToolTip.Tip="Add a copy of this storey on top, openings and all.">
+              <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Duplicate}" />
+                <TextBlock Text="Copy" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="toolAction" Command="{Binding RemoveStoreyCommand}" ToolTip.Tip="Take this storey away; the ground floor stays.">
+              <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Delete}" />
+                <TextBlock Text="Remove" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </UniformGrid>
+          <TextBlock Classes="faint small" TextWrapping="Wrap" Margin="0,4,0,0"
+                     Text="Pick a storey to edit it here or in the viewport's storey switcher; the others are hidden while you work on it. With nothing picked, the Tool tab shows the storey's height, walls, floor, light and corner pillars." />
+        </StackPanel>
+      </controls:PanelCard>
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

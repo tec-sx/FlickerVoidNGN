@@ -25,11 +25,14 @@ public sealed partial class MainWindowViewModel
     /// <summary>The context panel's Data tab, shown while a data asset or table is open.</summary>
     public const int DataTab = 1;
 
-    /// <summary>The context panel's creator tab, shown while a vehicle or a building is made.</summary>
-    public const int CreatorTab = 2;
+    /// <summary>
+    /// The context panel's Tool tab, shown while a creator's mesh is entered or a building is made: the options of the tool in hand,
+    /// before the creator's own tab as the building mockups have it.
+    /// </summary>
+    public const int ToolTab = 2;
 
-    /// <summary>The context panel's Tool tab, shown while a creator's mesh is entered: the options of the tool in hand.</summary>
-    public const int ToolTab = 3;
+    /// <summary>The context panel's creator tab, shown while a vehicle or a building is made.</summary>
+    public const int CreatorTab = 3;
 
     /// <summary>The outliner's Scene tab, hidden in the creator.</summary>
     public const int SceneTab = 0;
@@ -309,7 +312,7 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        bool wanted = Viewport.MeshTools.HasToolOptions;
+        bool wanted = Viewport.MeshTools.HasToolOptions || Viewport.Building is not null;
         if (wanted == ShowsTool)
         {
             return;

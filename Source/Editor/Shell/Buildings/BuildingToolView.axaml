@@ -1,0 +1,117 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:buildings="using:FlickerVoid.Editor.Assets.Buildings"
+             xmlns:rows="using:FlickerVoid.Editor.Assets.Buildings.Rows"
+             xmlns:inspector="using:FlickerVoid.Editor.Inspector"
+             xmlns:controls="using:FlickerVoid.Editor.Controls"
+             x:Class="FlickerVoid.Editor.Buildings.BuildingToolView"
+             x:DataType="buildings:BuildingToolViewModel">
+  <!-- The building tool in hand, or the thing picked: its header, its sections as panel cards of rows (rule R26), and how the tool works. -->
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="rows:NumberRow">
+      <controls:PanelRow Label="{Binding Label}">
+        <Panel>
+          <inspector:DragNumberBox Value="{Binding Value}" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Step="{Binding Step}" />
+          <TextBlock Text="{Binding Unit}" Classes="faint small" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0" IsHitTestVisible="False" />
+        </Panel>
+      </controls:PanelRow>
+    </DataTemplate>
+    <DataTemplate DataType="rows:ToggleRow">
+      <controls:PanelRow Label="{Binding Label}">
+        <ToggleButton Theme="{StaticResource Switch}" IsChecked="{Binding IsOn}" />
+      </controls:PanelRow>
+    </DataTemplate>
+    <DataTemplate DataType="rows:TextRow">
+      <controls:PanelRow Label="{Binding Label}">
+        <TextBox Text="{Binding Text, UpdateSourceTrigger=LostFocus}" />
+      </controls:PanelRow>
+    </DataTemplate>
+    <DataTemplate DataType="rows:VectorRow">
+      <controls:PanelRow Label="{Binding Label}">
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="3">
+          <inspector:DragNumberBox Grid.Column="0" Value="{Binding X}" Axis="X" AxisBrush="{StaticResource EditorAxisXBrush}" ToolTip.Tip="X" />
+          <inspector:DragNumberBox Grid.Column="1" Value="{Binding Y}" Axis="Y" AxisBrush="{StaticResource EditorAxisYBrush}" ToolTip.Tip="Y" />
+          <inspector:DragNumberBox Grid.Column="2" Value="{Binding Z}" Axis="Z" AxisBrush="{StaticResource EditorAxisZBrush}" ToolTip.Tip="Z" />
+        </Grid>
+      </controls:PanelRow>
+    </DataTemplate>
+    <DataTemplate DataType="rows:ChoiceRow">
+      <controls:PanelRow Label="{Binding Label}">
+        <ItemsControl ItemsSource="{Binding Options}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="rows:ChoiceOption">
+              <ToggleButton Classes="segment" Content="{Binding Name}" IsChecked="{Binding IsChosen, Mode=OneWay}" Command="{Binding ChooseCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,3" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </controls:PanelRow>
+    </DataTemplate>
+    <DataTemplate DataType="rows:ActionsRow">
+      <ItemsControl ItemsSource="{Binding Actions}" Margin="0,3">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="rows:ToolAction">
+            <Button Classes="toolAction" Classes.accentOutline="{Binding IsAccent}" Command="{Binding Command}" HorizontalAlignment="Stretch" Margin="0,0,4,0">
+              <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                <PathIcon Classes="small" Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}" />
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </DataTemplate>
+    <DataTemplate DataType="rows:ListRow">
+      <Button Classes="listRow" Classes.chosen="{Binding IsChosen}" Classes.warning="{Binding IsWarning}" Command="{Binding OpenCommand}"
+              HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+        <DockPanel>
+          <PathIcon DockPanel.Dock="Left" Classes="small rowIcon" Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}" Margin="0,0,8,0" />
+          <TextBlock DockPanel.Dock="Right" Text="{Binding Value}" Classes="faint small" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding Label}" Classes="rowLabel" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+      </Button>
+    </DataTemplate>
+    <DataTemplate DataType="rows:NoteRow">
+      <TextBlock Text="{Binding Label}" Classes="faint small" TextWrapping="Wrap" Margin="0,3" />
+    </DataTemplate>
+  </UserControl.DataTemplates>
+  <DockPanel>
+    <!-- The tool: its icon, its name over what it works on, and its key. -->
+    <Border DockPanel.Dock="Top" Classes="entityHeader">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+        <Border Classes="iconTile">
+          <PathIcon Classes="accent" Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}" />
+        </Border>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+          <TextBlock Text="{Binding Title}" Classes="title" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding Subtitle}" Classes="faint small" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+        <Border Grid.Column="2" Classes="kbd" VerticalAlignment="Top" IsVisible="{Binding Key, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+          <TextBlock Text="{Binding Key}" />
+        </Border>
+      </Grid>
+    </Border>
+    <ScrollViewer>
+      <StackPanel>
+        <ItemsControl ItemsSource="{Binding Sections}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="rows:ToolSection">
+              <controls:PanelCard Header="{Binding Title}" Icon="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}"
+                                  IsExpanded="{Binding IsExpanded}">
+                <ItemsControl ItemsSource="{Binding Rows}" />
+              </controls:PanelCard>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="{Binding Help}" Classes="faint small" TextWrapping="Wrap" Margin="10,8,10,10" />
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

@@ -1,4 +1,5 @@
 using FlickerVoid.Editor.Assets.Buildings;
+using FlickerVoid.Editor.Core.Buildings;
 
 namespace FlickerVoid.Editor.Assets.Tests.Buildings;
 
@@ -9,70 +10,59 @@ public sealed class BuildingPanelViewModelTests : IDisposable
     public void Dispose() => _builder.Dispose();
 
     [Fact]
-    public void ShowsANewBuilding()
+    public void ShowsANewBuildingsGroundFloorAndItsPartsAsATree()
     {
         BuildingPanelViewModel panel = _builder.Build();
 
         panel.Kind.Should().Be("Building");
-        panel.Storeys.Should().Be(1);
-        panel.HasCellar.Should().BeFalse();
-        panel.HasElevator.Should().BeFalse();
-        panel.Parts.Should().Equal("storey.0", "roof");
-        panel.StairsFrom.Should().BeEmpty();
-        panel.AddStairsCommand.CanExecute(null).Should().BeFalse("no storey is above the ground floor");
+        panel.Storeys.Select(static storey => storey.Name).Should().Equal("Ground");
+        panel.Level.Should().Be(0);
+        panel.Nodes.Select(static node => node.Name).Should().Equal("House.fvbuilding", "Ground", "Floor", "Outside walls", "Hall", "Front door", "Roof");
+        panel.Nodes.Select(static node => node.Depth).Should().Equal(0, 1, 2, 2, 2, 2, 1);
+        panel.Nodes.Single(static node => node.Name == "Front door").PartId.Should().Be("storey.0.door.9");
+        panel.Nodes.Single(static node => node.Name == "Front door").Pick.Should().Be(new PlanPick(PlanPickKind.Opening, 0, 9));
+        panel.RemoveStoreyCommand.CanExecute(null).Should().BeFalse("the ground floor stays");
     }
 
     [Fact]
-    public void WritesStoreysAndTheCellarToTheFile()
+    public void AddsStoreysAboveAndACellarStackedTopFirstAndEditsTheNewOne()
     {
         BuildingPanelViewModel panel = _builder.Build();
+        List<int> levels = [];
+        panel.LevelChanged += levels.Add;
 
-        panel.Storeys = 3;
-        panel.HasCellar = true;
+        panel.AddStoreyAboveCommand.Execute(null);
+        panel.AddStoreyAboveCommand.Execute(null);
+        panel.AddCellarCommand.Execute(null);
 
+        panel.Storeys.Select(static storey => storey.Name).Should().Equal("2", "1", "Ground", "Cellar");
+        panel.Level.Should().Be(-1);
+        levels.Should().Equal(1, 2, -1);
         _builder.Load().StoreysAbove.Should().Be(3);
         _builder.Load().HasCellar.Should().BeTrue();
-        panel.Parts.Should().Equal("cellar", "storey.0", "storey.1", "storey.2", "roof");
-        panel.StairsFrom.Should().Equal("cellar", "storey.0", "storey.1");
+        panel.Nodes.Select(static node => node.Name).Should().Contain(["Storey 1", "Storey 2", "Cellar", "Landing"]);
     }
 
     [Fact]
-    public void PutsBackACountABuildingCannotTake()
+    public void DuplicatesTheStoreyBeingEditedOnTopWithItsOpenings()
     {
         BuildingPanelViewModel panel = _builder.Build();
 
-        panel.Storeys = 40;
+        panel.DuplicateStoreyCommand.Execute(null);
 
-        panel.Storeys.Should().Be(1);
-        _builder.Load().StoreysAbove.Should().Be(1);
+        panel.Level.Should().Be(1);
+        _builder.Load().Storeys[1].Openings.Should().ContainSingle(static opening => opening.Name == "Front door");
     }
 
     [Fact]
-    public void AddsStairsFromTheChosenStorey()
+    public void RemovesTheStoreyBeingEditedAndEditsTheOneBelow()
     {
         BuildingPanelViewModel panel = _builder.Build();
-        panel.Storeys = 3;
-        panel.StairsStorey = "storey.1";
+        panel.AddStoreyAboveCommand.Execute(null);
 
-        panel.AddStairsCommand.Execute(null);
+        panel.RemoveStoreyCommand.Execute(null);
 
-        panel.Parts.Should().Contain("stairs.1");
-        float foot = _builder.Load().GetFloorHeight(1);
-        _builder.Load().Stairs[0].Place.Position.Y.Should().BeApproximately(foot, 1e-4f);
-        panel.StairsStorey.Should().Be("storey.1", "the choice stays for the next flight");
-    }
-
-    [Fact]
-    public void AddsAndRemovesTheElevator()
-    {
-        BuildingPanelViewModel panel = _builder.Build();
-        panel.Storeys = 2;
-
-        panel.HasElevator = true;
-        bool added = panel.Parts.Contains("elevator");
-        panel.HasElevator = false;
-
-        added.Should().BeTrue();
-        panel.Parts.Should().NotContain("elevator");
+        panel.Level.Should().Be(0);
+        _builder.Load().Storeys.Should().ContainSingle();
     }
 }

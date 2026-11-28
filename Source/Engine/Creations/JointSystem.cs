@@ -14,17 +14,24 @@ namespace FlickerVoid.Engine.Creations;
 /// <summary>
 /// Moves the jointed parts of creations without physics: each joint's position goes toward its target at its speed within its
 /// limits, and the part is placed under its root at its rest place turned about the hinge or slid along the slider, so it still
-/// follows the root. A joint starts at its rest place, or its nearest limit, as its part attaches, or open when its part has an open toggle; a toggle that opens or closes sends it to its open position or back to rest. Nothing moves while paused.
+/// follows the root. A joint starts at its rest place, or its nearest limit, as its part attaches, or open when its part has an open
+/// toggle; a toggle that opens or closes sends it, and the joints of the parts that follow its part (<see cref="PartFollower"/>), to
+/// their open positions or back to rest. Nothing moves while paused.
 /// </summary>
 public sealed class JointSystem : BaseSystem<World, GameTime>
 {
     private static readonly QueryDescription Joints = new QueryDescription().WithAll<CreationPart, PartPlace, PartJoint, JointPose>();
+    private static readonly QueryDescription Followers = new QueryDescription().WithAll<CreationPart, PartFollower, PartJoint, JointPose>();
+    private static readonly QueryDescription Toggles = new QueryDescription().WithAll<CreationPart, Toggle>();
+
+    private readonly List<Entity> _found = [];
 
     public JointSystem(World world, EntityLifecycle lifecycle, EventBus events)
         : base(world)
     {
         ArrayRegistry.Add<PartJoint>();
         ArrayRegistry.Add<JointPose>();
+        ArrayRegistry.Add<PartFollower>();
         lifecycle.OnAttach((Entity part, ref PartJoint joint) => Start(part, joint));
         events.Handle((in ToggledEvent toggled) => Follow(toggled.Target, toggled.Open));
     }
@@ -74,7 +81,13 @@ public sealed class JointSystem : BaseSystem<World, GameTime>
     private void Start(Entity entity, PartJoint joint)
     {
         float position = Math.Clamp(0, joint.Min, joint.Max);
-        if (World.TryGet(entity, out Toggle toggle) && toggle.Open)
+        bool open = World.TryGet(entity, out Toggle toggle) && toggle.Open;
+        if (World.TryGet(entity, out PartFollower follower) && World.TryGet(entity, out CreationPart part))
+        {
+            open = IsOpen(part.Root, follower.Leader);
+        }
+
+        if (open)
         {
             position = joint.GetOpenPosition();
         }
@@ -90,6 +103,51 @@ public sealed class JointSystem : BaseSystem<World, GameTime>
         }
 
         Place(entity, joint, position);
+        if (open)
+        {
+            SnapFollowers(entity, open);
+        }
+    }
+
+    /// <summary>The parts whose joints follow the part's: under the same root, naming it their leader.</summary>
+    public IReadOnlyList<Entity> FindFollowers(Entity leader)
+    {
+        _found.Clear();
+        if (!World.IsAlive(leader) || !World.TryGet(leader, out CreationPart led))
+        {
+            return _found;
+        }
+
+        World.Query(in Followers, (Entity entity, ref CreationPart part, ref PartFollower follower) =>
+        {
+            if (part.Root == led.Root && follower.Leader == led.Id)
+            {
+                _found.Add(entity);
+            }
+        });
+        return _found;
+    }
+
+    private bool IsOpen(Entity root, string id)
+    {
+        bool open = false;
+        World.Query(in Toggles, (ref CreationPart part, ref Toggle toggle) =>
+        {
+            if (part.Root == root && part.Id == id)
+            {
+                open = toggle.Open;
+            }
+        });
+        return open;
+    }
+
+    private void SnapFollowers(Entity leader, bool open)
+    {
+        Entity[] followers = [.. FindFollowers(leader)];
+        foreach (Entity follower in followers)
+        {
+            SnapOne(follower, open);
+        }
     }
 
     private void Place(Entity entity, in PartJoint joint, float position)
@@ -103,6 +161,12 @@ public sealed class JointSystem : BaseSystem<World, GameTime>
 
     /// <summary>Puts a part's joint at its open position or at rest at once, as a load does; does nothing for a part without a joint.</summary>
     public void Snap(Entity entity, bool open)
+    {
+        SnapOne(entity, open);
+        SnapFollowers(entity, open);
+    }
+
+    private void SnapOne(Entity entity, bool open)
     {
         if (!World.TryGet(entity, out PartJoint joint) || !World.Has<JointPose>(entity))
         {
@@ -120,10 +184,25 @@ public sealed class JointSystem : BaseSystem<World, GameTime>
         Place(entity, joint, position);
     }
 
-    /// <summary>Sends a door's joint toward open or shut as its toggle changes.</summary>
+    /// <summary>Sends a door's joint, and those of the parts that follow it, toward open or shut as its toggle changes.</summary>
     private void Follow(Entity entity, bool open)
     {
-        if (!World.IsAlive(entity) || !World.TryGet(entity, out PartJoint joint) || !World.Has<JointPose>(entity))
+        if (!World.IsAlive(entity))
+        {
+            return;
+        }
+
+        Send(entity, open);
+        Entity[] followers = [.. FindFollowers(entity)];
+        foreach (Entity follower in followers)
+        {
+            Send(follower, open);
+        }
+    }
+
+    private void Send(Entity entity, bool open)
+    {
+        if (!World.TryGet(entity, out PartJoint joint) || !World.Has<JointPose>(entity))
         {
             return;
         }

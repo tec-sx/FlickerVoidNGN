@@ -1,3 +1,5 @@
+using System.Numerics;
+
 using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
@@ -8,6 +10,10 @@ namespace FlickerVoid.Engine.Buildings;
 internal sealed class BuildingMeshSource(CreationFiles<BuildingFile> files) : IMeshSource
 {
     private const char Separator = '#';
+    private const string FloorSuffix = ".floor";
+
+    /// <summary>A floor's grey, darker than the walls', so a storey reads from above, where a wall's top and the floor face the same way.</summary>
+    private static readonly Vector4 FloorColor = new(0.42f, 0.42f, 0.42f, 1);
 
     public static string GetName(string file, string id) => $"{file}{Separator}{id}";
 
@@ -29,7 +35,8 @@ internal sealed class BuildingMeshSource(CreationFiles<BuildingFile> files) : IM
         {
             if (id == names[1])
             {
-                ModelData solid = SolidModel.Create(part.Mesh);
+                bool floor = id.EndsWith(FloorSuffix, StringComparison.Ordinal);
+                ModelData solid = SolidModel.Create(part.Mesh, floor ? FloorColor : SolidModel.Color);
                 return new MadeMesh(solid, names[0]);
             }
         }

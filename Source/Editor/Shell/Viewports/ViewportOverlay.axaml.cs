@@ -33,7 +33,8 @@ public sealed partial class ViewportOverlay : UserControl
         }
 
         canvas.Children.Clear();
-        if (DataContext is not ViewportViewModel { IsGameView: false } viewModel || Bounds.Width < 1 || Bounds.Height < 1)
+        // A creator draws its creation alone, so the level's music areas are not named over it.
+        if (DataContext is not ViewportViewModel { IsGameView: false, Creator: null } viewModel || Bounds.Width < 1 || Bounds.Height < 1)
         {
             return;
         }

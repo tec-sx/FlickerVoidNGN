@@ -14,4 +14,10 @@ public struct Interactor
 
     /// <summary>Metres from an interactable within which it can use it.</summary>
     public float Reach { get; set; } = 1.5f;
+
+    /// <summary>
+    /// How high above its feet it reaches without the height counting against <see cref="Reach"/>, as a standing character reaches a
+    /// door's handle or a button on the wall.
+    /// </summary>
+    public float Height { get; set; } = 2;
 }

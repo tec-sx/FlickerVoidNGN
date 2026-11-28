@@ -223,11 +223,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 return;
             }
 
-            Viewport.Status = "Open a scene file to play it.";
+            Viewport.Warn("Open a scene file to play it.");
         }
         catch (Exception exception) when (exception is IOException or Win32Exception or InvalidOperationException)
         {
-            Viewport.Status = $"Can't play: {exception.Message}";
+            Viewport.Warn($"Can't play: {exception.Message}");
         }
     }
 
@@ -409,6 +409,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(DataHeading));
         OnPropertyChanged(nameof(DataTitle));
         OnPropertyChanged(nameof(CreatorHeading));
+        OnPropertyChanged(nameof(IsCreatorUnsaved));
         SaveAssetsCommand.NotifyCanExecuteChanged();
         DiscardAssetsCommand.NotifyCanExecuteChanged();
     }

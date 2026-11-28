@@ -44,12 +44,13 @@ The picture comes first, hands stay on the picture, the look is warm and calm, c
 - **R24. Verbs.** Buttons and menu items say what they do ("Bake probes", not "Probes").
 - **R25. One kit for editing tools** (owner, 2026-11-27). A tool is a name, an icon, a key, options and, when it builds something, a preview that waits for Apply. It goes in the tool rail down the viewport's left edge (lit while chosen or while its key is held), its options in the Tool tab in the inspector's place, and Apply (Enter) and Cancel (Escape) in the confirm bar at the bottom of the view; never a bar of numbers along the bottom. The level and every creator fill the same rail, and a creator draws on a dark background without sky.
 - **R26. One card for every section** (owner, 2026-11-27). A panel is built from panel cards, as the inspector shows a component: a 24 px header with a chevron, the design's icon, the title, the card's actions and its More menu, over rows whose labels share one column, 96 px or as wide as the card's longest label. Values follow the panel's width; as it narrows, labels give way first and read whole in their tooltip. No view builds a section of its own; a test fails on one.
+- **R27. Refusals are toasts** (owner, 2026-11-28). When a tool can't do what was asked (stairs with no storey above, an opening on no wall), a toast at the top of the viewport says why and what to do instead, in a sentence, and goes after a few seconds or on a click; at most three show. Nothing is refused silently, and a refusal never opens a dialog. A tool that works says so in its own tags, not in a toast.
 
 ## Before a new feature is built
 
 1. Write its flow as numbered steps, today and proposed.
 2. Draw it from the kit's components; if none fits, the new component joins the kit first.
-3. Check it against R1 to R26 and write down any exception with its reason; the owner approves the design.
+3. Check it against R1 to R27 and write down any exception with its reason; the owner approves the design.
 4. The pull request carries before and after screenshots.
 
 Rules the code enforces today are tests; the rest are checked in review. Rules not yet enforced (R3, R17, R18) become tests in the theme and kit steps of the redesign.

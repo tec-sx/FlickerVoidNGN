@@ -110,6 +110,19 @@ public sealed class TransformGizmoTests
     }
 
     [Fact]
+    public void HoversNothingOnceTheMouseLeavesTheViewport()
+    {
+        TransformGizmo gizmo = _builder.Build();
+        Vector2 pixel = _builder.PixelAt(gizmo, new Vector3(0.7f, 0, 0));
+        GizmoAxis over = gizmo.Hover(_builder.Camera, _builder.Target, pixel, Width, Height);
+
+        gizmo.Leave();
+
+        over.Should().Be(GizmoAxis.X);
+        gizmo.Hovered.Should().Be(GizmoAxis.None);
+    }
+
+    [Fact]
     public void HoversNothingAwayFromTheHandles()
     {
         TransformGizmo gizmo = _builder.Build();

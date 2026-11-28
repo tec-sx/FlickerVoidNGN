@@ -4,6 +4,9 @@
              xmlns:viewports="using:FlickerVoid.Editor.Viewports"
              xmlns:inspector="using:FlickerVoid.Editor.Inspector"
              xmlns:shots="using:FlickerVoid.Editor.Shots"
+             xmlns:buildings="using:FlickerVoid.Editor.Buildings"
+             xmlns:toasts="using:FlickerVoid.Editor.Core.Toasts"
+             xmlns:buildingModels="using:FlickerVoid.Editor.Assets.Buildings"
              x:Class="FlickerVoid.Editor.Viewports.ViewportOverlay"
              x:DataType="viewports:ViewportViewModel">
   <Panel>
@@ -19,7 +22,46 @@
     <!-- Music areas: the name chip of each area of the scene, with the tracks it turns on. -->
     <Canvas x:Name="AreaChips" IsHitTestVisible="False" ClipToBounds="True" />
     <!-- Top left, the tools in hand: select, move, turn and scale, the axes they follow, and the snap of the tool chosen. -->
-    <Border Classes="viewportBar" Margin="12" HorizontalAlignment="Left" VerticalAlignment="Top">
+    <!-- A building's plan or a part's mesh, the top view and the plan's snap (rule R4: frequent actions over the viewport). -->
+    <Border Classes="viewportBar" Margin="12" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="{Binding Building, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <StackPanel Orientation="Horizontal">
+        <ToggleButton Classes="viewportIcon text" IsChecked="{Binding IsBuildingPlan, Mode=OneWay}" Command="{Binding MeshTools.LeaveCommand}"
+                      ToolTip.Tip="Plan: the building's walls, rooms, openings, stairs, elevators and shots, edited with the rail's tools">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <PathIcon Data="{x:Static shell:LucideIcons.Building}" />
+            <TextBlock Text="Plan" VerticalAlignment="Center" />
+          </StackPanel>
+        </ToggleButton>
+        <ToggleButton Classes="viewportIcon text" IsChecked="{Binding MeshTools.IsMeshMode, Mode=OneWay}" Command="{Binding MeshTools.ToggleMeshCommand}"
+                      ToolTip.Tip="Mesh: shape the picked part by hand (Tab); its plan no longer makes it">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <PathIcon Data="{x:Static shell:LucideIcons.Grid}" />
+            <TextBlock Text="Mesh" VerticalAlignment="Center" />
+            <TextBlock Text="Tab" Classes="faint small" VerticalAlignment="Center" />
+          </StackPanel>
+        </ToggleButton>
+        <Border Classes="vsep" />
+        <ToggleButton Classes="viewportIcon text flat" IsChecked="{Binding Building.IsTopView}" ToolTip.Tip="Look straight down on the plan, orthographic (P)">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <PathIcon Data="{x:Static shell:LucideIcons.TopView}" />
+            <TextBlock Text="Top view" VerticalAlignment="Center" />
+            <TextBlock Text="P" Classes="faint small" VerticalAlignment="Center" />
+          </StackPanel>
+        </ToggleButton>
+        <Border Classes="vsep" />
+        <ToggleButton Classes="viewportIcon" IsChecked="{Binding Building.SnapOn}" ToolTip.Tip="Snap points and distances to the grid">
+          <PathIcon Data="{x:Static shell:LucideIcons.Snap}" />
+        </ToggleButton>
+        <ComboBox Classes="viewportSnap" ItemsSource="{Binding Building.SnapSteps}" SelectedItem="{Binding Building.Snap}" ToolTip.Tip="Grid size, in metres">
+          <ComboBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding StringFormat='{}{0} m'}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </StackPanel>
+    </Border>
+    <Border Classes="viewportBar" Margin="12" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="{Binding Building, Converter={x:Static ObjectConverters.IsNull}}">
       <StackPanel Orientation="Horizontal">
         <!-- A creator's object or mesh, and in the mesh the kind of element a click selects. -->
         <StackPanel Orientation="Horizontal" IsVisible="{Binding IsCreating}" DataContext="{Binding MeshTools}" x:DataType="viewports:MeshToolsViewModel">
@@ -99,7 +141,7 @@
       </StackPanel>
     </Border>
     <!-- A selected greybox of the level: shape it with the mesh tools, or cut the other selected greyboxes out of it. -->
-    <Border Classes="viewportBar" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Bottom" IsVisible="{Binding CanShapeSelected}">
+    <Border Classes="viewportBar low" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Bottom" IsVisible="{Binding CanShapeSelected}">
       <StackPanel Orientation="Horizontal" Spacing="2">
         <Button Classes="viewportIcon text" Content="Shape" Command="{Binding ShapeSelectedCommand}"
                 ToolTip.Tip="Shape this greybox with the mesh tools, in place (double-click it)" />
@@ -107,10 +149,142 @@
                 ToolTip.Tip="Cut the other selected greyboxes out of the one selected last: a tunnel, a doorway, a window" />
       </StackPanel>
     </Border>
+    <!-- The building's labels over the view: rooms with their areas or shots, sizes, and the tag of a drag. -->
+    <ItemsControl ItemsSource="{Binding Building.Labels}" IsHitTestVisible="False" IsVisible="{Binding IsBuildingPlan}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.Styles>
+        <Style Selector="ContentPresenter" x:DataType="buildings:PlanLabelView">
+          <Setter Property="Canvas.Left" Value="{Binding Left}" />
+          <Setter Property="Canvas.Top" Value="{Binding Top}" />
+        </Style>
+      </ItemsControl.Styles>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="buildings:PlanLabelView">
+          <Panel Width="320" Height="80">
+            <Border Classes="planRoom" IsVisible="{Binding IsRoom}" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <StackPanel>
+                <TextBlock Classes="title" Text="{Binding Title}" />
+                <TextBlock Classes="muted small" Text="{Binding Detail}" HorizontalAlignment="Center" />
+              </StackPanel>
+            </Border>
+            <Border Classes="planTag" Classes.drag="{Binding IsDrag}" Classes.cut="{Binding IsCut}" IsVisible="{Binding IsTag}" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="title small" Text="{Binding Title}" />
+                <TextBlock Classes="muted small" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" />
+              </StackPanel>
+            </Border>
+          </Panel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <!-- The building's storeys under the navigation gizmo, top first: the one being edited lit, with its eye showing the ones above; add, duplicate, remove. -->
+    <Border Classes="viewportBar" Height="NaN" Margin="0,182,12,0" Padding="4" Width="84" HorizontalAlignment="Right" VerticalAlignment="Top"
+            IsVisible="{Binding IsBuildingPlan}">
+      <StackPanel Spacing="2" DataContext="{Binding Building.Panel}" x:DataType="buildingModels:BuildingPanelViewModel">
+        <TextBlock Text="STOREY" Classes="faint small" HorizontalAlignment="Center" Margin="0,2,0,2" />
+        <ListBox Classes="storeys" ItemsSource="{Binding Storeys}" SelectedItem="{Binding Storey}" Background="Transparent">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="buildingModels:BuildingStoreyItem">
+              <DockPanel>
+                <ToggleButton DockPanel.Dock="Right" Classes="icon small" Padding="0" Width="14" Height="14"
+                              IsVisible="{Binding $parent[ListBoxItem].IsSelected}"
+                              IsChecked="{Binding $parent[ListBox].((buildingModels:BuildingPanelViewModel)DataContext).ShowsOthers}"
+                              ToolTip.Tip="Show the storeys above and below this one too">
+                  <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Visible}" />
+                </ToggleButton>
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+              </DockPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <Border Classes="hsep" Margin="2,3" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="1">
+          <Button Classes="icon small" Command="{Binding AddStoreyAboveCommand}" ToolTip.Tip="Add a storey on top">
+            <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Add}" />
+          </Button>
+          <Button Classes="icon small" Command="{Binding DuplicateStoreyCommand}" ToolTip.Tip="Add a copy of this storey on top">
+            <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Duplicate}" />
+          </Button>
+          <Button Classes="icon small" Command="{Binding RemoveStoreyCommand}" ToolTip.Tip="Take this storey away">
+            <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Delete}" />
+          </Button>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+    <!-- A building edit waits here: Cancel (Escape) puts the plan back, Apply (Enter) keeps it. -->
+    <Border Classes="viewportBar low" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"
+            IsVisible="{Binding Building.Tool.IsPending, FallbackValue=False}">
+      <StackPanel Orientation="Horizontal" Spacing="8" DataContext="{Binding Building.Tool}" x:DataType="buildingModels:BuildingToolViewModel">
+        <PathIcon Classes="accent" Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}" />
+        <TextBlock Text="{Binding PendingName}" VerticalAlignment="Center" FontWeight="Medium" />
+        <Border Classes="vsep" Margin="0" />
+        <Button Classes="viewportIcon text" Height="26" Command="{Binding CancelCommand}" ToolTip.Tip="Put the plan back (Escape)">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Cancel" VerticalAlignment="Center" />
+            <TextBlock Text="Esc" Classes="faint small" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Classes="viewportIcon text accent" Height="26" Padding="10,0" Command="{Binding ApplyCommand}" ToolTip.Tip="Keep the edit (Enter)">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Check}" />
+            <TextBlock Text="Apply" VerticalAlignment="Center" />
+            <TextBlock Text="Enter" Classes="small" Opacity="0.7" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </Border>
+    <!-- While walking: what a click does, the shot drawn, and the way back. -->
+    <Border Classes="viewportBar low" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"
+            IsVisible="{Binding Building.IsWalking, FallbackValue=False}">
+      <StackPanel Orientation="Horizontal" Spacing="8" DataContext="{Binding Building}" x:DataType="buildings:BuildingPlanViewModel">
+        <PathIcon Classes="accent" Data="{x:Static shell:LucideIcons.Walk}" />
+        <TextBlock Text="Walking: click the floor to walk, a door, platform or call button to use it" VerticalAlignment="Center" />
+        <Border Classes="vsep" Margin="0" />
+        <TextBlock Text="{Binding LiveShot}" Classes="faint" VerticalAlignment="Center" />
+        <Button Classes="viewportIcon text accent" Height="26" Padding="10,0" Content="Stop" Command="{Binding ToggleWalkCommand}" ToolTip.Tip="Back to the plan (Escape)" />
+      </StackPanel>
+    </Border>
+    <!-- The picked shot's live view, drawn in the bottom right corner: its header and Look through. -->
+    <Grid ColumnDefinitions="3*,*" RowDefinitions="3*,*" IsVisible="{Binding Building.HasPreview, FallbackValue=False}">
+      <Border Grid.Column="1" Classes="viewportBar" Height="26" Margin="-12,0,12,0" CornerRadius="3,3,0,0" VerticalAlignment="Bottom" Padding="8,0,4,0">
+        <DockPanel DataContext="{Binding Building}" x:DataType="buildings:BuildingPlanViewModel">
+          <Button DockPanel.Dock="Right" Classes="viewportIcon text" Height="22" Command="{Binding LookThroughPickedCommand}"
+                  ToolTip.Tip="Put the view where the shot looks from">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Maximize}" />
+              <TextBlock Text="Look through" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <PathIcon Classes="small accent" Data="{x:Static shell:LucideIcons.Camera}" />
+            <TextBlock Text="{Binding PreviewName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <TextBlock Text="live view" Classes="faint small" VerticalAlignment="Center" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+    </Grid>
     <!-- The tool rail down the left edge, under the mode bar: one component, filled with the tools of what is being edited. -->
+    <!-- Warnings, under the bars at the top: why something asked for wasn't done and what to do; a click or a few seconds takes one away. -->
+    <ItemsControl ItemsSource="{Binding Toasts.Items}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="60,52,60,0">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="toasts:ToastViewModel">
+          <Button Classes="toast" Command="{Binding DismissCommand}" HorizontalAlignment="Center" ToolTip.Tip="Click to dismiss">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Warning}" VerticalAlignment="Top" Margin="0,2,0,0" />
+              <TextBlock Text="{Binding Message}" TextWrapping="Wrap" MaxWidth="460" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
     <viewports:ToolRailView Margin="12,50,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" DataContext="{Binding ToolRail}" />
     <!-- A tool with a pending result waits here: Apply (Enter) keeps it, Cancel (Escape) puts the mesh back. -->
-    <Border Classes="viewportBar" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"
+    <Border Classes="viewportBar low" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"
             IsVisible="{Binding MeshTools.IsConfirming}">
       <StackPanel Orientation="Horizontal" Spacing="8" DataContext="{Binding MeshTools}" x:DataType="viewports:MeshToolsViewModel">
         <TextBlock Text="{Binding ToolName}" VerticalAlignment="Center" FontWeight="Medium" />

@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Arch.Core;
 
+using FlickerVoid.Editor.Core.Buildings;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Engine.Buildings;
 using FlickerVoid.Engine.Buildings.Serialization;
@@ -26,7 +27,8 @@ public sealed class EditorSceneBuildingTests : IDisposable
     public void SpawnsTheScenesBuildingsAndPicksEachByItsRoof()
     {
         BuildingFile house = BuildingFile.Create();
-        house.SetStoreys(2, true);
+        BuildingTools.SetStoreys(house, 2, true);
+        BuildingTools.Rebuild(house);
         string json = JsonSerializer.Serialize(house, BuildingsJsonContext.Default.BuildingFile);
         _builder.WithFile(House, json).WithScene("Street.fvscene", Street).Open("Street.fvscene");
         EditorScene scene = _builder.Scene;
@@ -36,7 +38,8 @@ public sealed class EditorSceneBuildingTests : IDisposable
 
         Entity? picked = scene.Picker.Pick(scene.Game.World, down);
 
-        parts.FindAll(placed).Should().HaveCount(4, "a cellar, two storeys and the roof");
+        IEnumerable<string> ids = parts.FindAll(placed).Select(part => scene.Game.World.Get<CreationPart>(part).Id);
+        ids.Should().Contain(["cellar", "storey.0", "storey.1", "storey.0.walls", "roof"]);
         picked.Should().Be(placed);
     }
 }

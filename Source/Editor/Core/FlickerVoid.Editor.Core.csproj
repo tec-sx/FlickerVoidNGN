@@ -16,6 +16,8 @@
     <ProjectReference Include="../../Engine/Buildings/FlickerVoid.Engine.Buildings.csproj" />
     <ProjectReference Include="../../Engine/Props/FlickerVoid.Engine.Props.csproj" />
     <ProjectReference Include="../../Engine/Foliage/FlickerVoid.Engine.Foliage.csproj" />
+    <ProjectReference Include="../../Engine/Characters/FlickerVoid.Engine.Characters.csproj" />
+    <ProjectReference Include="../../Engine/Ai/FlickerVoid.Engine.Ai.csproj" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="FlickerVoid.Editor" />

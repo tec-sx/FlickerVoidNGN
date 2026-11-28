@@ -2,17 +2,19 @@ using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using FlickerVoid.Engine.Buildings.Plans;
 using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Runtime.Serialization;
-using FlickerVoid.Engine.Runtime.Solids;
 
 namespace FlickerVoid.Engine.Buildings;
 
 /// <summary>
 /// A <c>Name.fvbuilding</c> file: storeys from the bottom up (at most one cellar, level -1, then the ground floor, level 0, and the
-/// floors above), a roof, stairs, an elevator and doors. Part ids: <c>cellar</c>, <c>storey.0</c>, <c>storey.1</c>, <c>roof</c>,
-/// <c>stairs.1</c>, <c>elevator</c>, <c>door.1</c>. A file whose levels don't follow one another from a cellar or the ground floor
-/// can't be read.
+/// floors above), each with its plan and the parts made from it, a roof, stairs, elevators and camera shots. Part ids: the storey's
+/// volume <c>storey.0</c> (or <c>cellar</c>) and its parts <c>storey.0.floor</c>, <c>storey.0.walls</c>, <c>storey.0.wall.3</c>,
+/// <c>storey.0.door.4</c>; <c>roof</c>; <c>stairs.1</c> and <c>stairs.1.railing</c>; <c>elevator.1</c>, its railing and
+/// <c>elevator.1.call.0</c>; and doors hung by the door tool, <c>door.1</c>. A file whose levels don't follow one another from a
+/// cellar or the ground floor can't be read.
 /// </summary>
 public sealed class BuildingFile : ICreationFile, IJsonOnDeserialized
 {
@@ -22,41 +24,44 @@ public sealed class BuildingFile : ICreationFile, IJsonOnDeserialized
 
     public const string RoofId = "roof";
 
-    public const string ElevatorId = "elevator";
+    /// <summary>The material panes of glass are drawn with, see-through: the engine's window glass.</summary>
+    public const string GlassMaterial = "Engine/Rendering/Materials/Window.fvmat";
 
     /// <summary>The most storeys a building takes above the ground, the ground floor among them.</summary>
     public const int MaxStoreys = 12;
 
-    private const float RoofThickness = 0.2f;
-    private const float StairsWidth = 1.2f;
-    private const float PlatformSize = 1.6f;
-    private const float PlatformThickness = 0.1f;
+    /// <summary>The size of a call button's box: across, high and out of the wall.</summary>
+    public static readonly Vector3 CallButtonSize = new(0.12f, 0.18f, 0.06f);
+
+    /// <summary>How high a call button's foot stands above its floor.</summary>
+    public const float CallButtonHeight = 1.1f;
 
     [JsonPropertyName(JsonSchemas.SchemaProperty)]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Schema { get; set; }
 
-    /// <summary>The size new storeys are made with: width, the height from one floor to the next, and depth.</summary>
+    /// <summary>The size new buildings and storeys are made with: width, the height of a storey, and depth.</summary>
     public Vector3 Size { get; set; } = new(8, 3, 6);
 
     /// <summary>How thick new storeys' walls are.</summary>
-    public float Wall { get; set; } = 0.2f;
+    public float Wall { get; set; } = 0.3f;
 
     /// <summary>How thick new storeys' floors are.</summary>
     public float Floor { get; set; } = 0.2f;
 
-    /// <summary>The storeys, bottom first; <see cref="SetStoreys"/> changes how many.</summary>
+    /// <summary>The storeys, bottom first.</summary>
     public List<BuildingStorey> Storeys { get; set; } = [];
 
-    public required SolidPart Roof { get; set; }
+    public BuildingRoof Roof { get; set; } = new();
 
-    /// <summary>The flights of stairs, numbered from 1 in order: <c>stairs.1</c>.</summary>
-    public List<SolidPart> Stairs { get; set; } = [];
+    public List<BuildingStairs> Stairs { get; set; } = [];
 
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public BuildingElevator? Elevator { get; set; }
+    public List<BuildingElevator> Elevators { get; set; } = [];
 
-    /// <summary>The doors, numbered from 1 in order: <c>door.1</c>, <c>door.2</c>; the door tool adds them.</summary>
+    public List<BuildingShot> Shots { get; set; } = [];
+
+    /// <summary>Doors hung by the shared door tool, numbered from 1 in order: <c>door.1</c>; a building's own openings are in its storeys.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public List<SolidPart> Doors { get; set; } = [];
 
     [JsonIgnore]
@@ -66,14 +71,17 @@ public sealed class BuildingFile : ICreationFile, IJsonOnDeserialized
     [JsonIgnore]
     public int StoreysAbove => Storeys.Count(static storey => storey.Level >= 0);
 
-    /// <summary>A new building: a ground floor under a roof.</summary>
+    /// <summary>A new building: a ground floor of one room with a front door, under a flat roof; the creator makes its parts.</summary>
     public static BuildingFile Create()
     {
-        Vector3 size = new(8, 3, 6);
-        SolidMesh slab = BuildingShapes.CreateSlab(size.X, RoofThickness, size.Z);
-        SolidPart roof = BuildingShapes.CreatePart(slab, new Vector3(0, size.Y, 0));
-        BuildingFile building = new() { Size = size, Roof = roof };
-        building.Storeys.Add(building.CreateStorey(0));
+        BuildingFile building = new();
+        BuildingStorey ground = building.CreateStorey(0);
+        building.Storeys.Add(ground);
+        PlanWall front = ground.Walls[0];
+        List<Vector2> path = PlanGeometry.GetPath(ground, front);
+        float length = PlanGeometry.GetLength(path);
+        PlanOpening door = new() { Id = ground.NextId(), Name = "Front door", Kind = OpeningKind.Door, Wall = front.Id, Along = length / 2, Width = 1.1f, Height = 2.2f };
+        ground.Openings.Add(door);
         return building;
     }
 
@@ -88,99 +96,187 @@ public sealed class BuildingFile : ICreationFile, IJsonOnDeserialized
         return $"storey.{level}";
     }
 
+    public BuildingStorey? FindStorey(int level) => Storeys.Find(storey => storey.Level == level);
+
+    /// <summary>How high the underside of the level's floor is above the building's origin: the ground floor's at 0.</summary>
+    public float GetBase(int level)
+    {
+        float height = 0;
+        if (level < 0)
+        {
+            foreach (BuildingStorey storey in Storeys)
+            {
+                if (storey.Level >= level && storey.Level < 0)
+                {
+                    height -= storey.Height;
+                }
+            }
+
+            return height;
+        }
+
+        foreach (BuildingStorey storey in Storeys)
+        {
+            if (storey.Level >= 0 && storey.Level < level)
+            {
+                height += storey.Height;
+            }
+        }
+
+        if (FindStorey(level) is null && level > 0)
+        {
+            height += Size.Y * (level - Storeys.Count(static storey => storey.Level >= 0));
+        }
+
+        return height;
+    }
+
     /// <summary>How high the top of the level's floor is above the building's origin.</summary>
-    public float GetFloorHeight(int level) => (level * Size.Y) + Floor;
+    public float GetFloorHeight(int level)
+    {
+        float floor = FindStorey(level)?.Floor ?? Floor;
+        return GetBase(level) + floor;
+    }
+
+    /// <summary>How high the top of the building is: the top storey's ceiling, where the roof stands.</summary>
+    public float GetTop()
+    {
+        if (Storeys.Count == 0)
+        {
+            return 0;
+        }
+
+        BuildingStorey top = Storeys[^1];
+        return GetBase(top.Level) + top.Height;
+    }
+
+    /// <summary>A new storey at the level with the file's sizes: four outside walls round one room.</summary>
+    public BuildingStorey CreateStorey(int level)
+    {
+        BuildingStorey storey = new() { Level = level, Height = Size.Y, Wall = Wall, Floor = Floor };
+        float halfX = (Size.X - Wall) / 2;
+        float halfZ = (Size.Z - Wall) / 2;
+
+        // Round to the left seen from above, so each outside wall's right is outside: front (toward -Z) first, from right to left.
+        Vector2[] corners = [new(halfX, -halfZ), new(-halfX, -halfZ), new(-halfX, halfZ), new(halfX, halfZ)];
+        for (int index = 0; index < corners.Length; index++)
+        {
+            storey.Corners.Add(new PlanCorner { Id = index + 1, X = corners[index].X, Z = corners[index].Y });
+        }
+
+        for (int index = 0; index < corners.Length; index++)
+        {
+            int next = (index + 1) % corners.Length;
+            storey.Walls.Add(new PlanWall { Id = corners.Length + index + 1, From = index + 1, To = next + 1, Outside = true });
+        }
+
+        string name = level < 0 ? "Cellar" : "Hall";
+        if (level > 0)
+        {
+            name = "Landing";
+        }
+
+        storey.Rooms.Add(new PlanRoom { Name = name, X = 0, Z = 0 });
+        return storey;
+    }
+
+    /// <summary>How high above its rest an elevator's platform stands at each storey it stops at, bottom first, with their levels.</summary>
+    public (int Level, float Height)[] GetElevatorStops(BuildingElevator elevator)
+    {
+        List<(int, float)> stops = [];
+        float rest = GetFloorHeight(elevator.From);
+        foreach (BuildingStorey storey in Storeys)
+        {
+            if (storey.Level >= elevator.From && storey.Level <= elevator.To)
+            {
+                stops.Add((storey.Level, GetFloorHeight(storey.Level) - rest));
+            }
+        }
+
+        return [.. stops];
+    }
+
+    /// <summary>Where an elevator's call button stands on a level: beside the shaft on the side it is stepped onto, in the building's space.</summary>
+    public Vector3 GetCallButton(BuildingElevator elevator, int level)
+    {
+        float turn = float.DegreesToRadians(elevator.Heading);
+        Vector2 front = new(MathF.Sin(turn), -MathF.Cos(turn));
+        Vector2 across = new(-front.Y, front.X);
+        float half = elevator.Size / 2;
+        Vector2 place = new Vector2(elevator.X, elevator.Z) + (front * (half + 0.15f)) + (across * (half + 0.25f));
+        return new Vector3(place.X, GetFloorHeight(level) + CallButtonHeight, place.Y);
+    }
+
+    public static string GetElevatorId(BuildingElevator elevator) => $"elevator.{elevator.Id}";
+
+    public static string GetCallId(BuildingElevator elevator, int level) => $"elevator.{elevator.Id}.call.{level}";
+
+    public static string GetStairsId(BuildingStairs stairs) => $"stairs.{stairs.Id}";
+
+    public static string GetShotId(BuildingShot shot) => $"shot.{shot.Id}";
+
+    /// <summary>The id of a part a storey's plan made, from its id within the storey.</summary>
+    public static string GetPartId(BuildingStorey storey, string local) => $"{GetStoreyId(storey.Level)}.{local}";
 
     /// <summary>
-    /// Gives the building that many storeys on the ground and a cellar or none: storeys are added on top and taken off the top, the
-    /// roof follows, and the storeys that stay are left as they were shaped.
+    /// Every solid part with its id: each storey's (an old storey's shell, or the parts made from its plan), the roof, the stairs and
+    /// their railings, the elevators' platforms, railings and call buttons, then the doors the door tool hung.
     /// </summary>
-    public void SetStoreys(int above, bool cellar)
-    {
-        if (above < 1 || above > MaxStoreys)
-        {
-            throw new ArgumentOutOfRangeException(nameof(above), above, $"A building takes 1 to {MaxStoreys} storeys on the ground.");
-        }
-
-        if (cellar && !HasCellar)
-        {
-            Storeys.Insert(0, CreateStorey(-1));
-        }
-        else if (!cellar && HasCellar)
-        {
-            Storeys.RemoveAt(0);
-        }
-
-        while (StoreysAbove > above)
-        {
-            Storeys.RemoveAt(Storeys.Count - 1);
-        }
-
-        while (StoreysAbove < above)
-        {
-            Storeys.Add(CreateStorey(Storeys[^1].Level + 1));
-        }
-
-        float top = (Storeys[^1].Level + 1) * Size.Y;
-        Runtime.Components.Transform place = Roof.Place;
-        place.Position = new Vector3(place.Position.X, top, place.Position.Z);
-        Roof.Place = place;
-    }
-
-    /// <summary>
-    /// Adds a flight of stairs from the level's floor up to the next one's, its foot at <paramref name="foot"/> across the floor
-    /// (X and Z in the building's space) and climbing toward +Z over <paramref name="run"/>; its id. The hole in the floor above
-    /// is the creator's to cut.
-    /// </summary>
-    public string AddStairs(int level, Vector2 foot, float run)
-    {
-        SolidMesh mesh = BuildingShapes.CreateStairs(StairsWidth, Size.Y, run);
-        Vector3 position = new(foot.X, GetFloorHeight(level), foot.Y);
-        Stairs.Add(BuildingShapes.CreatePart(mesh, position));
-        return $"stairs.{Stairs.Count}";
-    }
-
-    /// <summary>
-    /// Gives the building an elevator whose platform rests on the lowest storey's floor at <paramref name="place"/> across it (X
-    /// and Z in the building's space), replacing one it had. The shaft through the floors above is the creator's to cut.
-    /// </summary>
-    public void SetElevator(Vector2 place)
-    {
-        SolidMesh mesh = BuildingShapes.CreateSlab(PlatformSize, PlatformThickness, PlatformSize);
-        Vector3 position = new(place.X, GetFloorHeight(Storeys[0].Level), place.Y);
-        Elevator = new BuildingElevator { Platform = BuildingShapes.CreatePart(mesh, position) };
-    }
-
-    /// <summary>How far above its rest the elevator's platform stands at each storey, bottom first.</summary>
-    public float[] GetElevatorStops()
-    {
-        float[] stops = new float[Storeys.Count];
-        for (int index = 0; index < stops.Length; index++)
-        {
-            stops[index] = (Storeys[index].Level - Storeys[0].Level) * Size.Y;
-        }
-
-        return stops;
-    }
-
-    /// <summary>Every part with its id: the storeys from the bottom, the roof, the stairs, the elevator's platform, then the doors.</summary>
     public IReadOnlyList<(string Id, SolidPart Part)> GetParts()
     {
         List<(string Id, SolidPart Part)> parts = [];
         foreach (BuildingStorey storey in Storeys)
         {
-            parts.Add((GetStoreyId(storey.Level), storey.Shell));
+            if (storey.Shell is { } shell)
+            {
+                parts.Add((GetStoreyId(storey.Level), shell));
+            }
+
+            foreach ((string local, SolidPart part) in storey.Parts)
+            {
+                parts.Add((GetPartId(storey, local), part));
+            }
         }
 
-        parts.Add((RoofId, Roof));
-        for (int index = 0; index < Stairs.Count; index++)
+        if (Roof.Part is { } roof && !Roof.None)
         {
-            parts.Add(($"stairs.{index + 1}", Stairs[index]));
+            parts.Add((RoofId, roof));
         }
 
-        if (Elevator is { } elevator)
+        foreach (BuildingStairs stairs in Stairs)
         {
-            parts.Add((ElevatorId, elevator.Platform));
+            if (stairs.Part is { } steps)
+            {
+                parts.Add((GetStairsId(stairs), steps));
+            }
+
+            if (stairs.RailingPart is { } railing)
+            {
+                parts.Add(($"{GetStairsId(stairs)}.railing", railing));
+            }
+        }
+
+        foreach (BuildingElevator elevator in Elevators)
+        {
+            if (elevator.Platform is { } platform)
+            {
+                parts.Add((GetElevatorId(elevator), platform));
+            }
+
+            if (elevator.RailingPart is { } railing)
+            {
+                parts.Add(($"{GetElevatorId(elevator)}.railing", railing));
+            }
+
+            if (!elevator.CallButtons)
+            {
+                continue;
+            }
+
+            foreach ((int level, _) in GetElevatorStops(elevator))
+            {
+                parts.Add((GetCallId(elevator, level), MakeCallButton(elevator, level)));
+            }
         }
 
         for (int index = 0; index < Doors.Count; index++)
@@ -189,6 +285,18 @@ public sealed class BuildingFile : ICreationFile, IJsonOnDeserialized
         }
 
         return parts;
+    }
+
+    /// <summary>A call button's small box, standing on its place and turned to face out of the shaft's side.</summary>
+    private SolidPart MakeCallButton(BuildingElevator elevator, int level)
+    {
+        Vector3 place = GetCallButton(elevator, level);
+        Runtime.Components.Transform transform = new()
+        {
+            Position = place,
+            Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, -float.DegreesToRadians(elevator.Heading)),
+        };
+        return new SolidPart { Place = transform, Mesh = Runtime.Solids.SolidMesh.Box(CallButtonSize) };
     }
 
     void IJsonOnDeserialized.OnDeserialized()
@@ -216,12 +324,20 @@ public sealed class BuildingFile : ICreationFile, IJsonOnDeserialized
         {
             throw new JsonException("A building needs a ground floor.");
         }
-    }
 
-    private BuildingStorey CreateStorey(int level)
-    {
-        SolidMesh tray = BuildingShapes.CreateTray(Size, Wall, Floor);
-        SolidPart shell = BuildingShapes.CreatePart(tray, new Vector3(0, level * Size.Y, 0));
-        return new BuildingStorey { Level = level, Shell = shell };
+        // A storey made before plans gets the plan of a new storey, so the creator can make its parts; its shell stays until then.
+        for (int index = 0; index < Storeys.Count; index++)
+        {
+            BuildingStorey storey = Storeys[index];
+            if (storey.Corners.Count > 0 || storey.Shell is null)
+            {
+                continue;
+            }
+
+            BuildingStorey planned = CreateStorey(storey.Level);
+            storey.Corners = planned.Corners;
+            storey.Walls = planned.Walls;
+            storey.Rooms = planned.Rooms;
+        }
     }
 }

@@ -15,10 +15,10 @@ namespace FlickerVoid.Editor.Core.Shots;
 /// </summary>
 public static class ShotOverlay
 {
-    public const float RailWidth = 2;
+    public const float RailWidth = OverlayLines.Bold;
     public const float KeyPixels = 5;
 
-    private const float AreaWidth = 1.5f;
+    private const float AreaWidth = OverlayLines.Thin;
     private const float LookLength = 0.6f;
 
     private static readonly QueryDescription Areas = new QueryDescription().WithAll<TriggerArea, Transform>().WithNone<Hidden>();

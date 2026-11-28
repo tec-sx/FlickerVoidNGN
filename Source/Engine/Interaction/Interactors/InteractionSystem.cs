@@ -466,10 +466,15 @@ public sealed partial class InteractionSystem : BaseSystem<World, GameTime>
             return true;
         }
 
-        float reach = World.Get<Interactor>(interactor).Reach;
+        Interactor reaching = World.Get<Interactor>(interactor);
         Vector3 point = GetUsePoint(World, target);
-        float distance = Vector3.Distance(from.Position, point);
-        return distance <= reach;
+        Vector3 offset = point - from.Position;
+        if (offset.Y >= 0 && offset.Y <= reaching.Height)
+        {
+            offset.Y = 0;
+        }
+
+        return offset.Length() <= reaching.Reach;
     }
 
     /// <summary>Where the entity is used, in the world: its <see cref="UsePoint"/> when it has one, else where it stands.</summary>

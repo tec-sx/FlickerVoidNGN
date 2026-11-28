@@ -5,12 +5,14 @@ using Arch.Core;
 using FlickerVoid.Editor.Assets;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Assets.Buildings;
+using FlickerVoid.Editor.Core.Gizmos;
 using FlickerVoid.Editor.Assets.Foliage;
 using FlickerVoid.Editor.Assets.Vehicles;
 using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Menus;
 using FlickerVoid.Editor.Core.Meshes;
 using FlickerVoid.Editor.Viewports;
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Foliage;
 using FlickerVoid.Engine.Rendering.Extraction;
 using FlickerVoid.Engine.Runtime.Greyboxes;
@@ -35,6 +37,13 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     private VehiclePanelViewModel VehiclePanel => (VehiclePanelViewModel)_builder.ViewModel.CreatorPanel!;
 
     public void Dispose() => _builder.Dispose();
+
+    private bool IsHidden(string part)
+    {
+        CreationParts parts = _builder.Scene.Game.Services.GetService<CreationParts>()!;
+        Entity entity = parts.Find(Viewport.Creator!.Root, part);
+        return _builder.Scene.IsHidden(entity);
+    }
 
     [Fact]
     public void DoubleClickingAPlacedVehicleEditsItInPlace()
@@ -494,7 +503,7 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
     }
 
     [Fact]
-    public void OpeningABuildingInTheBrowserMakesItWithItsOwnPanel()
+    public void OpeningABuildingInTheBrowserMakesItWithItsPlanToolsAndTree()
     {
         _builder.WriteHouse();
 
@@ -503,10 +512,227 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         Viewport.Creator!.Placement.Should().Be(CreatorPlacement.Alone);
         ViewModel.CreatorKind.Should().Be("Building");
         BuildingPanelViewModel panel = ViewModel.CreatorPanel.Should().BeOfType<BuildingPanelViewModel>().Subject;
-        ViewModel.CreatorParts.Should().Equal("storey.0", "roof");
-        panel.Storeys = 2;
-        ViewModel.CreatorParts.Should().Equal("storey.0", "storey.1", "roof");
-        ViewModel.CreatorHeading.Should().Be($"{MainWindowViewModelTestsBuilder.House} *");
+        Viewport.Building.Should().NotBeNull();
+        Viewport.IsBuildingPlan.Should().BeTrue();
+        ViewModel.SideTab.Should().Be(MainWindowViewModel.ToolTab, "the Tool tab comes in front, the Building tab beside it");
+        ViewModel.ShowsBuildingParts.Should().BeTrue();
+        ViewModel.CreatorNodes.Select(static node => node.Name).Should().StartWith(["House.fvbuilding", "Ground", "Floor", "Outside walls"]);
+        Viewport.ToolRail.Groups.SelectMany(static group => group.Items).Select(static item => item.Name).Should().Contain(["Push wall", "Opening", "Camera"]);
+        panel.AddStoreyAboveCommand.Execute(null);
+        ViewModel.CreatorNodes.Select(static node => node.Name).Should().Contain("Storey 1");
+        ViewModel.IsCreatorUnsaved.Should().BeTrue();
+        ViewModel.CreatorFileName.Should().Be("House.fvbuilding");
+    }
+
+    [Fact]
+    public void TheBuildingsKeysTakeItsToolsAndPickingATreeLinePicksInThePlan()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+
+        Viewport.KeyPressed(ViewportKey.D, ViewportButtons.None);
+        FlickerVoid.Editor.Core.Buildings.BuildingTool opening = Viewport.Building!.Editor.Tool;
+        Viewport.KeyPressed(ViewportKey.Y, ViewportButtons.None);
+        FlickerVoid.Editor.Core.Buildings.BuildingTool camera = Viewport.Building.Editor.Tool;
+        ViewModel.CreatorNode = ViewModel.CreatorNodes.Single(static node => node.Name == "Front door");
+
+        opening.Should().Be(FlickerVoid.Editor.Core.Buildings.BuildingTool.Opening);
+        camera.Should().Be(FlickerVoid.Editor.Core.Buildings.BuildingTool.Camera);
+        Viewport.Building.Editor.Picked!.Kind.Should().Be(FlickerVoid.Editor.Core.Buildings.PlanPickKind.Opening);
+        Viewport.Creator!.SelectedPart.Should().Be("storey.0.door.9");
+        Viewport.Building.Tool.Title.Should().Be("Camera");
+        Viewport.Building.Tool.Subtitle.Should().Be("Front door, Ground");
+    }
+
+    [Fact]
+    public void TheStoreysAboveTheOneEditedAreHiddenUntilTheirEyeIsOn()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        BuildingPanelViewModel panel = (BuildingPanelViewModel)ViewModel.CreatorPanel!;
+        panel.AddStoreyAboveCommand.Execute(null);
+        Viewport.Building!.ShowLevel(0);
+
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+        bool[] hidden = [IsHidden("storey.1.floor"), IsHidden("storey.1.walls"), IsHidden("roof"), IsHidden("storey.0.walls")];
+        panel.ShowsOthers = true;
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        hidden.Should().Equal(true, true, true, false);
+        IsHidden("storey.1.walls").Should().BeFalse("the eye shows the storeys above");
+    }
+
+    [Fact]
+    public void TheStoreysBelowTheOneEditedAreHiddenTooWithTheStairsThatClimbFromThem()
+    {
+        _builder.WriteHouse(climbs: true);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        BuildingPanelViewModel panel = (BuildingPanelViewModel)ViewModel.CreatorPanel!;
+
+        Viewport.Building!.ShowLevel(1);
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+        bool[] hidden = [IsHidden("storey.0.walls"), IsHidden("storey.0.floor"), IsHidden("stairs.1"), IsHidden("stairs.1.railing"), IsHidden("storey.1.floor")];
+        panel.ShowsOthers = true;
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        hidden.Should().Equal(true, true, true, false, false);
+        IsHidden("storey.0.walls").Should().BeFalse("the eye shows the other storeys");
+    }
+
+    [Fact]
+    public void TheRailingsRoundOpeningsAboveAreHiddenWithTheStoreysAbove()
+    {
+        _builder.WriteHouse(climbs: true);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        Viewport.Building!.ShowLevel(0);
+
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        bool[] hidden = [IsHidden("stairs.1"), IsHidden("stairs.1.railing"), IsHidden("elevator.1.railing")];
+        hidden.Should().Equal(false, true, true);
+    }
+
+    [Fact]
+    public void TheRoofIsShownOnlyWhilePickedWithTheWholeBuildingUnderIt()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        BuildingPanelViewModel panel = (BuildingPanelViewModel)ViewModel.CreatorPanel!;
+        panel.AddStoreyAboveCommand.Execute(null);
+        Viewport.Building!.ShowLevel(0);
+        panel.ShowsOthers = true;
+
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+        bool hiddenWithAllShown = IsHidden("roof");
+        panel.ShowsOthers = false;
+        ViewModel.CreatorNode = ViewModel.CreatorNodes.Single(static node => node.Name == "Roof");
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+        bool[] picked = [IsHidden("roof"), IsHidden("storey.1.walls")];
+        ViewModel.CreatorNode = ViewModel.CreatorNodes.Single(static node => node.Name == "Front door");
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        hiddenWithAllShown.Should().BeTrue("the roof hides the storeys, so only picking it shows it");
+        picked.Should().Equal(false, false);
+        IsHidden("roof").Should().BeTrue();
+    }
+
+    [Fact]
+    public void TheStairsToolOpensTheStoreyToItsFloor()
+    {
+        _builder.WriteHouse(climbs: true);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        Viewport.Building!.ShowLevel(0);
+
+        Viewport.KeyPressed(ViewportKey.S, ViewportButtons.None);
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+        bool[] open = [IsHidden("storey.0.walls"), IsHidden("storey.0.door.9"), IsHidden("storey.0.floor"), IsHidden("stairs.1")];
+        Viewport.KeyPressed(ViewportKey.Q, ViewportButtons.None);
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        open.Should().Equal(true, true, false, false);
+        IsHidden("storey.0.walls").Should().BeFalse("the walls stand again with another tool");
+    }
+
+    [Fact]
+    public void TheOpenStoreyHidesAShaftsRailingsAsTheToolDrawsTheShaftItself()
+    {
+        _builder.WriteHouse(climbs: true);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        Viewport.Building!.ShowLevel(1);
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+        bool standing = IsHidden("elevator.1.railing");
+
+        Viewport.KeyPressed(ViewportKey.T, ViewportButtons.None);
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        Viewport.Building.Editor.Tool.Should().Be(FlickerVoid.Editor.Core.Buildings.BuildingTool.Elevator);
+        standing.Should().BeFalse("the railing stands round the shaft on the top storey");
+        IsHidden("elevator.1.railing").Should().BeTrue();
+    }
+
+    [Fact]
+    public void OnlyOneOfTheBuildingsRailToolsIsLit()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+
+        string[] atFirst = LitTools();
+        Viewport.KeyPressed(ViewportKey.E, ViewportButtons.None);
+        string[] turning = LitTools();
+        FlickerVoid.Editor.Core.Buildings.BuildingTool withGizmo = Viewport.Building!.Editor.Tool;
+        Viewport.KeyPressed(ViewportKey.D, ViewportButtons.None);
+        string[] opening = LitTools();
+        Viewport.KeyPressed(ViewportKey.W, ViewportButtons.None);
+        string[] moving = LitTools();
+        Viewport.KeyPressed(ViewportKey.Q, ViewportButtons.None);
+
+        atFirst.Should().Equal("Select");
+        turning.Should().Equal("Rotate");
+        withGizmo.Should().Be(FlickerVoid.Editor.Core.Buildings.BuildingTool.Select);
+        Viewport.Building.Editor.GizmoMode.Should().Be(GizmoMode.Select, "Q puts the gizmo away");
+        opening.Should().Equal("Opening");
+        moving.Should().Equal("Move");
+        LitTools().Should().Equal("Select");
+    }
+
+    [Fact]
+    public void StairsOnTheTopStoreyAreRefusedWithAToast()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        Viewport.KeyPressed(ViewportKey.S, ViewportButtons.None);
+        Vector2 middle = Viewport.Camera.Project(new Vector3(0, 0.2f, 0), 800, 600);
+
+        Viewport.PointerMoved(middle, 800, 600);
+        Viewport.PointerPressed(middle, 800, 600);
+        Viewport.PointerReleased();
+
+        Viewport.Toasts.Items.Should().ContainSingle().Which.Message.Should().Contain("storey above");
+    }
+
+    private string[] LitTools() => [.. Viewport.ToolRail.Groups.SelectMany(static group => group.Items).Where(static item => item.IsActive).Select(static item => item.Name)];
+
+    [Fact]
+    public void APushedWallMovesTheBoundsItIsPickedBy()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        CreationParts parts = _builder.Scene.Game.Services.GetService<CreationParts>()!;
+        Entity walls = parts.Find(Viewport.Creator!.Root, "storey.0.walls");
+        _builder.Scene.Picker.TryGetBounds(_builder.Scene.Game.World, walls, out Vector3 low, out Vector3 high);
+        int east = FlickerVoid.Engine.Buildings.BuildingFile.Create().Storeys[0].Walls[1].Id;
+
+        Viewport.Building!.Editor.Push(0, east, 1);
+        Viewport.Building.Editor.Apply();
+
+        walls = parts.Find(Viewport.Creator!.Root, "storey.0.walls");
+        _builder.Scene.Picker.TryGetBounds(_builder.Scene.Game.World, walls, out Vector3 newLow, out Vector3 newHigh);
+        (newLow, newHigh).Should().NotBe((low, high));
+    }
+
+    [Fact]
+    public void WalkingNamesTheShotItDraws()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+
+        Viewport.Building!.ToggleWalk();
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        Viewport.Building.LiveShot.Should().Be("Walk Outside");
+        Viewport.Building.ToggleWalk();
+    }
+
+    [Fact]
+    public void LeavingTheBuildingPutsItsPlanToolsAway()
+    {
+        _builder.WriteHouse();
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+
+        Viewport.LeaveCreator();
+
+        Viewport.Building.Should().BeNull();
+        ViewModel.ShowsTool.Should().BeFalse();
     }
 
     [Fact]

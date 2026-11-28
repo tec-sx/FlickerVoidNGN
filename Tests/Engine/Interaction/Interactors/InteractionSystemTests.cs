@@ -102,6 +102,23 @@ public sealed class InteractionSystemTests : IDisposable
         started.Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData(1.2f, true)]
+    [InlineData(1.9f, true)]
+    [InlineData(2.6f, false)]
+    [InlineData(-2.5f, false)]
+    public void ReachesWhatStandsAboveItsFeetUpToItsHeight(float height, bool reached)
+    {
+        _builder.WithFile("Lever.fvdata", Lever).Build();
+        (Entity hero, Entity lever) = SpawnHeroAndLever(1.2f, height);
+        List<InteractionStartedEvent> started = _builder.Collect<InteractionStartedEvent>();
+
+        _builder.Send(new FocusCommand(hero, lever));
+        _builder.Send(new InteractionInput(hero, Use, InputPhase.Pressed));
+
+        started.Count.Should().Be(reached ? 1 : 0, "a lever 1.2 m away at a door's or a button's height is within reach of a standing hero");
+    }
+
     [Fact]
     public void AHoldCompletesAfterItsDurationAndFailsWhenReleasedEarly()
     {
@@ -211,9 +228,9 @@ public sealed class InteractionSystemTests : IDisposable
         actions.Select(action => action.Action.Name).Should().Equal("Interaction.Action.Pull", "Interaction.Action.Oil");
     }
 
-    private (Entity Hero, Entity Lever) SpawnHeroAndLever(float distance)
+    private (Entity Hero, Entity Lever) SpawnHeroAndLever(float distance, float height = 0)
     {
-        string lever = $$"""{ "name": "Lever", "components": { "transform": { "position": [{{distance}}, 0, 0] }, "interactable": { "definition": "Lever.fvdata" } } }""";
+        string lever = $$"""{ "name": "Lever", "components": { "transform": { "position": [{{distance}}, {{height}}, 0] }, "interactable": { "definition": "Lever.fvdata" } } }""";
         IReadOnlyList<Entity> spawned = _builder.Spawn(Hero + ", " + lever);
         return (spawned[0], spawned[1]);
     }

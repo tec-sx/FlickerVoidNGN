@@ -138,10 +138,18 @@ public sealed partial class CreatorMode : IViewportMode, IDisposable
 
     public bool Save() => _save();
 
+    /// <summary>The creator's own tools, which see the mouse first while no mesh is entered; null for none.</summary>
+    public ICreatorTool? Tool { get; set; }
+
     /// <summary>Selects the part of the creation under the mouse, whatever is in front of it, or none.</summary>
     public void PointerPressed(Vector2 pixel, int width, int height)
     {
         if (PressDoor(pixel, width, height))
+        {
+            return;
+        }
+
+        if (MeshSelection is null && Tool is { } tool && tool.Press(pixel, width, height))
         {
             return;
         }
@@ -674,12 +682,27 @@ public sealed partial class CreatorMode : IViewportMode, IDisposable
     /// <summary>The point, edge or face of the entered mesh under the mouse, or null.</summary>
     public MeshHit? Hover { get; private set; }
 
+    public void PointerLeft()
+    {
+        Tool?.Leave();
+        Gizmo?.Leave();
+        if (Gizmo is not { IsDragging: true })
+        {
+            Hover = null;
+        }
+    }
+
     public void PointerMoved(Vector2 pixel, int width, int height)
     {
         if (Door is not null)
         {
             MoveDoor(pixel, width, height);
             return;
+        }
+
+        if (MeshSelection is null)
+        {
+            Tool?.Move(pixel, width, height);
         }
 
         if (Gizmo is { IsDragging: true })
@@ -789,6 +812,15 @@ public sealed partial class CreatorMode : IViewportMode, IDisposable
         return new Vector3(scale.X == 0 ? 1 : scale.X, scale.Y == 0 ? 1 : scale.Y, scale.Z == 0 ? 1 : scale.Z);
     }
 
+    /// <summary>Adds what the creator's own tools show to the overlay, while no mesh is entered.</summary>
+    public void DrawTool(OverlayBuilder overlay)
+    {
+        if (MeshSelection is null)
+        {
+            Tool?.Draw(overlay);
+        }
+    }
+
     /// <summary>Adds the entered mesh, its selection and the hover to the overlay; nothing outside the mesh.</summary>
     public void DrawMesh(OverlayBuilder overlay)
     {
@@ -826,6 +858,7 @@ public sealed partial class CreatorMode : IViewportMode, IDisposable
     public void PointerReleased()
     {
         Door?.EndDrag();
+        Tool?.Release();
         if (Gizmo is { IsDragging: true } gizmo)
         {
             gizmo.EndDrag();

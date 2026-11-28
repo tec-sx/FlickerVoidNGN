@@ -167,6 +167,12 @@ public sealed class SceneRenderer : IDisposable
     public DebugView DebugView { get; set; }
 
     /// <summary>
+    /// Whether opaque surfaces are drawn flat instead of lit: each face one tone by the way it faces, with a thin line where faces and
+    /// objects meet, as the editor's creators show what is being made. The sky, see-through surfaces and the passes after still draw.
+    /// </summary>
+    public bool FlatLook { get; set; }
+
+    /// <summary>
     /// Whether it draws with the ray traced tier where the device has ray queries, building the scene's acceleration structures
     /// each frame for its ray traced passes; the game's window, the editor's viewport and probe bakes do, while stages and previews
     /// draw without. Ignored on devices without ray queries.
@@ -352,6 +358,7 @@ public sealed class SceneRenderer : IDisposable
         context.ProbesFrom = ProbesFrom?._probePass;
         context.Sky = Sky;
         context.DebugView = DebugView;
+        context.FlatLook = FlatLook;
         context.RayTracing = rayTracing;
         context.DepthFade = default;
         if (DepthFades)

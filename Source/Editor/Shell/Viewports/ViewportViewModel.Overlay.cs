@@ -30,16 +30,23 @@ public sealed partial class ViewportViewModel
         }
 
         World world = Scene.Game.World;
+        if (Building is { IsWalking: true })
+        {
+            return;
+        }
+
         if (Creator is { } creator)
         {
             if (creator.FindSelectedPart() is { } part && world.TryGet(part, out Transform placed))
             {
-                if (creator.MeshSelection is null)
+                // A building's plan tools draw what they picked themselves.
+                if (creator.MeshSelection is null && Building is null)
                 {
                     DrawSelection(overlay, world, part, placed);
                 }
             }
 
+            creator.DrawTool(overlay);
             creator.DrawMesh(overlay);
             creator.DrawGizmo(overlay, viewportHeight);
             creator.DrawDoor(overlay);
@@ -82,6 +89,11 @@ public sealed partial class ViewportViewModel
     /// </summary>
     public RenderCamera? GetPreviewCamera()
     {
+        if (Building is { } building)
+        {
+            return building.GetPreview();
+        }
+
         World world = Scene.Game.World;
         if (IsGameView || Selection.Selected is not { } selected || !world.IsAlive(selected) || !world.Has<Camera, Transform>(selected))
         {

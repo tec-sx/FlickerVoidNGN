@@ -178,7 +178,7 @@ public sealed class DoorSession
         Vector3 doorHalf = new Vector3(Fit.Width, Fit.Height, Fit.Thickness) / 2;
         Vector3 doorCentre = (Vector3.UnitY * (Fit.Sill + (Fit.Height / 2))) - (Vector3.UnitZ * (Fit.Thickness / 2));
         Matrix4x4 doorWorld = Matrix4x4.CreateTranslation(doorCentre) * frame;
-        overlay.AddBox(-doorHalf, doorHalf, doorWorld, Pale, 2);
+        overlay.AddBox(-doorHalf, doorHalf, doorWorld, Pale, OverlayLines.Thin);
         DrawCut(overlay, frame);
         DrawHinge(overlay, frame);
         DrawWindow(overlay, frame, doorCentre);
@@ -194,7 +194,7 @@ public sealed class DoorSession
         Vector3 half = new Vector3(width, height, depth) / 2;
         Vector3 centre = new(0, Fit.Sill + (Fit.Height / 2), (Fit.DepthOut - back) / 2);
         Matrix4x4 world = Matrix4x4.CreateTranslation(centre) * frame;
-        overlay.AddBox(-half, half, world, Red, 2);
+        overlay.AddBox(-half, half, world, Red, OverlayLines.Thin);
         AddFilledBox(overlay, half, world);
         if (FrameWidthShown() > 0)
         {
@@ -202,7 +202,7 @@ public sealed class DoorSession
             float outerHeight = height - Fit.Margin + Fit.FrameWidth;
             Vector3 outerHalf = new Vector3(outerWidth, outerHeight, Fit.Thickness + 0.04f) / 2;
             Vector3 outerCentre = new(0, Fit.Sill + (outerHeight / 2) - Fit.Margin, -(Fit.Thickness / 2));
-            overlay.AddBox(-outerHalf, outerHalf, Matrix4x4.CreateTranslation(outerCentre) * frame, Warm, 2);
+            overlay.AddBox(-outerHalf, outerHalf, Matrix4x4.CreateTranslation(outerCentre) * frame, Warm, OverlayLines.Thin);
         }
 
         if (!IsPlaced)
@@ -247,7 +247,7 @@ public sealed class DoorSession
                 Vector3 world = Vector3.Transform(point, frame);
                 if (step > 0)
                 {
-                    overlay.AddLine(previous, world, Green, 2);
+                    overlay.AddLine(previous, world, Green, OverlayLines.Thin);
                 }
 
                 previous = world;
@@ -256,7 +256,7 @@ public sealed class DoorSession
 
         Vector3 hingeTop = Vector3.Transform(pivot + (Vector3.UnitY * (Fit.Sill + Fit.Height)), frame);
         Vector3 hingeBottom = Vector3.Transform(pivot + (Vector3.UnitY * Fit.Sill), frame);
-        overlay.AddLine(hingeBottom, hingeTop, Green, 3);
+        overlay.AddLine(hingeBottom, hingeTop, Green, OverlayLines.Bold);
     }
 
     private void DrawWindow(OverlayBuilder overlay, in Matrix4x4 frame, Vector3 doorCentre)
@@ -269,7 +269,7 @@ public sealed class DoorSession
         Vector3 half = new Vector3(Fit.WindowWidth, Fit.WindowHeight, Fit.Thickness + 0.1f) / 2;
         Vector3 centre = new(0, Fit.Sill + Fit.WindowFrom + (Fit.WindowHeight / 2), doorCentre.Z);
         Matrix4x4 world = Matrix4x4.CreateTranslation(centre) * frame;
-        overlay.AddBox(-half, half, world, Red, 2);
+        overlay.AddBox(-half, half, world, Red, OverlayLines.Thin);
         AddFilledBox(overlay, half, world);
         if (Fit.Glass)
         {

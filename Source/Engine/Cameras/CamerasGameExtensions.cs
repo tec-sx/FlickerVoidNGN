@@ -1,8 +1,11 @@
+using Arch.Core;
+
 using FlickerVoid.Engine.Cameras.Cutaways;
 using FlickerVoid.Engine.Cameras.Directing;
 using FlickerVoid.Engine.Cameras.Layers;
 using FlickerVoid.Engine.Cameras.Scripting;
 using FlickerVoid.Engine.Cameras.Serialization;
+using FlickerVoid.Engine.Cameras.Shots;
 using FlickerVoid.Engine.Cameras.Transitions;
 using FlickerVoid.Engine.Cameras.Triggers;
 using FlickerVoid.Engine.Flow.Graphs;
@@ -25,6 +28,7 @@ public static class CamerasGameExtensions
     public static CameraDirector AddCameras(this Game game)
     {
         game.Spawner.Register("shot", CamerasJsonContext.Default.Shot);
+        ArrayRegistry.Add<PlacedShot>();
         game.Spawner.Register("cameraTarget", CamerasJsonContext.Default.CameraTarget);
         game.Data.AddResolver(CamerasJsonContext.Default);
         game.Data.Register<CameraRig>("cameraRig");

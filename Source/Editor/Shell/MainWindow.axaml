@@ -202,8 +202,33 @@
                                      controls:EditorMenus.AddChoices="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).AddChoices}" />
           <viewports:ViewportOverlay DataContext="{Binding Viewport}" />
           <!-- While a creation is made: its file, carrying on in a copy of it, and the way back to the level. -->
-          <Border Classes="viewportBar" Margin="12" HorizontalAlignment="Center" VerticalAlignment="Top" IsVisible="{Binding Viewport.IsCreating}">
-            <StackPanel Orientation="Horizontal" Spacing="4" Margin="6,0,0,0">
+          <Border Classes="viewportBar" Margin="12" HorizontalAlignment="Center" VerticalAlignment="Top" IsVisible="{Binding Viewport.IsCreating}" IsEnabled="True">
+            <Panel>
+            <StackPanel Orientation="Horizontal" Spacing="4" Margin="6,0,0,0" IsVisible="{Binding ShowsBuildingParts}">
+              <Button Classes="viewportIcon text" Command="{Binding Viewport.LeaveCreatorCommand}" ToolTip.Tip="Back to the level">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Classes="faint" Data="{x:Static shell:LucideIcons.Scene}" />
+                  <TextBlock Text="{Binding CreatorScene}" Classes="faint" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <PathIcon Classes="small faint" Data="{x:Static shell:LucideIcons.Next}" />
+              <PathIcon Data="{Binding CreatorIcon}" Margin="4,0,0,0" />
+              <TextBlock Text="{Binding CreatorFileName}" VerticalAlignment="Center" FontWeight="SemiBold" ToolTip.Tip="{Binding CreatorHeading}" />
+              <Ellipse Width="6" Height="6" Fill="{StaticResource EditorAccentBrush}" VerticalAlignment="Center" Margin="2,0,4,0" IsVisible="{Binding IsCreatorUnsaved}"
+                       ToolTip.Tip="Unsaved: Ctrl+S saves the building" />
+              <Border Classes="vsep" />
+              <ToggleButton Classes="viewportIcon text" IsChecked="{Binding Viewport.Building.IsWalking, Mode=OneWay, FallbackValue=False}"
+                            Command="{Binding Viewport.Building.ToggleWalkCommand, FallbackValue={x:Null}}"
+                            ToolTip.Tip="Walk: play the building as the game does, from outside its door; doors open, elevators ride and shots switch">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{x:Static shell:LucideIcons.Walk}" />
+                  <TextBlock Text="Walk" VerticalAlignment="Center" />
+                </StackPanel>
+              </ToggleButton>
+              <Button Classes="viewportIcon text accent" Padding="10,0" Content="Done" Command="{Binding Viewport.LeaveCreatorCommand}"
+                      ToolTip.Tip="Back to the level (Escape); the building stays unsaved until Ctrl+S" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="4" Margin="6,0,0,0" IsVisible="{Binding !ShowsBuildingParts}">
               <PathIcon Data="{Binding CreatorIcon}" />
               <TextBlock Text="{Binding CreatorHeading}" VerticalAlignment="Center" FontWeight="Medium" Margin="2,0,4,0" />
               <Button Classes="viewportIcon text" Content="Duplicate and Edit" Command="{Binding DuplicateAndEditCommand}"
@@ -211,6 +236,7 @@
               <Button Classes="viewportIcon text" Content="Leave" Command="{Binding Viewport.LeaveCreatorCommand}"
                       ToolTip.Tip="Go back to the level (Escape, or a double-click beside the creation)." />
             </StackPanel>
+            </Panel>
           </Border>
         </Panel>
         </Border>
@@ -263,6 +289,22 @@
                 </ContentControl>
               </ScrollViewer>
             </TabItem>
+            <TabItem IsVisible="{Binding ShowsTool}">
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <PathIcon Data="{x:Static shell:LucideIcons.Transform}" />
+                  <TextBlock Text="Tool" />
+                </StackPanel>
+              </TabItem.Header>
+              <Panel>
+                <Panel IsVisible="{Binding !Viewport.IsBuildingPlan}">
+                  <viewports:ToolOptionsView DataContext="{Binding Viewport.MeshTools}" />
+                </Panel>
+                <Panel IsVisible="{Binding Viewport.IsBuildingPlan}">
+                  <buildings:BuildingToolView DataContext="{Binding Viewport.Building.Tool}" />
+                </Panel>
+              </Panel>
+            </TabItem>
             <TabItem IsVisible="{Binding ShowsCreator}">
               <TabItem.Header>
                 <StackPanel Classes="tabHeader">
@@ -278,15 +320,6 @@
                   <DataTemplate DataType="foliageModels:FoliagePanelViewModel"><foliage:FoliagePanelView /></DataTemplate>
                 </ContentControl.DataTemplates>
               </ContentControl>
-            </TabItem>
-            <TabItem IsVisible="{Binding ShowsTool}">
-              <TabItem.Header>
-                <StackPanel Classes="tabHeader">
-                  <PathIcon Data="{x:Static shell:LucideIcons.Transform}" />
-                  <TextBlock Text="Tool" />
-                </StackPanel>
-              </TabItem.Header>
-              <viewports:ToolOptionsView DataContext="{Binding Viewport.MeshTools}" />
             </TabItem>
           </TabControl>
         </Panel>
@@ -349,7 +382,20 @@
                   <TextBlock Text="Parts" />
                 </StackPanel>
               </TabItem.Header>
-              <ListBox ItemsSource="{Binding CreatorParts}" SelectedItem="{Binding CreatorPart}" />
+              <Panel>
+                <ListBox ItemsSource="{Binding CreatorParts}" SelectedItem="{Binding CreatorPart}" IsVisible="{Binding !ShowsBuildingParts}" />
+                <!-- A building's parts as its tree: storeys with their floor, walls, rooms, openings, pillars, stairs, elevators and shots, then the roof. -->
+                <ListBox Classes="partsTree" ItemsSource="{Binding CreatorNodes}" SelectedItem="{Binding CreatorNode}" IsVisible="{Binding ShowsBuildingParts}">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="buildingModels:BuildingNode">
+                      <StackPanel Orientation="Horizontal" Spacing="7" Margin="{Binding Depth, Converter={x:Static shell:TreeIndent.FromLevel}}">
+                        <PathIcon Classes="small muted" Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}" />
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Panel>
             </TabItem>
           </TabControl>
           <Button Classes="icon" Command="{Binding SwapPanelsCommand}" Focusable="False" HorizontalAlignment="Right" VerticalAlignment="Top"

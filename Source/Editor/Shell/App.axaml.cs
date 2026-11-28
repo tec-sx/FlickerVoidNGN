@@ -100,7 +100,7 @@ public sealed partial class App : Application
         ViewportViewModel viewport = new(_scene, Options.Validation);
         if (codeProblem is not null)
         {
-            viewport.Status = codeProblem;
+            viewport.Warn(codeProblem);
         }
 
         if (scene is not null)
@@ -111,7 +111,7 @@ public sealed partial class App : Application
             }
             catch (Exception exception) when (exception is InvalidDataException or IOException)
             {
-                viewport.Status = $"Can't open {scene}: {exception.Message}";
+                viewport.Warn($"Can't open {scene}: {exception.Message}");
             }
         }
 

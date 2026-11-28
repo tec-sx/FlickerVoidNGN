@@ -26,10 +26,10 @@ Texture2D Textures[] : register(t0, space1);
 static const float3 LineColor = float3(0.62, 0.6, 0.52);
 static const float3 XAxisColor = float3(0.9, 0.15, 0.15);
 static const float3 ZAxisColor = float3(0.15, 0.35, 1.0);
-static const float MinorAlpha = 0.12;
-static const float MajorAlpha = 0.22;
+static const float MinorAlpha = 0.06;
+static const float MajorAlpha = 0.12;
 static const float AxisWidth = 0.75;
-static const float AxisAlpha = 0.7;
+static const float AxisAlpha = 0.4;
 // Lines are this many pixels wide, so the grid only hints at the ground.
 static const float LineWidth = 0.5;
 

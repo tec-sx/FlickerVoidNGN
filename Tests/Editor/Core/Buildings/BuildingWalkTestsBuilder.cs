@@ -8,6 +8,8 @@ using FlickerVoid.Engine.Ai;
 using FlickerVoid.Engine.Ai.Paths;
 using FlickerVoid.Engine.Buildings;
 using FlickerVoid.Engine.Buildings.Serialization;
+using FlickerVoid.Engine.Cameras;
+using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Characters;
 using FlickerVoid.Engine.Interaction;
 using FlickerVoid.Engine.Physics;
@@ -40,12 +42,18 @@ internal sealed class BuildingWalkTestsBuilder : IDisposable
         Game.AddCharacters();
         Paths = Game.AddAi();
         Game.AddInteraction();
+        Game.AddCameras();
         Game.AddBuildings();
     }
 
     public Game Game { get; } = new(NullLoggerFactory.Instance);
 
     public PathSystem Paths { get; }
+
+    public CreationParts Parts => Game.Services.GetService<CreationParts>()!;
+
+    /// <summary>The placed building, once <see cref="Place"/> spawned it.</summary>
+    public Entity House { get; private set; }
 
     /// <summary>Places the building at the origin of a playing level and lets its parts spawn.</summary>
     public void Place(BuildingFile building)
@@ -54,7 +62,7 @@ internal sealed class BuildingWalkTestsBuilder : IDisposable
         byte[] bytes = Encoding.UTF8.GetBytes(json);
         _content.Write(File, bytes);
         Spawn("""{ "name": "Ground", "components": { "transform": { "position": [0, -0.1, 0] }, "staticBody": { "collider": { "type": "box", "size": [30, 0.2, 30] } } } }""");
-        Spawn($$"""{ "name": "House", "components": { "transform": {}, "building": { "file": "{{File}}" } } }""");
+        House = Spawn($$"""{ "name": "House", "components": { "transform": {}, "building": { "file": "{{File}}" } } }""");
         Game.Lifecycle.Play(Game.World);
         Run(0.2f);
     }

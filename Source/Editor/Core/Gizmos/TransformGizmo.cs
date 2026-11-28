@@ -26,7 +26,7 @@ public sealed class TransformGizmo
     private const float GrabPixels = 8;
     private const float CentrePixels = 10;
     private const int RingSamples = 48;
-    private const float LineWidth = 3;
+    private const float LineWidth = OverlayLines.Handle;
     private const float ArrowShaft = 0.8f;
     private const float ConeRadius = 6;
     private const float ScaleShaft = 0.9f;
@@ -88,6 +88,15 @@ public sealed class TransformGizmo
         }
 
         return Hovered;
+    }
+
+    /// <summary>The mouse left the viewport: no handle is under it, unless one is being dragged.</summary>
+    public void Leave()
+    {
+        if (!IsDragging)
+        {
+            Hovered = GizmoAxis.None;
+        }
     }
 
     /// <summary>Starts dragging the handle under the mouse; false when there is none.</summary>

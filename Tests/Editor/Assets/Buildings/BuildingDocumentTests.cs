@@ -1,5 +1,7 @@
 using FlickerVoid.Editor.Assets.Buildings;
 using FlickerVoid.Editor.Core.Undo;
+using FlickerVoid.Engine.Buildings;
+using FlickerVoid.Engine.Runtime.Solids;
 
 namespace FlickerVoid.Editor.Assets.Tests.Buildings;
 
@@ -22,54 +24,29 @@ public sealed class BuildingDocumentTests : IDisposable
     }
 
     [Fact]
-    public void AddsStairsAsOneUndoStep()
+    public void MakesThePartsAgainAfterAChangeAsOneUndoStep()
     {
         BuildingDocument document = _builder.Build();
-        document.SetStoreys(2, false);
 
-        string? id = document.AddStairs(0);
+        document.Change(static building => building.Storeys[0].Pillars.Add(new FlickerVoid.Engine.Buildings.Plans.PlanPillar { Id = 40, X = 1, Z = 1 }));
 
-        id.Should().Be("stairs.1");
-        _builder.Load().Stairs.Should().ContainSingle();
+        _builder.Load().GetParts().Select(static part => part.Id).Should().Contain("storey.0.pillar.40");
         UndoHistory history = _builder.Content.GetHistory(BuildingDocumentTestsBuilder.House);
         history.Undo();
-        _builder.Load().Stairs.Should().BeEmpty();
-        _builder.Load().Storeys.Should().HaveCount(2);
+        _builder.Load().GetParts().Select(static part => part.Id).Should().NotContain("storey.0.pillar.40");
     }
 
     [Fact]
-    public void HoldsNothingForStairsWithoutAStoreyAbove()
+    public void KeepsAPartTheMeshToolsReshapedAsItIs()
     {
         BuildingDocument document = _builder.Build();
+        SolidMesh box = SolidMesh.Box(new System.Numerics.Vector3(1, 1, 1));
 
-        string? id = document.AddStairs(0);
+        document.SetMesh("storey.0.floor", box);
+        document.Change(static building => building.Storeys[0].Height = 4);
 
-        id.Should().BeNull();
-        _builder.Content.IsUnsaved(BuildingDocumentTestsBuilder.House).Should().BeFalse();
-    }
-
-    [Fact]
-    public void AddsAndRemovesAnElevator()
-    {
-        BuildingDocument document = _builder.Build();
-        document.SetStoreys(2, false);
-
-        document.AddElevator();
-        bool added = _builder.Load().Elevator is not null;
-        document.RemoveElevator();
-
-        added.Should().BeTrue();
-        _builder.Load().Elevator.Should().BeNull();
-    }
-
-    [Fact]
-    public void GivesAPartANewSolidLikeEveryCreation()
-    {
-        BuildingDocument document = _builder.Build();
-        FlickerVoid.Engine.Runtime.Solids.SolidMesh box = FlickerVoid.Engine.Runtime.Solids.SolidMesh.Box(new System.Numerics.Vector3(1, 1, 1));
-
-        document.SetMesh("roof", box);
-
-        _builder.Load().Roof.Mesh.Faces.Should().HaveCount(6);
+        BuildingFile loaded = _builder.Load();
+        loaded.Storeys[0].Free.Should().Equal("floor");
+        loaded.Storeys[0].Parts["floor"].Mesh.Faces.Should().HaveCount(6, "the plan no longer makes it");
     }
 }

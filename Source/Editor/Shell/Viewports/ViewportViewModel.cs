@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using FlickerVoid.Editor.Core.Creators;
 using FlickerVoid.Editor.Core.Cameras;
 using FlickerVoid.Editor.Core.Gizmos;
+using FlickerVoid.Editor.Core.Toasts;
 using FlickerVoid.Editor.Core.Overlays;
 using FlickerVoid.Editor.Core.Scenes;
 using FlickerVoid.Editor.Core.Selection;
@@ -38,9 +39,9 @@ namespace FlickerVoid.Editor.Viewports;
 /// </summary>
 public sealed partial class ViewportViewModel : ObservableObject
 {
-    private const float SelectionLineWidth = 2;
+    private const float SelectionLineWidth = OverlayLines.Thin;
 
-    private const float ReachLineWidth = 1.5f;
+    private const float ReachLineWidth = OverlayLines.Thin;
 
     private const int ConeEdges = 4;
 
@@ -66,8 +67,16 @@ public sealed partial class ViewportViewModel : ObservableObject
         Timeline = new ShotTimelineViewModel(scene);
         SceneMode = new SceneMode(scene, Camera, Gizmo, Icons, Timeline);
         Mode = SceneMode;
-        MeshTools = new MeshToolsViewModel(() => Creator, message => Status = message);
+        MeshTools = new MeshToolsViewModel(() => Creator, message => Status = message, Warn);
         ToolRail = new ToolRailViewModel(this);
+        MeshTools.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MeshToolsViewModel.IsMeshMode))
+            {
+                OnPropertyChanged(nameof(IsBuildingPlan));
+                FollowBuildingGizmo();
+            }
+        };
         Selection.Changed += HandleSelectionChanged;
         scene.Content.Changed += HandleContentChanged;
         scene.Opened += HandleSceneOpened;
@@ -108,6 +117,16 @@ public sealed partial class ViewportViewModel : ObservableObject
     /// <summary>What the viewport shows on, or why it can't.</summary>
     [ObservableProperty]
     public partial string Status { get; set; } = "Starting the viewport.";
+
+    /// <summary>The warnings shown over the viewport when something asked for can't be done.</summary>
+    public ToastsViewModel Toasts { get; } = new();
+
+    /// <summary>Tells the user why something asked for wasn't done: a toast over the viewport, and the status line.</summary>
+    public void Warn(string message)
+    {
+        Status = message;
+        Toasts.Warn(message);
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsGridVisible))]
@@ -182,6 +201,7 @@ public sealed partial class ViewportViewModel : ObservableObject
             }
 
             Gizmo.Mode = value;
+            SetBuildingGizmo(value);
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsSelectMode));
             OnPropertyChanged(nameof(IsMoveMode));
@@ -249,6 +269,11 @@ public sealed partial class ViewportViewModel : ObservableObject
     public void KeyPressed(ViewportKey key, ViewportButtons held, bool ctrl = false)
     {
         if ((held & ViewportButtons.Right) != 0)
+        {
+            return;
+        }
+
+        if (PressBuildingKey(key))
         {
             return;
         }
@@ -403,7 +428,7 @@ public sealed partial class ViewportViewModel : ObservableObject
     {
         if (Scene.ScenePath is null)
         {
-            Status = "Open a scene before adding models, vehicles, buildings or foliage: double-click one in the content browser.";
+            Warn("Open a scene before adding models, vehicles, buildings or foliage: double-click one in the content browser.");
             return;
         }
 
@@ -508,7 +533,7 @@ public sealed partial class ViewportViewModel : ObservableObject
 
         if (!Scene.Save())
         {
-            Status = "The world has no scene file to save into; open one with --scene.";
+            Warn("The world has no scene file to save into; open one with --scene.");
             return;
         }
 
@@ -528,7 +553,7 @@ public sealed partial class ViewportViewModel : ObservableObject
             IReadOnlyList<string> baked = SceneProbes.Bake(device, Scene, drawn);
             if (baked.Count == 0)
             {
-                Status = "No irradiance volumes to bake.";
+                Warn("No irradiance volumes to bake.");
                 return;
             }
 
@@ -537,7 +562,7 @@ public sealed partial class ViewportViewModel : ObservableObject
         }
         catch (GraphicsUnavailableException exception)
         {
-            Status = exception.Message;
+            Warn(exception.Message);
         }
     }
 

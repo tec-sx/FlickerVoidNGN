@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
+using Arch.Core;
+
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -181,6 +183,12 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         PixelSize size = GetPixelSize();
         Vector2 pixel = ToPixels(point.Position);
         ViewModel?.PointerMoved(pixel, size.Width, size.Height);
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        ViewModel?.PointerLeft();
     }
 
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
@@ -455,6 +463,7 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
             float seconds = (float)_clock.Elapsed.TotalSeconds;
             _clock.Restart();
             MoveCamera(seconds, size.Height, scaling);
+            ViewModel?.UpdateBuilding(seconds, size.Width, size.Height, scaling);
             Render(size);
         }
 
@@ -492,18 +501,21 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         }
 
         renderer.ShowGrid = viewModel.IsGridVisible;
+        renderer.FlatLook = viewModel.IsFlatLook;
         renderer.Mood = viewModel.GetDrawnMood();
         renderer.Meshes = viewModel.Scene.Meshes;
         viewModel.BuildOverlay(renderer.Overlay, size.Height);
-        Camera camera = viewModel.Camera.ToCamera();
-        Transform transform = viewModel.Camera.ToTransform();
+        RenderCamera drawn = viewModel.GetDrawnCamera();
+        Camera camera = drawn.Camera;
+        Transform transform = drawn.Transform;
         RenderCamera? preview = viewModel.GetPreviewCamera();
         DepthFade viewFade = viewModel.GetDepthFade();
         DepthFade previewFade = viewModel.GetPreviewDepthFade();
         Vector3 focus = viewModel.GetDepthFocus();
         ViewportDepthFade depthFade = new(viewFade, previewFade, focus);
         RenderingSettings rendering = viewModel.Scene.Game.Services.GetService<RenderingSettings>()!;
-        renderer.Render(viewModel.Scene.Game.World, rendering, camera, transform, preview, depthFade);
+        World world = viewModel.GetDrawnWorld();
+        renderer.Render(world, rendering, camera, transform, preview, depthFade);
         _lastUpdate = _surface!.UpdateWithSemaphoresAsync(_image!, _ready!, _released!);
     }
 

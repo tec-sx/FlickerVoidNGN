@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using FlickerVoid.Editor.Assets.Buildings;
+using FlickerVoid.Editor.Core.Buildings;
 using FlickerVoid.Engine.Buildings;
 using FlickerVoid.Engine.Buildings.Serialization;
 
@@ -16,6 +17,7 @@ internal sealed class BuildingDocumentTestsBuilder : IDisposable
     public BuildingDocumentTestsBuilder()
     {
         BuildingFile house = BuildingFile.Create();
+        BuildingTools.Rebuild(house);
         house.Schema = ".schemas/building.schema.json";
         string text = JsonSerializer.Serialize(house, BuildingsJsonContext.Default.BuildingFile);
         _files.WithFile(House, text);
@@ -23,6 +25,9 @@ internal sealed class BuildingDocumentTestsBuilder : IDisposable
     }
 
     public UnsavedContent Content { get; }
+
+    /// <summary>The folder the content lives in, as the content's full paths start.</summary>
+    public string Folder => _files.Folder;
 
     public BuildingDocument Build() => new(Content, House);
 

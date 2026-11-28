@@ -22,7 +22,13 @@ public abstract class CreationDocument<TFile>(UnsavedContent content, string pat
         SolidPart part = FindPart(id);
         DoorFitter.Bake(Value, id);
         part.Mesh = mesh;
+        Reshaped(id);
         Hold();
+    }
+
+    /// <summary>Called when the mesh tools gave the part with the id a new solid, before it is held.</summary>
+    protected virtual void Reshaped(string id)
+    {
     }
 
     /// <summary>Turns the part's mirror switch on or off, held in the file as one undo step; throws for an id the creation lacks.</summary>

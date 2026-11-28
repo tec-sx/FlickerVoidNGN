@@ -115,6 +115,9 @@ public static class LucideIcons
     public static Geometry Vehicle { get; } = Parse("M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2 M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0z M9 17h6 M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0z");
     public static Geometry More { get; } = Parse("M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0z M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0z M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0z");
     public static Geometry Check { get; } = Parse("M20 6 9 17l-5-5");
+    public static Geometry Hand { get; } = Parse("M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2 M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2 M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8 M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15");
+    public static Geometry Ruler { get; } = Parse("M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z M14.5 12.5l2-2 M11.5 9.5l2-2 M8.5 6.5l2-2 M17.5 15.5l2-2");
+
     public static Geometry Snap { get; } = Parse("M12 15l4 4 M2.352 10.648a1.205 1.205 0 0 0 0 1.704l2.296 2.296a1.205 1.205 0 0 0 1.704 0l6.029-6.029a1 1 0 1 1 3 3l-6.029 6.029a1.205 1.205 0 0 0 0 1.704l2.296 2.296a1.205 1.205 0 0 0 1.704 0l6.365-6.367A1 1 0 0 0 8.716 4.282z M5 8l4 4");
     public static Geometry Sun { get; } = Parse("M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0z M12 2v2 M12 20v2 M4.93 4.93l1.41 1.41 M17.66 17.66l1.41 1.41 M2 12h2 M20 12h2 M6.34 17.66l-1.41 1.41 M19.07 4.93l-1.41 1.41");
     public static Geometry Sky { get; } = Parse("M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z");
@@ -138,6 +141,22 @@ public static class LucideIcons
     public static Geometry Tree { get; } = Parse("M8 19a4 4 0 0 1-2.24-7.32A3.5 3.5 0 0 1 9 6.03V6a3 3 0 1 1 6 0v.04a3.5 3.5 0 0 1 3.24 5.65A4 4 0 0 1 16 19Z M12 19v3");
 
     public static Geometry Building { get; } = Parse("M10 12h4 M10 8h4 M14 21v-3a2 2 0 0 0-4 0v3 M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2 M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16");
+    public static Geometry PushWall { get; } = Parse("M18 8l4 4-4 4 M2 12h20 M6 8l-4 4 4 4");
+    public static Geometry MoveCorner { get; } = Parse("M3 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0z M17 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0z M5 7v8a4 4 0 0 0 4 4h8");
+    public static Geometry SplitWall { get; } = Parse("M16 3h5v5 M8 3H3v5 M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3 M15 9l6-6");
+    public static Geometry Arc { get; } = Parse("M3 20a17 17 0 0 1 17-17 M3 20h0 M20 3h0");
+    public static Geometry Wall { get; } = Parse("M12 20h9 M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z");
+    public static Geometry Room { get; } = Parse("M5 3a2 2 0 0 0-2 2 M19 3a2 2 0 0 1 2 2 M21 19a2 2 0 0 1-2 2 M5 21a2 2 0 0 1-2-2 M9 3h1 M9 21h1 M14 3h1 M14 21h1 M3 9v1 M21 9v1 M3 14v1 M21 14v1");
+    public static Geometry Pillar { get; } = Parse("M4 3h16 M4 21h16 M7 3v18 M12 3v18 M17 3v18");
+    public static Geometry Elevator { get; } = Parse("M21 16l-4 4-4-4 M17 20V4 M3 8l4-4 4 4 M7 4v16");
+    public static Geometry Window { get; } = Parse("M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M12 3v18 M3 12h18");
+    public static Geometry Floor { get; } = Parse("M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z");
+    public static Geometry Walk { get; } = Parse("M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z M16 17h4 M4 13h4");
+    public static Geometry TopView { get; } = Parse("M3 7V5a2 2 0 0 1 2-2h2 M17 3h2a2 2 0 0 1 2 2v2 M21 17v2a2 2 0 0 1-2 2h-2 M7 21H5a2 2 0 0 1-2-2v-2");
+    public static Geometry Steps { get; } = Parse("M3 20h5v-5h5v-5h5V5h3");
+    public static Geometry Warning { get; } = Parse("M21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3 M12 9v4 M12 17h.01");
+    public static Geometry Walls { get; } = Parse("M3 3h18v18H3z M3 9h18 M3 15h18 M9 3v6 M15 9v6 M9 15v6");
+    public static Geometry Line { get; } = Parse("M5 12h14");
     public static Geometry Roof { get; } = Parse("M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z");
     public static Geometry Item { get; } = Parse("M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z M12 22V12 M3.29 7L12 12L20.71 7 M7.5 4.27l9 5.15");
     public static Geometry Key { get; } = Parse("M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z M16 7.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0z");
@@ -273,6 +292,8 @@ public static class LucideIcons
         [nameof(Vehicle)] = Vehicle,
         [nameof(More)] = More,
         [nameof(Check)] = Check,
+        [nameof(Hand)] = Hand,
+        [nameof(Ruler)] = Ruler,
         [nameof(Snap)] = Snap,
         [nameof(Sun)] = Sun,
         [nameof(Sky)] = Sky,
@@ -295,6 +316,22 @@ public static class LucideIcons
         [nameof(Restore)] = Restore,
         [nameof(Building)] = Building,
         [nameof(Tree)] = Tree,
+        [nameof(PushWall)] = PushWall,
+        [nameof(MoveCorner)] = MoveCorner,
+        [nameof(SplitWall)] = SplitWall,
+        [nameof(Arc)] = Arc,
+        [nameof(Wall)] = Wall,
+        [nameof(Room)] = Room,
+        [nameof(Pillar)] = Pillar,
+        [nameof(Elevator)] = Elevator,
+        [nameof(Window)] = Window,
+        [nameof(Floor)] = Floor,
+        [nameof(TopView)] = TopView,
+        [nameof(Walk)] = Walk,
+        [nameof(Steps)] = Steps,
+        [nameof(Warning)] = Warning,
+        [nameof(Walls)] = Walls,
+        [nameof(Line)] = Line,
         [nameof(Roof)] = Roof,
         [nameof(Item)] = Item,
         [nameof(Key)] = Key,

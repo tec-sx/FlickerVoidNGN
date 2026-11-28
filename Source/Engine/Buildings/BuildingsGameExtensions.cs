@@ -1,10 +1,14 @@
 using Arch.Core;
 
 using FlickerVoid.Engine.Buildings.Serialization;
+using FlickerVoid.Engine.Cameras.Shots;
+using FlickerVoid.Engine.Cameras.Triggers;
 using FlickerVoid.Engine.Creations;
 using FlickerVoid.Engine.Interaction.Interactables;
+using FlickerVoid.Engine.Interaction.Locks;
 using FlickerVoid.Engine.Interaction.Toggles;
 using FlickerVoid.Engine.Physics;
+using FlickerVoid.Engine.Rendering.Cameras;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Meshes;
 using FlickerVoid.Engine.Runtime.Content;
@@ -20,7 +24,8 @@ public static class BuildingsGameExtensions
     /// <summary>
     /// Adds the <c>.fvbuilding</c> file kind and its schema, so the content check reads building files, and the <c>building</c> scene
     /// component, whose parts are spawned from its file through the <see cref="IContentManager"/> service (none without one) and
-    /// drawn through a mesh source, after <c>AddRendering</c>; and the system that runs elevators. Adding it again does nothing.
+    /// drawn through a mesh source, after <c>AddRendering</c>; the system that runs elevators and their call buttons, and the one that
+    /// switches to a building's shots as its trigger areas are walked into (with <c>AddCameras</c>). Adding it again does nothing.
     /// </summary>
     public static void AddBuildings(this Game game)
     {
@@ -32,6 +37,13 @@ public static class BuildingsGameExtensions
         ArrayRegistry.Add<StaticBody>();
         ArrayRegistry.Add<RigidBody>();
         ArrayRegistry.Add<Elevator>();
+        ArrayRegistry.Add<ElevatorCall>();
+        ArrayRegistry.Add<BuildingCue>();
+        ArrayRegistry.Add<Lockable>();
+        ArrayRegistry.Add<Camera>();
+        ArrayRegistry.Add<Shot>();
+        ArrayRegistry.Add<PlacedShot>();
+        ArrayRegistry.Add<TriggerArea>();
         ArrayRegistry.Add<UsePoint>();
         ArrayRegistry.Add<Toggle>();
         ArrayRegistry.Add<IndoorVolume>();
@@ -50,7 +62,9 @@ public static class BuildingsGameExtensions
         BuildingSpawnSystem spawner = new(game.World, parts, files, content);
         game.FrameSystems.Add(spawner);
         game.Services.AddService(spawner);
-        ElevatorSystem elevators = new(game.World, game.Events);
+        ElevatorSystem elevators = new(game.World, game.Events, parts);
         game.Services.AddService(elevators);
+        BuildingCueSystem cues = new(game.World, game.Events, game.Services, parts);
+        game.Services.AddService(cues);
     }
 }
