@@ -86,6 +86,8 @@ public sealed class SceneMode(EditorScene scene, EditorCamera camera, TransformG
         Selection.Select(picked);
     }
 
+    public void PointerLeft() => gizmo.Leave();
+
     /// <summary>Drags the gizmo, or finds the handle under the mouse.</summary>
     public void PointerMoved(Vector2 pixel, int width, int height)
     {

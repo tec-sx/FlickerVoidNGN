@@ -185,6 +185,12 @@ public sealed partial class ViewportControl : Control, ICustomHitTest
         ViewModel?.PointerMoved(pixel, size.Width, size.Height);
     }
 
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        ViewModel?.PointerLeft();
+    }
+
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
     {
         base.OnPointerCaptureLost(e);

@@ -47,13 +47,13 @@ public sealed partial class BuildingEditor : ICreatorTool
     private Drag _drag;
     private Vector2 _dragStart;
     private Vector2 _dragEnd;
+    private Vector2 _grabOffset;
     private Vector2 _pixelStart;
     private float _dragValue;
     private float _dragHeight;
     private float _grab;
     private int _width = 1;
     private int _height = 1;
-    private Vector2? _pointer;
     private bool _grouped;
     private string? _joins;
 
@@ -317,7 +317,7 @@ public sealed partial class BuildingEditor : ICreatorTool
             case BuildingTool.Arc:
                 return BeginOnWall(storey, hit, point, Drag.Arc);
             case BuildingTool.MoveCorner:
-                return PressCorner(storey, hit);
+                return PressCorner(storey, hit, ray, pixel, floor);
             case BuildingTool.SplitWall:
                 return PressSplit(storey, hit, point);
             case BuildingTool.Wall:
@@ -349,11 +349,22 @@ public sealed partial class BuildingEditor : ICreatorTool
         }
     }
 
+    public void Leave()
+    {
+        if (_drag != Drag.None)
+        {
+            return;
+        }
+
+        Gizmo.Leave();
+        Hover = null;
+        Changed?.Invoke();
+    }
+
     public void Move(Vector2 pixel, int width, int height)
     {
         _width = width;
         _height = height;
-        _pointer = pixel;
         if (_file() is not { } file || file.FindStorey(_level) is not { } storey || !TryGetRay(pixel, out Ray ray))
         {
             return;
@@ -393,6 +404,7 @@ public sealed partial class BuildingEditor : ICreatorTool
                 DragArc(storey, point);
                 break;
             case Drag.Corner:
+                _dragEnd = SnapPoint(point + _grabOffset);
                 DragCorner();
                 break;
             case Drag.Along:

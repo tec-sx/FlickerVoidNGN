@@ -15,6 +15,9 @@ public sealed class BuildingEditorTests : IDisposable
 
     private readonly BuildingEditorTestsBuilder _builder = new();
 
+    /// <summary>How far snapping to the grid takes a dragged point from the pointer, at most.</summary>
+    private const float GridStep = 0.051f;
+
     public void Dispose() => _builder.Dispose();
 
     [Fact]
@@ -33,6 +36,24 @@ public sealed class BuildingEditorTests : IDisposable
         editor.Pushed.Should().BeApproximately(1, 1e-3f);
         _builder.Building.Storeys[0].Corners[0].Z.Should().BeApproximately(-3.85f, 1e-3f);
         editor.IsPending.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AWallDraggedWithTheArcToolBulgesOutOfTheBuildingAndTheEditIsNamedByItsSide()
+    {
+        BuildingEditor editor = _builder.Editor;
+        editor.Tool = BuildingTool.Arc;
+        float height = _builder.Floor + 2;
+
+        bool taken = _builder.Press(new Vector3(0, height, -2.7f));
+        _builder.Drag(new Vector3(0, height, -3.4f));
+        _builder.Release();
+
+        taken.Should().BeTrue();
+        PlanWall front = _builder.Building.Storeys[0].Walls.Single(wall => wall.Id == FrontWall);
+        front.Bulge.Should().BeLessThan(0, "a wall dragged away from its rooms bulges out");
+        editor.PendingName.Should().EndWith("m out", "the edit waiting is named as the Tool tab shows it, by a length and a side");
+        editor.PendingName.Should().NotContain("-");
     }
 
     [Fact]
@@ -275,6 +296,53 @@ public sealed class BuildingEditorTests : IDisposable
         without.Should().NotBeNull("with no gizmo, a click there picks what stands there");
         editor.Gizmo.Hovered.Should().Be(GizmoAxis.Y);
         editor.Hover.Should().BeNull("a press there takes the ring");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ACornerFollowsThePointerFromWhereItWasGrabbedAtItsFootOrItsHead(bool byHead)
+    {
+        BuildingEditor editor = _builder.Editor;
+        editor.Tool = BuildingTool.MoveCorner;
+        BuildingStorey ground = _builder.Building.Storeys[0];
+        PlanCorner corner = ground.Corners[0];
+        Vector2 before = new(corner.X, corner.Z);
+        float height = _builder.Floor;
+        if (byHead)
+        {
+            height += ground.Height - ground.Floor;
+        }
+
+        Vector3 grabbed = new(before.X, height, before.Y);
+        bool taken = _builder.Press(grabbed);
+        _builder.Drag(grabbed + new Vector3(0.5f, 0, 0.2f));
+        _builder.Release();
+
+        taken.Should().BeTrue();
+        PlanCorner moved = _builder.Building.Storeys[0].Corners[0];
+        moved.X.Should().BeApproximately(before.X + 0.5f, GridStep, "the corner moves by what the pointer moved, at the height it was taken");
+        moved.Z.Should().BeApproximately(before.Y + 0.2f, GridStep);
+    }
+
+    [Fact]
+    public void NothingStaysHoveredOnceThePointerLeavesTheViewport()
+    {
+        int id = 0;
+        _builder.Document.Change(building => id = PlanEdits.AddPillar(building.Storeys[0], new Vector2(1, 1), 0.4f, false));
+        BuildingEditor editor = _builder.Editor;
+        editor.Tool = BuildingTool.Pillar;
+        Vector3 onPillar = new(1, _builder.Floor + 1, 1);
+        _builder.Drag(onPillar);
+        PlanPick? over = editor.Hover;
+        int changes = 0;
+        editor.Changed += () => changes++;
+
+        editor.Leave();
+
+        over.Should().NotBeNull();
+        editor.Hover.Should().BeNull();
+        changes.Should().Be(1, "the overlay is drawn again without the hover");
     }
 
     [Fact]

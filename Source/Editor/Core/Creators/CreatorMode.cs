@@ -682,6 +682,16 @@ public sealed partial class CreatorMode : IViewportMode, IDisposable
     /// <summary>The point, edge or face of the entered mesh under the mouse, or null.</summary>
     public MeshHit? Hover { get; private set; }
 
+    public void PointerLeft()
+    {
+        Tool?.Leave();
+        Gizmo?.Leave();
+        if (Gizmo is not { IsDragging: true })
+        {
+            Hover = null;
+        }
+    }
+
     public void PointerMoved(Vector2 pixel, int width, int height)
     {
         if (Door is not null)

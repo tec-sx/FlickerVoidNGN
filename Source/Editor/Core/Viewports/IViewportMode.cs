@@ -15,6 +15,9 @@ public interface IViewportMode
 
     void PointerMoved(Vector2 pixel, int width, int height);
 
+    /// <summary>The mouse left the viewport, so nothing is under it.</summary>
+    void PointerLeft();
+
     void PointerReleased();
 
     /// <summary>Runs once a frame, after the camera moved.</summary>

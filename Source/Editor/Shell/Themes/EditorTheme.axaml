@@ -1364,6 +1364,12 @@
     <Setter Property="Padding" Value="3,2" />
     <Setter Property="Height" Value="28" />
   </Style>
+
+  <!-- A bar along the viewport's bottom shows its tips above it: below the pointer they have no room, and a tip over the pointer takes the click. -->
+  <Style Selector="Border.viewportBar.low :is(Button)">
+    <Setter Property="ToolTip.Placement" Value="Top" />
+    <Setter Property="ToolTip.VerticalOffset" Value="-6" />
+  </Style>
   <Style Selector=":is(Button).viewportIcon">
     <Setter Property="MinWidth" Value="22" />
     <Setter Property="Height" Value="22" />

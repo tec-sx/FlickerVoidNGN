@@ -252,11 +252,13 @@ public sealed partial class BuildingEditor
 
         int level = _level;
         int id = pick.Id;
-        string name = $"Arc · bulge {Format(bulge, "0.00")} m";
+        string side = bulge < 0 ? "out" : "in";
+        string name = $"Arc · bulge {Format(MathF.Abs(bulge), "0.00")} m {side}";
         Edit(name, building => PlanEdits.SetBulge(building.FindStorey(level)!, id, bulge));
     }
 
-    private bool PressCorner(BuildingStorey storey, PlanHit? hit)
+    /// <summary>Takes a corner by its foot or its head, whichever shows nearer the pointer, and drags it at that height from where it was taken.</summary>
+    private bool PressCorner(BuildingStorey storey, PlanHit? hit, Ray ray, Vector2 pixel, float floor)
     {
         PlanCorner? corner = null;
         if (hit is { Pick.Kind: PlanPickKind.Corner } onCorner)
@@ -271,6 +273,16 @@ public sealed partial class BuildingEditor
             return false;
         }
 
+        float top = floor + storey.Height - storey.Floor;
+        float toFoot = GetPixelDistance(new Vector3(corner.X, floor, corner.Z), pixel);
+        float toHead = GetPixelDistance(new Vector3(corner.X, top, corner.Z), pixel);
+        if (toHead < toFoot && TryGetPlanePoint(ray, top, out Vector2 atHead))
+        {
+            _dragHeight = top;
+            _dragStart = atHead;
+        }
+
+        _grabOffset = new Vector2(corner.X, corner.Z) - _dragStart;
         Picked = new PlanPick(PlanPickKind.Corner, _level, corner.Id);
         _drag = Drag.Corner;
         Changed?.Invoke();

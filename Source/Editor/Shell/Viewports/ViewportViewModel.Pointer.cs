@@ -43,5 +43,7 @@ public sealed partial class ViewportViewModel
         Mode.PointerMoved(pixel, width, height);
     }
 
+    public void PointerLeft() => Mode.PointerLeft();
+
     public void PointerReleased() => Mode.PointerReleased();
 }

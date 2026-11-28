@@ -90,6 +90,15 @@ public sealed class TransformGizmo
         return Hovered;
     }
 
+    /// <summary>The mouse left the viewport: no handle is under it, unless one is being dragged.</summary>
+    public void Leave()
+    {
+        if (!IsDragging)
+        {
+            Hovered = GizmoAxis.None;
+        }
+    }
+
     /// <summary>Starts dragging the handle under the mouse; false when there is none.</summary>
     public bool BeginDrag(EditorCamera camera, in Transform target, Vector2 pixel, int width, int height)
     {

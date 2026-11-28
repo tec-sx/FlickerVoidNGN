@@ -130,7 +130,7 @@
       </StackPanel>
     </Border>
     <!-- A selected greybox of the level: shape it with the mesh tools, or cut the other selected greyboxes out of it. -->
-    <Border Classes="viewportBar" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Bottom" IsVisible="{Binding CanShapeSelected}">
+    <Border Classes="viewportBar low" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Bottom" IsVisible="{Binding CanShapeSelected}">
       <StackPanel Orientation="Horizontal" Spacing="2">
         <Button Classes="viewportIcon text" Content="Shape" Command="{Binding ShapeSelectedCommand}"
                 ToolTip.Tip="Shape this greybox with the mesh tools, in place (double-click it)" />
@@ -203,7 +203,7 @@
       </StackPanel>
     </Border>
     <!-- A building edit waits here: Cancel (Escape) puts the plan back, Apply (Enter) keeps it. -->
-    <Border Classes="viewportBar" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"
+    <Border Classes="viewportBar low" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"
             IsVisible="{Binding Building.Tool.IsPending, FallbackValue=False}">
       <StackPanel Orientation="Horizontal" Spacing="8" DataContext="{Binding Building.Tool}" x:DataType="buildingModels:BuildingToolViewModel">
         <PathIcon Classes="accent" Data="{Binding Icon, Converter={x:Static shell:LucideIcons.ByName}}" />
@@ -225,7 +225,7 @@
       </StackPanel>
     </Border>
     <!-- While walking: what a click does, the shot drawn, and the way back. -->
-    <Border Classes="viewportBar" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"
+    <Border Classes="viewportBar low" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"
             IsVisible="{Binding Building.IsWalking, FallbackValue=False}">
       <StackPanel Orientation="Horizontal" Spacing="8" DataContext="{Binding Building}" x:DataType="buildings:BuildingPlanViewModel">
         <PathIcon Classes="accent" Data="{x:Static shell:LucideIcons.Walk}" />
@@ -273,7 +273,7 @@
     </ItemsControl>
     <viewports:ToolRailView Margin="12,50,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" DataContext="{Binding ToolRail}" />
     <!-- A tool with a pending result waits here: Apply (Enter) keeps it, Cancel (Escape) puts the mesh back. -->
-    <Border Classes="viewportBar" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"
+    <Border Classes="viewportBar low" Margin="12" Height="34" HorizontalAlignment="Center" VerticalAlignment="Bottom" Padding="10,3,4,3"
             IsVisible="{Binding MeshTools.IsConfirming}">
       <StackPanel Orientation="Horizontal" Spacing="8" DataContext="{Binding MeshTools}" x:DataType="viewports:MeshToolsViewModel">
         <TextBlock Text="{Binding ToolName}" VerticalAlignment="Center" FontWeight="Medium" />

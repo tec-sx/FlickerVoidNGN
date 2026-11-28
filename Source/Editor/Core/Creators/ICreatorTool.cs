@@ -15,6 +15,9 @@ public interface ICreatorTool
 
     void Move(Vector2 pixel, int width, int height);
 
+    /// <summary>The mouse left the viewport, so nothing is under it.</summary>
+    void Leave();
+
     void Release();
 
     void Draw(OverlayBuilder overlay);
