@@ -8,13 +8,16 @@ using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Media;
 
+using FlickerVoid.Editor.Controls;
+using FlickerVoid.Editor.Controls.Timelines;
 using FlickerVoid.Editor.Core.Curves;
+using FlickerVoid.Editor.Core.Timelines;
 using FlickerVoid.Engine.Runtime.Curves;
 
 namespace FlickerVoid.Editor.Curves;
 
 /// <summary>
-/// Draws a curve editor's tracks over a grid of hours and values and hands it the pointer: a press takes a key or handle
+/// Draws a curve editor's tracks over a grid of its scale's times and of values and hands it the pointer: a press takes a key or handle
 /// (Shift adds to the selection), a drag moves it (Alt without snapping), a double-click adds a key, the middle or right
 /// button pans, the wheel zooms (Ctrl the time alone, Shift the value alone), Delete removes the selected keys, F fits, and a
 /// right-click without a drag offers the keys' modes.
@@ -24,19 +27,9 @@ public sealed class CurveView : Control
     public static readonly StyledProperty<CurveEditorViewModel?> EditorProperty =
         AvaloniaProperty.Register<CurveView, CurveEditorViewModel?>(nameof(Editor));
 
-    /// <summary>The time a cursor line is drawn at, such as the hour an environment is shown at; NaN draws none.</summary>
-    public static readonly StyledProperty<double> CursorTimeProperty =
-        AvaloniaProperty.Register<CurveView, double>(nameof(CursorTime), double.NaN);
-
-    /// <summary>Whether the hours are written over the time lines; off under a ruler that writes them.</summary>
-    public static readonly StyledProperty<bool> ShowsHoursProperty =
-        AvaloniaProperty.Register<CurveView, bool>(nameof(ShowsHours), true);
-
-    public bool ShowsHours
-    {
-        get => GetValue(ShowsHoursProperty);
-        set => SetValue(ShowsHoursProperty, value);
-    }
+    /// <summary>The scale whose lines the time grid follows, the ruler's above it; the grid of the timeline kit.</summary>
+    public static readonly StyledProperty<ITimeScale?> ScaleProperty =
+        AvaloniaProperty.Register<CurveView, ITimeScale?>(nameof(Scale));
 
     /// <summary>The colors tracks are drawn in, by their place among the editor's tracks.</summary>
     public static readonly IReadOnlyList<Color> TrackColors =
@@ -58,14 +51,13 @@ public sealed class CurveView : Control
     private static readonly IBrush Background = new SolidColorBrush(Color.Parse("#0B0705"));
     private static readonly IPen MinorPen = new Pen(new SolidColorBrush(Color.Parse("#1D1610")), 1);
     private static readonly IPen MajorPen = new Pen(new SolidColorBrush(Color.Parse("#2A2119")), 1);
-    private static readonly IPen DayPen = new Pen(new SolidColorBrush(Color.Parse("#3A2F26")), 1);
     private static readonly IBrush LabelBrush = new SolidColorBrush(Color.Parse("#8F8372"));
     private static readonly IBrush SelectedBrush = new SolidColorBrush(Color.Parse("#F5A639"));
     private static readonly IBrush KeyBrush = new SolidColorBrush(Color.Parse("#EDE5D8"));
     private static readonly IPen HandlePen = new Pen(new SolidColorBrush(Color.Parse("#B6AB99")), 1);
-    private static readonly IPen CursorPen = new Pen(new SolidColorBrush(Color.Parse("#D9B23A")), 2);
 
     private readonly List<CurveTrack> _watchedTracks = [];
+    private readonly List<TimeTick> _ticks = [];
     private CurveEditorViewModel? _watched;
     private Point? _panFrom;
     private Point _panStart;
@@ -73,7 +65,7 @@ public sealed class CurveView : Control
 
     static CurveView()
     {
-        AffectsRender<CurveView>(EditorProperty, CursorTimeProperty, ShowsHoursProperty);
+        AffectsRender<CurveView>(EditorProperty, ScaleProperty);
         FocusableProperty.OverrideDefaultValue<CurveView>(true);
     }
 
@@ -89,10 +81,10 @@ public sealed class CurveView : Control
         set => SetValue(EditorProperty, value);
     }
 
-    public double CursorTime
+    public ITimeScale? Scale
     {
-        get => GetValue(CursorTimeProperty);
-        set => SetValue(CursorTimeProperty, value);
+        get => GetValue(ScaleProperty);
+        set => SetValue(ScaleProperty, value);
     }
 
     public override void Render(DrawingContext context)
@@ -105,7 +97,7 @@ public sealed class CurveView : Control
         }
 
         editor.Range.Resize(bounds.Width, bounds.Height);
-        DrawTimeLines(context, editor.Range);
+        DrawTimeLines(context, editor.Range, bounds);
         DrawValueLines(context, editor.Range);
         for (int i = 0; i < editor.Tracks.Count; i++)
         {
@@ -117,12 +109,6 @@ public sealed class CurveView : Control
         if (editor.Active is { } shown)
         {
             DrawKeys(context, editor, shown);
-        }
-
-        if (!double.IsNaN(CursorTime))
-        {
-            double x = editor.Range.ToScreen(CursorTime, 0).X;
-            context.DrawLine(CursorPen, new Point(x, 0), new Point(x, bounds.Height));
         }
     }
 
@@ -306,30 +292,16 @@ public sealed class CurveView : Control
         menu.Open(this);
     }
 
-    private void DrawTimeLines(DrawingContext context, CurveRange range)
+    private void DrawTimeLines(DrawingContext context, CurveRange range, Rect bounds)
     {
-        double step = GetStep(range.MaxTime - range.MinTime, Bounds.Width);
-        double first = Math.Ceiling(range.MinTime / step) * step;
-        for (double time = first; time <= range.MaxTime; time += step)
+        if (Scale is not { } scale)
         {
-            double x = range.ToScreen(time, 0).X;
-            IPen pen = MinorPen;
-            if (IsWhole(time, 24))
-            {
-                pen = DayPen;
-            }
-            else if (IsWhole(time, step * 4))
-            {
-                pen = MajorPen;
-            }
-
-            context.DrawLine(pen, new Point(x, 0), new Point(x, Bounds.Height));
-            if (ShowsHours)
-            {
-                string label = FormatHour(time);
-                DrawLabel(context, label, new Point(x + 2, 1));
-            }
+            return;
         }
+
+        scale.GetTicks(range.Time, _ticks);
+        Color line = ThemeColors.Find(this, "EditorLineBrush");
+        TimelineDrawing.Grid(context, _ticks, range.Time, bounds, line);
     }
 
     private void DrawValueLines(DrawingContext context, CurveRange range)
@@ -414,14 +386,6 @@ public sealed class CurveView : Control
     {
         double ratio = value / step;
         return Math.Abs(ratio - Math.Round(ratio)) < 1e-6;
-    }
-
-    /// <summary>An hour of the day as a clock shows it, wrapped into the day.</summary>
-    private static string FormatHour(double time)
-    {
-        double hour = ((time % 24) + 24) % 24;
-        int minutes = (int)Math.Round(hour * 60);
-        return $"{minutes / 60 % 24:00}:{minutes % 60:00}";
     }
 
     private static Point ToPoint(CurvePoint point) => new(point.X, point.Y);

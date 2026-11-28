@@ -128,6 +128,30 @@ public sealed partial class EditorThemeTests
         stray.Should().BeEmpty("rule R26: every section of a panel is a PanelCard, its fields PanelRows");
     }
 
+    [Fact]
+    public void Only_the_kit_defines_rulers_transports_and_faders()
+    {
+        var controls = Path.Combine(ShellFolder(), "Controls");
+        var stray = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(ShellFolder(), "*.cs", SearchOption.AllDirectories))
+        {
+            if (file.StartsWith(controls) || file.Contains(Path.Combine("Shell", "obj")) || file.Contains(Path.Combine("Shell", "bin")))
+            {
+                continue;
+            }
+
+            foreach (Match match in KitControlPattern().Matches(File.ReadAllText(file)))
+            {
+                stray.Add($"{Path.GetFileName(file)} {match.Groups[1].Value}");
+            }
+        }
+
+        stray.Should().BeEmpty("rule R28: everything with time uses the one timeline kit in Controls");
+    }
+
+    [GeneratedRegex(@"class (\w*(?:Ruler|Transport|Fader|Meter|TimelineStrip))\b")]
+    private static partial Regex KitControlPattern();
+
     [GeneratedRegex(@"<Expander\b|Classes=""[^""]*\bsection(Body)?\b[^""]*""|\bfieldValue\b|SharedSizeGroup=""FieldLabel""")]
     private static partial Regex SectionPattern();
 

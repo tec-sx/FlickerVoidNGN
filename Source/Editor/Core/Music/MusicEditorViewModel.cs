@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Core.Data;
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Timelines;
 using FlickerVoid.Engine.Audio.Mixing;
 using FlickerVoid.Engine.Audio.Music;
 
@@ -17,7 +18,7 @@ namespace FlickerVoid.Editor.Core.Music;
 /// the selected clip, and the lists of sounds and cues to drag in. <paramref name="edited"/> follows each change to the cue, and
 /// the lanes are laid out again after it; what plays follows the cue as it is edited.
 /// </summary>
-public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
+public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable, ITransport
 {
     public const double DefaultTotalBars = 24;
 
@@ -397,6 +398,17 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
     }
 
     partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(LayersText));
+
+    /// <summary>The transport's loop: <see cref="LoopPlayback"/>.</summary>
+    public bool IsLooping
+    {
+        get => LoopPlayback;
+        set => LoopPlayback = value;
+    }
+
+    partial void OnLoopPlaybackChanged(bool value) => OnPropertyChanged(nameof(IsLooping));
+
+    void ITransport.TogglePlay() => Play();
 
     /// <summary>Where the selected layer is, under its name in the panel's header: the arrangement and the layer's place in it.</summary>
     public string SelectedPlace
@@ -1101,7 +1113,7 @@ public sealed partial class MusicEditorViewModel : ObservableObject, IDisposable
 
     /// <summary>Stops; stopped already, it goes back to the start.</summary>
     [RelayCommand]
-    private void Stop()
+    public void Stop()
     {
         if (IsPlaying)
         {

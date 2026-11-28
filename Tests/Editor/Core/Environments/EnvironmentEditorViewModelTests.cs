@@ -2,6 +2,7 @@ using System.Numerics;
 
 using FlickerVoid.Editor.Core.Environments;
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Timelines;
 using FlickerVoid.Engine.Runtime.Curves;
 
 namespace FlickerVoid.Editor.Core.Tests.Environments;
@@ -218,6 +219,43 @@ public sealed class EnvironmentEditorViewModelTests
         editor.Hour = 6.5f;
 
         editor.HourText.Should().Be("06:30");
+    }
+
+    [Fact]
+    public void ShowsTheHoursOfTheCurvesOnItsTimeline()
+    {
+        EnvironmentEditorViewModel editor = _builder.Build();
+
+        editor.Timeline.Range.Should().BeSameAs(editor.Curves.Range.Time, "the ruler, the strips and the curves pan and zoom together");
+        editor.Timeline.Scale.Should().BeOfType<HourScale>();
+    }
+
+    [Fact]
+    public void KeepsTheHourAndTheTimelinesCursorTogether()
+    {
+        EnvironmentEditorViewModel editor = _builder.Build();
+
+        editor.Hour = 6;
+        editor.Timeline.Cursor.Should().Be(6);
+
+        editor.Timeline.MoveCursor(26);
+        editor.Hour.Should().Be(2, "the day goes round");
+    }
+
+    [Fact]
+    public void PlaysAndStopsFromTheTransport()
+    {
+        EnvironmentEditorViewModel editor = _builder.Build();
+        ITransport transport = editor;
+        editor.Hour = 18;
+
+        transport.TogglePlay();
+        transport.IsPlaying.Should().BeTrue();
+        transport.PositionText.Should().Be("18:00");
+        transport.IsLooping.Should().BeTrue("the day always goes round");
+
+        transport.Stop();
+        transport.IsPlaying.Should().BeFalse();
     }
 
     private static NumberFieldViewModel GetNumber(EnvironmentEditorViewModel editor, string name)

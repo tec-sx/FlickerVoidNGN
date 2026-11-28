@@ -4,6 +4,7 @@
              xmlns:coremusic="using:FlickerVoid.Editor.Core.Music"
              xmlns:data="using:FlickerVoid.Editor.Data"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:timelines="using:FlickerVoid.Editor.Controls.Timelines"
              xmlns:controls="using:FlickerVoid.Editor.Controls"
              x:Class="FlickerVoid.Editor.Music.MusicSideView"
              x:DataType="coremusic:MusicEditorViewModel">
@@ -33,14 +34,10 @@
                 </MenuFlyout>
               </Button.Flyout>
             </Button>
-            <StackPanel Orientation="Horizontal">
-              <ToggleButton Classes="stripTab" IsChecked="{Binding SideTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=0, Mode=OneWay}" Click="HandleLayerTab">
-                <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Layers}" /><TextBlock Text="Layer" /></StackPanel>
-              </ToggleButton>
-              <ToggleButton Classes="stripTab" IsChecked="{Binding SideTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=1, Mode=OneWay}" Click="HandleArrangementTab">
-                <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Music}" /><TextBlock Text="Arrangement" /></StackPanel>
-              </ToggleButton>
-            </StackPanel>
+            <timelines:ButtonGroup SelectedIndex="{Binding SideTab, Mode=TwoWay}">
+              <ListBoxItem><StackPanel Classes="tabHeader"><PathIcon Data="{x:Static shell:LucideIcons.Layers}" /><TextBlock Text="Layer" /></StackPanel></ListBoxItem>
+              <ListBoxItem><StackPanel Classes="tabHeader"><PathIcon Data="{x:Static shell:LucideIcons.Music}" /><TextBlock Text="Arrangement" /></StackPanel></ListBoxItem>
+            </timelines:ButtonGroup>
           </DockPanel>
         </Border>
         <!-- The selected layer: its icon (a click picks another), its name over where it is, the bus it goes to, then its cards. -->
@@ -193,14 +190,10 @@
         <Border DockPanel.Dock="Top" Classes="dockTabs">
           <DockPanel>
             <Button DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="Import sound files into Content" Click="HandleImport"><PathIcon Data="{x:Static shell:LucideIcons.Import}" /></Button>
-            <StackPanel Orientation="Horizontal">
-              <ToggleButton Classes="stripTab" IsChecked="{Binding ListTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=0, Mode=OneWay}" Click="HandleSoundsTab">
-                <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Clip}" /><TextBlock Text="Sounds" /></StackPanel>
-              </ToggleButton>
-              <ToggleButton Classes="stripTab" IsChecked="{Binding ListTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=1, Mode=OneWay}" Click="HandleCuesTab">
-                <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Arrangements}" /><TextBlock Text="Arrangements" /></StackPanel>
-              </ToggleButton>
-            </StackPanel>
+            <timelines:ButtonGroup SelectedIndex="{Binding ListTab, Mode=TwoWay}">
+              <ListBoxItem><StackPanel Classes="tabHeader"><PathIcon Data="{x:Static shell:LucideIcons.Clip}" /><TextBlock Text="Sounds" /></StackPanel></ListBoxItem>
+              <ListBoxItem><StackPanel Classes="tabHeader"><PathIcon Data="{x:Static shell:LucideIcons.Arrangements}" /><TextBlock Text="Arrangements" /></StackPanel></ListBoxItem>
+            </timelines:ButtonGroup>
           </DockPanel>
         </Border>
         <controls:SearchBox DockPanel.Dock="Top" Classes="row" PlaceholderText="Search sounds" Text="{Binding Search}" />

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Numerics;
 using System.Text.Json.Serialization.Metadata;
 
@@ -7,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using FlickerVoid.Editor.Core.Curves;
 using FlickerVoid.Editor.Core.Inspector;
+using FlickerVoid.Editor.Core.Timelines;
 using FlickerVoid.Engine.Rendering.Lighting;
 using FlickerVoid.Engine.Rendering.Moods;
 using FlickerVoid.Engine.Rendering.Serialization;
@@ -20,7 +22,7 @@ namespace FlickerVoid.Editor.Core.Environments;
 /// values' curves in <see cref="Curves"/> and colors in <see cref="ColorTracks"/>; and a clock that plays the hour on. The
 /// environment is edited in place and <paramref name="edited"/> follows each change.
 /// </summary>
-public sealed partial class EnvironmentEditorViewModel : ObservableObject
+public sealed partial class EnvironmentEditorViewModel : ObservableObject, ITransport
 {
     private const float Day = LightingEnvironment.DayHours;
 
@@ -43,6 +45,8 @@ public sealed partial class EnvironmentEditorViewModel : ObservableObject
         Title = title;
         _environment = environment;
         _edited = edited;
+        Timeline = new TimelineViewModel(new HourScale(), Curves.Range.Time) { Cursor = Hour };
+        Timeline.PropertyChanged += HandleTimelineChanged;
         environment.Apply(Hour, _atHour);
         List<EnvironmentGroupViewModel> groups = [];
         IEnumerable<IGrouping<MoodGroup, MoodValue>> grouped = MoodValues.All.Where(IsDrawable).GroupBy(value => value.Group);
@@ -74,12 +78,15 @@ public sealed partial class EnvironmentEditorViewModel : ObservableObject
     /// <summary>The selected numbers' curves, overlaid; the last one selected takes the pointer.</summary>
     public CurveEditorViewModel Curves { get; } = new();
 
+    /// <summary>The hours over the curves and strips, sharing their times; its cursor is <see cref="Hour"/>.</summary>
+    public TimelineViewModel Timeline { get; }
+
     /// <summary>The selected colors' curves, each on its gradient strip.</summary>
     public ObservableCollection<ColorTrack> ColorTracks { get; } = [];
 
     /// <summary>The hour of the day the cursor is at, from 0 up to 24.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HourText))]
+    [NotifyPropertyChangedFor(nameof(HourText), nameof(PositionText))]
     public partial float Hour { get; set; } = 12;
 
     /// <summary>The cursor's hour as a clock shows it.</summary>
@@ -94,6 +101,17 @@ public sealed partial class EnvironmentEditorViewModel : ObservableObject
 
     [ObservableProperty]
     public partial bool IsPlaying { get; set; }
+
+    /// <summary>The day always goes round.</summary>
+    public bool IsLooping
+    {
+        get => true;
+        set { }
+    }
+
+    public string PositionText => HourText;
+
+    public string TimeText => string.Empty;
 
     /// <summary>The hours of the day that pass in a real second while playing.</summary>
     [ObservableProperty]
@@ -116,6 +134,8 @@ public sealed partial class EnvironmentEditorViewModel : ObservableObject
     [RelayCommand]
     public void TogglePlay() => IsPlaying = !IsPlaying;
 
+    public void Stop() => IsPlaying = false;
+
     /// <summary>Takes a value's curve out of the environment, so what lies under it shows again.</summary>
     public void RemoveCurve(EnvironmentValueViewModel value)
     {
@@ -130,7 +150,19 @@ public sealed partial class EnvironmentEditorViewModel : ObservableObject
         _edited();
     }
 
-    partial void OnHourChanged(float value) => Refresh();
+    partial void OnHourChanged(float value)
+    {
+        Timeline.Cursor = value;
+        Refresh();
+    }
+
+    private void HandleTimelineChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TimelineViewModel.Cursor))
+        {
+            Hour = (float)Timeline.Cursor;
+        }
+    }
 
     private static bool IsDrawable(MoodValue value)
     {

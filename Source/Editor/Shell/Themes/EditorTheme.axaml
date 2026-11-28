@@ -1652,24 +1652,6 @@
     <Setter Property="BorderBrush" Value="{StaticResource EditorAccentBrush}" />
     <Setter Property="BoxShadow" Value="none" />
   </Style>
-  <!-- Chips: a row of filters; the chosen one washed in the accent. -->
-  <Style Selector="ListBox.filters ListBoxItem">
-    <Setter Property="Padding" Value="8,0" />
-    <Setter Property="Margin" Value="0,0,3,0" />
-    <Setter Property="MinHeight" Value="20" />
-    <Setter Property="Height" Value="20" />
-    <Setter Property="CornerRadius" Value="10" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="BorderBrush" Value="Transparent" />
-    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
-  </Style>
-  <Style Selector="ListBox.filters ListBoxItem:selected">
-    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
-  </Style>
-  <Style Selector="ListBox.filters ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="BorderBrush" Value="{StaticResource EditorAccentLineBrush}" />
-    <Setter Property="BoxShadow" Value="none" />
-  </Style>
 
   <!-- The category rail: a 30 px column of icon buttons; the chosen one washed, with a 2 px bar at the panel's edge. -->
   <Style Selector="ListBox.rail">
@@ -1994,32 +1976,12 @@
     <Setter Property="Padding" Value="10,0" />
   </Style>
 
-  <!-- The Day dock: tabs with a 2 px amber bar under the chosen one, 20 px value rows, and the transport under the curves. -->
+  <!-- A dock's tab bar, 26 px, holding a button group; the Day dock's 20 px value rows. -->
   <Style Selector="Border.dockTabs">
     <Setter Property="Height" Value="26" />
     <Setter Property="Background" Value="{StaticResource EditorFrameBrush}" />
     <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
     <Setter Property="BorderThickness" Value="0,0,0,1" />
-  </Style>
-  <Style Selector="ListBox.dockTabs">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Padding" Value="0" />
-  </Style>
-  <Style Selector="ListBox.dockTabs ListBoxItem">
-    <Setter Property="Padding" Value="10,0" />
-    <Setter Property="MinHeight" Value="25" />
-    <Setter Property="Height" Value="25" />
-    <Setter Property="CornerRadius" Value="0" />
-    <Setter Property="BorderBrush" Value="{StaticResource EditorLineBrush}" />
-    <Setter Property="BorderThickness" Value="0,0,1,0" />
-    <Setter Property="Foreground" Value="{StaticResource EditorMutedTextBrush}" />
-  </Style>
-  <Style Selector="ListBox.dockTabs ListBoxItem:selected">
-    <Setter Property="Foreground" Value="{StaticResource EditorTextBrush}" />
-  </Style>
-  <Style Selector="ListBox.dockTabs ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{StaticResource EditorPanelBrush}" />
-    <Setter Property="BoxShadow" Value="{StaticResource EditorTabBottomBar}" />
   </Style>
   <Style Selector="TextBlock.fieldLabel.undrawn">
     <Setter Property="Foreground" Value="{StaticResource EditorHintBrush}" />

@@ -5,6 +5,7 @@
              xmlns:coremusic="using:FlickerVoid.Editor.Core.Music"
              xmlns:data="using:FlickerVoid.Editor.Data"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:timelines="using:FlickerVoid.Editor.Controls.Timelines"
              x:Class="FlickerVoid.Editor.Music.MusicDockView"
              x:DataType="coremusic:MusicEditorViewModel">
   <!-- The dock under the lanes: the Mixer (a strip for each layer of the arrangement, with the bus it goes to, a strip for each
@@ -15,15 +16,11 @@
       <DockPanel>
         <Button DockPanel.Dock="Right" Classes="icon" ToolTip.Tip="Close the dock" Click="HandleClose"><PathIcon Data="{x:Static shell:LucideIcons.Close}" /></Button>
         <StackPanel Orientation="Horizontal">
-          <ToggleButton Classes="stripTab" IsChecked="{Binding DockTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=0, Mode=OneWay}" Command="{Binding ShowMixerCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Mixer}" /><TextBlock Text="Mixer" /></StackPanel>
-          </ToggleButton>
-          <ToggleButton Classes="stripTab" IsChecked="{Binding DockTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=1, Mode=OneWay}" Command="{Binding ShowClipCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Clip}" /><TextBlock Text="Clip" /></StackPanel>
-          </ToggleButton>
-          <ToggleButton Classes="stripTab" IsChecked="{Binding DockTab, Converter={x:Static music:DockTabConverter.Instance}, ConverterParameter=2, Mode=OneWay}" Command="{Binding ShowLiveCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Activity}" /><TextBlock Text="Live" /></StackPanel>
-          </ToggleButton>
+          <timelines:ButtonGroup SelectedIndex="{Binding DockTab, Mode=TwoWay}">
+            <ListBoxItem><StackPanel Classes="tabHeader"><PathIcon Data="{x:Static shell:LucideIcons.Mixer}" /><TextBlock Text="Mixer" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel Classes="tabHeader"><PathIcon Data="{x:Static shell:LucideIcons.Clip}" /><TextBlock Text="Clip" /></StackPanel></ListBoxItem>
+            <ListBoxItem><StackPanel Classes="tabHeader"><PathIcon Data="{x:Static shell:LucideIcons.Activity}" /><TextBlock Text="Live" /></StackPanel></ListBoxItem>
+          </timelines:ButtonGroup>
           <TextBlock Text="{Binding Status}" Classes="hint small" VerticalAlignment="Center" Margin="12,0" />
         </StackPanel>
       </DockPanel>
@@ -36,23 +33,13 @@
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="coremusic:MusicTrackViewModel">
-                <Border Width="78" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,0,1,0">
-                  <DockPanel>
-                    <Border DockPanel.Dock="Top" Height="3" Background="{Binding Index, Converter={x:Static music:LayerTint.Brush}}" />
-                    <TextBlock DockPanel.Dock="Top" Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" Margin="4,3,4,0" />
-                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" Margin="0,2,0,4">
-                      <ToggleButton Classes="icon" Content="M" IsChecked="{Binding Muted, Mode=TwoWay}" Width="22" Height="20" Padding="0" FontSize="10.5" />
-                      <ToggleButton Classes="icon" Content="S" IsChecked="{Binding Soloed, Mode=TwoWay}" Width="22" Height="20" Padding="0" FontSize="10.5" />
-                    </StackPanel>
-                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding GainText}" Classes="hint" HorizontalAlignment="Center" />
-                    <ComboBox DockPanel.Dock="Bottom" Classes="route" ItemsSource="{Binding BusChoices}" SelectedItem="{Binding BusChoice}"
-                              HorizontalAlignment="Center" Margin="0,2" ToolTip.Tip="The bus this layer goes to" />
-                    <Grid ColumnDefinitions="*,10,10" Margin="4,0">
-                      <mix:Fader Grid.Column="0" Decibels="{Binding GainDb, Mode=TwoWay}" Maximum="6" />
-                      <mix:LevelMeter Grid.Column="1" Vertical="True" Level="{Binding Level}" Margin="0,8" />
-                    </Grid>
-                  </DockPanel>
-                </Border>
+                <mix:ChannelStrip Title="{Binding Title}" Tint="{Binding Index, Converter={x:Static music:LayerTint.Brush}}"
+                                  Decibels="{Binding GainDb, Mode=TwoWay}" Maximum="6" Level="{Binding Level}" GainText="{Binding GainText}"
+                                  IsMuted="{Binding Muted, Mode=TwoWay}" IsSoloed="{Binding Soloed, Mode=TwoWay}">
+                  <mix:ChannelStrip.Route>
+                    <ComboBox Classes="route" ItemsSource="{Binding BusChoices}" SelectedItem="{Binding BusChoice}" ToolTip.Tip="The bus this layer goes to" />
+                  </mix:ChannelStrip.Route>
+                </mix:ChannelStrip>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
@@ -61,21 +48,9 @@
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="coremusic:BusStripViewModel">
-                <Border Width="78" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,0,1,0">
-                  <DockPanel>
-                    <Border DockPanel.Dock="Top" Height="3" Background="{DynamicResource EditorHintBrush}" />
-                    <TextBlock DockPanel.Dock="Top" Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="4,3,4,0" />
-                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" Margin="0,2,0,4">
-                      <ToggleButton Classes="icon" Content="M" IsChecked="{Binding Muted, Mode=TwoWay}" Width="22" Height="20" Padding="0" FontSize="10.5" />
-                      <ToggleButton Classes="icon" Content="S" IsChecked="{Binding Soloed, Mode=TwoWay}" Width="22" Height="20" Padding="0" FontSize="10.5" />
-                    </StackPanel>
-                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding VolumeText}" Classes="hint" HorizontalAlignment="Center" />
-                    <Grid ColumnDefinitions="*,10,10" Margin="4,0">
-                      <mix:Fader Grid.Column="0" Decibels="{Binding Decibels, Mode=TwoWay}" Maximum="0" />
-                      <mix:LevelMeter Grid.Column="1" Vertical="True" Level="{Binding Level}" Margin="0,8" />
-                    </Grid>
-                  </DockPanel>
-                </Border>
+                <mix:ChannelStrip IsBus="True" Title="{Binding Name}" Tint="{DynamicResource EditorHintBrush}"
+                                  Decibels="{Binding Decibels, Mode=TwoWay}" Maximum="0" Level="{Binding Level}" GainText="{Binding VolumeText}"
+                                  IsMuted="{Binding Muted, Mode=TwoWay}" IsSoloed="{Binding Soloed, Mode=TwoWay}" />
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>

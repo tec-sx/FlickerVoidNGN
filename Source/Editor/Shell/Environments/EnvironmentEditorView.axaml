@@ -6,29 +6,25 @@
              xmlns:corecurves="using:FlickerVoid.Editor.Core.Curves"
              xmlns:inspector="using:FlickerVoid.Editor.Inspector"
              xmlns:shell="using:FlickerVoid.Editor"
+             xmlns:timelines="using:FlickerVoid.Editor.Controls.Timelines"
              x:Class="FlickerVoid.Editor.Environments.EnvironmentEditorView"
              x:DataType="environments:EnvironmentEditorViewModel">
   <!-- The Day dock: the environment's day under the viewport. On the left the tabs Sun, Sky, Fog and Grade and the chosen one's
        values at the cursor's hour (the eye shows a value's curve, editing it writes a key there); on the right the hours, the
-       shown colours as strips, the curves, and under them the hour, Play and its speed. -->
+       the transport (Play, the hour and its speed), the hours, the shown colours as strips and the curves. -->
   <Grid ColumnDefinitions="300,1,*" Background="{DynamicResource EditorPanelBrush}">
     <DockPanel>
       <Border DockPanel.Dock="Top" Classes="dockTabs">
-        <ListBox Classes="dockTabs" ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}">
-          <ListBox.ItemsPanel>
-            <ItemsPanelTemplate>
-              <StackPanel Orientation="Horizontal" />
-            </ItemsPanelTemplate>
-          </ListBox.ItemsPanel>
-          <ListBox.ItemTemplate>
+        <timelines:ButtonGroup ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}">
+          <timelines:ButtonGroup.ItemTemplate>
             <DataTemplate DataType="environments:EnvironmentGroupViewModel">
               <StackPanel Classes="tabHeader">
                 <PathIcon Data="{Binding Name, Converter={x:Static shell:LucideIcons.ByName}}" />
                 <TextBlock Text="{Binding Name}" />
               </StackPanel>
             </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+          </timelines:ButtonGroup.ItemTemplate>
+        </timelines:ButtonGroup>
       </Border>
       <TextBlock DockPanel.Dock="Bottom" Classes="hint small" TextWrapping="Wrap" Margin="10,6"
                  Text="Editing a value writes a key at the hour. A grey name has no curve yet: what lies under it shows." />
@@ -67,40 +63,41 @@
     </DockPanel>
     <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
     <DockPanel Grid.Column="2">
-      <!-- The hour, play and its speed; Close at the far end. -->
-      <Border DockPanel.Dock="Bottom" Classes="transport">
-        <DockPanel>
-          <Button DockPanel.Dock="Right" Classes="icon" Click="HandleClose" Margin="0,0,4,0"
-                  ToolTip.Tip="Close the Day dock; its edits stay unsaved until the assets are saved.">
-            <PathIcon Data="{x:Static shell:LucideIcons.Close}" />
-          </Button>
-          <TextBlock DockPanel.Dock="Right" Text="{Binding Title}" Classes="muted" VerticalAlignment="Center" Margin="0,0,10,0" />
-          <StackPanel Orientation="Horizontal" Spacing="8" Margin="8,0">
-            <ToggleButton Classes="icon" IsChecked="{Binding IsPlaying}" ToolTip.Tip="Play the day on">
-              <Panel>
-                <PathIcon Data="{x:Static shell:LucideIcons.Play}" IsVisible="{Binding !IsPlaying}" />
-                <PathIcon Data="{x:Static shell:LucideIcons.Stop}" IsVisible="{Binding IsPlaying}" />
-              </Panel>
-            </ToggleButton>
-            <TextBlock Text="{Binding HourText}" Classes="title" VerticalAlignment="Center" MinWidth="40" />
+      <!-- Play, the hour and its speed; the title and Close at the far end. -->
+      <timelines:Transport DockPanel.Dock="Top" Source="{Binding}" ShowsStop="False" ShowsLoop="False">
+        <timelines:Transport.Fields>
+          <StackPanel Orientation="Horizontal" Spacing="4">
             <inspector:DragNumberBox Value="{Binding Speed}" Minimum="0" Maximum="24" Step="0.1" Width="64" ToolTip.Tip="Hours a second" />
-            <TextBlock Text="h/s" Classes="hint small" VerticalAlignment="Center" Margin="-4,0,0,0" />
+            <TextBlock Text="h/s" Classes="hint small" VerticalAlignment="Center" />
           </StackPanel>
-        </DockPanel>
-      </Border>
-      <shellenvironments:HourRuler DockPanel.Dock="Top" Height="22" Range="{Binding Curves.Range}" Hour="{Binding Hour}" />
+        </timelines:Transport.Fields>
+        <timelines:Transport.Tools>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="{Binding Title}" Classes="muted" VerticalAlignment="Center" />
+            <Button Classes="icon" Click="HandleClose" ToolTip.Tip="Close the Day dock; its edits stay unsaved until the assets are saved.">
+              <PathIcon Data="{x:Static shell:LucideIcons.Close}" />
+            </Button>
+          </StackPanel>
+        </timelines:Transport.Tools>
+      </timelines:Transport>
+      <timelines:TimeRuler DockPanel.Dock="Top" Timeline="{Binding Timeline}" />
+      <Panel>
+        <DockPanel>
       <!-- The selected colors, each a strip of its curve over the same hours. -->
-      <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding ColorTracks}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate DataType="corecurves:ColorTrack">
-            <Panel Height="16">
-              <curves:ColorStrip x:Name="Strip" Track="{Binding}" Range="{Binding $parent[shellenvironments:EnvironmentEditorView].((environments:EnvironmentEditorViewModel)DataContext).Curves.Range}" />
-              <TextBlock Text="{Binding Name}" Classes="stripName" IsHitTestVisible="False" />
-            </Panel>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-      <curves:CurveView x:Name="Curves" Editor="{Binding Curves}" CursorTime="{Binding Hour}" ShowsHours="False" />
+          <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding ColorTracks}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="corecurves:ColorTrack">
+                <Panel Height="16">
+                  <curves:ColorStrip x:Name="Strip" Track="{Binding}" Range="{Binding $parent[shellenvironments:EnvironmentEditorView].((environments:EnvironmentEditorViewModel)DataContext).Timeline.Range}" />
+                  <TextBlock Text="{Binding Name}" Classes="stripName" IsHitTestVisible="False" />
+                </Panel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <curves:CurveView x:Name="Curves" Editor="{Binding Curves}" Scale="{Binding Timeline.Scale}" />
+        </DockPanel>
+        <timelines:TimelineOverlay Timeline="{Binding Timeline}" />
+      </Panel>
     </DockPanel>
   </Grid>
 </UserControl>

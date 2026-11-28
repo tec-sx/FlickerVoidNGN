@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
 using FlickerVoid.Editor.Core.Music;
+using FlickerVoid.Editor.Core.Timelines;
 using FlickerVoid.Engine.Runtime.Content;
 using FlickerVoid.Engine.Audio.Mixing;
 using FlickerVoid.Engine.Audio.Music;
@@ -428,6 +429,20 @@ public sealed class MusicEditorViewModelTests
         editor.LoopPlayback.Should().BeTrue();
         editor.ClearLoopRangeCommand.Execute(null);
         editor.HasLoopRange.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LoopsAndShowsThePositionThroughTheTransport()
+    {
+        MusicEditorViewModel editor = Build(new MusicCue());
+        ITransport transport = editor;
+
+        transport.IsLooping = false;
+        editor.LoopPlayback.Should().BeFalse();
+
+        editor.ToggleLoopCommand.Execute(null);
+        transport.IsLooping.Should().BeTrue();
+        transport.PositionText.Should().Be(editor.PositionText);
     }
 
     [Fact]

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:music="using:FlickerVoid.Editor.Music"
              xmlns:mix="using:FlickerVoid.Editor.Controls.Mix"
+             xmlns:timelines="using:FlickerVoid.Editor.Controls.Timelines"
              xmlns:coremusic="using:FlickerVoid.Editor.Core.Music"
              xmlns:shell="using:FlickerVoid.Editor"
              x:Class="FlickerVoid.Editor.Music.MusicEditorView"
@@ -11,9 +12,9 @@
        clip. The values of the selected layer and of the arrangement, and the lists of sounds and arrangements, are in the side
        column. -->
   <Grid RowDefinitions="Auto,*,Auto" Background="{DynamicResource EditorDeepBrush}">
-    <Border Grid.Row="0" Height="38" Background="{DynamicResource EditorFrameBrush}" BorderBrush="{DynamicResource EditorLineBrush}" BorderThickness="0,0,0,1">
-      <DockPanel Margin="8,0">
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+    <timelines:Transport Grid.Row="0" Source="{Binding}">
+      <timelines:Transport.Tools>
+        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
           <Border Classes="chip" Margin="0,0,6,0">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <PathIcon Classes="small faint" Data="{x:Static shell:LucideIcons.Waveform}" />
@@ -33,21 +34,9 @@
           <Button Classes="icon" ToolTip.Tip="Zoom in" Command="{Binding ZoomInCommand}"><PathIcon Data="{x:Static shell:LucideIcons.ZoomIn}" /></Button>
           <Button Classes="icon" ToolTip.Tip="Fit every bar into the window" Click="HandleFit"><PathIcon Data="{x:Static shell:LucideIcons.Fit}" /></Button>
         </StackPanel>
-        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-          <Button x:Name="PlayButton" Classes="icon" Classes.on="{Binding IsPlaying}" ToolTip.Tip="Play or pause (Space)" Command="{Binding PlayCommand}" Width="28" Height="28">
-            <Panel>
-              <PathIcon x:Name="PlayIcon" Classes="accent" Data="{x:Static shell:LucideIcons.Play}" IsVisible="{Binding !IsPlaying}" />
-              <PathIcon x:Name="PauseIcon" Data="{x:Static shell:LucideIcons.Pause}" IsVisible="{Binding IsPlaying}" />
-            </Panel>
-          </Button>
-          <Button Classes="icon" ToolTip.Tip="Stop; again, back to the start" Command="{Binding StopCommand}" Width="28" Height="28">
-            <PathIcon Data="{x:Static shell:LucideIcons.Stop}" />
-          </Button>
-          <ToggleButton Classes="icon" ToolTip.Tip="Go round at the end instead of stopping" IsChecked="{Binding LoopPlayback, Mode=TwoWay}" Width="28" Height="28">
-            <PathIcon Data="{x:Static shell:LucideIcons.Repeat}" />
-          </ToggleButton>
-          <TextBlock Text="{Binding PositionText}" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" MinWidth="72" />
-          <TextBlock Text="{Binding TimeText}" Classes="hint" VerticalAlignment="Center" MinWidth="40" />
+      </timelines:Transport.Tools>
+      <timelines:Transport.Fields>
+        <StackPanel Orientation="Horizontal" Spacing="6">
           <Border Classes="stripCell"><StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
             <TextBlock Text="Tempo" Classes="hint" VerticalAlignment="Center" />
             <TextBox Text="{Binding Tempo}" Width="52" />
@@ -77,8 +66,8 @@
             <ComboBox ItemsSource="{Binding SnapOptions}" SelectedItem="{Binding Snap}" MinWidth="80" />
           </StackPanel></Border>
         </StackPanel>
-      </DockPanel>
-    </Border>
+      </timelines:Transport.Fields>
+    </timelines:Transport>
 
     <Grid Grid.Row="1">
       <ScrollViewer x:Name="LanesScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
