@@ -108,7 +108,7 @@ public sealed partial class BuildingEditor
             case PlanPickKind.Wall when PlanGeometry.FindWall(storey, pick.Id) is { } wall:
                 _ghost.Add(GetWallLoop(storey, wall, floor));
                 break;
-            case PlanPickKind.Opening or PlanPickKind.Handle when storey.Openings.Find(found => found.Id == pick.Id) is { } opening:
+            case PlanPickKind.Opening when storey.Openings.Find(found => found.Id == pick.Id) is { } opening:
                 if (GetOpeningLoop(file, storey, opening, 0, 1) is { } loop)
                 {
                     _ghost.Add(loop);

@@ -18,7 +18,7 @@ public sealed partial class BuildingEditor
     private static readonly Vector4 PickColor = new(1, 0.5f, 0.07f, 1);
     private static readonly Vector4 PickFill = new(1, 0.45f, 0.05f, 0.4f);
     private static readonly Vector4 HoverColor = new(1, 0.6f, 0.2f, 0.75f);
-    private static readonly Vector4 HoverFill = new(1, 0.5f, 0.1f, 0.12f);
+    private static readonly Vector4 HoverFill = new(1, 0.5f, 0.1f, 0.07f);
     private static readonly Vector4 CutColor = new(0.9f, 0.16f, 0.1f, 0.95f);
     private static readonly Vector4 CutFill = new(0.9f, 0.14f, 0.08f, 0.6f);
     private static readonly Vector4 GreenColor = new(0.3f, 0.75f, 0.2f, 1);
@@ -40,13 +40,23 @@ public sealed partial class BuildingEditor
         }
 
         Scene scene = new(overlay, file, storey, _place(), file.GetFloorHeight(_level));
+        if (ShowsWhole)
+        {
+            // The building stands whole under its roof: nothing of one storey is drawn through its walls.
+            return;
+        }
+
         if (ShowsOpenStorey)
         {
             DrawOpenStorey(scene);
         }
-        else if (_tool is BuildingTool.MoveCorner or BuildingTool.Wall or BuildingTool.Room or BuildingTool.SplitWall)
+        else
         {
-            DrawCorners(scene);
+            DrawShafts(scene);
+            if (_tool is BuildingTool.MoveCorner or BuildingTool.Wall or BuildingTool.Room or BuildingTool.SplitWall)
+            {
+                DrawCorners(scene);
+            }
         }
 
         DrawGhost(scene);
@@ -217,8 +227,14 @@ public sealed partial class BuildingEditor
         }
     }
 
+    /// <summary>Where what is being edited stood, while its edit waits; a click that changed nothing leaves no ghost behind.</summary>
     private void DrawGhost(in Scene scene)
     {
+        if (!_grouped)
+        {
+            return;
+        }
+
         foreach (Vector3[] loop in _ghost)
         {
             AddLoop(scene, loop, scene.Place, LineColor, OverlayLines.Thin, true);
@@ -430,7 +446,7 @@ public sealed partial class BuildingEditor
             width = OverlayLines.Bold;
         }
 
-        bool fits = OpeningShape.Fits(file, storey, opening);
+        bool fits = picked ? GetMisfit(file, storey, opening) is null : OpeningShape.Fits(file, storey, opening);
         if (!fits)
         {
             line = CutColor;
@@ -567,9 +583,10 @@ public sealed partial class BuildingEditor
                 AddLine(scene, pivot + up, open + up, scene.Place, green with { W = 0.5f }, OverlayLines.Thin, true);
             }
 
+            // The handle is the accent's ball where a hand takes the leaf, ringed white while it is the one picked.
             Vector3 grip = ToWorld(scene, pivot + leaf.Handle);
-            scene.Overlay.AddDot(grip, handlePicked ? 6 : 5, HandleLine);
-            scene.Overlay.AddDot(grip, handlePicked ? 4.5f : 3.5f, handlePicked ? PickColor : HandleFill);
+            scene.Overlay.AddDot(grip, handlePicked ? 7.5f : 5.5f, handlePicked ? HandleFill : HandleLine);
+            scene.Overlay.AddDot(grip, handlePicked ? 5.5f : 4.5f, PickColor);
         }
 
         DrawLeafWindows(scene, frame, opening, width);
@@ -733,6 +750,33 @@ public sealed partial class BuildingEditor
     /// An elevator through the storeys: its square on this floor, the shaft it passes through as dashed lines from its lowest stop to
     /// over its highest, its platform where it rests, and a green mark on the side it is stepped onto.
     /// </summary>
+    /// <summary>
+    /// The elevators passing the storey while its walls stand: each one's square on the floor and its shaft through the storey in
+    /// dashes, as its platform rests at its lowest stop, out of sight.
+    /// </summary>
+    private void DrawShafts(in Scene scene)
+    {
+        BuildingFile file = scene.File;
+        float height = scene.Storey.Height - scene.Storey.Floor;
+        foreach (BuildingElevator elevator in file.Elevators)
+        {
+            (int from, int to) = BuildingMaker.GetElevatorSpan(file, elevator);
+            if (_level < from || _level > to || Picked is { Kind: PlanPickKind.Elevator } held && held.Id == elevator.Id)
+            {
+                continue;
+            }
+
+            float half = elevator.Size / 2;
+            Vector3[] here = GetElevatorSquare(file, elevator, _level, Lifted);
+            AddLoop(scene, here, scene.Place, LineColor, OverlayLines.Thin);
+            Transform level = BuildingMaker.GetElevatorPlace(file, elevator, _level);
+            Matrix4x4 toWorld = level.ToMatrix() * scene.Place;
+            Vector3 low = new(-half, 0, -half);
+            Vector3 high = new(half, height, half);
+            DrawBox(scene, toWorld, low, high, FaintColor, default, OverlayLines.Thin, true);
+        }
+    }
+
     private void DrawElevator(in Scene scene, BuildingElevator elevator, Vector4 line, Vector4 fill, float width)
     {
         BuildingFile file = scene.File;

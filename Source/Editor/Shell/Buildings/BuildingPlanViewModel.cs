@@ -97,7 +97,7 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
     [ObservableProperty]
     public partial BuildingPanelViewModel? Panel { get; set; }
 
-    private bool ShowsAbove => Panel?.ShowsAbove == true;
+    private bool ShowsOthers => Panel?.ShowsOthers == true;
 
     /// <summary>The building being played by Walk, or null while it is edited.</summary>
     [ObservableProperty]
@@ -360,6 +360,8 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
         _labelDistance = _camera.PivotDistance;
         Labels.Clear();
         Vector3 eye = _camera.Forward;
+        List<PlanLabel> seen = [];
+        List<PlanTag> tags = [];
         foreach (PlanLabel label in Editor.GetLabels())
         {
             Vector3 toLabel = label.Point - _camera.Position;
@@ -369,15 +371,24 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
             }
 
             Vector2 pixel = _camera.Project(label.Point, _width, _height);
-            double x = pixel.X / _scaling;
-            double y = pixel.Y / _scaling;
-            Labels.Add(new PlanLabelView(x, y, label.Title, label.Detail, label.Kind));
+            Vector2 centre = (pixel / (float)_scaling) + label.Offset;
+            Vector2 size = label.Kind == PlanLabelKind.Room ? PlanTagLayout.MeasureRoom(label.Title, label.Detail) : PlanTagLayout.Measure(label.Title, label.Detail);
+            seen.Add(label);
+            tags.Add(new PlanTag(centre, size, label.Kind));
+        }
+
+        // Tags that would cover each other or a room's name step apart, the tag of the drag in hand keeping its place.
+        Vector2[] placed = PlanTagLayout.Spread(tags);
+        for (int index = 0; index < seen.Count; index++)
+        {
+            PlanLabel label = seen[index];
+            Labels.Add(new PlanLabelView(placed[index].X, placed[index].Y, label.Title, label.Detail, label.Kind));
         }
     }
 
     /// <summary>
-    /// Hides the parts of the storeys above the one edited, the roof, and the stairs, call buttons and shots on those storeys, unless they
-    /// are shown; the parts made again are hidden too.
+    /// Hides the parts of the storeys above and below the one edited, the roof, and the stairs, call buttons and shots on those
+    /// storeys, unless they are shown; the parts made again are hidden too.
     /// </summary>
     private void ShowStoreys()
     {
@@ -387,7 +398,7 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
         }
 
         int level = Editor.Level;
-        bool roofPicked = Editor.Picked is { Kind: PlanPickKind.Roof } || Editor.Tool == BuildingTool.Roof;
+        bool roofPicked = Editor.ShowsWhole;
         bool open = Editor.ShowsOpenStorey;
         string levelId = BuildingFile.GetStoreyId(level);
         List<Entity> hide = [];
@@ -424,8 +435,8 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
 
     /// <summary>
     /// Whether the part is hidden in the plan: the roof unless it is picked (in Parts or with its tool), when the whole building stands
-    /// under it; what stands above the level unless the storeys above are shown; and, while stairs or an elevator are placed, all of
-    /// the level but its floor, as the tool draws its walls as lines on the floor and what is cut above.
+    /// under it; what stands above or below the level unless the other storeys are shown; and, while stairs or an elevator are
+    /// placed, all of the level but its floor, as the tool draws its walls as lines on the floor and what is cut above.
     /// </summary>
     private bool IsHiddenPart(BuildingFile file, string id, int level, string levelId, bool roofPicked, bool open)
     {
@@ -446,10 +457,71 @@ public sealed partial class BuildingPlanViewModel : ObservableObject, IDisposabl
                 return true;
             }
 
-            return IsAbove(file, id, level);
+            // A shaft's railings stand on every floor it passes, and the tool draws the shaft itself.
+            foreach (BuildingElevator elevator in file.Elevators)
+            {
+                if (id == BuildingFile.GetElevatorId(elevator) + RailingSuffix)
+                {
+                    return true;
+                }
+            }
+
+            return IsAbove(file, id, level) || IsBelow(file, id, level);
         }
 
-        return !ShowsAbove && IsAbove(file, id, level);
+        return !ShowsOthers && (IsAbove(file, id, level) || IsBelow(file, id, level));
+    }
+
+    /// <summary>
+    /// Whether the part lies below the level, out of the plan's sight: a storey under it, the stairs that climb from it, or a call
+    /// button or a shot down there. The railing round the opening stairs come up through stands on this floor and stays.
+    /// </summary>
+    private static bool IsBelow(BuildingFile file, string id, int level)
+    {
+        foreach (BuildingStorey storey in file.Storeys)
+        {
+            string storeyId = BuildingFile.GetStoreyId(storey.Level);
+            if (id == storeyId || id.StartsWith(storeyId + ".", StringComparison.Ordinal))
+            {
+                return storey.Level < level;
+            }
+        }
+
+        foreach (BuildingStairs stairs in file.Stairs)
+        {
+            string stairsId = BuildingFile.GetStairsId(stairs);
+            if (id == stairsId + RailingSuffix)
+            {
+                return stairs.Level + 1 < level;
+            }
+
+            if (id == stairsId || id.StartsWith(stairsId + ".", StringComparison.Ordinal))
+            {
+                return stairs.Level < level;
+            }
+        }
+
+        foreach (BuildingShot shot in file.Shots)
+        {
+            string shotId = BuildingFile.GetShotId(shot);
+            if (id == shotId || id.StartsWith(shotId + ".", StringComparison.Ordinal))
+            {
+                return shot.Level < level;
+            }
+        }
+
+        foreach (BuildingElevator elevator in file.Elevators)
+        {
+            for (int stop = elevator.From; stop < level; stop++)
+            {
+                if (id == BuildingFile.GetCallId(elevator, stop))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /// <summary>Whether the part with the id stands above the level: on a storey over it, the roof, or stairs, a railing, a call button or a shot there.</summary>

@@ -179,8 +179,8 @@
               <DockPanel>
                 <ToggleButton DockPanel.Dock="Right" Classes="icon small" Padding="0" Width="14" Height="14"
                               IsVisible="{Binding $parent[ListBoxItem].IsSelected}"
-                              IsChecked="{Binding $parent[ListBox].((buildingModels:BuildingPanelViewModel)DataContext).ShowsAbove}"
-                              ToolTip.Tip="Show the storeys above this one too">
+                              IsChecked="{Binding $parent[ListBox].((buildingModels:BuildingPanelViewModel)DataContext).ShowsOthers}"
+                              ToolTip.Tip="Show the storeys above and below this one too">
                   <PathIcon Classes="small" Data="{x:Static shell:LucideIcons.Visible}" />
                 </ToggleButton>
                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />

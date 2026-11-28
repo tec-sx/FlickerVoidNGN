@@ -128,6 +128,30 @@ public sealed class BuildingEditorTests : IDisposable
     }
 
     [Fact]
+    public void AnOpeningDraggedOntoAnotherIsShownNotToFitAndTheUserIsToldWhy()
+    {
+        BuildingEditor editor = _builder.Editor;
+        int id = 0;
+        _builder.Document.Change(building => id = PlanEdits.AddOpening(building.Storeys[0], FrontWall, 1.2f, OpeningKind.Window));
+        editor.Tool = BuildingTool.Opening;
+        PlanOpening door = _builder.Building.Storeys[0].Openings.Single(opening => opening.Id == FrontDoor);
+        OpeningShape.TryGetFrame(_builder.Building, _builder.Building.Storeys[0], door, out OpeningFrame frame);
+        PlanOpening window = _builder.Building.Storeys[0].Openings.Single(opening => opening.Id == id);
+        Vector3 onWindow = frame.Origin + (frame.Along * (window.Along - door.Along)) + (Vector3.UnitY * 1.3f) - (frame.Out * 0.15f);
+        Vector3 onDoor = frame.Origin + (Vector3.UnitY * 1.3f) - (frame.Out * 0.15f);
+
+        _builder.Press(onWindow);
+        _builder.Drag(Vector3.Lerp(onWindow, onDoor, 0.5f));
+        _builder.Drag(onDoor);
+        IReadOnlyList<PlanLabel> labels = editor.GetLabels();
+        _builder.Release();
+
+        editor.Picked.Should().Be(new PlanPick(PlanPickKind.Opening, 0, id));
+        labels.Should().Contain(label => label.Detail == "runs into Front door");
+        _builder.Warnings.Should().ContainSingle().Which.Should().Contain("runs into Front door");
+    }
+
+    [Fact]
     public void ADoorsHandleIsPickedByAClickOnItAndMovedByDraggingIt()
     {
         BuildingEditor editor = _builder.Editor;
@@ -145,6 +169,54 @@ public sealed class BuildingEditorTests : IDisposable
         taken.Should().BeTrue();
         editor.Picked.Should().Be(new PlanPick(PlanPickKind.Handle, 0, FrontDoor));
         _builder.Building.Storeys[0].Openings.Single().HandleHeight.Should().BeApproximately(1.2f, 0.051f);
+    }
+
+    [Fact]
+    public void APickedDoorIsTaggedWithItsHingeAndItsHandleInAnyTool()
+    {
+        BuildingEditor editor = _builder.Editor;
+        IReadOnlyList<PlanLabel> before = editor.GetLabels();
+
+        editor.Pick(new PlanPick(PlanPickKind.Opening, 0, FrontDoor));
+        IReadOnlyList<PlanLabel> door = editor.GetLabels();
+        editor.Pick(new PlanPick(PlanPickKind.Handle, 0, FrontDoor));
+        IReadOnlyList<PlanLabel> handle = editor.GetLabels();
+
+        before.Should().NotContain(label => label.Title.StartsWith("Hinge"));
+        door.Should().ContainSingle(label => label.Title == "Hinge").Which.Detail.Should().StartWith("opens out");
+        door.Should().ContainSingle(label => label.Title == "Handle").Which.Detail.Should().Be("drag to move");
+        handle.Should().ContainSingle(label => label.Kind == PlanLabelKind.Drag).Which.Title.Should().Be("Handle 1.00 m up");
+    }
+
+    [Fact]
+    public void TakingAToolKeepsWhatIsPickedOnlyWhenTheToolWorksOnIt()
+    {
+        BuildingEditor editor = _builder.Editor;
+        editor.Pick(new PlanPick(PlanPickKind.Opening, 0, FrontDoor));
+
+        editor.Tool = BuildingTool.Opening;
+        PlanPick? withItsTool = editor.Picked;
+        editor.Tool = BuildingTool.Stairs;
+
+        withItsTool.Should().Be(new PlanPick(PlanPickKind.Opening, 0, FrontDoor));
+        editor.Picked.Should().BeNull("a door is not the stairs tool's to edit");
+    }
+
+    [Fact]
+    public void TheRoofToolShowsTheBuildingWholeWithNothingOfAStoreyDrawnThroughIt()
+    {
+        BuildingEditor editor = _builder.Editor;
+        OverlayBuilder overlay = new();
+        bool before = editor.ShowsWhole;
+
+        editor.Tool = BuildingTool.Roof;
+        overlay.Begin(_builder.Camera, BuildingEditorTestsBuilder.Height);
+        editor.Draw(overlay);
+
+        before.Should().BeFalse();
+        editor.ShowsWhole.Should().BeTrue();
+        overlay.Vertices.Length.Should().Be(0);
+        editor.GetLabels().Should().BeEmpty("the rooms' names would show through the roof");
     }
 
     [Fact]
@@ -181,6 +253,28 @@ public sealed class BuildingEditorTests : IDisposable
         taken.Should().BeTrue();
         MathF.Abs(_builder.Building.Elevators.Single().Heading).Should().BeApproximately(45, 1e-3f);
         editor.IsPending.Should().BeTrue("a gizmo's edit waits for Apply like any other");
+    }
+
+    [Fact]
+    public void NothingBehindTheGizmoIsHoveredWhileThePointerIsOnIt()
+    {
+        _builder.WithStoreys(2);
+        int id = 0;
+        _builder.Document.Change(building => id = BuildingTools.AddElevator(building, new Vector2(1, 0), 0));
+        BuildingEditor editor = _builder.Editor;
+        editor.Pick(new PlanPick(PlanPickKind.Elevator, 0, id));
+        Vector3 centre = new(1, _builder.Floor, 0);
+        float reach = editor.Gizmo.GetHandleLength(_builder.Camera, centre, BuildingEditorTestsBuilder.Height);
+        Vector3 onRing = centre + (OnRing(30) * reach);
+
+        _builder.Drag(onRing);
+        PlanPick? without = editor.Hover;
+        editor.GizmoMode = GizmoMode.Rotate;
+        _builder.Drag(onRing);
+
+        without.Should().NotBeNull("with no gizmo, a click there picks what stands there");
+        editor.Gizmo.Hovered.Should().Be(GizmoAxis.Y);
+        editor.Hover.Should().BeNull("a press there takes the ring");
     }
 
     [Fact]

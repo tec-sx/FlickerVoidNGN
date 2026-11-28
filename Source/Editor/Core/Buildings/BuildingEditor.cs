@@ -113,6 +113,11 @@ public sealed partial class BuildingEditor : ICreatorTool
                 Gizmo.Mode = GizmoMode.Select;
             }
 
+            if (Picked is { } pick && !Keeps(value, pick.Kind))
+            {
+                Picked = null;
+            }
+
             Changed?.Invoke();
         }
     }
@@ -190,7 +195,10 @@ public sealed partial class BuildingEditor : ICreatorTool
     /// Whether the storey is shown open, as the stairs and elevator tools need it: its walls only as their lines on the floor, the
     /// floor above see-through with what will be cut out of it.
     /// </summary>
-    public bool ShowsOpenStorey => _tool is BuildingTool.Stairs or BuildingTool.Elevator;
+    public bool ShowsOpenStorey => !ShowsWhole && _tool is BuildingTool.Stairs or BuildingTool.Elevator;
+
+    /// <summary>Whether the whole building stands under its roof, with no storey opened: while the roof is picked, or its tool is in hand with nothing else picked.</summary>
+    public bool ShowsWhole => Picked is { Kind: PlanPickKind.Roof } || (_tool == BuildingTool.Roof && Picked is null);
 
     /// <summary>Picks something of the building, as a click in the Parts tab does.</summary>
     public void Pick(PlanPick? pick)
@@ -359,8 +367,8 @@ public sealed partial class BuildingEditor : ICreatorTool
 
         if (_drag == Drag.None)
         {
-            HoverGizmo(pixel);
-            PlanPick? hover = FindHover(file, storey, ray, pixel);
+            bool onGizmo = HoverGizmo(pixel);
+            PlanPick? hover = onGizmo ? null : FindHover(file, storey, ray, pixel);
             if (hover != Hover)
             {
                 Hover = hover;
@@ -466,10 +474,16 @@ public sealed partial class BuildingEditor : ICreatorTool
                 Warn("Drag from one corner of the room to the opposite one.");
             }
         }
-        else if (drag is Drag.Along or Drag.Lift && Picked is { Kind: PlanPickKind.Opening } pick
-            && storey.Openings.Find(opening => opening.Id == pick.Id) is { } placed && !OpeningShape.Fits(file, storey, placed))
+        else if (drag is Drag.Along or Drag.Lift && Picked is { Kind: PlanPickKind.Opening } pick && storey.Openings.Find(opening => opening.Id == pick.Id) is { } placed)
         {
-            Warn($"{placed.Name} doesn't fit there: it reaches past its wall or its floor. It is shown red until it does.");
+            if (!OpeningShape.Fits(file, storey, placed))
+            {
+                Warn($"{placed.Name} doesn't fit there: it reaches past its wall or its floor. It is shown red until it does.");
+            }
+            else if (OpeningShape.FindOverlapped(storey, placed) is { } other)
+            {
+                Warn($"{placed.Name} runs into {other.Name} there. Move one of them clear; it is shown red until it is.");
+            }
         }
 
         Changed?.Invoke();

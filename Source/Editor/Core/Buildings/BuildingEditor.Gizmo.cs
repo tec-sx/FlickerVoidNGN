@@ -163,18 +163,22 @@ public sealed partial class BuildingEditor
         return Quaternion.CreateFromAxisAngle(Vector3.UnitY, turn);
     }
 
-    private void HoverGizmo(Vector2 pixel)
+    /// <summary>Lights the gizmo's part under the pointer; whether there is one, so a press there takes the gizmo and picks nothing.</summary>
+    private bool HoverGizmo(Vector2 pixel)
     {
         if (!TryGetGizmoTarget(out Transform target))
         {
-            return;
+            return false;
         }
 
         GizmoAxis before = Gizmo.Hovered;
-        if (Gizmo.Hover(_camera, target, pixel, _width, _height) != before)
+        GizmoAxis now = Gizmo.Hover(_camera, target, pixel, _width, _height);
+        if (now != before)
         {
             Changed?.Invoke();
         }
+
+        return now != GizmoAxis.None;
     }
 
     private bool PressGizmo(BuildingFile file, BuildingStorey storey, Vector2 pixel)
@@ -320,7 +324,7 @@ public sealed partial class BuildingEditor
                 break;
             case PlanPickKind.Elevator when start.Elevator is { } elevator:
                 float facing = SnapTurn(elevator.Heading - degrees);
-                Edit($"Elevator · turned {Format(facing, "0")}°", building => building.Elevators.Find(found => found.Id == id)!.Heading = facing);
+                Edit($"Elevator · facing {Format(facing, "0")}°", building => building.Elevators.Find(found => found.Id == id)!.Heading = facing);
                 break;
             case PlanPickKind.Shot:
                 Quaternion rotation = Quaternion.Normalize(turned * start.Rotation);

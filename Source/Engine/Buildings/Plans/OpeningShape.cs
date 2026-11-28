@@ -77,6 +77,35 @@ public static class OpeningShape
         return along && up && opening.Width > 0.05f && opening.Height > 0.05f;
     }
 
+    /// <summary>The other opening on the same wall whose cut this one's runs into, when there is one; one above the other is clear.</summary>
+    public static PlanOpening? FindOverlapped(BuildingStorey storey, PlanOpening opening)
+    {
+        if (opening.Kind == OpeningKind.Floor)
+        {
+            return null;
+        }
+
+        foreach (PlanOpening other in storey.Openings)
+        {
+            if (other.Id == opening.Id || other.Kind == OpeningKind.Floor || other.Wall != opening.Wall)
+            {
+                continue;
+            }
+
+            float margins = opening.Margin + other.Margin;
+            float reach = ((opening.Width + other.Width) / 2) + margins - FitTolerance;
+            bool beside = MathF.Abs(other.Along - opening.Along) >= reach;
+            bool over = opening.Lift >= other.Lift + other.Height + margins - FitTolerance;
+            bool under = other.Lift >= opening.Lift + opening.Height + margins - FitTolerance;
+            if (!beside && !over && !under)
+            {
+                return other;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>The opening's outline across its wall, grown on every side but the foot by <paramref name="grow"/>: along, then up.</summary>
     public static List<Vector2> GetProfile(PlanOpening opening, float grow)
     {

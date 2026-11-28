@@ -59,6 +59,46 @@ public sealed partial class BuildingEditor
         }
     }
 
+    /// <summary>
+    /// Why an opening can't stand where it is, in a few words for its tag and its row, or null when it can: it reaches past its wall
+    /// or its floor, or its cut runs into another opening's.
+    /// </summary>
+    public static string? GetMisfit(BuildingFile file, BuildingStorey storey, PlanOpening opening)
+    {
+        if (!OpeningShape.Fits(file, storey, opening))
+        {
+            return "doesn't fit here";
+        }
+
+        if (OpeningShape.FindOverlapped(storey, opening) is { } other)
+        {
+            return $"runs into {other.Name}";
+        }
+
+        return null;
+    }
+
+    /// <summary>Whether what is picked stays picked as a tool is taken: what the tool works on, so a door is not left lit under the stairs tool.</summary>
+    private static bool Keeps(BuildingTool tool, PlanPickKind kind)
+    {
+        switch (tool)
+        {
+            case BuildingTool.Select:
+            case BuildingTool.Camera:
+                return true;
+            case BuildingTool.MoveCorner:
+                return kind == PlanPickKind.Corner;
+            case BuildingTool.Room:
+                return kind == PlanPickKind.Room;
+            case BuildingTool.Opening:
+                return kind is PlanPickKind.Opening or PlanPickKind.Handle;
+            case BuildingTool.Roof:
+                return kind == PlanPickKind.Roof;
+            default:
+                return Takes(tool, kind);
+        }
+    }
+
     private PlanPick? FindHover(BuildingFile file, BuildingStorey storey, Ray ray, Vector2 pixel)
     {
         if (_tool == BuildingTool.Wall)

@@ -555,11 +555,28 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
 
         Viewport.Building.Update(0.016f, 800, 600, 1);
         bool[] hidden = [IsHidden("storey.1.floor"), IsHidden("storey.1.walls"), IsHidden("roof"), IsHidden("storey.0.walls")];
-        panel.ShowsAbove = true;
+        panel.ShowsOthers = true;
         Viewport.Building.Update(0.016f, 800, 600, 1);
 
         hidden.Should().Equal(true, true, true, false);
         IsHidden("storey.1.walls").Should().BeFalse("the eye shows the storeys above");
+    }
+
+    [Fact]
+    public void TheStoreysBelowTheOneEditedAreHiddenTooWithTheStairsThatClimbFromThem()
+    {
+        _builder.WriteHouse(climbs: true);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        BuildingPanelViewModel panel = (BuildingPanelViewModel)ViewModel.CreatorPanel!;
+
+        Viewport.Building!.ShowLevel(1);
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+        bool[] hidden = [IsHidden("storey.0.walls"), IsHidden("storey.0.floor"), IsHidden("stairs.1"), IsHidden("stairs.1.railing"), IsHidden("storey.1.floor")];
+        panel.ShowsOthers = true;
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        hidden.Should().Equal(true, true, true, false, false);
+        IsHidden("storey.0.walls").Should().BeFalse("the eye shows the other storeys");
     }
 
     [Fact]
@@ -583,11 +600,11 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
         BuildingPanelViewModel panel = (BuildingPanelViewModel)ViewModel.CreatorPanel!;
         panel.AddStoreyAboveCommand.Execute(null);
         Viewport.Building!.ShowLevel(0);
-        panel.ShowsAbove = true;
+        panel.ShowsOthers = true;
 
         Viewport.Building.Update(0.016f, 800, 600, 1);
         bool hiddenWithAllShown = IsHidden("roof");
-        panel.ShowsAbove = false;
+        panel.ShowsOthers = false;
         ViewModel.CreatorNode = ViewModel.CreatorNodes.Single(static node => node.Name == "Roof");
         Viewport.Building.Update(0.016f, 800, 600, 1);
         bool[] picked = [IsHidden("roof"), IsHidden("storey.1.walls")];
@@ -614,6 +631,23 @@ public sealed class MainWindowViewModelCreatorTests : IDisposable
 
         open.Should().Equal(true, true, false, false);
         IsHidden("storey.0.walls").Should().BeFalse("the walls stand again with another tool");
+    }
+
+    [Fact]
+    public void TheOpenStoreyHidesAShaftsRailingsAsTheToolDrawsTheShaftItself()
+    {
+        _builder.WriteHouse(climbs: true);
+        _builder.OpenInBrowser(MainWindowViewModelTestsBuilder.House, AssetTypes.Building);
+        Viewport.Building!.ShowLevel(1);
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+        bool standing = IsHidden("elevator.1.railing");
+
+        Viewport.KeyPressed(ViewportKey.T, ViewportButtons.None);
+        Viewport.Building.Update(0.016f, 800, 600, 1);
+
+        Viewport.Building.Editor.Tool.Should().Be(FlickerVoid.Editor.Core.Buildings.BuildingTool.Elevator);
+        standing.Should().BeFalse("the railing stands round the shaft on the top storey");
+        IsHidden("elevator.1.railing").Should().BeTrue();
     }
 
     [Fact]

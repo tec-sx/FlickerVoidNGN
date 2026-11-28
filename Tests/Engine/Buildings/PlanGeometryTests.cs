@@ -74,6 +74,31 @@ public sealed class PlanGeometryTests
     }
 
     [Fact]
+    public void AnOpeningRunsIntoAnotherOnItsWallOnlyWhereTheirCutsMeet()
+    {
+        BuildingFile building = BuildingFile.Create();
+        BuildingStorey ground = building.Storeys[0];
+        PlanOpening door = BuildingFileTestsBuilder.FrontDoor(building);
+        PlanOpening window = new() { Id = 90, Name = "Window", Kind = OpeningKind.Window, Wall = door.Wall, Along = door.Along + 0.6f, Lift = 0.9f, Width = 1, Height = 1 };
+        ground.Openings.Add(window);
+
+        PlanOpening? over = OpeningShape.FindOverlapped(ground, window);
+        window.Lift = door.Height + 0.2f;
+        PlanOpening? above = OpeningShape.FindOverlapped(ground, window);
+        window.Lift = 0.9f;
+        window.Along = door.Along + 1.5f;
+        PlanOpening? beside = OpeningShape.FindOverlapped(ground, window);
+        window.Along = door.Along;
+        window.Wall = door.Wall + 1;
+        PlanOpening? elsewhere = OpeningShape.FindOverlapped(ground, window);
+
+        over.Should().BeSameAs(door);
+        above.Should().BeNull("a light over a door is clear of it");
+        beside.Should().BeNull();
+        elsewhere.Should().BeNull("another wall's openings are not in its way");
+    }
+
+    [Fact]
     public void AnArchedOpeningsOutlineRisesToItsArch()
     {
         PlanOpening window = new() { Width = 1, Height = 2, Top = OpeningTop.Arch, ArchRise = 0.5f };

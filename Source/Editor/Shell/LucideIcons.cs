@@ -85,6 +85,7 @@ public static class LucideIcons
     public static Geometry More { get; } = Parse("M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0z M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0z M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0z");
     public static Geometry Check { get; } = Parse("M20 6 9 17l-5-5");
     public static Geometry Hand { get; } = Parse("M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2 M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2 M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8 M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15");
+    public static Geometry Ruler { get; } = Parse("M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z M14.5 12.5l2-2 M11.5 9.5l2-2 M8.5 6.5l2-2 M17.5 15.5l2-2");
 
     public static Geometry Snap { get; } = Parse("M12 15l4 4 M2.352 10.648a1.205 1.205 0 0 0 0 1.704l2.296 2.296a1.205 1.205 0 0 0 1.704 0l6.029-6.029a1 1 0 1 1 3 3l-6.029 6.029a1.205 1.205 0 0 0 0 1.704l2.296 2.296a1.205 1.205 0 0 0 1.704 0l6.365-6.367A1 1 0 0 0 8.716 4.282z M5 8l4 4");
     public static Geometry Sun { get; } = Parse("M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0z M12 2v2 M12 20v2 M4.93 4.93l1.41 1.41 M17.66 17.66l1.41 1.41 M2 12h2 M20 12h2 M6.34 17.66l-1.41 1.41 M19.07 4.93l-1.41 1.41");
@@ -230,6 +231,7 @@ public static class LucideIcons
         [nameof(More)] = More,
         [nameof(Check)] = Check,
         [nameof(Hand)] = Hand,
+        [nameof(Ruler)] = Ruler,
         [nameof(Snap)] = Snap,
         [nameof(Sun)] = Sun,
         [nameof(Sky)] = Sky,

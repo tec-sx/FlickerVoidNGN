@@ -70,6 +70,27 @@ public sealed class BuildingToolViewModelTests : IDisposable
     }
 
     [Fact]
+    public void TheArcToolShowsHowFarAWallBulgesAndToWhichSideWithItsChordAndItsLength()
+    {
+        BuildingToolViewModel tool = _builder.Build();
+        _builder.Editor.Tool = BuildingTool.Arc;
+        _builder.Editor.Pick(new PlanPick(PlanPickKind.Wall, 0, FrontWall));
+
+        ((NumberRow)Section(tool, "Arc").Rows[0]).Value = 0.9;
+        float outward = _builder.Document.Building.Storeys[0].Walls.Single(static wall => wall.Id == FrontWall).Bulge;
+        ((ChoiceRow)Section(tool, "Arc").Rows[2]).Options[1].ChooseCommand.Execute(null);
+        float inward = _builder.Document.Building.Storeys[0].Walls.Single(static wall => wall.Id == FrontWall).Bulge;
+
+        Section(tool, "Arc").Rows.Select(static row => row.Label).Should().StartWith(["Bulge", "Segments", "Side", "Chord", "Along the arc"]);
+        outward.Should().BeApproximately(-0.9f, 1e-4f, "a new bulge goes out of the wall's outside");
+        inward.Should().BeApproximately(0.9f, 1e-4f);
+        ((NumberRow)Section(tool, "Arc").Rows[0]).Value.Should().BeApproximately(0.9, 1e-4, "the reach is shown without its side");
+        double chord = double.Parse(((ListRow)Section(tool, "Arc").Rows[3]).Value.Replace(" m", string.Empty), System.Globalization.CultureInfo.InvariantCulture);
+        double along = double.Parse(((ListRow)Section(tool, "Arc").Rows[4]).Value.Replace(" m", string.Empty), System.Globalization.CultureInfo.InvariantCulture);
+        along.Should().BeGreaterThan(chord);
+    }
+
+    [Fact]
     public void PickingStairsOrAShotOnAnotherStoreyGoesToThatStorey()
     {
         _builder.Build();
@@ -241,6 +262,34 @@ public sealed class BuildingToolViewModelTests : IDisposable
     }
 
     [Fact]
+    public void PickingTheHandleOfADoorAlreadyShownOpensItsHandleSection()
+    {
+        BuildingToolViewModel tool = _builder.Build();
+        _builder.Editor.Pick(new PlanPick(PlanPickKind.Opening, 0, FrontDoor));
+        bool before = Section(tool, "Handle").IsExpanded;
+
+        _builder.Editor.Pick(new PlanPick(PlanPickKind.Handle, 0, FrontDoor));
+
+        before.Should().BeFalse();
+        Section(tool, "Handle").IsExpanded.Should().BeTrue();
+    }
+
+    [Fact]
+    public void PickedStairsShowTheirRunsTheirStepsTheOpeningAboveAndTheirCamera()
+    {
+        _builder.Document.SetStoreys(2, false);
+        int id = 0;
+        _builder.Document.Change(building => id = BuildingTools.AddStairs(building, 0, new Vector2(-1, -2), 0, StairsKind.Straight)!.Value);
+        BuildingToolViewModel tool = _builder.Build();
+
+        _builder.Editor.Pick(new PlanPick(PlanPickKind.Stairs, 0, id));
+
+        tool.Sections.Select(static section => section.Title).Should().Equal("Stairs", "Steps", "Opening above", "Camera");
+        Section(tool, "Steps").Rows.Select(static row => row.Label).Should().Equal("Rise", "Tread", "Count", "Meets the floor");
+        Section(tool, "Camera").Rows[0].Label.Should().Be("While on the stairs");
+    }
+
+    [Fact]
     public void TheWallToolChoosesWhatItsEndsSnapTo()
     {
         BuildingToolViewModel tool = _builder.Build();
@@ -249,7 +298,7 @@ public sealed class BuildingToolViewModelTests : IDisposable
         ToolSection snaps = Section(tool, "Snaps to");
         ((ToggleRow)snaps.Rows[1]).IsOn = false;
 
-        snaps.Rows.Select(static row => row.Label).Should().Equal("Walls and corners", "Middles of walls", "Grid");
+        snaps.Rows.Select(static row => row.Label).Should().Equal("Walls, corners", "Wall middles", "Grid");
         _builder.Editor.SnapToMiddles.Should().BeFalse();
     }
 

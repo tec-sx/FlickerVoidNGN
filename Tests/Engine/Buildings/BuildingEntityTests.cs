@@ -62,6 +62,23 @@ public sealed class BuildingEntityTests : IDisposable
     }
 
     [Fact]
+    public void AStoreysFloorIsADarkerGreyThanItsWallsSoAPlanReadsFromAbove()
+    {
+        BuildingFile building = BuildingFileTestsBuilder.WithStoreys(1, cellar: false);
+        BuildingMaker.Make(building, null);
+        _builder.Write(building);
+        MeshSources meshes = _builder.Game.Services.GetService<MeshSources>()!;
+
+        MadeMesh floor = meshes.Make($"{BuildingEntityTestsBuilder.File}#storey.0.floor", _builder.Content)!;
+        MadeMesh walls = meshes.Make($"{BuildingEntityTestsBuilder.File}#storey.0.walls", _builder.Content)!;
+
+        float floorGrey = floor.Model.Parts[0].Material.BaseColor.X;
+        float wallGrey = walls.Model.Parts[0].Material.BaseColor.X;
+        wallGrey.Should().Be(SolidModel.Color.X);
+        floorGrey.Should().BeLessThan(wallGrey * 0.8f, "seen from above a wall's top and the floor face the same way");
+    }
+
+    [Fact]
     public void EveryRoomOfAStoreyWithMoreThanOneIsAnIndoorVolumeOfItsOwn()
     {
         BuildingFile building = BuildingFileTestsBuilder.WithStoreys(1, cellar: false);

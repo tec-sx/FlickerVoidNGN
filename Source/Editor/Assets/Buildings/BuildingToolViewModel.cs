@@ -25,6 +25,7 @@ public sealed partial class BuildingToolViewModel : ObservableObject
     private static readonly string[] Levels = ["Cellar", "Ground"];
 
     private readonly BuildingEditor _editor;
+    private bool _handlePicked;
     private readonly Func<BuildingFile?> _file;
     private readonly Func<(Vector3 Position, Quaternion Rotation)?> _view;
     private readonly Action<BuildingShot> _lookThrough;
@@ -176,6 +177,19 @@ public sealed partial class BuildingToolViewModel : ObservableObject
         }
 
         Merge(sections);
+        OpenHandle();
+    }
+
+    /// <summary>Opens the Handle section as the handle is picked, also on a door whose sections are already shown as the user left them.</summary>
+    private void OpenHandle()
+    {
+        bool picked = _editor.Picked is { Kind: PlanPickKind.Handle };
+        if (picked && !_handlePicked && Sections.FirstOrDefault(static section => section.Title == "Handle") is { } handle)
+        {
+            handle.IsExpanded = true;
+        }
+
+        _handlePicked = picked;
     }
 
     // Sections that stay take the new values in place; the others are swapped one by one and retired, never all at once, so a
@@ -314,16 +328,23 @@ public sealed partial class BuildingToolViewModel : ObservableObject
             sections.Add(new ToolSection("Push wall", "PushWall", [distance, snap, carry]));
         }
 
-        if (_editor.Tool == BuildingTool.Arc)
-        {
-            ToolRow bulge = new NumberRow("Bulge", wall.Bulge, "m", value => Change("Arc", building => PlanEdits.SetBulge(Storey(building, level), id, value)), step: 0.1);
-            ToolRow segments = new NumberRow("Segments", wall.Segments, "", value => Change("Arc segments", building => Wall(building, level, id).Segments = Math.Clamp((int)value, 2, 48)), 2, 48, 1);
-            ToolRow straighten = new ActionsRow("", [new ToolAction("Straighten", "Line", () => Change("Straighten", building => PlanEdits.SetBulge(Storey(building, level), id, 0)))]);
-            sections.Add(new ToolSection("Arc", "Arc", [bulge, segments, straighten]));
-        }
-
         List<Vector2> path = PlanGeometry.GetPath(storey, wall);
         float length = PlanGeometry.GetLength(path);
+        if (_editor.Tool == BuildingTool.Arc)
+        {
+            // The bulge is shown as how far it goes and to which side: out of the wall's right, the outside of an outside wall, or in.
+            bool inward = wall.Bulge > 0;
+            float sign = inward ? 1 : -1;
+            float chord = Vector2.Distance(path[0], path[^1]);
+            ToolRow bulge = new NumberRow("Bulge", MathF.Abs(wall.Bulge), "m", value => Change("Arc", building => PlanEdits.SetBulge(Storey(building, level), id, sign * Math.Max(value, 0))), 0, step: 0.1);
+            ToolRow segments = new NumberRow("Segments", wall.Segments, "", value => Change("Arc segments", building => Wall(building, level, id).Segments = Math.Clamp((int)value, 2, 48)), 2, 48, 1);
+            ToolRow side = new ChoiceRow("Side", ["Out", "In"], inward ? 1 : 0, index => Change("Arc side", building => SetSide(Storey(building, level), id, index == 1)));
+            ToolRow chordRow = new ListRow("Chord", $"{Format(chord)} m", "Line");
+            ToolRow along = new ListRow("Along the arc", $"{Format(length)} m", "Arc");
+            ToolRow straighten = new ActionsRow("", [new ToolAction("Make straight", "Line", () => Change("Straighten", building => PlanEdits.SetBulge(Storey(building, level), id, 0)))]);
+            sections.Add(new ToolSection("Arc", "Arc", [bulge, segments, side, chordRow, along, straighten]));
+        }
+
         float full = storey.Height - storey.Floor;
         ToolRow lengthRow = new NumberRow("Length", length, "m", value => Change("Wall length", building => SetLength(Storey(building, level), id, value)), 0.2, step: 0.1);
         ToolRow thickness = new NumberRow("Thickness", PlanGeometry.GetThickness(storey, wall), "m", value => Change("Wall thickness", building => Wall(building, level, id).Thickness = Math.Max(value, 0.02f)), 0.02, 2, 0.01);
@@ -560,7 +581,8 @@ public sealed partial class BuildingToolViewModel : ObservableObject
 
         AddFrame(sections, opening, level);
         ToolRow margin = new NumberRow("Margin", opening.Margin, "m", value => Change(name, building => Opening(building, level, id).Margin = Math.Max(value, 0)), 0, 0.5, 0.01);
-        ToolRow fits = new ListRow("Fits its wall", OpeningShape.Fits(file, storey, opening) ? "yes" : "no: move it or make it smaller", OpeningShape.Fits(file, storey, opening) ? "Check" : "Warning", isWarning: !OpeningShape.Fits(file, storey, opening));
+        string? misfit = BuildingEditor.GetMisfit(file, storey, opening);
+        ToolRow fits = new ListRow("Fits its wall", misfit is null ? "yes" : $"no: {misfit}", misfit is null ? "Check" : "Warning", isWarning: misfit is not null);
         ToolRow removeOpening = new ActionsRow("", [new ToolAction("Remove opening", "Delete", Remove)]);
         sections.Add(new ToolSection("Cut", "Cut", [margin, fits, removeOpening], isExpanded: false));
     }
@@ -682,10 +704,11 @@ public sealed partial class BuildingToolViewModel : ObservableObject
         ToolRow tread = new NumberRow("Tread", stairs.Tread, "m", value => Change("Stairs", building => Stairs(building, id).Tread = Math.Clamp(value, 0.15f, 0.6f)), 0.15, 0.6, 0.01);
         ToolRow count = new ListRow("Count", $"{layout.Steps} steps of {layout.StepRise.ToString("0.000", CultureInfo.InvariantCulture)} m", "Steps");
         ToolRow meets = new ToggleRow("Meets the floor", stairs.MeetsFloor, on => Change("Stairs", building => Stairs(building, id).MeetsFloor = on));
-        sections.Add(new ToolSection("Stairs", "Steps", [kind, turn, heading, width, first, landing, rise, tread, count, meets]));
+        sections.Add(new ToolSection("Stairs", "Steps", [kind, turn, heading, width, first, landing]));
+        sections.Add(new ToolSection("Steps", "Ruler", [rise, tread, count, meets]));
         ToolRow margin = new NumberRow("Margin", stairs.Margin, "m", value => Change("Stairs opening", building => Stairs(building, id).Margin = Math.Max(value, 0)), 0, 1, 0.01);
         ToolRow headroom = new NumberRow("Headroom", stairs.Headroom, "m", value => Change("Stairs opening", building => Stairs(building, id).Headroom = Math.Max(value, 1.5f)), 1.5, 4, 0.05);
-        ToolRow railing = new ToggleRow("Railing", stairs.Railing, on => Change("Stairs railing", building => Stairs(building, id).Railing = on));
+        ToolRow railing = new ToggleRow("Railing round it", stairs.Railing, on => Change("Stairs railing", building => Stairs(building, id).Railing = on));
         sections.Add(new ToolSection("Opening above", "Floor", [margin, headroom, railing]));
         List<ToolRow> cameras = [];
         foreach (BuildingShot shot in file.Shots)
@@ -694,6 +717,11 @@ public sealed partial class BuildingToolViewModel : ObservableObject
             {
                 cameras.Add(new ListRow(shot.Name, "on the stairs", "Camera", () => _editor.Pick(new PlanPick(PlanPickKind.Shot, shot.Level, shot.Id))));
             }
+        }
+
+        if (cameras.Count == 0)
+        {
+            cameras.Add(new ListRow("While on the stairs", "none", "Camera"));
         }
 
         cameras.Add(new ActionsRow("", [new ToolAction("Add a shot", "Camera", () => AddStairsShot(file, stairs)), new ToolAction("Remove stairs", "Delete", Remove)]));
@@ -720,6 +748,18 @@ public sealed partial class BuildingToolViewModel : ObservableObject
             shot.Triggers.Add(new ShotTrigger { Target = TriggerTarget.Stairs, Level = level, Id = id, When = TriggerMoment.Both });
         });
         _editor.Pick(new PlanPick(PlanPickKind.Shot, level, shotId));
+    }
+
+    /// <summary>Turns a wall's bulge to its inside or its outside, as far as it went.</summary>
+    private static void SetSide(BuildingStorey storey, int wallId, bool inward)
+    {
+        if (PlanGeometry.FindWall(storey, wallId) is not { } wall)
+        {
+            return;
+        }
+
+        float reach = MathF.Abs(wall.Bulge);
+        PlanEdits.SetBulge(storey, wallId, inward ? reach : -reach);
     }
 
     private static BuildingStairs Stairs(BuildingFile building, int id) => building.Stairs.Find(stairs => stairs.Id == id)!;
@@ -899,8 +939,8 @@ public sealed partial class BuildingToolViewModel : ObservableObject
         {
             case BuildingTool.Wall:
                 sections.Add(new ToolSection("New walls", "Wall", [new ToggleRow("Outside", _editor.WallOutside, on => _editor.WallOutside = on)]));
-                ToolRow toWalls = new ToggleRow("Walls and corners", _editor.SnapToWalls, on => _editor.SnapToWalls = on);
-                ToolRow toMiddles = new ToggleRow("Middles of walls", _editor.SnapToMiddles, on => _editor.SnapToMiddles = on);
+                ToolRow toWalls = new ToggleRow("Walls, corners", _editor.SnapToWalls, on => _editor.SnapToWalls = on);
+                ToolRow toMiddles = new ToggleRow("Wall middles", _editor.SnapToMiddles, on => _editor.SnapToMiddles = on);
                 ToolRow toGrid = new ToggleRow("Grid", _editor.SnapOn, on => _editor.SnapOn = on);
                 sections.Add(new ToolSection("Snaps to", "Snap", [toWalls, toMiddles, toGrid]));
                 break;
@@ -936,7 +976,7 @@ public sealed partial class BuildingToolViewModel : ObservableObject
         ToolRow floor = new NumberRow("Floor", storey.Floor, "m", value => Change("Storey floor", building => Storey(building, level).Floor = Math.Clamp(value, 0.02f, 1)), 0.02, 1, 0.01);
         ToolRow ambient = new NumberRow("Ambient", storey.Ambient, "", value => Change("Storey light", building => Storey(building, level).Ambient = Math.Clamp(value, 0, 1)), 0, 1, 0.05);
         ToolRow corners = new ToggleRow("Corner pillars", storey.CornerPillars, on => Change("Corner pillars", building => Storey(building, level).CornerPillars = on));
-        ToolRow cornerSize = new NumberRow("Corner pillar size", storey.CornerPillarSize, "m", value => Change("Corner pillars", building => Storey(building, level).CornerPillarSize = Math.Max(value, 0.1f)), 0.1, 3, 0.05);
+        ToolRow cornerSize = new NumberRow("Pillar size", storey.CornerPillarSize, "m", value => Change("Corner pillars", building => Storey(building, level).CornerPillarSize = Math.Max(value, 0.1f)), 0.1, 3, 0.05);
         sections.Add(new ToolSection($"Storey: {GetLevelName(level)}", "Layers", [height, wall, floor, ambient, corners, cornerSize]));
     }
 

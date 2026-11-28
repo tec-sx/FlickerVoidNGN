@@ -8,6 +8,9 @@ namespace FlickerVoid.Editor.Core.Buildings;
 
 public sealed partial class BuildingEditor
 {
+    /// <summary>How far above or below a handle its tag stands, in pixels.</summary>
+    private const float TagOffset = 20;
+
     /// <summary>
     /// The labels over the viewport: the storey's rooms with their areas (their shots with the camera tool), the picked wall's length
     /// and what its tool is doing to it, openings with where they stand, stairs with their steps and the floor they open, elevators
@@ -16,7 +19,7 @@ public sealed partial class BuildingEditor
     public IReadOnlyList<PlanLabel> GetLabels()
     {
         List<PlanLabel> labels = [];
-        if (_file() is not { } file || file.FindStorey(_level) is not { } storey)
+        if (_file() is not { } file || file.FindStorey(_level) is not { } storey || ShowsWhole)
         {
             return labels;
         }
@@ -33,7 +36,7 @@ public sealed partial class BuildingEditor
             AddWallLabels(labels, storey, wall, place, floor);
         }
 
-        if (_tool == BuildingTool.Opening)
+        if (_tool == BuildingTool.Opening || Picked is { Kind: PlanPickKind.Opening or PlanPickKind.Handle })
         {
             AddOpeningLabels(labels, file, storey, place);
         }
@@ -144,23 +147,56 @@ public sealed partial class BuildingEditor
             Vector3 above = frame.Origin + (Vector3.UnitY * (opening.Height + 0.25f));
             if (!picked)
             {
-                labels.Add(new PlanLabel(Vector3.Transform(above, place), opening.Name, $"lift {Format(opening.Lift, "0.00")}", PlanLabelKind.Dimension));
+                if (_tool == BuildingTool.Opening)
+                {
+                    labels.Add(new PlanLabel(Vector3.Transform(above, place), opening.Name, $"lift {Format(opening.Lift, "0.00")}", PlanLabelKind.Dimension));
+                }
+
                 continue;
             }
 
-            if (Picked!.Kind == PlanPickKind.Handle)
+            if (opening.Kind == OpeningKind.Door)
             {
-                string grip = $"Handle {Format(opening.HandleHeight, "0.00")} m up";
-                labels.Add(new PlanLabel(Vector3.Transform(above, place), grip, $"{Format(opening.HandleInset, "0.00")} m in from the edge", PlanLabelKind.Drag));
+                AddDoorLabels(labels, frame, opening, place);
+            }
+
+            if (Picked!.Kind == PlanPickKind.Handle || _tool != BuildingTool.Opening)
+            {
                 continue;
             }
 
             string along = $"{Format(opening.Along, "0.00")} m along";
-            string hint = OpeningShape.Fits(file, storey, opening) ? "drag or click another wall" : "doesn't fit here";
+            string hint = GetMisfit(file, storey, opening) ?? "drag or click another wall";
             labels.Add(new PlanLabel(Vector3.Transform(above, place), along, hint, PlanLabelKind.Drag));
             string lifted = opening.Lift < 1e-4f ? "on the floor" : "above the floor";
             Vector3 foot = frame.Origin - (Vector3.UnitY * 0.3f);
             labels.Add(new PlanLabel(Vector3.Transform(foot, place), $"Lift {Format(opening.Lift, "0.00")} m", lifted, PlanLabelKind.Dimension));
+        }
+    }
+
+    /// <summary>A picked door's own tags: its hinge with the way it opens, and its handle, where a hand takes it, with where it sits while it is the one picked.</summary>
+    private void AddDoorLabels(List<PlanLabel> labels, in OpeningFrame frame, PlanOpening opening, in Matrix4x4 place)
+    {
+        IReadOnlyList<DoorLeaf> leaves = OpeningShape.MakeLeaves(frame, opening, null);
+        if (leaves.Count == 0)
+        {
+            return;
+        }
+
+        DoorLeaf first = leaves[0];
+        string opens = opening.Outward ? "opens out" : "opens in";
+        string title = opening.Double ? "Hinges, two leaves" : "Hinge";
+        Vector3 hinge = Vector3.Transform(first.Pivot + (Vector3.UnitY * opening.Height), place);
+        labels.Add(new PlanLabel(hinge, title, $"{opens} {Format(opening.Angle, "0")}°", PlanLabelKind.Dimension) { Offset = new Vector2(0, -TagOffset) });
+        Vector3 grip = Vector3.Transform(first.Pivot + first.Handle, place);
+        if (Picked is { Kind: PlanPickKind.Handle })
+        {
+            string up = $"Handle {Format(opening.HandleHeight, "0.00")} m up";
+            labels.Add(new PlanLabel(grip, up, $"{Format(opening.HandleInset, "0.00")} m in from the edge", PlanLabelKind.Drag) { Offset = new Vector2(0, TagOffset) });
+        }
+        else
+        {
+            labels.Add(new PlanLabel(grip, "Handle", "drag to move", PlanLabelKind.Dimension) { Offset = new Vector2(0, TagOffset) });
         }
     }
 
@@ -308,7 +344,8 @@ public sealed partial class BuildingEditor
             return;
         }
 
-        bool tagged = _tool is BuildingTool.PushWall or BuildingTool.Arc or BuildingTool.Opening or BuildingTool.Stairs;
+        // These say what the drag does in tags of their own.
+        bool tagged = _tool is BuildingTool.PushWall or BuildingTool.Arc or BuildingTool.Opening or BuildingTool.Stairs || Picked is { Kind: PlanPickKind.Handle };
         if (_grouped && !tagged && _drag != Drag.None && !string.IsNullOrEmpty(PendingName))
         {
             labels.Add(new PlanLabel(ToWorld(place, _dragEnd, _dragHeight + 0.4f), PendingName, string.Empty, PlanLabelKind.Drag));

@@ -329,11 +329,13 @@ void Wet(FrameData frame, float3 worldPosition, inout float3 normal, inout float
 }
 
 // The flat look's tones: a face lit only by the way it faces, warm and dark as the editor's theme, and the thin lines between faces.
-static const float3 FlatTop = float3(0.118, 0.094, 0.074);
-static const float3 FlatSideX = float3(0.060, 0.047, 0.037);
-static const float3 FlatSideZ = float3(0.084, 0.066, 0.052);
-static const float3 FlatUnder = float3(0.030, 0.024, 0.019);
-static const float3 FlatLine = float3(0.36, 0.30, 0.24);
+static const float3 FlatTop = float3(0.100, 0.080, 0.063);
+static const float3 FlatSideX = float3(0.032, 0.025, 0.020);
+static const float3 FlatSideZ = float3(0.058, 0.046, 0.036);
+static const float3 FlatUnder = float3(0.018, 0.014, 0.011);
+static const float3 FlatLine = float3(0.55, 0.47, 0.39);
+// Faces turned from each other by more than this (its cosine, 32 degrees) have a line between them; a round pillar's sides don't.
+static const float FlatCrease = 0.85;
 // A solid drawn without a material is this grey (SolidModel.Color); a part's own colour shades its tone from it.
 static const float FlatGrey = 0.6;
 
@@ -356,13 +358,18 @@ bool FlatDiffers(FrameData frame, int2 texel, int2 offset, float depth, float3 w
     float otherOff = abs(dot(step, otherNormal));
     float reach = length(step);
     apart = min(off, otherOff) > 0.4 * reach + 0.002;
-    if (apart || dot(normal, otherNormal) < 0.96)
+    if (apart || dot(normal, otherNormal) < FlatCrease)
     {
         return true;
     }
 
+    // Another object's: an object's depth is its centre's, or for a large one each pixel's own, so within one object it moves
+    // from pixel to pixel by no more than the pixels' own depths do, and by how coarsely its half float keeps a depth that far.
     float otherObject = Textures[frame.GBufferObjectDepth].Load(int3(other, 0)).r;
-    return abs(otherObject - objectDepth) > 1e-5;
+    float along = dot(float4(worldPosition, 1), frame.DepthAxis);
+    float otherAlong = dot(float4(otherPosition, 1), frame.DepthAxis);
+    float coarse = 0.002 * max(abs(objectDepth), abs(otherObject));
+    return abs((otherObject - otherAlong) - (objectDepth - along)) > abs(otherAlong - along) + coarse + 0.002;
 }
 
 // The flat look of a pixel: its face's tone, shaded by the part's own colour, or a line where it borders another face. A border
